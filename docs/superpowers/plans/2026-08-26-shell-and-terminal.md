@@ -333,7 +333,10 @@ Expected: PASS, 49 tests (42 existing + 7 new).
 Six themes only work if every colour comes from a token. Verify:
 
 ```bash
-grep -rnE '#[0-9a-fA-F]{3,8}\b' apps/desktop/src --include=*.tsx --include=*.ts \
+# Quote the globs. Under zsh an unquoted --include=*.tsx is expanded by the
+# shell, grep errors, and the pipeline prints nothing — which looks exactly
+# like a pass.
+grep -rnE '#[0-9a-fA-F]{3,8}\b' apps/desktop/src --include='*.tsx' --include='*.ts' \
   | grep -v 'theme.ts'
 ```
 
@@ -2575,7 +2578,10 @@ must show visible borders on every panel.
 - [ ] **Step 3: Confirm no literal colours crept in**
 
 ```bash
-grep -rnE '#[0-9a-fA-F]{3,8}\b' apps/desktop/src --include=*.tsx --include=*.ts \
+# Quote the globs. Under zsh an unquoted --include=*.tsx is expanded by the
+# shell, grep errors, and the pipeline prints nothing — which looks exactly
+# like a pass.
+grep -rnE '#[0-9a-fA-F]{3,8}\b' apps/desktop/src --include='*.tsx' --include='*.ts' \
   | grep -v 'theme.ts'
 ```
 

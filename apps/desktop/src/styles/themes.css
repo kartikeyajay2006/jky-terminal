@@ -1,0 +1,101 @@
+/*
+ * Additional themes. Each block overrides token values from tokens.css and
+ * nothing else. If a theme needs a new selector, the component is reading a
+ * literal colour somewhere and should be fixed instead.
+ */
+
+:root[data-theme="dracula"] {
+  --ground: #21222c;
+  --surface: #282a36;
+  --surface-raised: #343746;
+  --line: #3c3f51;
+  --line-strong: #4c5064;
+  --text-dim: #7b7f96;
+  --text-muted: #a6abc8;
+  --text: #f8f8f2;
+  --accent: #8be9fd;
+  --accent-dim: #62b8cc;
+  --accent-glow: rgba(139, 233, 253, 0.14);
+  --violet: #bd93f9;
+  --magenta: #ff79c6;
+  --danger: #ff5555;
+  --warn: #ffb86c;
+}
+
+:root[data-theme="nord"] {
+  --ground: #2e3440;
+  --surface: #333b4a;
+  --surface-raised: #3b4252;
+  --line: #434c5e;
+  --line-strong: #4c566a;
+  --text-dim: #8b94a5;
+  --text-muted: #c3ccd9;
+  --text: #eceff4;
+  --accent: #88c0d0;
+  --accent-dim: #6a9aa8;
+  --accent-glow: rgba(136, 192, 208, 0.16);
+  --violet: #b48ead;
+  --magenta: #b48ead;
+  --danger: #bf616a;
+  --warn: #ebcb8b;
+}
+
+:root[data-theme="solarized"] {
+  --ground: #002b36;
+  --surface: #073642;
+  --surface-raised: #0b414f;
+  --line: #12525f;
+  --line-strong: #586e75;
+  --text-dim: #7d949b;
+  --text-muted: #a4b3b6;
+  --text: #eee8d5;
+  --accent: #2aa198;
+  --accent-dim: #1f7f78;
+  --accent-glow: rgba(42, 161, 152, 0.16);
+  --violet: #6c71c4;
+  --magenta: #d33682;
+  --danger: #dc322f;
+  --warn: #b58900;
+}
+
+:root[data-theme="light"] {
+  --ground: #f7f7fa;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --line: #e2e2ea;
+  --line-strong: #c9c9d6;
+  --text-dim: #6b6b7b;
+  --text-muted: #4a4a58;
+  --text: #16161d;
+  --accent: #0f62fe;
+  --accent-dim: #0043ce;
+  --accent-glow: rgba(15, 98, 254, 0.12);
+  --violet: #6929c4;
+  --magenta: #d02670;
+  --danger: #da1e28;
+  --warn: #8e6a00;
+  color-scheme: light;
+}
+
+/*
+ * High Contrast targets WCAG AAA. Pure black ground, pure white text, and
+ * accents chosen for contrast rather than mood. Borders are deliberately
+ * loud: this theme exists for people who cannot rely on subtle elevation.
+ */
+:root[data-theme="contrast"] {
+  --ground: #000000;
+  --surface: #000000;
+  --surface-raised: #0c0c0c;
+  --line: #6a6a6a;
+  --line-strong: #9a9a9a;
+  --text-dim: #c8c8c8;
+  --text-muted: #e4e4e4;
+  --text: #ffffff;
+  --accent: #00ffff;
+  --accent-dim: #00d5d5;
+  --accent-glow: rgba(0, 255, 255, 0.22);
+  --violet: #d0a0ff;
+  --magenta: #ff8ae2;
+  --danger: #ff8080;
+  --warn: #ffd24d;
+}
