@@ -42,7 +42,9 @@ impl<T: Zeroize> Drop for Secret<T> {
 mod tests {
     use super::*;
 
-    const SENSITIVE: &str = "sk-ant-api03-DO-NOT-LEAK-ME";
+    // The pragma must sit on the matched line itself — the CI grep filters
+    // line by line, so a marker on the line above would not be seen.
+    const SENSITIVE: &str = "sk-ant-api03-DO-NOT-LEAK-ME"; // pragma: allowlist secret
 
     #[test]
     fn debug_never_renders_the_value() {

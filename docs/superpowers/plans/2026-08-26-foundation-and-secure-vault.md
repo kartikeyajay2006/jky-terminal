@@ -2175,7 +2175,8 @@ Add to the root `package.json` `scripts`:
 
 ```json
     "scan:bundle": "node scripts/scan-bundle.mjs",
-    "verify": "pnpm -w typecheck && pnpm -w lint && pnpm -w test && pnpm -w build && pnpm run scan:bundle"
+    "clean:dist": "node -e \"require('fs').rmSync('apps/desktop/dist',{recursive:true,force:true})\"",
+    "verify": "pnpm run clean:dist && pnpm -w typecheck && pnpm -w lint && pnpm -w test && pnpm -w build && pnpm run scan:bundle"
 ```
 
 - [ ] **Step 3: Run it against a real build**
@@ -2189,15 +2190,26 @@ Expected: `scan-bundle: clean, no credential-shaped strings in the bundle.`
 
 - [ ] **Step 4: Prove the scanner bites**
 
+Two traps here, both of which produce a scanner that looks fine and catches nothing:
+
+1. **An unused export is tree-shaken away** before it reaches the bundle, so the
+   probe never tests anything. The probe value must actually be *used*.
+2. **`dist/` accumulates stale artifacts.** Vite hashes output filenames, and a
+   turbo cache hit restores `dist/**` without deleting files left by an earlier
+   uncached build. The scan then reports a leak that is no longer in the source.
+   This is why `verify` runs `clean:dist` first.
+
 ```bash
-echo 'export const oops = "sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";' \
-  > apps/desktop/src/leak-probe.ts
-echo 'import "./leak-probe";' >> apps/desktop/src/main.tsx
-pnpm -w build && pnpm run scan:bundle    # EXPECT: FAIL, exit 1
+python3 - <<'EOF'
+p = "apps/desktop/src/main.tsx"
+s = open(p).read()
+open(p, "w").write('const LEAK_PROBE = "sk-ant-api03-AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";\n'
+                   'console.log(LEAK_PROBE);\n' + s)
+EOF
+pnpm run clean:dist && pnpm -w build && pnpm run scan:bundle   # EXPECT: FAIL, exit 1
 
 git checkout apps/desktop/src/main.tsx
-rm apps/desktop/src/leak-probe.ts
-pnpm -w build && pnpm run scan:bundle    # EXPECT: PASS
+pnpm run clean:dist && pnpm -w build && pnpm run scan:bundle   # EXPECT: PASS, exit 0
 ```
 
 Expected: the first run exits non-zero naming the file; the second is clean. Do not skip this — an unverified scanner is worse than none, because it manufactures false confidence.
@@ -2220,14 +2232,42 @@ Append to `.github/workflows/ci.yml`:
         run: pnpm run scan:bundle
       - name: Assert no secret is committed to the repository
         run: |
-          if git grep -nE 'sk-ant-[A-Za-z0-9_-]{20,}' -- ':!docs' ':!scripts' ':!*.test.*'; then
-            echo "SECURITY: an API key is committed to the repository."
+          # Documentation legitimately shows example keys. Code fixtures must
+          # opt out explicitly and visibly, one line at a time, so every
+          # exemption is reviewable rather than hidden behind a path glob.
+          hits=$(git grep -nE 'sk-ant-[A-Za-z0-9_-]{20,}' -- ':!docs' \
+                 | grep -v 'pragma: allowlist secret' || true)
+          if [ -n "$hits" ]; then
+            echo "SECURITY: an API key is committed to the repository:"
+            echo "$hits"
             exit 1
           fi
           echo "No committed credentials found."
 ```
 
-The exclusions matter: `docs/`, `scripts/`, and test files legitimately contain key-shaped example strings, and a check that fires on its own fixtures gets disabled within a week.
+A check that fires on its own fixtures gets disabled within a week, so the one
+legitimate fixture — `SENSITIVE` in `crates/jky-secrets/src/secret.rs` — carries a
+trailing `// pragma: allowlist secret`. Two things matter about this approach:
+
+- The pragma must sit **on the matched line itself**. The grep filters line by line,
+  so a marker on the line above is invisible to it.
+- Prefer a line-level pragma over a path exclusion like `':!*.test.*'`. Every
+  exemption then appears in review as a visible marker on the exact line, instead of
+  a whole directory quietly falling outside the check.
+
+Verify both directions before moving on:
+
+```bash
+# must be clean on the real tree
+git grep -nE 'sk-ant-[A-Za-z0-9_-]{20,}' -- ':!docs' | grep -v 'pragma: allowlist secret'
+
+# must still catch a genuine leak
+echo 'const REAL: &str = "sk-ant-api03-thisisarealkeyshapedstring1234";' \
+  > crates/jky-secrets/src/leak.rs
+git add -N crates/jky-secrets/src/leak.rs
+git grep -nE 'sk-ant-[A-Za-z0-9_-]{20,}' -- ':!docs' | grep -v 'pragma: allowlist secret'
+rm crates/jky-secrets/src/leak.rs
+```
 
 - [ ] **Step 6: Run the whole verification chain**
 
