@@ -12,7 +12,9 @@ pnpm-debug.log*
 # Rust / Tauri
 target/
 apps/desktop/src-tauri/target/
-Cargo.lock
+# Cargo.lock IS committed. JKY Terminal is an application, not a library, and a
+# committed lockfile is what makes builds reproducible and `cargo audit` results
+# meaningful for the versions users actually run.
 
 # Build outputs
 apps/desktop/src-tauri/gen/

@@ -1,0 +1,17 @@
+[workspace]
+resolver = "2"
+# apps/desktop/src-tauri joins this list in Task 5, when it is created.
+members = ["crates/*"]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+authors = ["kartikeyajay2006 <kartikeyajay2006@gmail.com>"]
+
+[workspace.dependencies]
+thiserror = "2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+zeroize = { version = "1.8", features = ["alloc"] }
+keyring = "3.6"

@@ -60,13 +60,18 @@ These apply to every task in this plan. Violating any one of them is a build fai
 
 - [ ] **Step 1: Enable pnpm**
 
-pnpm is not installed on the target machine. Node 22 ships corepack, so:
+pnpm is not installed on the target machine. Fedora's `nodejs` package does **not**
+ship corepack (it lives in a separate `nodejs-corepack` rpm), so `corepack enable`
+fails with exit 127 there. Install pnpm through npm instead — npm's global prefix is
+a user-owned directory already on `PATH`, so no `sudo` is required:
 
 ```bash
-corepack enable
-corepack prepare pnpm@9.15.0 --activate
+npm install -g pnpm@9.15.0
 pnpm --version   # expect 9.15.0
 ```
+
+On a machine that does have corepack (including the GitHub Actions ubuntu runners
+used by the CI workflow in Step 5), `corepack enable` is equivalent and preferred.
 
 - [ ] **Step 2: Create the JS workspace root**
 
@@ -122,7 +127,8 @@ packages:
 ```toml
 [workspace]
 resolver = "2"
-members = ["crates/*", "apps/desktop/src-tauri"]
+# apps/desktop/src-tauri joins this list in Task 5, when it is created.
+members = ["crates/*"]
 
 [workspace.package]
 version = "0.1.0"
@@ -151,7 +157,7 @@ keyring = "3.6"
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint src --max-warnings 0",
     "typecheck": "tsc --noEmit"
   },
@@ -165,6 +171,7 @@ keyring = "3.6"
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.1.0",
     "@testing-library/user-event": "^14.5.2",
+    "@types/node": "^22.10.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
@@ -176,7 +183,7 @@ keyring = "3.6"
 }
 ```
 
-`apps/desktop/vite.config.ts` — note `clearScreen: false` and the fixed port, both required by Tauri's dev integration:
+`apps/desktop/vite.config.ts` — note `clearScreen: false` and the fixed port, both required by Tauri's dev integration. This file reads `process.env`, so `@types/node` is a devDependency and `"node"` must appear in the tsconfig `types` array; without both, `tsc --noEmit` fails with TS2591:
 
 ```ts
 import { defineConfig } from "vite";
@@ -289,11 +296,24 @@ jobs:
 
 ```bash
 pnpm install
-pnpm -w typecheck && pnpm -w test
-cargo check --workspace
+pnpm -w typecheck
+pnpm -w test
 ```
 
-Expected: typecheck passes, vitest reports "no test files" and exits zero, `cargo check` succeeds with an empty member list warning (no crates yet — that is correct at this point).
+Expected: typecheck passes; vitest prints "No test files found, exiting with code 0"
+and turbo reports 1 successful task.
+
+Do **not** run `cargo check --workspace` yet. The cargo workspace has no members
+until Task 2 creates `crates/jky-secrets`, and a virtual manifest with zero members
+is a hard error, not a warning: `the workspace has no members`. The first cargo
+verification happens at the end of Task 2.
+
+Also create the directory the members glob points at, so it resolves once the first
+crate lands:
+
+```bash
+mkdir -p crates
+```
 
 - [ ] **Step 7: Commit**
 

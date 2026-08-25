@@ -1,0 +1,21 @@
+{
+  "name": "jky-terminal",
+  "private": true,
+  "packageManager": "pnpm@9.15.0",
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "test": "turbo test",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "scan:bundle": "node scripts/scan-bundle.mjs",
+    "verify": "pnpm -w typecheck && pnpm -w lint && pnpm -w test && pnpm -w build && pnpm run scan:bundle"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
