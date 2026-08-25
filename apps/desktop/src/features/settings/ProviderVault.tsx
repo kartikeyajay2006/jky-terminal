@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useId, useState } from "react";
+import { Select } from "../../components/Select";
 import { getPlatform, type ProviderStatus } from "../../platform";
 import "./ProviderVault.css";
 
@@ -212,25 +213,32 @@ function ProviderRow({ provider, open, sealing, onToggle, onChanged, onSealed }:
           )}
 
           <div className="field">
-            <label className="field__label" htmlFor={modelId}>
+            <span className="field__label" id={`${modelId}-label`}>
               Model
-            </label>
-            <select
+            </span>
+            <Select
               id={modelId}
-              className="select"
-              value={isCustom ? "__custom__" : activeModel}
+              label="Model"
+              value={activeModel}
               disabled={busy}
-              onChange={(e) => {
-                if (e.target.value !== "__custom__") void chooseModel(e.target.value);
-              }}
-            >
-              {provider.models.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.label} — {m.note}
-                </option>
-              ))}
-              <option value="__custom__">Custom model id…</option>
-            </select>
+              onChange={(model) => void chooseModel(model)}
+              options={
+                isCustom
+                  ? [
+                      { value: activeModel, label: activeModel, note: "custom" },
+                      ...provider.models.map((m) => ({
+                        value: m.id,
+                        label: m.label,
+                        note: m.note,
+                      })),
+                    ]
+                  : provider.models.map((m) => ({
+                      value: m.id,
+                      label: m.label,
+                      note: m.note,
+                    }))
+              }
+            />
 
             <div className="field__row">
               <input

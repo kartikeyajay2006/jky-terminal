@@ -254,20 +254,6 @@
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
-.select {
-  width: 100%;
-  padding: var(--s3);
-  background: var(--ground);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  color: var(--text);
-}
-
-.select:focus {
-  border-color: var(--accent);
-  outline: none;
-}
-
 .btn {
   padding: var(--s3) var(--s4);
   border: 1px solid var(--line-strong);

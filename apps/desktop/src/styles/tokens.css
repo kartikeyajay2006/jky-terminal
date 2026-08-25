@@ -14,6 +14,11 @@
 
 :root,
 :root[data-theme="cyberpunk"] {
+  /* Native widgets — scrollbars, popups, form controls — follow this. Without
+     it the OS renders them light, and light text on a white system popup is
+     invisible. */
+  color-scheme: dark;
+
   /* Neutral ramp — ground to brightest text */
   --ground: #08080c;
   --surface: #0e0e16;

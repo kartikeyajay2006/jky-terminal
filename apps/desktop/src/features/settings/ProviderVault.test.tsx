@@ -108,30 +108,38 @@ describe("ProviderVault", () => {
 
   it("offers the provider's own models and shows its default", async () => {
     render(<ProviderVault />);
-    await open(/Anthropic/);
+    const user = await open(/Anthropic/);
 
-    const select = await screen.findByLabelText(/^model$/i);
-    expect(select).toHaveValue("claude-sonnet-5");
-    expect(within(select as HTMLSelectElement).getByText(/Claude Opus 5/)).toBeInTheDocument();
-    expect(within(select as HTMLSelectElement).getByText(/Claude Haiku/)).toBeInTheDocument();
+    const combo = await screen.findByRole("combobox", { name: /model/i });
+    expect(combo).toHaveTextContent("Claude Sonnet 5");
+
+    await user.click(combo);
+    const list = await screen.findByRole("listbox", { name: /model/i });
+    expect(within(list).getByRole("option", { name: /Claude Opus 5/ })).toBeInTheDocument();
+    expect(within(list).getByRole("option", { name: /Claude Haiku/ })).toBeInTheDocument();
   });
 
   it("does not offer one provider's models under another", async () => {
     render(<ProviderVault />);
-    await open(/Groq/);
+    const user = await open(/Groq/);
 
-    const select = await screen.findByLabelText(/^model$/i);
-    expect(within(select as HTMLSelectElement).queryByText(/Claude/)).not.toBeInTheDocument();
-    expect(within(select as HTMLSelectElement).getByText(/Llama 3.3 70B/)).toBeInTheDocument();
+    await user.click(await screen.findByRole("combobox", { name: /model/i }));
+    const list = await screen.findByRole("listbox", { name: /model/i });
+    expect(within(list).queryByRole("option", { name: /Claude/ })).not.toBeInTheDocument();
+    expect(within(list).getByRole("option", { name: /Llama 3.3 70B/ })).toBeInTheDocument();
   });
 
   it("remembers a chosen model", async () => {
     render(<ProviderVault />);
     const user = await open(/Anthropic/);
 
-    await user.selectOptions(await screen.findByLabelText(/^model$/i), "claude-opus-5");
+    await user.click(await screen.findByRole("combobox", { name: /model/i }));
+    await user.click(await screen.findByRole("option", { name: /Claude Opus 5/ }));
+
     await waitFor(() =>
-      expect(screen.getByLabelText(/^model$/i)).toHaveValue("claude-opus-5"),
+      expect(screen.getByRole("combobox", { name: /model/i })).toHaveTextContent(
+        "Claude Opus 5",
+      ),
     );
   });
 
@@ -153,7 +161,7 @@ describe("ProviderVault", () => {
     await open(/Ollama/);
 
     expect(screen.queryByLabelText(/api key/i)).not.toBeInTheDocument();
-    expect(await screen.findByLabelText(/^model$/i)).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: /model/i })).toBeInTheDocument();
   });
 
   it("disconnects a provider and returns it to the no-key state", async () => {
