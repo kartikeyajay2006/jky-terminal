@@ -478,7 +478,26 @@ impl<T: Zeroize> Drop for Secret<T> {
 Run: `cargo test -p jky-secrets`
 Expected: PASS, 4 tests.
 
-- [ ] **Step 6: Commit**
+- [ ] **Step 6: Prove the redaction tests actually bite**
+
+A passing test proves nothing until you have seen it fail. Temporarily make `Debug`
+leak and confirm the suite catches it:
+
+```bash
+cp crates/jky-secrets/src/secret.rs /tmp/secret.rs.bak
+sed -i 's|f.write_str("Secret(\[redacted\])")|write!(f, "Secret({})", self.0)|' \
+  crates/jky-secrets/src/secret.rs
+sed -i 's|impl<T: Zeroize>|impl<T: Zeroize + fmt::Display>|g' crates/jky-secrets/src/secret.rs
+sed -i 's|pub struct Secret<T: Zeroize>(T);|pub struct Secret<T: Zeroize + fmt::Display>(T);|' \
+  crates/jky-secrets/src/secret.rs
+cargo test -p jky-secrets          # EXPECT: FAIL, 2 tests
+cp /tmp/secret.rs.bak crates/jky-secrets/src/secret.rs
+cargo test -p jky-secrets          # EXPECT: PASS, 4 tests
+```
+
+Expected: two failures naming the leaked value, then four passes after restore.
+
+- [ ] **Step 7: Commit**
 
 ```bash
 git add crates/jky-secrets
