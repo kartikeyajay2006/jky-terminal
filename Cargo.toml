@@ -1,7 +1,6 @@
 [workspace]
 resolver = "2"
-# apps/desktop/src-tauri joins this list in Task 5, when it is created.
-members = ["crates/*"]
+members = ["crates/*", "apps/desktop/src-tauri"]
 
 [workspace.package]
 version = "0.1.0"
