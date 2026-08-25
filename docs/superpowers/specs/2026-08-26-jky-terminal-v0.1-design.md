@@ -20,7 +20,10 @@ a secret.
 
 v0.1 is done when all of the following are true:
 
-1. The app installs and launches on Linux, macOS and Windows.
+1. The app builds, installs and launches on **Linux, macOS and Windows**. This is a
+   hard requirement, not an aspiration: CI runs the native build and test suite on
+   all three, and a platform that does not compile blocks the release. Verification
+   on one developer machine proves one third of this criterion.
 2. A real PTY shell runs in a tab: job control, resize, signals, colour, and
    interactive programs (`vim`, `htop`, `top`) all behave correctly.
 3. The user pastes an Anthropic API key once, and it is never readable by the
@@ -298,6 +301,45 @@ WCAG AA contrast ratios on all text.
 
 `Cmd/Ctrl+K` command palette, `Cmd/Ctrl+1..5` tab switching, `Cmd/Ctrl+T` new
 terminal tab, `Cmd/Ctrl+Shift+A` inline natural-language-to-command in a terminal.
+
+---
+
+## 6.5 Cross-platform requirements
+
+JKY Terminal must work on macOS, Windows, and any Linux distribution. Portability is
+enforced mechanically, because platform assumptions are invisible on the machine that
+does not have them.
+
+**CI matrix.** The `native` job runs on `ubuntu-latest`, `macos-latest` and
+`windows-latest` with `fail-fast: false`, so one platform breaking never hides the
+state of the others. Each runs `cargo test`, `cargo clippy -D warnings`, and — the
+part that actually matters — a full `cargo build -p jky-terminal`. Compiling the
+library is not proof; linking the shippable binary is where a platform-specific
+keychain backend or webview binding really fails.
+
+**Per-platform notes.**
+
+| Concern | Linux | macOS | Windows |
+|---|---|---|---|
+| Secret store | Secret Service / GNOME Keyring over D-Bus | Keychain | Credential Manager |
+| Webview | WebKitGTK (needs dev headers installed in CI) | WKWebView (built in) | WebView2 (built in) |
+| `keyring` feature | `sync-secret-service` + `crypto-rust` | `apple-native` | `windows-native` |
+
+All three `keyring` features are declared unconditionally. This is safe because the
+crate target-gates its own platform dependencies: `dbus-secret-service` resolves only
+on Linux and BSD, `security-framework` only on macOS and iOS, `windows-sys` only on
+Windows. Enabling a backend for a platform you are not building for is a no-op.
+
+**Rules for contributors.**
+
+- Never hard-code a path separator. Use `std::path::Path` in Rust and `node:path`'s
+  `join()` in scripts.
+- Keep npm scripts free of shell built-ins. `&&` is portable across `sh` and
+  `cmd.exe`, but quoting inside `node -e "..."` is not — put the code in a file.
+- `.gitattributes` normalises the repository to LF. A Windows checkout rewriting
+  sources to CRLF breaks scripts and produces noisy cross-platform diffs.
+- A step in a GitHub workflow that uses shell syntax must set `shell: bash`, or it
+  runs under PowerShell on the Windows runner.
 
 ---
 

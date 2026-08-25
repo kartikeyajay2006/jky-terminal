@@ -1,0 +1,14 @@
+# Normalise to LF in the repository for every text file. Without this a Windows
+# checkout can rewrite shell scripts and source files to CRLF, which breaks
+# scripts, produces noisy diffs, and makes line-sensitive tooling disagree
+# across platforms.
+* text=auto eol=lf
+
+# Binary assets must never be line-ending converted.
+*.png binary
+*.ico binary
+*.icns binary
+*.jpg binary
+*.woff binary
+*.woff2 binary
+*.ttf binary

@@ -9,7 +9,8 @@
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
-const DIST = "apps/desktop/dist";
+// join() rather than a literal "a/b/c" so the path is correct on Windows too.
+const DIST = join("apps", "desktop", "dist");
 
 const PATTERNS = [
   { name: "Anthropic API key", re: /sk-ant-[A-Za-z0-9_-]{20,}/g },
