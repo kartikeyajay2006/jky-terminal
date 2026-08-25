@@ -10,7 +10,8 @@
     "typecheck": "turbo typecheck",
     "scan:bundle": "node scripts/scan-bundle.mjs",
     "verify": "pnpm run clean:dist && pnpm -w typecheck && pnpm -w lint && pnpm -w test && pnpm -w build && pnpm run scan:bundle",
-    "clean:dist": "node -e \"require('fs').rmSync('apps/desktop/dist',{recursive:true,force:true})\""
+    "clean:dist": "node -e \"require('fs').rmSync('apps/desktop/dist',{recursive:true,force:true})\"",
+    "dev:desktop": "pnpm --filter @jky/desktop dev:desktop"
   },
   "devDependencies": {
     "turbo": "^2.3.3",
