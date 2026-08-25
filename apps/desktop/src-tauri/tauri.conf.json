@@ -17,7 +17,8 @@
         "height": 853,
         "minWidth": 900,
         "minHeight": 600,
-        "decorations": true
+        "decorations": true,
+        "backgroundColor": "#08080C"
       }
     ],
     "security": {
@@ -27,6 +28,8 @@
   "bundle": {
     "active": true,
     "targets": "all",
-    "icon": ["icons/icon.png"]
+    "icon": [
+      "icons/icon.png"
+    ]
   }
 }

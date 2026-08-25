@@ -1,10 +1,7 @@
-import { KeyVault } from "./features/settings/KeyVault";
+import { ProviderVault } from "./features/settings/ProviderVault";
+import "./styles/tokens.css";
+import "./styles/base.css";
 
 export function App() {
-  return (
-    <main>
-      <h1>JKY Terminal</h1>
-      <KeyVault />
-    </main>
-  );
+  return <ProviderVault />;
 }

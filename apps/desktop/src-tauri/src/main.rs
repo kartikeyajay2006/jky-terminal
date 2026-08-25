@@ -3,17 +3,27 @@
 mod commands;
 mod state;
 
-use commands::vault;
+use commands::{settings, vault};
 use state::AppState;
+use tauri::Manager;
 
 fn main() {
     tauri::Builder::default()
-        .manage(AppState::new())
+        .setup(|app| {
+            // Resolved by Tauri per platform: ~/.config/dev.jky.terminal on Linux,
+            // ~/Library/Application Support/dev.jky.terminal on macOS,
+            // %APPDATA%\dev.jky.terminal on Windows.
+            let config_dir = app.path().app_config_dir()?;
+            app.manage(AppState::new(&config_dir));
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             vault::vault_set_secret,
             vault::vault_has_secret,
             vault::vault_delete_secret,
             vault::vault_list_providers,
+            settings::settings_set_selected_model,
+            settings::settings_set_active_provider,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");

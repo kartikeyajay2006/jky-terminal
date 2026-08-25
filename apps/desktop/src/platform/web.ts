@@ -1,45 +1,46 @@
-import type { Platform, ProviderStatus, VaultApi } from "./types";
-
-const KNOWN_PROVIDERS: ReadonlyArray<Omit<ProviderStatus, "connected">> = [
-  { id: "anthropic", displayName: "Anthropic" },
-];
-
-/** Mirrors `ProviderId::validate` in crates/jky-secrets/src/provider.rs. */
-function validate(provider: string, value: string): void {
-  if (!KNOWN_PROVIDERS.some((p) => p.id === provider)) {
-    throw new Error(`unknown provider '${provider}'`);
-  }
-  if (provider === "anthropic") {
-    if (value.trim() !== value || !value.startsWith("sk-ant-") || value.length < 40) {
-      throw new Error(`invalid key format for provider '${provider}'`);
-    }
-  }
-}
+import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
+import type { Platform, ProviderStatus, SettingsApi, VaultApi } from "./types";
 
 /**
- * Development-only vault.
+ * Development-only backend.
  *
- * Values live in a closure and die with the tab. Deliberately NOT localStorage
+ * Values live in closures and die with the tab. Deliberately NOT localStorage
  * or sessionStorage — the browser build must never write credentials to disk.
  */
 export function createWebPlatform(): Platform {
-  const store = new Map<string, string>();
+  const keys = new Map<string, string>();
+  const models = new Map<string, string>();
 
   const vault: VaultApi = {
     async setSecret(provider, value) {
-      validate(provider, value);
-      store.set(provider, value);
+      const spec = findProvider(provider);
+      if (!spec) throw new Error(`unknown provider '${provider}'`);
+      validateKey(spec, value);
+      keys.set(provider, value);
     },
     async hasSecret(provider) {
-      return store.has(provider);
+      return keys.has(provider);
     },
     async deleteSecret(provider) {
-      store.delete(provider);
+      keys.delete(provider);
     },
-    async listProviders() {
-      return KNOWN_PROVIDERS.map((p) => ({ ...p, connected: store.has(p.id) }));
+    async listProviders(): Promise<ProviderStatus[]> {
+      return PROVIDERS.map((spec) =>
+        toStatus(spec, keys.has(spec.id), models.get(spec.id) ?? null),
+      );
     },
   };
 
-  return { kind: "web", vault };
+  const settings: SettingsApi = {
+    async setSelectedModel(provider, model) {
+      if (!findProvider(provider)) throw new Error(`unknown provider '${provider}'`);
+      if (!model.trim()) throw new Error("model id cannot be empty");
+      models.set(provider, model.trim());
+    },
+    async setActiveProvider(provider) {
+      if (!findProvider(provider)) throw new Error(`unknown provider '${provider}'`);
+    },
+  };
+
+  return { kind: "web", vault, settings };
 }

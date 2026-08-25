@@ -1,7 +1,23 @@
+export interface ModelOption {
+  id: string;
+  label: string;
+  note: string;
+}
+
 export interface ProviderStatus {
   id: string;
   displayName: string;
+  tagline: string;
+  consoleUrl: string;
+  /** Local runtimes need no credential. */
+  requiresKey: boolean;
+  /** Accepted key prefixes, used to show the expected shape. May be empty. */
+  keyPrefixes: string[];
   connected: boolean;
+  models: ModelOption[];
+  defaultModel: string;
+  /** The user's explicit choice, if they have made one. */
+  selectedModel: string | null;
 }
 
 /**
@@ -18,7 +34,13 @@ export interface VaultApi {
   listProviders(): Promise<ProviderStatus[]>;
 }
 
+export interface SettingsApi {
+  setSelectedModel(provider: string, model: string): Promise<void>;
+  setActiveProvider(provider: string): Promise<void>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
+  readonly settings: SettingsApi;
 }

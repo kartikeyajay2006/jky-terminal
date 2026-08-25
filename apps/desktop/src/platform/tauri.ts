@@ -1,10 +1,18 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { Platform, ProviderStatus, VaultApi } from "./types";
+import type { ModelOption, Platform, ProviderStatus, SettingsApi, VaultApi } from "./types";
 
+/** Wire shape from Rust: serde emits snake_case. */
 interface RawProviderStatus {
   id: string;
   display_name: string;
+  tagline: string;
+  console_url: string;
+  requires_key: boolean;
+  key_prefixes: string[];
   connected: boolean;
+  models: ModelOption[];
+  default_model: string;
+  selected_model: string | null;
 }
 
 export function createTauriPlatform(): Platform {
@@ -23,10 +31,26 @@ export function createTauriPlatform(): Platform {
       return raw.map((r) => ({
         id: r.id,
         displayName: r.display_name,
+        tagline: r.tagline,
+        consoleUrl: r.console_url,
+        requiresKey: r.requires_key,
+        keyPrefixes: r.key_prefixes,
         connected: r.connected,
+        models: r.models,
+        defaultModel: r.default_model,
+        selectedModel: r.selected_model,
       }));
     },
   };
 
-  return { kind: "tauri", vault };
+  const settings: SettingsApi = {
+    async setSelectedModel(provider, model) {
+      await invoke<void>("settings_set_selected_model", { provider, model });
+    },
+    async setActiveProvider(provider) {
+      await invoke<void>("settings_set_active_provider", { provider });
+    },
+  };
+
+  return { kind: "tauri", vault, settings };
 }
