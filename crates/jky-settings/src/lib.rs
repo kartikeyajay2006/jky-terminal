@@ -156,6 +156,32 @@ mod tests {
     }
 
     #[test]
+    fn saving_repeatedly_overwrites_an_existing_file() {
+        // save() writes to a temp file and renames it into place. Rename-over-
+        // existing is the operation whose semantics differ most between
+        // platforms, so this exercises it on every OS the CI matrix runs.
+        // A failure here means settings silently stop persisting after the
+        // first write on that platform.
+        let (_d, s) = store();
+        for model in ["claude-sonnet-5", "claude-opus-5", "claude-haiku-4-5-20251001"] {
+            s.set_selected_model("anthropic", model).unwrap();
+            assert_eq!(s.selected_model("anthropic").unwrap().as_deref(), Some(model));
+        }
+    }
+
+    #[test]
+    fn settings_survive_a_new_store_instance_over_the_same_path() {
+        // Proves the value reached disk rather than living in process memory.
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().join("settings.json");
+        SettingsStore::new(&path).set_selected_model("openai", "gpt-4o").unwrap();
+        assert_eq!(
+            SettingsStore::new(&path).selected_model("openai").unwrap().as_deref(),
+            Some("gpt-4o")
+        );
+    }
+
+    #[test]
     fn the_active_provider_round_trips() {
         let (_d, s) = store();
         s.set_active_provider("openai").unwrap();
