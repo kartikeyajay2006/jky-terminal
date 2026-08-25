@@ -1897,7 +1897,7 @@ describe("KeyVault", () => {
     const user = userEvent.setup();
     render(<KeyVault />);
 
-    await user.type(await screen.findByLabelText(/api key/i), VALID_KEY);
+    await user.type(await screen.findByLabelText(/anthropic api key/i), VALID_KEY);
     await user.click(screen.getByRole("button", { name: /save key/i }));
 
     expect(await screen.findByText(/connected/i)).toBeInTheDocument();
@@ -1905,7 +1905,7 @@ describe("KeyVault", () => {
 
   it("uses a password-type input so the key is never shown on screen", async () => {
     render(<KeyVault />);
-    const input = await screen.findByLabelText(/api key/i);
+    const input = await screen.findByLabelText(/anthropic api key/i);
     expect(input).toHaveAttribute("type", "password");
   });
 
@@ -1913,7 +1913,7 @@ describe("KeyVault", () => {
     const user = userEvent.setup();
     render(<KeyVault />);
 
-    const input = await screen.findByLabelText(/api key/i);
+    const input = await screen.findByLabelText(/anthropic api key/i);
     await user.type(input, VALID_KEY);
     await user.click(screen.getByRole("button", { name: /save key/i }));
 
@@ -1924,7 +1924,7 @@ describe("KeyVault", () => {
     const user = userEvent.setup();
     render(<KeyVault />);
 
-    await user.type(await screen.findByLabelText(/api key/i), "sk-wrong-CANARY123");
+    await user.type(await screen.findByLabelText(/anthropic api key/i), "sk-wrong-CANARY123");
     await user.click(screen.getByRole("button", { name: /save key/i }));
 
     const alert = await screen.findByRole("alert");
@@ -1934,7 +1934,7 @@ describe("KeyVault", () => {
 
   it("disables save while the field is empty", async () => {
     render(<KeyVault />);
-    await screen.findByLabelText(/api key/i);
+    await screen.findByLabelText(/anthropic api key/i);
     expect(screen.getByRole("button", { name: /save key/i })).toBeDisabled();
   });
 
@@ -1942,7 +1942,7 @@ describe("KeyVault", () => {
     const user = userEvent.setup();
     render(<KeyVault />);
 
-    await user.type(await screen.findByLabelText(/api key/i), VALID_KEY);
+    await user.type(await screen.findByLabelText(/anthropic api key/i), VALID_KEY);
     await user.click(screen.getByRole("button", { name: /save key/i }));
     await screen.findByRole("button", { name: /remove key/i });
     await user.click(screen.getByRole("button", { name: /remove key/i }));
@@ -1954,7 +1954,7 @@ describe("KeyVault", () => {
     const user = userEvent.setup();
     const { container } = render(<KeyVault />);
 
-    await user.type(await screen.findByLabelText(/api key/i), VALID_KEY);
+    await user.type(await screen.findByLabelText(/anthropic api key/i), VALID_KEY);
     await user.click(screen.getByRole("button", { name: /save key/i }));
     await screen.findByText(/connected/i);
 
@@ -2034,7 +2034,7 @@ export function KeyVault() {
         <strong>{anthropic?.connected ? "Connected" : "Not connected"}</strong>
       </p>
 
-      <label htmlFor={inputId}>API key</label>
+      <label htmlFor={inputId}>Anthropic API key</label>
       <input
         id={inputId}
         type="password"
