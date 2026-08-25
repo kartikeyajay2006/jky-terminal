@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability set. The renderer gets no filesystem, shell, or network access; every privileged action goes through an explicit command.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

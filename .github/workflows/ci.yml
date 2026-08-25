@@ -1,0 +1,60 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  js:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm -w typecheck
+      - run: pnpm -w lint
+      - run: pnpm -w test
+
+  rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: clippy }
+      - name: Install Tauri system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev build-essential curl wget file \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo test --workspace
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+
+  security:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run clean:dist
+      - run: pnpm -w build
+      - name: Scan production bundle for credentials
+        run: pnpm run scan:bundle
+      - name: Assert no secret is committed to the repository
+        run: |
+          # Documentation legitimately shows example keys. Code fixtures must
+          # opt out explicitly and visibly, one line at a time, so every
+          # exemption is reviewable rather than hidden behind a path glob.
+          hits=$(git grep -nE 'sk-ant-[A-Za-z0-9_-]{20,}' -- ':!docs' \
+                 | grep -v 'pragma: allowlist secret' || true)
+          if [ -n "$hits" ]; then
+            echo "SECURITY: an API key is committed to the repository:"
+            echo "$hits"
+            exit 1
+          fi
+          echo "No committed credentials found."
