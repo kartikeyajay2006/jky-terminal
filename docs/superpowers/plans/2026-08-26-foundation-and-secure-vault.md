@@ -141,7 +141,15 @@ thiserror = "2.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 zeroize = { version = "1.8", features = ["alloc"] }
-keyring = "3.6"
+keyring = { version = "3.6", features = [
+    # keyring 3.x gates every OS backend behind a feature. With none enabled it
+    # silently falls back to a no-op mock store: set() succeeds, get() finds
+    # nothing, and the UI cheerfully reports "Connected" while storing nothing.
+    "apple-native",        # macOS Keychain
+    "windows-native",      # Windows Credential Manager
+    "sync-secret-service", # Linux Secret Service over D-Bus
+    "crypto-rust",         # session encryption required by sync-secret-service
+] }
 ```
 
 - [ ] **Step 4: Scaffold the React app**
