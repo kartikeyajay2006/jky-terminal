@@ -1537,15 +1537,37 @@ Expected: PASS, 5 tests.
 A security test that cannot fail is decoration. Verify each one bites:
 
 ```bash
-# Temporarily widen the CSP and confirm the test fails.
-sed -i 's|connect-src '"'"'self'"'"' ipc:|connect-src '"'"'self'"'"' https://evil.example ipc:|' \
+# 1. Widen the CSP to allow an external host.
+sed -i "s|connect-src 'self' ipc:|connect-src 'self' https://evil.example ipc:|" \
   apps/desktop/src-tauri/tauri.conf.json
 cargo test -p jky-terminal --test security csp_connect_src   # EXPECT: FAIL
 git checkout apps/desktop/src-tauri/tauri.conf.json
-cargo test -p jky-terminal --test security csp_connect_src   # EXPECT: PASS
+
+# 2. Add a command that reads a stored secret back.
+#    Insert a `vault_get_secret` #[tauri::command] into commands/vault.rs, then:
+cargo test -p jky-terminal --test security                   # EXPECT: FAIL, 2 tests
+git checkout apps/desktop/src-tauri/src/commands/vault.rs
+
+# 3. The capability rule is proven by its own unit test:
+cargo test -p jky-terminal --test security the_capability_rule   # EXPECT: PASS
 ```
 
-Expected: the first run fails naming `https://evil.example`, the second passes. Do not proceed until you have seen the failure — that is the evidence the guard works.
+Expected: run 1 fails naming `https://evil.example`; run 2 fails twice, once for the
+getter-shaped name and once for the pinned command surface. Do not proceed until you
+have seen those failures — they are the evidence the guards work.
+
+**Why the capability guard is proven differently.** The obvious probe — pasting
+`fs:allow-read-file` into `capabilities/default.json` — does not work, and the reason
+is worth knowing: Tauri's build script refuses to compile a capability naming a plugin
+that is not a dependency, failing with `Permission fs:allow-read-file not found`. The
+build dies before the test binary is ever produced, so the test appears to "not fire"
+when in fact a stricter check caught it first.
+
+That is defence in depth, and it changes what our test is for. Tauri stops you
+granting a permission for a plugin you have not added; our guard is the second line,
+firing the moment someone adds the plugin *and* grants the permission. Because that
+scenario cannot be staged cheaply, the prefix rule is extracted into
+`forbidden_capability()` and unit-tested directly, and the manifest check applies it.
 
 - [ ] **Step 4: Commit**
 
