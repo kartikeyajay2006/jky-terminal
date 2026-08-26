@@ -10,9 +10,10 @@ use jky_settings::SettingsStore;
 pub const KEYCHAIN_SERVICE: &str = "dev.jky.terminal";
 
 /// A tool call the model asked for, held until the user decides.
+///
+/// The call id is the map key, so it is not repeated here.
 #[derive(Debug, Clone)]
 pub struct PendingTool {
-    pub id: String,
     pub name: String,
     pub command: String,
 }

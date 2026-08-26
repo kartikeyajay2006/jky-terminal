@@ -94,11 +94,7 @@ fn make_handler(
                 if let Ok(mut map) = pending.lock() {
                     map.insert(
                         id.clone(),
-                        PendingTool {
-                            id: id.clone(),
-                            name: name.clone(),
-                            command: command.clone(),
-                        },
+                        PendingTool { name: name.clone(), command: command.clone() },
                     );
                 }
                 let _ = app.emit(
@@ -188,7 +184,7 @@ pub fn ai_approve_tool(state: State<'_, AppState>, call_id: String) -> Result<()
 
     let _ = state.audit.append(AuditEvent::new(
         AuditKind::CommandRun,
-        &format!("approved: {}", pending.command),
+        &format!("approved {}: {}", pending.name, pending.command),
     ));
     Ok(())
 }
@@ -204,7 +200,7 @@ pub fn ai_reject_tool(state: State<'_, AppState>, call_id: String) -> Result<(),
     if let Some(tool) = pending {
         let _ = state.audit.append(AuditEvent::new(
             AuditKind::CommandRejected,
-            &format!("declined: {}", tool.command),
+            &format!("declined {}: {}", tool.name, tool.command),
         ));
     }
     Ok(())
