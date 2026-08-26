@@ -30,9 +30,10 @@ export const PROVIDERS: ProviderSpec[] = [
     keyPrefixes: ["sk-ant-"],
     minKeyLength: 20,
     models: [
-      m("claude-sonnet-5", "Claude Sonnet 5", "Balanced — recommended default"),
-      m("claude-opus-5", "Claude Opus 5", "Most capable, slower and pricier"),
-      m("claude-haiku-4-5-20251001", "Claude Haiku 4.5", "Fastest and cheapest"),
+      m("claude-opus-5", "Claude Opus 5", "Most capable — recommended default"),
+      m("claude-sonnet-5", "Claude Sonnet 5", "Balanced cost and capability"),
+      m("claude-haiku-4-5", "Claude Haiku 4.5", "Fastest and cheapest"),
+      m("claude-fable-5", "Claude Fable 5", "Deepest reasoning, highest cost"),
     ],
   },
   {

@@ -111,11 +111,11 @@ describe("ProviderVault", () => {
     const user = await open(/Anthropic/);
 
     const combo = await screen.findByRole("combobox", { name: /model/i });
-    expect(combo).toHaveTextContent("Claude Sonnet 5");
+    expect(combo).toHaveTextContent("Claude Opus 5");
 
     await user.click(combo);
     const list = await screen.findByRole("listbox", { name: /model/i });
-    expect(within(list).getByRole("option", { name: /Claude Opus 5/ })).toBeInTheDocument();
+    expect(within(list).getByRole("option", { name: /Claude Sonnet 5/ })).toBeInTheDocument();
     expect(within(list).getByRole("option", { name: /Claude Haiku/ })).toBeInTheDocument();
   });
 
@@ -134,11 +134,11 @@ describe("ProviderVault", () => {
     const user = await open(/Anthropic/);
 
     await user.click(await screen.findByRole("combobox", { name: /model/i }));
-    await user.click(await screen.findByRole("option", { name: /Claude Opus 5/ }));
+    await user.click(await screen.findByRole("option", { name: /Claude Sonnet 5/ }));
 
     await waitFor(() =>
       expect(screen.getByRole("combobox", { name: /model/i })).toHaveTextContent(
-        "Claude Opus 5",
+        "Claude Sonnet 5",
       ),
     );
   });

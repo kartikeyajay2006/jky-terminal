@@ -19,9 +19,10 @@ const fn m(id: &'static str, label: &'static str, note: &'static str) -> ModelSp
 }
 
 const ANTHROPIC_MODELS: &[ModelSpec] = &[
-    m("claude-sonnet-5", "Claude Sonnet 5", "Balanced — recommended default"),
-    m("claude-opus-5", "Claude Opus 5", "Most capable, slower and pricier"),
-    m("claude-haiku-4-5-20251001", "Claude Haiku 4.5", "Fastest and cheapest"),
+    m("claude-opus-5", "Claude Opus 5", "Most capable — recommended default"),
+    m("claude-sonnet-5", "Claude Sonnet 5", "Balanced cost and capability"),
+    m("claude-haiku-4-5", "Claude Haiku 4.5", "Fastest and cheapest"),
+    m("claude-fable-5", "Claude Fable 5", "Deepest reasoning, highest cost"),
 ];
 
 const OPENAI_MODELS: &[ModelSpec] = &[
@@ -350,6 +351,28 @@ mod tests {
                     p.as_key()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn no_anthropic_model_id_carries_a_date_suffix() {
+        // Anthropic model ids are complete as published — appending a date
+        // (claude-haiku-4-5-20251001) is rejected with a 400. This shipped
+        // once already; the guard makes sure it cannot ship again.
+        for model in ProviderId::Anthropic.models() {
+            assert!(
+                !regex_like_date_suffix(model.id),
+                "'{}' looks date-suffixed; use the published id as-is",
+                model.id
+            );
+        }
+    }
+
+    /// True when the id ends in `-` followed by 8 digits.
+    fn regex_like_date_suffix(id: &str) -> bool {
+        match id.rsplit_once('-') {
+            Some((_, tail)) => tail.len() == 8 && tail.chars().all(|c| c.is_ascii_digit()),
+            None => false,
         }
     }
 
