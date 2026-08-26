@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Terminal as Xterm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
 import { buildBanner } from "./banner";
 
@@ -63,6 +64,18 @@ export function useXterm(container: React.RefObject<HTMLDivElement | null>) {
     });
     xterm.write(banner);
 
+    // `jky ask <question>` in the shell emits OSC 1337 carrying a base64
+    // question. Handling it here means the shell command needs no socket, no
+    // port, and no knowledge of where the app is — the sequence simply rides
+    // the pty like any other output.
+    xterm.parser.registerOscHandler(1337, (payload) => {
+      const question = decodeAskPayload(payload);
+      if (question) useAsk.getState().ask(question);
+      // Returning true consumes it, so the escape sequence never reaches the
+      // screen as stray characters.
+      return question !== null;
+    });
+
     const platform = getPlatform();
 
     void (async () => {
@@ -83,6 +96,22 @@ export function useXterm(container: React.RefObject<HTMLDivElement | null>) {
       unlisten = await platform.pty.onData(id, (chunk) => xterm.write(chunk));
       xterm.onData((data) => void platform.pty.write(id, data));
       await platform.pty.attach(id);
+
+      // Push the settled size, unconditionally.
+      //
+      // spawn() was given whatever fit() measured before layout had settled,
+      // which can still be the 80x24 default. The ResizeObserver fires once on
+      // observe() — but that happens while this spawn is still in flight, so
+      // ptyId is null and its resize is skipped. If the pane is never resized
+      // again the observer never fires again either, and the shell keeps
+      // believing the terminal is a size it is not. Anything drawing on the
+      // bottom row is then clipped.
+      try {
+        fit.fit();
+      } catch {
+        /* not measurable; the observer will correct it on the next layout */
+      }
+      await platform.pty.resize(id, xterm.cols, xterm.rows);
     })();
 
     const observer = new ResizeObserver(() => {

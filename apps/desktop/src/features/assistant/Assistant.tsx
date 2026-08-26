@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useAsk } from "../../app/askStore";
 import { getPlatform, type AiMessage, type ToolRequest } from "../../platform";
 import { describeError } from "./errors";
 import { ToolCard } from "./ToolCard";
@@ -60,8 +61,7 @@ export function Assistant() {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [turns, tools]);
 
-  const send = useCallback(async () => {
-    const text = draft.trim();
+  const submit = useCallback(async (text: string) => {
     if (!text) return;
 
     setTurns((prev) => [...prev, { role: "user", text }]);
@@ -77,7 +77,18 @@ export function Assistant() {
       setError(describeError(e));
       setBusy(false);
     }
-  }, [draft]);
+  }, []);
+
+  const send = useCallback(() => submit(draft.trim()), [draft, submit]);
+
+  // Take a question raised from a terminal. `take` clears it, so switching
+  // away and back does not re-ask whatever was asked last.
+  const pending = useAsk((s) => s.pending);
+  useEffect(() => {
+    if (!pending) return;
+    const question = useAsk.getState().take();
+    if (question) void submit(question);
+  }, [pending, submit]);
 
   return (
     <div className="chat">

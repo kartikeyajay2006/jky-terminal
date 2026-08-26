@@ -12,6 +12,13 @@ pub const LAUNCHER_NAMES: &[&str] = &["jky-terminal", "jkyterminal", "jkyTermina
 /// Filename holding the pre-rendered banner the launchers print.
 const BANNER_FILE: &str = "banner.ansi";
 
+/// OSC code carrying a question from the shell to the assistant panel.
+///
+/// 1337 is the iTerm2 convention for application-defined sequences. Terminals
+/// that do not recognise it ignore it silently, which is exactly the
+/// behaviour we want if this script is ever run outside JKY Terminal.
+pub const ASK_OSC: u16 = 1337;
+
 /// Install the banner and the small scripts that print it.
 ///
 /// This is the same trick an editor uses to make its own name work as a shell
@@ -27,7 +34,70 @@ pub fn install_launchers(bin_dir: &Path, banner: &str) -> io::Result<()> {
     for name in LAUNCHER_NAMES {
         write_launcher(bin_dir, name, &banner_path)?;
     }
+    write_ask_launcher(bin_dir, &banner_path)?;
     Ok(())
+}
+
+/// The `jky` command: `jky ask <question>` sends a question to the assistant.
+///
+/// It emits an OSC escape sequence rather than talking to the app directly.
+/// The sequence travels the pty like any other output, the terminal decodes
+/// it, and nothing has to know the app's address or hold a socket open. Run
+/// outside JKY Terminal it prints nothing and does no harm.
+#[cfg(not(windows))]
+fn write_ask_launcher(bin_dir: &Path, banner_path: &Path) -> io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+
+    let script = bin_dir.join("jky");
+    let body = format!(
+        r#"#!/bin/sh
+case "$1" in
+  ask|asks)
+    shift
+    if [ $# -eq 0 ]; then
+      echo "usage: jky ask <question>" >&2
+      exit 1
+    fi
+    # base64 so a question containing quotes, newlines, or the terminator
+    # itself cannot break out of the sequence. `tr -d` rather than `base64 -w0`
+    # because the BSD base64 on macOS has no -w flag.
+    payload=$(printf '%s' "$*" | base64 | tr -d '\n')
+    printf '\033]{osc};JKYAsk=%s\007' "$payload"
+    ;;
+  ""|banner)
+    cat "{banner}"
+    ;;
+  *)
+    echo "usage: jky ask <question>   |   jky banner" >&2
+    exit 1
+    ;;
+esac
+"#,
+        osc = ASK_OSC,
+        banner = banner_path.display()
+    );
+    std::fs::write(&script, body)?;
+    std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
+}
+
+#[cfg(windows)]
+fn write_ask_launcher(bin_dir: &Path, banner_path: &Path) -> io::Result<()> {
+    let script = bin_dir.join("jky.cmd");
+    let body = format!(
+        "@echo off\r\n\
+         if /i \"%1\"==\"ask\" goto ask\r\n\
+         if /i \"%1\"==\"asks\" goto ask\r\n\
+         type \"{banner}\"\r\n\
+         goto :eof\r\n\
+         :ask\r\n\
+         shift\r\n\
+         powershell -NoProfile -Command \"$q = $args -join ' '; $b = \
+         [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($q)); \
+         [Console]::Write([char]27 + ']{osc};JKYAsk=' + $b + [char]7)\" %*\r\n",
+        osc = ASK_OSC,
+        banner = banner_path.display()
+    );
+    std::fs::write(script, body)
 }
 
 #[cfg(windows)]
@@ -148,6 +218,103 @@ mod tests {
             .output()
             .expect("launcher runs");
         assert_eq!(String::from_utf8_lossy(&out.stdout), "JKY-BANNER-MARKER");
+    }
+
+    #[test]
+    fn the_jky_command_is_installed() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "hello").unwrap();
+        assert!(
+            dir.path().join("jky").is_file() || dir.path().join("jky.cmd").is_file(),
+            "the jky command is missing"
+        );
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_ask_emits_an_osc_sequence_carrying_the_question() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "banner").unwrap();
+
+        let out = std::process::Command::new(dir.path().join("jky"))
+            .args(["ask", "what", "does", "ls", "do"])
+            .output()
+            .expect("jky runs");
+        let stdout = String::from_utf8_lossy(&out.stdout);
+
+        assert!(stdout.contains("JKYAsk="), "no ask marker in: {stdout:?}");
+        assert!(stdout.starts_with('\u{1b}'), "the sequence must start with ESC");
+
+        // The question survives the round trip through base64.
+        let encoded = stdout
+            .trim_end_matches('\u{7}')
+            .rsplit("JKYAsk=")
+            .next()
+            .unwrap();
+        let decoded = String::from_utf8(base64_decode(encoded)).unwrap();
+        assert_eq!(decoded, "what does ls do");
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_asks_is_accepted_as_well_as_jky_ask() {
+        // People type what they remember, and both readings are natural.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "banner").unwrap();
+
+        let out = std::process::Command::new(dir.path().join("jky"))
+            .args(["asks", "hello"])
+            .output()
+            .expect("jky runs");
+        assert!(String::from_utf8_lossy(&out.stdout).contains("JKYAsk="));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_ask_with_no_question_explains_itself_instead_of_emitting_nothing() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "banner").unwrap();
+
+        let out = std::process::Command::new(dir.path().join("jky"))
+            .arg("ask")
+            .output()
+            .expect("jky runs");
+        assert!(!out.status.success());
+        assert!(String::from_utf8_lossy(&out.stderr).contains("usage"));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn bare_jky_prints_the_banner() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "THE-BANNER").unwrap();
+
+        let out = std::process::Command::new(dir.path().join("jky"))
+            .output()
+            .expect("jky runs");
+        assert_eq!(String::from_utf8_lossy(&out.stdout), "THE-BANNER");
+    }
+
+    /// Minimal base64 decoder, so the test verifies the payload rather than
+    /// trusting that the encoder and decoder agree.
+    #[cfg(not(windows))]
+    fn base64_decode(input: &str) -> Vec<u8> {
+        const TABLE: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut out = Vec::new();
+        let mut buf = 0u32;
+        let mut bits = 0u32;
+        for ch in input.bytes().filter(|c| *c != b'=' && !c.is_ascii_whitespace()) {
+            let Some(idx) = TABLE.iter().position(|c| *c == ch) else {
+                continue;
+            };
+            buf = (buf << 6) | idx as u32;
+            bits += 6;
+            if bits >= 8 {
+                bits -= 8;
+                out.push((buf >> bits) as u8);
+            }
+        }
+        out
     }
 
     #[test]

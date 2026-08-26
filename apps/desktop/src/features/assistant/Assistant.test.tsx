@@ -1,11 +1,15 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { useAsk } from "../../app/askStore";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import { Assistant } from "./Assistant";
 
 describe("Assistant", () => {
-  beforeEach(() => __setPlatformForTests(createWebPlatform()));
+  beforeEach(() => {
+    __setPlatformForTests(createWebPlatform());
+    useAsk.setState({ pending: null });
+  });
   afterEach(() => __setPlatformForTests(null));
 
   it("invites the user to ask something", async () => {
@@ -78,6 +82,24 @@ describe("Assistant", () => {
     await user.click(screen.getByRole("button", { name: /send/i }));
 
     expect(await screen.findByRole("alert")).toHaveTextContent(/max_tokens is too large/);
+  });
+
+  it("asks a question raised from a terminal without the user retyping it", async () => {
+    // `jky ask what does ls do` in a shell should land here as a real turn.
+    render(<Assistant />);
+    useAsk.getState().ask("what does ls do");
+
+    await waitFor(() => expect(screen.getByText(/You said: what does ls do/)).toBeInTheDocument());
+  });
+
+  it("takes a terminal question exactly once", async () => {
+    // Otherwise every re-render would re-ask whatever was asked last.
+    render(<Assistant />);
+    useAsk.getState().ask("hello");
+
+    await waitFor(() => expect(screen.getByText(/You said: hello/)).toBeInTheDocument());
+    expect(useAsk.getState().pending).toBeNull();
+    expect(screen.getAllByText(/You said: hello/)).toHaveLength(1);
   });
 
   it("will not send an empty message", () => {

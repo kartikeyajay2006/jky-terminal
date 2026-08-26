@@ -42,6 +42,13 @@
   gap: 2px;
 }
 
+/* Pushed to the bottom of the rail. */
+.rail__list--footer {
+  margin-top: auto;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
 .rail__item {
   display: flex;
   align-items: center;

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const writes: string[] = [];
 const onDataHandlers: Array<(d: string) => void> = [];
+const oscHandlers = new Map<number, (payload: string) => boolean>();
 const disposed = { count: 0 };
 
 vi.mock("@xterm/xterm", () => ({
@@ -21,6 +22,14 @@ vi.mock("@xterm/xterm", () => ({
       return { dispose() {} };
     }
     loadAddon() {}
+    // The real Terminal exposes a parser for escape-sequence handlers; the
+    // app registers an OSC handler for `jky ask`.
+    parser = {
+      registerOscHandler(code: number, cb: (payload: string) => boolean) {
+        oscHandlers.set(code, cb);
+        return { dispose() {} };
+      },
+    };
     dispose() {
       disposed.count += 1;
     }
@@ -41,6 +50,7 @@ vi.mock("@xterm/addon-webgl", () => ({
 }));
 vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
 
+import { useAsk } from "../../app/askStore";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import { Terminal } from "./Terminal";
 
@@ -48,8 +58,10 @@ describe("Terminal", () => {
   beforeEach(() => {
     writes.length = 0;
     onDataHandlers.length = 0;
+    oscHandlers.clear();
     disposed.count = 0;
     __setPlatformForTests(createWebPlatform());
+    useAsk.setState({ pending: null });
   });
   afterEach(() => __setPlatformForTests(null));
 
@@ -102,6 +114,52 @@ describe("Terminal", () => {
     writes.length = 0;
     onDataHandlers[0]("l");
     await waitFor(() => expect(writes.join("")).toContain("l"));
+  });
+
+  it("tells the pty its real size once spawn completes", async () => {
+    // The ResizeObserver fires while spawn is still in flight, so its resize
+    // is skipped. Without an explicit push afterwards the shell keeps the
+    // size guessed before layout settled, and anything drawing on the bottom
+    // row gets clipped.
+    const resizes: Array<[string, number, number]> = [];
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      pty: {
+        ...platform.pty,
+        resize: async (id, cols, rows) => {
+          resizes.push([id, cols, rows]);
+        },
+      },
+    });
+
+    render(<Terminal tabId="tab-1" />);
+    await waitFor(() => expect(resizes.length).toBeGreaterThan(0));
+    expect(resizes[0][1]).toBeGreaterThan(0);
+    expect(resizes[0][2]).toBeGreaterThan(0);
+  });
+
+  it("routes a jky ask escape sequence to the assistant", async () => {
+    // The shell command emits OSC 1337 with a base64 question. The terminal
+    // must consume it rather than printing it as stray characters.
+    render(<Terminal tabId="tab-1" />);
+    await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+
+    const encoded = btoa(String.fromCharCode(...new TextEncoder().encode("what does ls do")));
+    const consumed = oscHandlers.get(1337)!(`JKYAsk=${encoded}`);
+
+    expect(consumed).toBe(true);
+    expect(useAsk.getState().pending).toBe("what does ls do");
+  });
+
+  it("leaves another application's OSC 1337 payload alone", async () => {
+    // OSC 1337 is shared. Consuming payloads that are not ours would break
+    // whatever else is using it.
+    render(<Terminal tabId="tab-1" />);
+    await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+
+    expect(oscHandlers.get(1337)!("CurrentDir=/home/x")).toBe(false);
+    expect(useAsk.getState().pending).toBeNull();
   });
 
   it("disposes the terminal when the tab closes", async () => {

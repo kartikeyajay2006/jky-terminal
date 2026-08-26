@@ -4,7 +4,7 @@ mod session;
 mod shell;
 mod start_dir;
 
-pub use launcher::{LAUNCHER_NAMES, install_launchers, launcher_dir, path_with};
+pub use launcher::{ASK_OSC, LAUNCHER_NAMES, install_launchers, launcher_dir, path_with};
 pub use registry::PtyRegistry;
 pub use session::{PtyError, PtySession, SpawnConfig};
 pub use shell::{ShellSpec, default_shell, pty_env, resolve_shell};

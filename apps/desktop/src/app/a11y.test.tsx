@@ -8,6 +8,7 @@ import { useTabs } from "./tabStore";
 import { applyTheme, THEMES } from "./theme";
 import { createWebPlatform, __setPlatformForTests } from "../platform";
 import { ProviderVault } from "../features/settings/ProviderVault";
+import { Settings } from "../features/settings/Settings";
 import { Assistant } from "../features/assistant/Assistant";
 import { ToolCard } from "../features/assistant/ToolCard";
 
@@ -45,6 +46,11 @@ describe("accessibility", () => {
     const user = userEvent.setup();
     const { container, findByRole } = render(<ProviderVault />);
     await user.click(await findByRole("button", { name: /Anthropic/ }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the settings screen has no violations", async () => {
+    const { container } = render(<Settings />);
     expect(await axe(container)).toHaveNoViolations();
   });
 

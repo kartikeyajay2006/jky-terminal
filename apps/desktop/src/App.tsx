@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
+import { useAsk } from "./app/askStore";
 import { useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
 import { Assistant } from "./features/assistant/Assistant";
-import { ProviderVault } from "./features/settings/ProviderVault";
+import { Settings } from "./features/settings/Settings";
 import { Terminal } from "./features/terminal/Terminal";
 import "./styles/tokens.css";
 import "./styles/themes.css";
@@ -17,10 +18,18 @@ export function App() {
 
   useShortcuts();
 
+  // A question raised from a terminal pulls the assistant into view. Asking
+  // and then having to find the answer would defeat the point of asking from
+  // where you already are.
+  const pendingQuestion = useAsk((s) => s.pending);
+  useEffect(() => {
+    if (pendingQuestion) setSection("assistant");
+  }, [pendingQuestion]);
+
   return (
     <Shell activeId={section} onSelect={setSection}>
-      {section === "providers" ? (
-        <ProviderVault />
+      {section === "settings" ? (
+        <Settings />
       ) : section === "assistant" ? (
         <Assistant />
       ) : (

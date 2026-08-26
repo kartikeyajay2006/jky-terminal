@@ -8,7 +8,13 @@ export interface RailItem {
 export const RAIL_ITEMS: RailItem[] = [
   { id: "terminal", label: "Terminal", glyph: "❯" },
   { id: "assistant", label: "Assistant", glyph: "✦" },
-  { id: "providers", label: "Providers", glyph: "◈" },
+];
+
+/// Settings sits apart from the workspace destinations, pinned to the bottom
+/// the way it does in every editor — it is where you go to configure the
+/// tools, not one of the tools.
+export const RAIL_FOOTER: RailItem[] = [
+  { id: "settings", label: "Settings", glyph: "⚙" },
 ];
 
 interface RailProps {
@@ -24,6 +30,24 @@ export function Rail({ activeId, onSelect }: RailProps) {
       </div>
       <ul className="rail__list">
         {RAIL_ITEMS.map((item) => (
+          <li key={item.id}>
+            <button
+              type="button"
+              className="rail__item"
+              aria-current={item.id === activeId ? "page" : undefined}
+              onClick={() => onSelect(item.id)}
+            >
+              <span className="rail__glyph" aria-hidden="true">
+                {item.glyph}
+              </span>
+              <span className="rail__label">{item.label}</span>
+            </button>
+          </li>
+        ))}
+      </ul>
+
+      <ul className="rail__list rail__list--footer">
+        {RAIL_FOOTER.map((item) => (
           <li key={item.id}>
             <button
               type="button"

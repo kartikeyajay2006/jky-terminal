@@ -29,7 +29,7 @@ describe("Shell", () => {
     const nav = screen.getByRole("navigation", { name: /workspace/i });
     expect(nav).toHaveTextContent(/terminal/i);
     expect(nav).toHaveTextContent(/assistant/i);
-    expect(nav).toHaveTextContent(/providers/i);
+    expect(nav).toHaveTextContent(/settings/i);
   });
 
   it("switches theme from the status bar", async () => {

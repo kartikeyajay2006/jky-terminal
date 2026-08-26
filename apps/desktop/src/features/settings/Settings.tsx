@@ -1,0 +1,90 @@
+import { useState } from "react";
+import { Select } from "../../components/Select";
+import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
+import { ProviderVault } from "./ProviderVault";
+import "./Settings.css";
+
+type Panel = "appearance" | "providers";
+
+const PANELS: Array<{ id: Panel; label: string; blurb: string }> = [
+  { id: "appearance", label: "Appearance", blurb: "Theme and how the app looks" },
+  { id: "providers", label: "Providers", blurb: "API keys and model selection" },
+];
+
+export function Settings() {
+  const [panel, setPanel] = useState<Panel>("appearance");
+  const [theme, setTheme] = useState<ThemeId>(loadTheme);
+
+  function changeTheme(id: ThemeId) {
+    setTheme(id);
+    applyTheme(id);
+    saveTheme(id);
+  }
+
+  return (
+    <div className="settings">
+      <nav className="settings__nav" aria-label="Settings sections">
+        <h1 className="settings__title">Settings</h1>
+        <ul>
+          {PANELS.map((p) => (
+            <li key={p.id}>
+              <button
+                type="button"
+                className="settings__link"
+                aria-current={panel === p.id ? "page" : undefined}
+                onClick={() => setPanel(p.id)}
+              >
+                <span className="settings__link-label">{p.label}</span>
+                <span className="settings__link-blurb">{p.blurb}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      </nav>
+
+      <div className="settings__panel">
+        {panel === "appearance" ? (
+          <section className="settings__section" aria-labelledby="appearance-heading">
+            <h2 id="appearance-heading">Appearance</h2>
+
+            <div className="field">
+              <span className="field__label" id="theme-label">
+                Theme
+              </span>
+              <Select
+                label="Theme"
+                value={theme}
+                options={THEMES.map((t) => ({ value: t.id, label: t.label }))}
+                onChange={(id) => changeTheme(id as ThemeId)}
+              />
+              <p className="hint">
+                The last theme targets WCAG AAA contrast and is the one to reach
+                for if the others are hard to read.
+              </p>
+            </div>
+
+            {/* A palette is easier to recognise than to read about. These are
+                buttons, not list items: role="listitem" would strip the
+                button semantics and leave them with no accessible name. */}
+            <div className="swatches" role="group" aria-label="Theme previews">
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className="swatch"
+                  aria-pressed={theme === t.id}
+                  onClick={() => changeTheme(t.id)}
+                >
+                  <span className="swatch__chip" style={{ background: t.swatch }} aria-hidden="true" />
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </section>
+        ) : (
+          <ProviderVault />
+        )}
+      </div>
+    </div>
+  );
+}

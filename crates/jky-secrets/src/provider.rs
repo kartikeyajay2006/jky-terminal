@@ -23,30 +23,52 @@ const ANTHROPIC_MODELS: &[ModelSpec] = &[
     m("claude-sonnet-5", "Claude Sonnet 5", "Balanced cost and capability"),
     m("claude-haiku-4-5", "Claude Haiku 4.5", "Fastest and cheapest"),
     m("claude-fable-5", "Claude Fable 5", "Deepest reasoning, highest cost"),
+    m("claude-opus-4-8", "Claude Opus 4.8", "Previous Opus generation"),
+    m("claude-opus-4-7", "Claude Opus 4.7", "Previous Opus generation"),
+    m("claude-opus-4-6", "Claude Opus 4.6", "Older Opus"),
+    m("claude-sonnet-4-6", "Claude Sonnet 4.6", "Older Sonnet"),
 ];
 
 const OPENAI_MODELS: &[ModelSpec] = &[
+    m("gpt-4o-mini", "GPT-4o mini", "Cheapest — good for trying things out"),
     m("gpt-4o", "GPT-4o", "General purpose"),
-    m("gpt-4o-mini", "GPT-4o mini", "Fast and cheap"),
-    m("o1", "o1", "Reasoning"),
+    m("gpt-4.1", "GPT-4.1", "Strong at long context"),
+    m("gpt-4.1-mini", "GPT-4.1 mini", "Cheaper 4.1"),
+    m("gpt-4.1-nano", "GPT-4.1 nano", "Cheapest 4.1"),
+    m("o3", "o3", "Reasoning"),
     m("o3-mini", "o3-mini", "Reasoning, lower cost"),
+    m("o4-mini", "o4-mini", "Newer small reasoning model"),
+    m("o1", "o1", "Earlier reasoning model"),
+    m("gpt-4-turbo", "GPT-4 Turbo", "Legacy"),
+    m("gpt-3.5-turbo", "GPT-3.5 Turbo", "Legacy, very cheap"),
 ];
 
 const GOOGLE_MODELS: &[ModelSpec] = &[
     m("gemini-2.0-flash", "Gemini 2.0 Flash", "Fast, large context"),
-    m("gemini-1.5-pro", "Gemini 1.5 Pro", "Most capable"),
-    m("gemini-1.5-flash", "Gemini 1.5 Flash", "Cheapest"),
+    m("gemini-2.0-flash-lite", "Gemini 2.0 Flash Lite", "Cheapest"),
+    m("gemini-2.5-flash", "Gemini 2.5 Flash", "Newer fast model"),
+    m("gemini-2.5-pro", "Gemini 2.5 Pro", "Most capable"),
+    m("gemini-1.5-pro", "Gemini 1.5 Pro", "Previous generation, 2M context"),
+    m("gemini-1.5-flash", "Gemini 1.5 Flash", "Previous generation, fast"),
+    m("gemini-1.5-flash-8b", "Gemini 1.5 Flash 8B", "Smallest"),
 ];
 
 const MISTRAL_MODELS: &[ModelSpec] = &[
     m("mistral-large-latest", "Mistral Large", "Most capable"),
     m("mistral-small-latest", "Mistral Small", "Fast and cheap"),
     m("codestral-latest", "Codestral", "Code specialised"),
+    m("ministral-8b-latest", "Ministral 8B", "Small and fast"),
+    m("ministral-3b-latest", "Ministral 3B", "Smallest"),
+    m("pixtral-large-latest", "Pixtral Large", "Vision"),
+    m("open-mistral-nemo", "Mistral Nemo", "Open weights"),
 ];
 
 const GROQ_MODELS: &[ModelSpec] = &[
     m("llama-3.3-70b-versatile", "Llama 3.3 70B", "Best quality on Groq"),
     m("llama-3.1-8b-instant", "Llama 3.1 8B", "Fastest"),
+    m("deepseek-r1-distill-llama-70b", "DeepSeek R1 Distill 70B", "Reasoning"),
+    m("gemma2-9b-it", "Gemma 2 9B", "Small and quick"),
+    m("mixtral-8x7b-32768", "Mixtral 8x7B", "Mixture of experts"),
 ];
 
 const DEEPSEEK_MODELS: &[ModelSpec] = &[
@@ -56,19 +78,29 @@ const DEEPSEEK_MODELS: &[ModelSpec] = &[
 
 const XAI_MODELS: &[ModelSpec] = &[
     m("grok-2-latest", "Grok 2", "General purpose"),
+    m("grok-2-vision-1212", "Grok 2 Vision", "Images"),
     m("grok-beta", "Grok Beta", "Preview"),
 ];
 
 const OPENROUTER_MODELS: &[ModelSpec] = &[
     m("anthropic/claude-sonnet-5", "Claude Sonnet 5", "via OpenRouter"),
+    m("anthropic/claude-opus-5", "Claude Opus 5", "via OpenRouter"),
     m("openai/gpt-4o", "GPT-4o", "via OpenRouter"),
+    m("openai/gpt-4o-mini", "GPT-4o mini", "via OpenRouter"),
     m("google/gemini-2.0-flash-001", "Gemini 2.0 Flash", "via OpenRouter"),
+    m("meta-llama/llama-3.3-70b-instruct", "Llama 3.3 70B", "via OpenRouter"),
+    m("deepseek/deepseek-chat", "DeepSeek Chat", "via OpenRouter"),
 ];
 
 const OLLAMA_MODELS: &[ModelSpec] = &[
     m("llama3.2", "Llama 3.2", "Runs locally"),
+    m("llama3.3", "Llama 3.3", "Larger, runs locally"),
     m("qwen2.5-coder", "Qwen 2.5 Coder", "Code specialised, local"),
     m("deepseek-r1", "DeepSeek R1", "Reasoning, local"),
+    m("mistral", "Mistral 7B", "Small and quick, local"),
+    m("phi4", "Phi 4", "Very small, local"),
+    m("gemma2", "Gemma 2", "Local"),
+    m("codellama", "Code Llama", "Code specialised, local"),
 ];
 
 /// An AI provider whose credential the vault can hold.
