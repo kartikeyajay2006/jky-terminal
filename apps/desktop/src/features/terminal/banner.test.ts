@@ -2,6 +2,9 @@ import { describe, expect, it } from "vitest";
 import { buildBanner, hexToAnsi, parseHex } from "./banner";
 
 const ESC = "\u001b";
+// Stripping ANSI is exactly a control-character match, so the rule is
+// disabled here rather than switched off for the project.
+// eslint-disable-next-line no-control-regex
 const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "");
 
 describe("parseHex", () => {
