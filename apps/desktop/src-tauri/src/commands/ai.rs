@@ -1,21 +1,26 @@
+use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use jky_ai::{
-    AIProvider, AnthropicProvider, ChatRequest, Message, OpenAiProvider, StreamEvent,
-    assistant_tools, is_destructive, requires_approval,
+    AIProvider, AnthropicProvider, ChatRequest, ContentBlock, Message, OpenAiProvider,
+    StreamEvent, assistant_tools, execute_read_tool, is_destructive, requires_approval,
+    run_approved_command, COMMAND_TIMEOUT,
 };
 use jky_audit::{AuditEvent, AuditKind, AuditLog};
 use jky_secrets::{ProviderId, Secret, SecretStore};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
-use crate::state::{AppState, PendingTool};
+use crate::state::{AppState, PendingTool, TurnState};
+use crate::turn::{MAX_ROUNDS, append_round, declined_result, needs_another_round};
 
 const SYSTEM_PROMPT: &str = "\
 You are the assistant inside JKY Terminal, a developer's terminal application.
 You can read the user's project through tools. You cannot run any command
 yourself — proposing one shows it to the user for approval, and they may
-decline. Be concise: this output is read in a terminal pane, not a chat app.";
+decline. Prefer reading a file over guessing at its contents. Be concise:
+this output is read in a terminal pane, not a chat app.";
 
 #[derive(Clone, Serialize)]
 struct ToolRequest {
@@ -26,10 +31,29 @@ struct ToolRequest {
     destructive: bool,
 }
 
+#[derive(Clone, Serialize)]
+struct ToolRan {
+    id: String,
+    name: String,
+    summary: String,
+    is_error: bool,
+}
+
+/// Everything the loop needs that does not change between rounds.
+struct Ctx {
+    app: AppHandle,
+    key: Secret<String>,
+    provider: ProviderId,
+    model: String,
+    audit: Arc<AuditLog>,
+    slot: Arc<Mutex<Option<TurnState>>>,
+    root: PathBuf,
+}
+
 /// Read the stored key for a provider.
 ///
-/// Split out so the failure paths are testable without a network. The error
-/// is built from the provider name only and never from the key.
+/// Split out so the failure paths are testable without a network. The error is
+/// built from the provider name only and never from the key.
 pub(crate) fn resolve_key(
     store: &dyn SecretStore,
     provider: &str,
@@ -37,85 +61,224 @@ pub(crate) fn resolve_key(
     let id = ProviderId::parse(provider).ok_or_else(|| format!("unknown provider '{provider}'"))?;
     store.get(id.as_key()).map_err(|_| {
         format!(
-            "no API key stored for {}. Add one in Providers.",
+            "no API key stored for {}. Add one in Settings, Providers.",
             id.display_name()
         )
     })
 }
 
-/// Build the event handler that turns stream events into UI events.
+/// Stream one round, returning the blocks the assistant produced.
 ///
-/// Extracted so `ai_send` reads as a sequence rather than a wall, and so the
-/// parking logic — the part that must never be bypassed — sits in one place.
-fn make_handler(
-    app: AppHandle,
-    audit: Arc<AuditLog>,
-    pending: Arc<Mutex<std::collections::HashMap<String, PendingTool>>>,
-) -> impl FnMut(StreamEvent) + Send {
-    // A tool's arguments arrive as JSON fragments and are only parseable once
-    // its block stops, so both are accumulated across events.
-    let mut current_tool: Option<(String, String)> = None;
+/// Text is emitted as it arrives; tool blocks are collected because their
+/// arguments only become parseable when the block stops.
+async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBlock>, String> {
+    let request = ChatRequest {
+        model: ctx.model.clone(),
+        system: SYSTEM_PROMPT.to_string(),
+        messages,
+        tools: assistant_tools(),
+        max_tokens: ctx.provider.max_output_tokens(),
+    };
+
+    // Shared rather than captured by value: the closure needs to write and the
+    // caller needs to read once the stream is done.
+    let blocks: Arc<Mutex<Vec<ContentBlock>>> = Arc::new(Mutex::new(Vec::new()));
+    let sink = blocks.clone();
+    let app = ctx.app.clone();
+
+    let mut open_tool: Option<(String, String)> = None;
     let mut tool_json = String::new();
 
-    move |event: StreamEvent| match event {
+    let mut on_event = move |event: StreamEvent| match event {
         StreamEvent::TextDelta(text) => {
+            if let Ok(mut b) = sink.lock() {
+                match b.last_mut() {
+                    Some(ContentBlock::Text { text: existing }) => existing.push_str(&text),
+                    _ => b.push(ContentBlock::Text { text: text.clone() }),
+                }
+            }
             let _ = app.emit("ai:delta", text);
         }
         StreamEvent::ToolUseStart { id, name } => {
-            current_tool = Some((id, name));
+            open_tool = Some((id, name));
             tool_json.clear();
         }
         StreamEvent::ToolInputDelta(fragment) => tool_json.push_str(&fragment),
         StreamEvent::BlockStop => {
-            let Some((id, name)) = current_tool.take() else {
-                return;
-            };
-            let input: serde_json::Value =
-                serde_json::from_str(&tool_json).unwrap_or(serde_json::Value::Null);
-            let command = input
-                .get("command")
-                .and_then(|c| c.as_str())
-                .unwrap_or_default()
-                .to_string();
-            let reason = input
-                .get("reason")
-                .and_then(|r| r.as_str())
-                .unwrap_or_default()
-                .to_string();
-
-            let _ = audit.append(AuditEvent::new(
-                AuditKind::ToolCall,
-                &format!("{name}: {command}"),
-            ));
-
-            if requires_approval(&name) {
-                // Parked, not executed. Nothing runs until the user says so,
-                // and that decision is enforced here rather than in the UI.
-                if let Ok(mut map) = pending.lock() {
-                    map.insert(
-                        id.clone(),
-                        PendingTool { name: name.clone(), command: command.clone() },
-                    );
+            if let Some((id, name)) = open_tool.take() {
+                let input = serde_json::from_str(&tool_json).unwrap_or(serde_json::Value::Null);
+                if let Ok(mut b) = sink.lock() {
+                    b.push(ContentBlock::ToolUse { id, name, input });
                 }
-                let _ = app.emit(
+            }
+        }
+        StreamEvent::Done { .. } => {}
+        StreamEvent::Error(message) => {
+            let _ = app.emit("ai:error", message);
+        }
+    };
+
+    match ctx.provider {
+        ProviderId::Anthropic => AnthropicProvider::new(Secret::new(ctx.key.expose().clone()))
+            .stream_chat(request, &mut on_event)
+            .await
+            .map_err(|e| e.to_string())?,
+        ProviderId::OpenAi => OpenAiProvider::new(Secret::new(ctx.key.expose().clone()))
+            .stream_chat(request, &mut on_event)
+            .await
+            .map_err(|e| e.to_string())?,
+        other => {
+            return Err(format!(
+                "{} is in the key vault but has no adapter yet. Use Anthropic or OpenAI.",
+                other.display_name()
+            ))
+        }
+    }
+
+    let collected = blocks.lock().map_err(|e| e.to_string())?.clone();
+    Ok(collected)
+}
+
+/// Drive a turn to completion, or until a gated tool needs a decision.
+///
+/// The loop is what makes tools mean anything: a result that never goes back
+/// leaves the model having asked a question it never hears the answer to.
+async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
+    loop {
+        if turn.round >= MAX_ROUNDS {
+            let _ = ctx.app.emit(
+                "ai:error",
+                format!("stopped after {MAX_ROUNDS} rounds of tool use"),
+            );
+            let _ = ctx.app.emit("ai:done", "max_rounds");
+            return Ok(());
+        }
+        turn.round += 1;
+
+        let blocks = stream_round(&ctx, turn.messages.clone()).await?;
+
+        turn.assistant_blocks = blocks.clone();
+        turn.results.clear();
+        turn.awaiting.clear();
+
+        for block in &blocks {
+            let ContentBlock::ToolUse { id, name, input } = block else {
+                continue;
+            };
+
+            if requires_approval(name) {
+                // Parked, not executed. The decision is enforced here rather
+                // than in the UI, so a renderer that declines to show a dialog
+                // cannot run anything.
+                let command = input
+                    .get("command")
+                    .and_then(|c| c.as_str())
+                    .unwrap_or_default()
+                    .to_string();
+                let reason = input
+                    .get("reason")
+                    .and_then(|r| r.as_str())
+                    .unwrap_or_default()
+                    .to_string();
+
+                let _ = ctx.audit.append(AuditEvent::new(
+                    AuditKind::ToolCall,
+                    &format!("{name} proposed: {command}"),
+                ));
+
+                turn.awaiting.insert(
+                    id.clone(),
+                    PendingTool { name: name.clone(), command: command.clone() },
+                );
+                let _ = ctx.app.emit(
                     "ai:tool_request",
                     ToolRequest {
-                        id,
-                        name,
+                        id: id.clone(),
+                        name: name.clone(),
                         destructive: is_destructive(&command),
                         command,
                         reason,
                     },
                 );
+                continue;
             }
+
+            let outcome = execute_read_tool(&ctx.root, name, input);
+            let _ = ctx.audit.append(AuditEvent::new(
+                AuditKind::ToolCall,
+                &format!("{name} {input} -> {}", if outcome.is_error { "error" } else { "ok" }),
+            ));
+            let _ = ctx.app.emit(
+                "ai:tool_ran",
+                ToolRan {
+                    id: id.clone(),
+                    name: name.clone(),
+                    summary: summarise(&outcome.text),
+                    is_error: outcome.is_error,
+                },
+            );
+            turn.results.push(ContentBlock::ToolResult {
+                tool_use_id: id.clone(),
+                content: outcome.text,
+                is_error: outcome.is_error,
+            });
         }
-        StreamEvent::Done { stop_reason } => {
-            let _ = app.emit("ai:done", stop_reason);
+
+        if !turn.awaiting.is_empty() {
+            // Park the turn and stop. Approving or declining resumes it.
+            if let Ok(mut slot) = ctx.slot.lock() {
+                *slot = Some(turn);
+            }
+            return Ok(());
         }
-        StreamEvent::Error(message) => {
-            let _ = app.emit("ai:error", message);
+
+        if !needs_another_round(&turn.assistant_blocks, &turn.results) {
+            if let Ok(mut slot) = ctx.slot.lock() {
+                *slot = None;
+            }
+            let _ = ctx.app.emit("ai:done", "end_turn");
+            return Ok(());
         }
+
+        append_round(
+            &mut turn.messages,
+            std::mem::take(&mut turn.assistant_blocks),
+            std::mem::take(&mut turn.results),
+        );
     }
+}
+
+/// A one-line description of a tool's output, for the transcript.
+fn summarise(text: &str) -> String {
+    let lines = text.lines().count();
+    let first = text.lines().next().unwrap_or("").trim();
+    if lines <= 1 {
+        first.chars().take(120).collect()
+    } else {
+        format!("{} lines", lines)
+    }
+}
+
+fn build_ctx(app: &AppHandle, state: &AppState, provider: &str) -> Result<Ctx, String> {
+    let id = ProviderId::parse(provider).ok_or_else(|| format!("unknown provider '{provider}'"))?;
+    let key = resolve_key(state.secrets.as_ref(), provider)?;
+    let model = state
+        .settings
+        .selected_model(provider)
+        .ok()
+        .flatten()
+        .unwrap_or_else(|| id.default_model().to_string());
+
+    Ok(Ctx {
+        app: app.clone(),
+        key,
+        provider: id,
+        model,
+        audit: state.audit.clone(),
+        slot: state.turn.clone(),
+        // Tools are confined to the directory the app was opened against.
+        root: std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir()),
+    })
 }
 
 #[tauri::command]
@@ -127,85 +290,126 @@ pub async fn ai_send(
 ) -> Result<(), String> {
     // Everything is pulled out of state before the first await: a borrow held
     // across one would make the future non-Send.
-    let id = ProviderId::parse(&provider).ok_or_else(|| format!("unknown provider '{provider}'"))?;
-    let key = resolve_key(state.secrets.as_ref(), &provider)?;
-    let audit = state.audit.clone();
-    let pending = state.pending_tools.clone();
-    let model = state
-        .settings
-        .selected_model(&provider)
-        .ok()
-        .flatten()
-        .unwrap_or_else(|| id.default_model().to_string());
+    let ctx = build_ctx(&app, &state, &provider)?;
 
-    let _ = audit.append(AuditEvent::new(
+    let _ = ctx.audit.append(AuditEvent::new(
         AuditKind::SecretRead,
         &format!("read the {provider} key to send a request"),
     ));
-    let _ = audit.append(AuditEvent::new(
+    let _ = ctx.audit.append(AuditEvent::new(
         AuditKind::ProviderRequest,
-        &format!("{provider} / {model}: {} messages", conversation.len()),
+        &format!("{provider} / {}: {} messages", ctx.model, conversation.len()),
     ));
 
-    let request = ChatRequest {
-        model,
-        system: SYSTEM_PROMPT.to_string(),
+    let turn = TurnState {
+        provider,
         messages: conversation,
-        tools: assistant_tools(),
-        // Per-provider, not one number for all of them. 64k is comfortable
-        // for Claude and a hard 400 on the gpt-4o family.
-        max_tokens: id.max_output_tokens(),
+        assistant_blocks: Vec::new(),
+        results: Vec::new(),
+        awaiting: HashMap::new(),
+        round: 0,
     };
 
-    let mut handler = make_handler(app, audit, pending);
-
-    match id {
-        ProviderId::Anthropic => AnthropicProvider::new(key)
-            .stream_chat(request, &mut handler)
-            .await
-            .map_err(|e| e.to_string()),
-        ProviderId::OpenAi => OpenAiProvider::new(key)
-            .stream_chat(request, &mut handler)
-            .await
-            .map_err(|e| e.to_string()),
-        other => Err(format!(
-            "{} is in the key vault but has no adapter yet. Use Anthropic or OpenAI.",
-            other.display_name()
-        )),
+    let result = drive(ctx, turn).await;
+    if let Err(message) = &result {
+        let _ = app.emit("ai:error", message.clone());
+        let _ = app.emit("ai:done", "error");
     }
+    result
 }
 
-#[tauri::command]
-pub fn ai_approve_tool(state: State<'_, AppState>, call_id: String) -> Result<(), String> {
-    let pending = state
-        .pending_tools
-        .lock()
-        .map_err(|e| e.to_string())?
-        .remove(&call_id)
-        .ok_or_else(|| format!("no pending tool call '{call_id}'"))?;
+/// Record a decision on a parked tool call and resume if nothing is left.
+async fn decide(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    call_id: String,
+    approve: bool,
+) -> Result<(), String> {
+    let (mut turn, provider) = {
+        let mut slot = state.turn.lock().map_err(|e| e.to_string())?;
+        let turn = slot.take().ok_or("there is no turn waiting on a decision")?;
+        let provider = turn.provider.clone();
+        (turn, provider)
+    };
 
-    let _ = state.audit.append(AuditEvent::new(
-        AuditKind::CommandRun,
-        &format!("approved {}: {}", pending.name, pending.command),
-    ));
-    Ok(())
-}
+    let Some(pending) = turn.awaiting.remove(&call_id) else {
+        // Put it back: another call may still be waiting.
+        if let Ok(mut slot) = state.turn.lock() {
+            *slot = Some(turn);
+        }
+        return Err(format!("no pending tool call '{call_id}'"));
+    };
 
-#[tauri::command]
-pub fn ai_reject_tool(state: State<'_, AppState>, call_id: String) -> Result<(), String> {
-    let pending = state
-        .pending_tools
-        .lock()
-        .map_err(|e| e.to_string())?
-        .remove(&call_id);
+    let ctx = build_ctx(&app, &state, &provider)?;
 
-    if let Some(tool) = pending {
-        let _ = state.audit.append(AuditEvent::new(
-            AuditKind::CommandRejected,
-            &format!("declined {}: {}", tool.name, tool.command),
+    let block = if approve {
+        let outcome = run_approved_command(&ctx.root, &pending.command, COMMAND_TIMEOUT);
+        let _ = ctx.audit.append(AuditEvent::new(
+            AuditKind::CommandRun,
+            &format!("approved {}: {}", pending.name, pending.command),
         ));
+        let _ = app.emit(
+            "ai:tool_ran",
+            ToolRan {
+                id: call_id.clone(),
+                name: pending.name.clone(),
+                summary: summarise(&outcome.text),
+                is_error: outcome.is_error,
+            },
+        );
+        ContentBlock::ToolResult {
+            tool_use_id: call_id,
+            content: outcome.text,
+            is_error: outcome.is_error,
+        }
+    } else {
+        let _ = ctx.audit.append(AuditEvent::new(
+            AuditKind::CommandRejected,
+            &format!("declined {}: {}", pending.name, pending.command),
+        ));
+        declined_result(&call_id)
+    };
+
+    turn.results.push(block);
+
+    if !turn.awaiting.is_empty() {
+        // Another call is still waiting; park again rather than resuming.
+        if let Ok(mut slot) = state.turn.lock() {
+            *slot = Some(turn);
+        }
+        return Ok(());
     }
-    Ok(())
+
+    append_round(
+        &mut turn.messages,
+        std::mem::take(&mut turn.assistant_blocks),
+        std::mem::take(&mut turn.results),
+    );
+
+    let result = drive(ctx, turn).await;
+    if let Err(message) = &result {
+        let _ = app.emit("ai:error", message.clone());
+        let _ = app.emit("ai:done", "error");
+    }
+    result
+}
+
+#[tauri::command]
+pub async fn ai_approve_tool(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    call_id: String,
+) -> Result<(), String> {
+    decide(app, state, call_id, true).await
+}
+
+#[tauri::command]
+pub async fn ai_reject_tool(
+    app: AppHandle,
+    state: State<'_, AppState>,
+    call_id: String,
+) -> Result<(), String> {
+    decide(app, state, call_id, false).await
 }
 
 #[tauri::command]
@@ -255,5 +459,22 @@ mod tests {
     #[test]
     fn running_a_command_is_never_ungated() {
         assert!(requires_approval("run_command"));
+    }
+
+    #[test]
+    fn a_one_line_result_is_summarised_by_its_content() {
+        assert_eq!(summarise("the working tree is clean"), "the working tree is clean");
+    }
+
+    #[test]
+    fn a_long_result_is_summarised_by_its_size() {
+        // Pasting a whole file into the transcript would bury the answer.
+        let summary = summarise("a\nb\nc\nd");
+        assert_eq!(summary, "4 lines");
+    }
+
+    #[test]
+    fn a_very_long_single_line_is_cut_rather_than_shown_whole() {
+        assert!(summarise(&"x".repeat(500)).len() <= 120);
     }
 }

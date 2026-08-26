@@ -18,6 +18,22 @@ pub struct PendingTool {
     pub command: String,
 }
 
+/// One user turn in flight.
+///
+/// Held across the gap where a gated tool waits for a decision: without it,
+/// approving a command would have nothing to send the result back to.
+pub struct TurnState {
+    pub provider: String,
+    pub messages: Vec<jky_ai::Message>,
+    /// Blocks the assistant produced this round.
+    pub assistant_blocks: Vec<jky_ai::ContentBlock>,
+    /// Results gathered so far this round.
+    pub results: Vec<jky_ai::ContentBlock>,
+    /// Gated calls not yet approved or declined, by call id.
+    pub awaiting: HashMap<String, PendingTool>,
+    pub round: usize,
+}
+
 pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub settings: Arc<SettingsStore>,
@@ -25,9 +41,8 @@ pub struct AppState {
     /// Kept so the pty layer can place its shell launchers under it.
     pub config_dir: PathBuf,
     pub audit: Arc<AuditLog>,
-    /// Tool calls the model asked for, held until the user approves or
-    /// declines. Nothing in here has run.
-    pub pending_tools: Arc<Mutex<HashMap<String, PendingTool>>>,
+    /// The turn currently in flight, if any. One at a time in v0.1.
+    pub turn: Arc<Mutex<Option<TurnState>>>,
 }
 
 impl AppState {
@@ -41,7 +56,7 @@ impl AppState {
             ptys: Arc::new(PtyRegistry::new()),
             config_dir: config_dir.to_path_buf(),
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
-            pending_tools: Arc::new(Mutex::new(HashMap::new())),
+            turn: Arc::new(Mutex::new(None)),
         }
     }
 }

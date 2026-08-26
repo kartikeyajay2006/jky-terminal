@@ -1,6 +1,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod turn;
 mod state;
 
 use commands::{ai, pty, settings, vault};
