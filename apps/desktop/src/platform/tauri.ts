@@ -3,12 +3,18 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   AiApi,
   AuditEvent,
+  CollectionApi,
   CommandSpec,
+  Event,
   ModelOption,
+  Note,
   Platform,
   ProviderStatus,
   PtyApi,
+  Reminder,
   SettingsApi,
+  StoreApi,
+  Todo,
   ToolRan,
   ToolRequest,
   VaultApi,
@@ -108,12 +114,43 @@ export function createTauriPlatform(): Platform {
     onError: (h) => listen<string>("ai:error", (e) => h(e.payload)),
   };
 
+  /**
+   * One collection over three commands.
+   *
+   * The command names are passed in rather than derived, so a typo is a
+   * compile-time-visible literal in one place instead of a string built at
+   * runtime that fails only when the user clicks something.
+   */
+  function collection<T>(
+    listCmd: string,
+    saveCmd: string,
+    deleteCmd: string,
+  ): CollectionApi<T> {
+    return {
+      list: () => invoke<T[]>(listCmd),
+      save: (record) => invoke<T[]>(saveCmd, { record }),
+      remove: (id) => invoke<T[]>(deleteCmd, { id }),
+    };
+  }
+
+  const store: StoreApi = {
+    notes: collection<Note>("store_list_notes", "store_save_note", "store_delete_note"),
+    todos: collection<Todo>("store_list_todos", "store_save_todo", "store_delete_todo"),
+    events: collection<Event>("store_list_events", "store_save_event", "store_delete_event"),
+    reminders: collection<Reminder>(
+      "store_list_reminders",
+      "store_save_reminder",
+      "store_delete_reminder",
+    ),
+  };
+
   return {
     kind: "tauri",
     vault,
     settings,
     pty,
     ai,
+    store,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
     readAudit: () => invoke<AuditEvent[]>("audit_read"),
   };

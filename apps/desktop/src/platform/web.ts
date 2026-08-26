@@ -2,11 +2,17 @@ import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
   AiApi,
   AuditEvent,
+  CollectionApi,
   CommandSpec,
+  Event,
+  Note,
   Platform,
   ProviderStatus,
   PtyApi,
+  Reminder,
   SettingsApi,
+  StoreApi,
+  Todo,
   ToolRan,
   ToolRequest,
   VaultApi,
@@ -179,12 +185,48 @@ export function createWebPlatform(): Platform {
     },
   };
 
+  /**
+   * The browser build keeps collections in memory for the session.
+   *
+   * Not localStorage: the preview is for developing the UI, and a mock that
+   * quietly persists would let a bug that never writes to the real store look
+   * like it works. The native build is where persistence is proven.
+   */
+  function collection<T extends { id: string }>(seed: T[] = []): CollectionApi<T> {
+    let records = [...seed];
+    return {
+      async list() {
+        return [...records];
+      },
+      async save(record) {
+        const i = records.findIndex((r) => r.id === record.id);
+        // Replace in place. Moving an edited record to the end would reorder
+        // the user's list every time they touched something.
+        if (i >= 0) records[i] = record;
+        else records.push(record);
+        return [...records];
+      },
+      async remove(id) {
+        records = records.filter((r) => r.id !== id);
+        return [...records];
+      },
+    };
+  }
+
+  const store: StoreApi = {
+    notes: collection<Note>(),
+    todos: collection<Todo>(),
+    events: collection<Event>(),
+    reminders: collection<Reminder>(),
+  };
+
   return {
     kind: "web",
     vault,
     settings,
     pty,
     ai,
+    store,
     async listCommands() {
       return WEB_COMMANDS;
     },

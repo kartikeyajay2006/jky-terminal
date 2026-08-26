@@ -107,12 +107,90 @@ export interface CommandSpec {
   detail: string;
 }
 
+// --- the dashboard's collections -------------------------------------------
+
+/**
+ * Six named colours. Named, not hex: a hex dot picked against the dark theme
+ * is wrong in the six other palettes and invisible in High Contrast, so each
+ * theme resolves the name to its own token.
+ */
+export type EventColour = "rose" | "azure" | "mint" | "amber" | "violet" | "cyan";
+
+export const EVENT_COLOURS: EventColour[] = [
+  "rose",
+  "azure",
+  "mint",
+  "amber",
+  "violet",
+  "cyan",
+];
+
+export interface Note {
+  id: string;
+  title: string;
+  body: string;
+  /** RFC 3339, UTC. Rendered on the reader's clock, never stored local. */
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Todo {
+  id: string;
+  text: string;
+  done: boolean;
+  created_at: string;
+}
+
+export interface Event {
+  id: string;
+  title: string;
+  /** RFC 3339, UTC. */
+  starts_at: string;
+  colour: EventColour;
+  /** Minutes of email warning. null means no alert for this event. */
+  alert_minutes_before: number | null;
+}
+
+/**
+ * A daily checklist item.
+ *
+ * `at` is a local wall-clock "HH:MM", unlike everything else here, because
+ * "07:00 morning exercise" means seven in the morning wherever you are.
+ */
+export interface Reminder {
+  id: string;
+  text: string;
+  at: string;
+  done: boolean;
+}
+
+/**
+ * One collection.
+ *
+ * Every mutation answers with the whole collection, so the caller cannot end
+ * up rendering something other than what is on disk.
+ */
+export interface CollectionApi<T> {
+  list(): Promise<T[]>;
+  save(record: T): Promise<T[]>;
+  remove(id: string): Promise<T[]>;
+}
+
+export interface StoreApi {
+  readonly notes: CollectionApi<Note>;
+  readonly todos: CollectionApi<Todo>;
+  readonly events: CollectionApi<Event>;
+  readonly reminders: CollectionApi<Reminder>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
   readonly settings: SettingsApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
+  /** Notes, todos, events and reminders. Nothing here is ever pruned. */
+  readonly store: StoreApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
   /** Every recorded secret read, tool call and command decision. */

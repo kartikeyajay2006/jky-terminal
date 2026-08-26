@@ -5,7 +5,7 @@ mod audit_detail;
 mod turn;
 mod state;
 
-use commands::{ai, pty, settings, vault};
+use commands::{ai, pty, settings, store, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -38,6 +38,18 @@ fn main() {
             ai::ai_approve_tool,
             ai::ai_reject_tool,
             ai::audit_read,
+            store::store_list_notes,
+            store::store_save_note,
+            store::store_delete_note,
+            store::store_list_todos,
+            store::store_save_todo,
+            store::store_delete_todo,
+            store::store_list_events,
+            store::store_save_event,
+            store::store_delete_event,
+            store::store_list_reminders,
+            store::store_save_reminder,
+            store::store_delete_reminder,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");

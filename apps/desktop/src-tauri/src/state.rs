@@ -7,6 +7,7 @@ use jky_audit::AuditLog;
 use jky_pty::PtyRegistry;
 use jky_secrets::{KeyringStore, SecretStore};
 use jky_settings::SettingsStore;
+use jky_store::Store;
 
 pub const KEYCHAIN_SERVICE: &str = "dev.jky.terminal";
 
@@ -38,6 +39,8 @@ pub struct TurnState {
 pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub settings: Arc<SettingsStore>,
+    /// The dashboard's notes, todos, events and reminders.
+    pub store: Arc<Store>,
     pub ptys: Arc<PtyRegistry>,
     /// Kept so the pty layer can place its shell launchers under it.
     pub config_dir: PathBuf,
@@ -57,6 +60,7 @@ impl AppState {
         Self {
             secrets: Arc::new(KeyringStore::new(KEYCHAIN_SERVICE)),
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
+            store: Arc::new(Store::new(config_dir)),
             ptys: Arc::new(PtyRegistry::new()),
             config_dir: config_dir.to_path_buf(),
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),

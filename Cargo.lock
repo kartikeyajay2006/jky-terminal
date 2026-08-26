@@ -2044,6 +2044,7 @@ dependencies = [
  "jky-pty",
  "jky-secrets",
  "jky-settings",
+ "jky-store",
  "serde",
  "serde_json",
  "tauri",
