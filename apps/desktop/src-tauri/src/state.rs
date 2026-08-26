@@ -1,6 +1,7 @@
 use std::path::Path;
 use std::sync::Arc;
 
+use jky_pty::PtyRegistry;
 use jky_secrets::{KeyringStore, SecretStore};
 use jky_settings::SettingsStore;
 
@@ -9,6 +10,7 @@ pub const KEYCHAIN_SERVICE: &str = "dev.jky.terminal";
 pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub settings: Arc<SettingsStore>,
+    pub ptys: Arc<PtyRegistry>,
 }
 
 impl AppState {
@@ -19,6 +21,7 @@ impl AppState {
         Self {
             secrets: Arc::new(KeyringStore::new(KEYCHAIN_SERVICE)),
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
+            ptys: Arc::new(PtyRegistry::new()),
         }
     }
 }

@@ -84,8 +84,14 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
     actual.sort();
 
     // Every entry here is a deliberate widening of the renderer's reach.
-    // Each is a setter or a presence check; none returns secret material.
+    // The vault and settings commands are setters or presence checks; the pty
+    // commands are control operations on a session the backend owns. None
+    // returns secret material, and pty_spawn returns only an opaque session id.
     let expected = vec![
+        "pty_kill".to_string(),
+        "pty_resize".to_string(),
+        "pty_spawn".to_string(),
+        "pty_write".to_string(),
         "settings_set_active_provider".to_string(),
         "settings_set_selected_model".to_string(),
         "vault_delete_secret".to_string(),

@@ -1963,6 +1963,7 @@ dependencies = [
 name = "jky-terminal"
 version = "0.1.0"
 dependencies = [
+ "jky-pty",
  "jky-secrets",
  "jky-settings",
  "serde",

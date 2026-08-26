@@ -12,6 +12,7 @@ tauri-build = { version = "2", features = [] }
 tauri = { version = "2", features = [] }
 jky-secrets = { path = "../../../crates/jky-secrets" }
 jky-settings = { path = "../../../crates/jky-settings" }
+jky-pty = { path = "../../../crates/jky-pty" }
 serde.workspace = true
 serde_json.workspace = true
 
