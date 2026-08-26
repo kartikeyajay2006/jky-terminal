@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { useAsk } from "../../app/askStore";
+import { useChat } from "../../app/chatStore";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import { Assistant } from "./Assistant";
 
@@ -9,6 +10,14 @@ describe("Assistant", () => {
   beforeEach(() => {
     __setPlatformForTests(createWebPlatform());
     useAsk.setState({ pending: null });
+    useChat.setState({
+      sessions: [],
+      activeId: null,
+      busy: false,
+      tools: [],
+      error: null,
+      provider: "openai",
+    });
   });
   afterEach(() => __setPlatformForTests(null));
 
@@ -39,22 +48,36 @@ describe("Assistant", () => {
     );
   });
 
-  it("streams the reply in as it arrives", async () => {
-    const user = userEvent.setup();
+  it("renders streamed text as it lands in the store", async () => {
+    // The subscription lives in App so a stream survives this panel
+    // unmounting; here the store is driven directly.
     render(<Assistant />);
-
-    await user.type(screen.getByRole("textbox", { name: /message/i }), "hello");
-    await user.click(screen.getByRole("button", { name: /send/i }));
+    useChat.getState().addTurn("user", "hello");
+    useChat.getState().appendToLastAssistant("You said: hello");
 
     await waitFor(() => expect(screen.getByText(/You said: hello/)).toBeInTheDocument());
   });
 
-  it("collects streamed tokens into one turn rather than one turn per token", async () => {
-    const user = userEvent.setup();
-    render(<Assistant />);
+  it("keeps the conversation when the panel unmounts and returns", async () => {
+    // The bug: switching to the terminal used to throw the answer away.
+    const { unmount } = render(<Assistant />);
+    useChat.getState().addTurn("user", "remember me");
+    unmount();
 
-    await user.type(screen.getByRole("textbox", { name: /message/i }), "hello");
-    await user.click(screen.getByRole("button", { name: /send/i }));
+    const { container } = render(<Assistant />);
+    // Scoped to the transcript: the session title in the sidebar is derived
+    // from the same first question, so an unscoped query matches twice.
+    await waitFor(() =>
+      expect(container.querySelector('[data-role="user"]')).toHaveTextContent("remember me"),
+    );
+  });
+
+  it("collects streamed tokens into one turn rather than one turn per token", async () => {
+    render(<Assistant />);
+    useChat.getState().addTurn("user", "hello");
+    for (const word of ["You ", "said: ", "hello"]) {
+      useChat.getState().appendToLastAssistant(word);
+    }
 
     await waitFor(() => expect(screen.getByText(/You said: hello/)).toBeInTheDocument());
     // user turn + assistant turn, not user turn + one per word.
@@ -86,20 +109,24 @@ describe("Assistant", () => {
 
   it("asks a question raised from a terminal without the user retyping it", async () => {
     // `jky ask what does ls do` in a shell should land here as a real turn.
-    render(<Assistant />);
+    const { container } = render(<Assistant />);
     useAsk.getState().ask("what does ls do");
 
-    await waitFor(() => expect(screen.getByText(/You said: what does ls do/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(container.querySelector('[data-role="user"]')).toHaveTextContent("what does ls do"),
+    );
   });
 
   it("takes a terminal question exactly once", async () => {
     // Otherwise every re-render would re-ask whatever was asked last.
-    render(<Assistant />);
-    useAsk.getState().ask("hello");
+    const { container } = render(<Assistant />);
+    useAsk.getState().ask("hello there");
 
-    await waitFor(() => expect(screen.getByText(/You said: hello/)).toBeInTheDocument());
+    await waitFor(() =>
+      expect(container.querySelector('[data-role="user"]')).toHaveTextContent("hello there"),
+    );
     expect(useAsk.getState().pending).toBeNull();
-    expect(screen.getAllByText(/You said: hello/)).toHaveLength(1);
+    expect(container.querySelectorAll('[data-role="user"]')).toHaveLength(1);
   });
 
   it("will not send an empty message", () => {

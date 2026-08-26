@@ -1,85 +1,57 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useAsk } from "../../app/askStore";
-import { getPlatform, type AiMessage, type ToolRequest } from "../../platform";
+import { useChat } from "../../app/chatStore";
+import { getPlatform, type AiMessage } from "../../platform";
 import { describeError } from "./errors";
+import { SessionList } from "./SessionList";
 import { ToolCard } from "./ToolCard";
+import { Welcome } from "./Welcome";
 import "./Assistant.css";
 
-interface Turn {
-  role: "user" | "assistant";
-  text: string;
-}
-
 export function Assistant() {
-  const [turns, setTurns] = useState<Turn[]>([]);
   const [draft, setDraft] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [tools, setTools] = useState<ToolRequest[]>([]);
   const endRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    const platform = getPlatform();
-    const cleanups: Array<() => void> = [];
-    let cancelled = false;
+  // Conversation state lives in the store, not here. When it lived in
+  // component state, switching to the terminal unmounted this panel and threw
+  // the whole conversation away.
+  const sessions = useChat((s) => s.sessions);
+  const activeId = useChat((s) => s.activeId);
+  const busy = useChat((s) => s.busy);
+  const addTurn = useChat((s) => s.addTurn);
+  const setBusy = useChat((s) => s.setBusy);
 
-    void (async () => {
-      const subs = await Promise.all([
-        platform.ai.onDelta((text) =>
-          setTurns((prev) => {
-            const last = prev[prev.length - 1];
-            // Append to the open assistant turn rather than starting a new
-            // one per token, or the log becomes one turn per character.
-            if (last?.role === "assistant") {
-              return [...prev.slice(0, -1), { ...last, text: last.text + text }];
-            }
-            return [...prev, { role: "assistant", text }];
-          }),
-        ),
-        platform.ai.onToolRequest((req) => setTools((t) => [...t, req])),
-        platform.ai.onDone(() => setBusy(false)),
-        platform.ai.onError((message) => {
-          setError(message);
-          setBusy(false);
-        }),
-      ]);
-
-      if (cancelled) {
-        subs.forEach((fn) => fn());
-        return;
-      }
-      cleanups.push(...subs);
-    })();
-
-    return () => {
-      cancelled = true;
-      cleanups.forEach((fn) => fn());
-    };
-  }, []);
+  const turns = sessions.find((s) => s.id === activeId)?.turns ?? [];
+  const tools = useChat((s) => s.tools);
+  const error = useChat((s) => s.error);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [turns, tools]);
 
-  const submit = useCallback(async (text: string) => {
-    if (!text) return;
+  const submit = useCallback(
+    async (text: string) => {
+      const question = text.trim();
+      if (!question) return;
 
-    setTurns((prev) => [...prev, { role: "user", text }]);
-    setDraft("");
-    setBusy(true);
-    setError(null);
+      addTurn("user", question);
+      setDraft("");
+      setBusy(true);
+      useChat.getState().setError(null);
 
-    const conversation: AiMessage[] = [{ role: "user", content: [{ type: "text", text }] }];
+      const conversation: AiMessage[] = [
+        { role: "user", content: [{ type: "text", text: question }] },
+      ];
 
-    try {
-      await getPlatform().ai.send("openai", conversation);
-    } catch (e) {
-      setError(describeError(e));
-      setBusy(false);
-    }
-  }, []);
-
-  const send = useCallback(() => submit(draft.trim()), [draft, submit]);
+      try {
+        await getPlatform().ai.send(useChat.getState().provider, conversation);
+      } catch (e) {
+        useChat.getState().setError(describeError(e));
+        setBusy(false);
+      }
+    },
+    [addTurn, setBusy],
+  );
 
   // Take a question raised from a terminal. `take` clears it, so switching
   // away and back does not re-ask whatever was asked last.
@@ -92,32 +64,35 @@ export function Assistant() {
 
   return (
     <div className="chat">
-      <div className="chat__log">
-        {turns.length === 0 && (
-          <p className="chat__empty">
-            Ask about this project. The assistant can read your files and propose
-            commands, but nothing runs until you approve it.
-          </p>
-        )}
+      <SessionList />
 
-        {turns.map((turn, i) => (
-          <div key={i} className="turn" data-role={turn.role}>
-            <span className="turn__who">{turn.role === "user" ? "you" : "jky"}</span>
-            <div className="turn__text">{turn.text}</div>
-          </div>
-        ))}
+      <div className="chat__log">
+        {turns.length === 0 && tools.length === 0 ? (
+          <Welcome onPick={setDraft} />
+        ) : (
+          turns.map((turn, i) => (
+            <div key={i} className="turn" data-role={turn.role}>
+              <span className="turn__who">{turn.role === "user" ? "you" : "jky"}</span>
+              <div className="turn__text">{turn.text}</div>
+            </div>
+          ))
+        )}
 
         {tools.map((req) => (
           <ToolCard
             key={req.id}
             request={req}
             onApprove={(id) => {
-              void getPlatform().ai.approveTool(id);
-              setTools((t) => t.filter((x) => x.id !== id));
+              useChat.getState().clearTool(id);
+              void getPlatform()
+                .ai.approveTool(id)
+                .catch((e) => useChat.getState().setError(describeError(e)));
             }}
             onReject={(id) => {
-              void getPlatform().ai.rejectTool(id);
-              setTools((t) => t.filter((x) => x.id !== id));
+              useChat.getState().clearTool(id);
+              void getPlatform()
+                .ai.rejectTool(id)
+                .catch((e) => useChat.getState().setError(describeError(e)));
             }}
           />
         ))}
@@ -134,7 +109,7 @@ export function Assistant() {
         className="chat__compose"
         onSubmit={(e) => {
           e.preventDefault();
-          void send();
+          void submit(draft);
         }}
       >
         <input

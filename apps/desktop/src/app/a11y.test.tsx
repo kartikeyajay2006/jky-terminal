@@ -10,12 +10,16 @@ import { createWebPlatform, __setPlatformForTests } from "../platform";
 import { ProviderVault } from "../features/settings/ProviderVault";
 import { Settings } from "../features/settings/Settings";
 import { Assistant } from "../features/assistant/Assistant";
+import { SessionList } from "../features/assistant/SessionList";
+import { Welcome } from "../features/assistant/Welcome";
+import { useChat } from "./chatStore";
 import { ToolCard } from "../features/assistant/ToolCard";
 
 describe("accessibility", () => {
   beforeEach(() => {
     __setPlatformForTests(createWebPlatform());
     useTabs.setState({ tabs: [], activeId: null });
+    useChat.setState({ sessions: [], activeId: null, busy: false, tools: [], error: null });
   });
   afterEach(() => {
     __setPlatformForTests(null);
@@ -56,6 +60,18 @@ describe("accessibility", () => {
 
   it("the assistant panel has no violations", async () => {
     const { container } = render(<Assistant />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the assistant's empty state has no violations", async () => {
+    const { container } = render(<Welcome onPick={() => {}} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the session list has no violations", async () => {
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "a question");
+    const { container } = render(<SessionList />);
     expect(await axe(container)).toHaveNoViolations();
   });
 

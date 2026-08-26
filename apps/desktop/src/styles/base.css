@@ -83,3 +83,19 @@ a:hover {
   background: var(--violet);
   color: #fff;
 }
+
+/* The mark's cursor breathes when it is the focus of an empty state.
+   prefers-reduced-motion is already honoured globally in tokens.css. */
+[data-animated="true"] .jkymark__spark {
+  animation: jkymark-pulse 2.4s var(--ease) infinite;
+}
+
+@keyframes jkymark-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}

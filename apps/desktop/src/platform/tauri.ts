@@ -8,6 +8,7 @@ import type {
   ProviderStatus,
   PtyApi,
   SettingsApi,
+  ToolRan,
   ToolRequest,
   VaultApi,
 } from "./types";
@@ -98,6 +99,7 @@ export function createTauriPlatform(): Platform {
     },
     onDelta: (h) => listen<string>("ai:delta", (e) => h(e.payload)),
     onToolRequest: (h) => listen<ToolRequest>("ai:tool_request", (e) => h(e.payload)),
+    onToolRan: (h) => listen<ToolRan>("ai:tool_ran", (e) => h(e.payload)),
     onDone: (h) => listen<string>("ai:done", (e) => h(e.payload)),
     onError: (h) => listen<string>("ai:error", (e) => h(e.payload)),
   };

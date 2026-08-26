@@ -6,6 +6,7 @@ import type {
   ProviderStatus,
   PtyApi,
   SettingsApi,
+  ToolRan,
   ToolRequest,
   VaultApi,
 } from "./types";
@@ -125,6 +126,7 @@ export function createWebPlatform(): Platform {
   const aiHandlers = {
     delta: [] as Array<(t: string) => void>,
     tool: [] as Array<(r: ToolRequest) => void>,
+    ran: [] as Array<(r: ToolRan) => void>,
     done: [] as Array<(s: string) => void>,
     error: [] as Array<(m: string) => void>,
   };
@@ -151,6 +153,12 @@ export function createWebPlatform(): Platform {
       aiHandlers.tool.push(h);
       return () => {
         aiHandlers.tool.splice(aiHandlers.tool.indexOf(h), 1);
+      };
+    },
+    async onToolRan(h) {
+      aiHandlers.ran.push(h);
+      return () => {
+        aiHandlers.ran.splice(aiHandlers.ran.indexOf(h), 1);
       };
     },
     async onDone(h) {

@@ -10,6 +10,7 @@ export type {
   ProviderStatus,
   PtyApi,
   SettingsApi,
+  ToolRan,
   ToolRequest,
   VaultApi,
 } from "./types";
