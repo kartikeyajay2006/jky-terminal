@@ -8,6 +8,8 @@ import { useTabs } from "./tabStore";
 import { applyTheme, THEMES } from "./theme";
 import { createWebPlatform, __setPlatformForTests } from "../platform";
 import { ProviderVault } from "../features/settings/ProviderVault";
+import { Assistant } from "../features/assistant/Assistant";
+import { ToolCard } from "../features/assistant/ToolCard";
 
 describe("accessibility", () => {
   beforeEach(() => {
@@ -43,6 +45,30 @@ describe("accessibility", () => {
     const user = userEvent.setup();
     const { container, findByRole } = render(<ProviderVault />);
     await user.click(await findByRole("button", { name: /Anthropic/ }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the assistant panel has no violations", async () => {
+    const { container } = render(<Assistant />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("a tool approval card has no violations", async () => {
+    // The card is the one place a wrong decision is expensive, so its
+    // controls must be reachable and labelled for everyone.
+    const { container } = render(
+      <ToolCard
+        request={{
+          id: "toolu_1",
+          name: "run_command",
+          command: "rm -rf build",
+          reason: "Clear stale artifacts",
+          destructive: true,
+        }}
+        onApprove={() => {}}
+        onReject={() => {}}
+      />,
+    );
     expect(await axe(container)).toHaveNoViolations();
   });
 
