@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useState } from "react";
 import { Select } from "../../components/Select";
 import { getPlatform, type ProviderStatus } from "../../platform";
+import { PanelHead } from "./PanelHead";
 import "./ProviderVault.css";
 
 export function ProviderVault() {
@@ -27,23 +28,22 @@ export function ProviderVault() {
   }
 
   return (
-    <div className="vault">
-      <header className="vault__mast">
-        <h1 className="vault__brand">
-          JKY<span>·</span>TERMINAL
-        </h1>
-        <span className="vault__where">providers</span>
-        {/* role=status so the count is announced when a key is added or
-            removed, and aria-label so it reads as one phrase rather than
-            three fragments split by the emphasis element. */}
-        <span
-          className="vault__count"
-          role="status"
-          aria-label={`${connectedCount} of ${keyProviders.length} keys added`}
-        >
-          <b>{connectedCount}</b> of {keyProviders.length} keys added
-        </span>
-      </header>
+    <section className="panel vault" aria-labelledby="providers-heading">
+      <PanelHead
+        where="Providers"
+        headingId="providers-heading"
+        status={
+          /* role=status so the count is announced when a key is added or
+             removed, and aria-label so it reads as one phrase rather than
+             three fragments split by the emphasis element. */
+          <span
+            role="status"
+            aria-label={`${connectedCount} of ${keyProviders.length} keys added`}
+          >
+            <b>{connectedCount}</b> of {keyProviders.length} keys
+          </span>
+        }
+      />
 
       <section className="vault__seal" aria-label="How your keys are stored">
         <span className="vault__seal-glyph" aria-hidden="true">
@@ -76,7 +76,7 @@ export function ProviderVault() {
           />
         ))}
       </ul>
-    </div>
+    </section>
   );
 }
 

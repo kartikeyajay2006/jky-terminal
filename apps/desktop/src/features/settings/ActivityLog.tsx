@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getPlatform, type AuditEvent } from "../../platform";
 import { groupByDay, shapeOf, timeOf } from "./activityFormat";
+import { PanelHead } from "./PanelHead";
 
 /**
  * The activity log, rendered as a terminal stream.
@@ -33,9 +34,19 @@ export function ActivityLog() {
   const groups = groupByDay(events);
 
   return (
-    <section className="settings__section" aria-labelledby="activity-heading">
+    <section className="panel" aria-labelledby="activity-heading">
+      <PanelHead
+        where="Activity"
+        headingId="activity-heading"
+        status={
+          <>
+            <b>{events.length}</b> recorded
+          </>
+        }
+      />
+
       <div className="activity__head">
-        <h2 id="activity-heading">Activity</h2>
+        <p className="hint">Read newest first.</p>
         <button type="button" className="btn" onClick={load}>
           Refresh
         </button>

@@ -3,6 +3,7 @@ import { Select } from "../../components/Select";
 import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { getPlatform, type CommandSpec } from "../../platform";
 import { ActivityLog } from "./ActivityLog";
+import { PanelHead } from "./PanelHead";
 import { ProviderVault } from "./ProviderVault";
 import "./Settings.css";
 
@@ -48,8 +49,16 @@ export function Settings() {
 
       <div className="settings__panel">
         {panel === "appearance" ? (
-          <section className="settings__section" aria-labelledby="appearance-heading">
-            <h2 id="appearance-heading">Appearance</h2>
+          <section className="panel" aria-labelledby="appearance-heading">
+            <PanelHead
+              where="Appearance"
+              headingId="appearance-heading"
+              status={
+                <>
+                  <b>{THEMES.length}</b> themes
+                </>
+              }
+            />
 
             <div className="field">
               <span className="field__label" id="theme-label">
@@ -109,8 +118,16 @@ function CommandList() {
   }, []);
 
   return (
-    <section className="settings__section" aria-labelledby="commands-heading">
-      <h2 id="commands-heading">Commands</h2>
+    <section className="panel" aria-labelledby="commands-heading">
+      <PanelHead
+        where="Commands"
+        headingId="commands-heading"
+        status={
+          <>
+            <b>{commands.length}</b> commands
+          </>
+        }
+      />
       <p className="hint">
         These work in any JKY Terminal tab. Typing <code>jky commands</code>
         prints the same list without leaving the terminal.
