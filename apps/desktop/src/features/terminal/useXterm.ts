@@ -76,8 +76,13 @@ export function useXterm(container: React.RefObject<HTMLDivElement | null>) {
         return;
       }
       ptyId = id;
+
+      // Order matters. Subscribe first, then attach: the shell prints its
+      // prompt the moment output starts flowing, and attaching before the
+      // listener existed is what made the first prompt disappear.
       unlisten = await platform.pty.onData(id, (chunk) => xterm.write(chunk));
       xterm.onData((data) => void platform.pty.write(id, data));
+      await platform.pty.attach(id);
     })();
 
     const observer = new ResizeObserver(() => {

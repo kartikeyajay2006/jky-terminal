@@ -47,6 +47,12 @@ export interface PtyApi {
   kill(id: string): Promise<void>;
   /** Subscribe to this session's output. Resolves to an unsubscribe function. */
   onData(id: string, handler: (chunk: string) => void): Promise<() => void>;
+  /**
+   * Start streaming output. Call only after `onData` has resolved: the shell
+   * prints its prompt the instant it starts, and attaching first would emit
+   * that prompt before anything was listening.
+   */
+  attach(id: string): Promise<void>;
 }
 
 export interface Platform {

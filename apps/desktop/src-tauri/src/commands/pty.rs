@@ -51,13 +51,28 @@ pub fn pty_spawn(
     })
     .map_err(|e| e.to_string())?;
 
+    // Deliberately does NOT start reading yet. The shell prints its prompt the
+    // moment it starts, and the frontend cannot subscribe until it knows this
+    // id — so anything read before then would be emitted to nobody and the
+    // first prompt would vanish. The pty's own buffer holds that output until
+    // pty_attach starts the pump.
+    let _ = &app;
+    Ok(state.ptys.insert(session))
+}
+
+/// Begin streaming a session's output.
+///
+/// Called once, after the frontend has subscribed to this session's event.
+/// Splitting this from spawn is what stops the shell's first prompt being
+/// emitted before anything is listening.
+#[tauri::command]
+pub fn pty_attach(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<(), String> {
+    let session = state.ptys.get(&id).ok_or_else(|| format!("no pty '{id}'"))?;
     let mut reader = session.take_reader().map_err(|e| e.to_string())?;
-    let id = state.ptys.insert(session);
 
     // One pump thread per session. Reading a pty blocks, so it cannot live on
     // the async runtime; the thread ends when the pty closes and read returns 0.
     let event = data_event(&id);
-    let id_for_thread = id.clone();
     std::thread::spawn(move || {
         let mut buf = [0u8; 8192];
         loop {
@@ -65,7 +80,7 @@ pub fn pty_spawn(
                 Ok(0) | Err(_) => break,
                 Ok(n) => {
                     let chunk = String::from_utf8_lossy(&buf[..n]).to_string();
-                    let payload = PtyChunk { id: id_for_thread.clone(), chunk };
+                    let payload = PtyChunk { id: id.clone(), chunk };
                     if app.emit(&event, payload).is_err() {
                         break; // the window is gone; stop pumping
                     }
@@ -74,7 +89,7 @@ pub fn pty_spawn(
         }
     });
 
-    Ok(id)
+    Ok(())
 }
 
 #[tauri::command]

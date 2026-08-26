@@ -88,6 +88,7 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
     // commands are control operations on a session the backend owns. None
     // returns secret material, and pty_spawn returns only an opaque session id.
     let expected = vec![
+        "pty_attach".to_string(),
         "pty_kill".to_string(),
         "pty_resize".to_string(),
         "pty_spawn".to_string(),

@@ -26,6 +26,7 @@ fn main() {
             settings::settings_set_active_provider,
             settings::settings_set_terminal_start_dir,
             pty::pty_spawn,
+            pty::pty_attach,
             pty::pty_write,
             pty::pty_resize,
             pty::pty_kill,

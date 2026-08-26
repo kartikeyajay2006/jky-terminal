@@ -64,8 +64,12 @@ export function createWebPlatform(): Platform {
     },
     async onData(id, handler) {
       ptyHandlers.set(id, handler);
-      queueMicrotask(() => handler("jky $ "));
       return () => ptyHandlers.delete(id);
+    },
+    async attach(id) {
+      // Mirrors the real backend: the prompt appears when the stream starts,
+      // which is attach time, not spawn time.
+      ptyHandlers.get(id)?.("jky $ ");
     },
   };
 

@@ -64,6 +64,32 @@ describe("Terminal", () => {
     expect(writes.join("")).toContain("\u2588");
   });
 
+  it("subscribes before attaching, so the shell's first prompt is not lost", async () => {
+    // This race has cost the first prompt twice. Pin the order: the listener
+    // must exist before output starts flowing.
+    const order: string[] = [];
+    const platform = createWebPlatform();
+    const realOnData = platform.pty.onData.bind(platform.pty);
+    const realAttach = platform.pty.attach.bind(platform.pty);
+    __setPlatformForTests({
+      ...platform,
+      pty: {
+        ...platform.pty,
+        onData: (id, h) => {
+          order.push("onData");
+          return realOnData(id, h);
+        },
+        attach: (id) => {
+          order.push("attach");
+          return realAttach(id);
+        },
+      },
+    });
+
+    render(<Terminal tabId="tab-1" />);
+    await waitFor(() => expect(order).toEqual(["onData", "attach"]));
+  });
+
   it("writes pty output into the terminal", async () => {
     render(<Terminal tabId="tab-1" />);
     await waitFor(() => expect(writes.join("")).toContain("jky $"));

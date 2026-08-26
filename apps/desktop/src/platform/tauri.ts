@@ -78,6 +78,9 @@ export function createTauriPlatform(): Platform {
         handler(e.payload.chunk),
       );
     },
+    async attach(id) {
+      await invoke<void>("pty_attach", { id });
+    },
   };
 
   return { kind: "tauri", vault, settings, pty };
