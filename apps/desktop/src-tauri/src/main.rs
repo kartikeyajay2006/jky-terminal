@@ -33,6 +33,7 @@ fn main() {
             pty::pty_kill,
             pty::commands_list,
             ai::ai_send,
+            ai::ai_cancel,
             ai::ai_approve_tool,
             ai::ai_reject_tool,
             ai::audit_read,

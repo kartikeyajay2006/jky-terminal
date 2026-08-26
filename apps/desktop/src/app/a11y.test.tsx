@@ -1,4 +1,4 @@
-import { render } from "@testing-library/react";
+import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "vitest-axe";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -56,6 +56,13 @@ describe("accessibility", () => {
 
   it("the settings screen has no violations", async () => {
     const { container } = render(<Settings />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the activity log has no violations", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Settings />);
+    await user.click(screen.getByRole("button", { name: /activity/i }));
     expect(await axe(container)).toHaveNoViolations();
   });
 

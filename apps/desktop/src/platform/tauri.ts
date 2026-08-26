@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AiApi,
+  AuditEvent,
   CommandSpec,
   ModelOption,
   Platform,
@@ -91,6 +92,9 @@ export function createTauriPlatform(): Platform {
     async send(provider, conversation) {
       await invoke<void>("ai_send", { provider, conversation });
     },
+    async cancel() {
+      await invoke<void>("ai_cancel");
+    },
     async approveTool(id) {
       await invoke<void>("ai_approve_tool", { callId: id });
     },
@@ -111,5 +115,6 @@ export function createTauriPlatform(): Platform {
     pty,
     ai,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
+    readAudit: () => invoke<AuditEvent[]>("audit_read"),
   };
 }

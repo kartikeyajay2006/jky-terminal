@@ -19,9 +19,13 @@ pub enum AiError {
 #[allow(async_fn_in_trait)]
 pub trait AIProvider: Send + Sync {
     /// Stream a completion, invoking `on_event` for each decoded event.
+    ///
+    /// `on_event` returns whether to keep reading. Returning false stops the
+    /// stream and drops the connection — the only way to actually stop paying
+    /// for an answer nobody wants any more.
     async fn stream_chat(
         &self,
         request: ChatRequest,
-        on_event: &mut (dyn FnMut(StreamEvent) + Send),
+        on_event: &mut (dyn FnMut(StreamEvent) -> bool + Send),
     ) -> Result<(), AiError>;
 }

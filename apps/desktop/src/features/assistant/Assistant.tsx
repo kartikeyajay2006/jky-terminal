@@ -40,9 +40,10 @@ export function Assistant() {
       setBusy(true);
       useChat.getState().setError(null);
 
-      const conversation: AiMessage[] = [
-        { role: "user", content: [{ type: "text", text: question }] },
-      ];
+      // The whole conversation, not just the new question. addTurn already
+      // recorded it, so history() includes it — sending only the latest
+      // question is what made every follow-up arrive with no context.
+      const conversation: AiMessage[] = useChat.getState().history();
 
       try {
         await getPlatform().ai.send(useChat.getState().provider, conversation);
@@ -122,9 +123,22 @@ export function Assistant() {
           onChange={(e) => setDraft(e.target.value)}
           disabled={busy}
         />
-        <button type="submit" className="btn btn--primary" disabled={busy || !draft.trim()}>
-          Send
-        </button>
+        {busy ? (
+          <button
+            type="button"
+            className="btn btn--danger"
+            onClick={() => {
+              void getPlatform().ai.cancel();
+              setBusy(false);
+            }}
+          >
+            Stop
+          </button>
+        ) : (
+          <button type="submit" className="btn btn--primary" disabled={!draft.trim()}>
+            Send
+          </button>
+        )}
       </form>
     </div>
   );

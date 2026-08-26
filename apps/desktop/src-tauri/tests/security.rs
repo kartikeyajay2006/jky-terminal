@@ -89,6 +89,7 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
     // returns secret material, and pty_spawn returns only an opaque session id.
     let expected = vec![
         "ai_approve_tool".to_string(),
+        "ai_cancel".to_string(),
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),
         "audit_read".to_string(),

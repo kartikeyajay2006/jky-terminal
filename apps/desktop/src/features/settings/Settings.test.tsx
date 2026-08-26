@@ -75,6 +75,32 @@ describe("Settings", () => {
     expect(await screen.findByText(/prints the same list/i)).toBeInTheDocument();
   });
 
+  it("shows the activity log", async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: /activity/i }));
+    expect(await screen.findByRole("heading", { name: /^activity$/i })).toBeInTheDocument();
+  });
+
+  it("explains that the activity file is readable without the app", async () => {
+    // An audit trail you can only inspect through the thing being audited is
+    // worth less, and the user should know it is not the only way in.
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: /activity/i }));
+    expect(await screen.findByText(/without this app/i)).toBeInTheDocument();
+  });
+
+  it("says so when nothing has been recorded rather than showing an empty box", async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: /activity/i }));
+    expect(await screen.findByText(/nothing recorded yet/i)).toBeInTheDocument();
+  });
+
   it("changes the theme from the swatch grid", async () => {
     const user = userEvent.setup();
     render(<Settings />);

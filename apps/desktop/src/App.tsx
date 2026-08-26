@@ -20,6 +20,11 @@ export function App() {
 
   useShortcuts();
 
+  // Bring back conversations from the last run before anything renders them.
+  useEffect(() => {
+    useChat.getState().restore();
+  }, []);
+
   // Assistant events are subscribed here, not in the panel. A stream that
   // arrives while the terminal is showing must still land in the session —
   // when the panel owned these, switching away silently dropped the answer.

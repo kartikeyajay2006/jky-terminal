@@ -55,7 +55,7 @@ impl AIProvider for AnthropicProvider {
     async fn stream_chat(
         &self,
         request: ChatRequest,
-        on_event: &mut (dyn FnMut(StreamEvent) + Send),
+        on_event: &mut (dyn FnMut(StreamEvent) -> bool + Send),
     ) -> Result<(), AiError> {
         let response = self
             .client
@@ -83,7 +83,12 @@ impl AIProvider for AnthropicProvider {
             let bytes = chunk.map_err(|e| AiError::Network(e.to_string()))?;
             let text = String::from_utf8_lossy(&bytes);
             for event in decoder.push(&text) {
-                on_event(event);
+                if !on_event(event) {
+                    // The caller asked to stop. Returning drops the response,
+                    // which closes the connection rather than reading to the
+                    // end and discarding it.
+                    return Ok(());
+                }
             }
         }
 

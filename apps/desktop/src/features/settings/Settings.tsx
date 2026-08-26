@@ -1,16 +1,17 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Select } from "../../components/Select";
 import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
-import { getPlatform, type CommandSpec } from "../../platform";
+import { getPlatform, type AuditEvent, type CommandSpec } from "../../platform";
 import { ProviderVault } from "./ProviderVault";
 import "./Settings.css";
 
-type Panel = "appearance" | "providers" | "commands";
+type Panel = "appearance" | "providers" | "commands" | "activity";
 
 const PANELS: Array<{ id: Panel; label: string; blurb: string }> = [
   { id: "appearance", label: "Appearance", blurb: "Theme and how the app looks" },
   { id: "providers", label: "Providers", blurb: "API keys and model selection" },
   { id: "commands", label: "Commands", blurb: "What you can type in a terminal" },
+  { id: "activity", label: "Activity", blurb: "Every key read, tool call and command" },
 ];
 
 export function Settings() {
@@ -85,6 +86,8 @@ export function Settings() {
           </section>
         ) : panel === "commands" ? (
           <CommandList />
+        ) : panel === "activity" ? (
+          <ActivityLog />
         ) : (
           <ProviderVault />
         )}
@@ -136,6 +139,70 @@ function CommandList() {
               <strong className="cmds__summary">{cmd.summary}</strong>
               <span className="cmds__detail">{cmd.detail}</span>
             </p>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+/** How an audit entry's kind reads to a person rather than to a serialiser. */
+const KIND_LABEL: Record<string, string> = {
+  SecretRead: "key read",
+  ToolCall: "tool call",
+  CommandRun: "command run",
+  CommandRejected: "command declined",
+  ProviderRequest: "request sent",
+};
+
+function ActivityLog() {
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [failed, setFailed] = useState(false);
+
+  const load = useCallback(() => {
+    void getPlatform()
+      .readAudit()
+      .then((all) => {
+        // Newest first: what just happened is what you came to look at.
+        setEvents([...all].reverse());
+        setFailed(false);
+      })
+      .catch(() => setFailed(true));
+  }, []);
+
+  useEffect(load, [load]);
+
+  return (
+    <section className="settings__section" aria-labelledby="activity-heading">
+      <div className="activity__head">
+        <h2 id="activity-heading">Activity</h2>
+        <button type="button" className="btn" onClick={load}>
+          Refresh
+        </button>
+      </div>
+
+      <p className="hint">
+        Every time your key is read, a tool runs, or a command is approved or
+        declined, it is recorded here. The file lives beside your settings and
+        can be read without this app.
+      </p>
+
+      {failed && (
+        <p className="alert" role="alert">
+          Could not read the activity log.
+        </p>
+      )}
+
+      {!failed && events.length === 0 && (
+        <p className="hint">Nothing recorded yet.</p>
+      )}
+
+      <ul className="activity" aria-label="Recorded activity">
+        {events.map((event, i) => (
+          <li key={`${event.at}-${i}`} className="activity__row" data-kind={event.kind}>
+            <span className="activity__when">{event.at.replace("T", " ").replace("Z", "")}</span>
+            <span className="activity__kind">{KIND_LABEL[event.kind] ?? event.kind}</span>
+            <span className="activity__detail">{event.detail}</span>
           </li>
         ))}
       </ul>

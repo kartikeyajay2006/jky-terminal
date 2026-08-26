@@ -1,6 +1,7 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
   AiApi,
+  AuditEvent,
   CommandSpec,
   Platform,
   ProviderStatus,
@@ -141,6 +142,9 @@ export function createWebPlatform(): Platform {
       }
       aiHandlers.done.forEach((h) => h("end_turn"));
     },
+    async cancel() {
+      aiHandlers.done.forEach((h) => h("cancelled"));
+    },
     async approveTool() {},
     async rejectTool() {},
     async onDelta(h) {
@@ -183,6 +187,10 @@ export function createWebPlatform(): Platform {
     ai,
     async listCommands() {
       return WEB_COMMANDS;
+    },
+    async readAudit(): Promise<AuditEvent[]> {
+      // The browser build has no backend to have recorded anything.
+      return [];
     },
   };
 }

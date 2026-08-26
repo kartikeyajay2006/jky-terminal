@@ -179,3 +179,69 @@
   font-size: 13px;
   color: var(--text-muted);
 }
+
+.activity__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.activity__head h2 {
+  margin: 0;
+}
+
+.activity {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.activity__row {
+  display: grid;
+  grid-template-columns: 150px 120px minmax(0, 1fr);
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  font-size: 12px;
+  align-items: baseline;
+}
+
+.activity__when {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.activity__kind {
+  color: var(--text-muted);
+}
+
+/* The two entries worth spotting at a glance. */
+.activity__row[data-kind="CommandRun"] .activity__kind {
+  color: var(--warn);
+}
+
+.activity__row[data-kind="CommandRejected"] .activity__kind {
+  color: var(--danger);
+}
+
+.activity__row[data-kind="SecretRead"] .activity__kind {
+  color: var(--accent);
+}
+
+.activity__detail {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+  .activity__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 2px;
+  }
+}

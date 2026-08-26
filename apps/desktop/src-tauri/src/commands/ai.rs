@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
 use jky_ai::{
@@ -47,6 +48,7 @@ struct Ctx {
     model: String,
     audit: Arc<AuditLog>,
     slot: Arc<Mutex<Option<TurnState>>>,
+    cancelled: Arc<AtomicBool>,
     root: PathBuf,
 }
 
@@ -89,7 +91,12 @@ async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBl
     let mut open_tool: Option<(String, String)> = None;
     let mut tool_json = String::new();
 
-    let mut on_event = move |event: StreamEvent| match event {
+    let cancelled = ctx.cancelled.clone();
+    let mut on_event = move |event: StreamEvent| -> bool {
+        if cancelled.load(Ordering::Relaxed) {
+            return false;
+        }
+        match event {
         StreamEvent::TextDelta(text) => {
             if let Ok(mut b) = sink.lock() {
                 match b.last_mut() {
@@ -112,10 +119,12 @@ async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBl
                 }
             }
         }
-        StreamEvent::Done { .. } => {}
-        StreamEvent::Error(message) => {
-            let _ = app.emit("ai:error", message);
+            StreamEvent::Done { .. } => {}
+            StreamEvent::Error(message) => {
+                let _ = app.emit("ai:error", message);
+            }
         }
+        true
     };
 
     match ctx.provider {
@@ -145,6 +154,13 @@ async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBl
 /// leaves the model having asked a question it never hears the answer to.
 async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
     loop {
+        if ctx.cancelled.load(Ordering::Relaxed) {
+            if let Ok(mut slot) = ctx.slot.lock() {
+                *slot = None;
+            }
+            let _ = ctx.app.emit("ai:done", "cancelled");
+            return Ok(());
+        }
         if turn.round >= MAX_ROUNDS {
             let _ = ctx.app.emit(
                 "ai:error",
@@ -276,6 +292,7 @@ fn build_ctx(app: &AppHandle, state: &AppState, provider: &str) -> Result<Ctx, S
         model,
         audit: state.audit.clone(),
         slot: state.turn.clone(),
+        cancelled: state.cancelled.clone(),
         // Tools are confined to the directory the app was opened against.
         root: std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir()),
     })
@@ -300,6 +317,8 @@ pub async fn ai_send(
         AuditKind::ProviderRequest,
         &format!("{provider} / {}: {} messages", ctx.model, conversation.len()),
     ));
+
+    state.cancelled.store(false, Ordering::Relaxed);
 
     let turn = TurnState {
         provider,
@@ -410,6 +429,21 @@ pub async fn ai_reject_tool(
     call_id: String,
 ) -> Result<(), String> {
     decide(app, state, call_id, false).await
+}
+
+/// Stop the turn in flight.
+///
+/// The flag is checked between stream chunks, so the connection is dropped
+/// rather than read to the end and discarded — stopping an answer you no
+/// longer want should also stop paying for it.
+#[tauri::command]
+pub fn ai_cancel(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    state.cancelled.store(true, Ordering::Relaxed);
+    if let Ok(mut slot) = state.turn.lock() {
+        *slot = None;
+    }
+    let _ = app.emit("ai:done", "cancelled");
+    Ok(())
 }
 
 #[tauri::command]

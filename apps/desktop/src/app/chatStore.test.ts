@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { MAX_SESSIONS, useChat } from "./chatStore";
 
-const reset = () =>
+const reset = () => {
+  localStorage.clear();
   useChat.setState({ sessions: [], activeId: null, busy: false, tools: [], error: null });
+};
 
 describe("chatStore", () => {
   beforeEach(reset);
@@ -135,6 +137,91 @@ describe("chatStore", () => {
     });
     useChat.getState().clearTool("t1");
     expect(useChat.getState().tools).toHaveLength(0);
+  });
+
+  it("sends the whole conversation, not just the latest question", () => {
+    // Without this every follow-up arrives with no idea the previous one
+    // happened, and a session is a display of history the model never sees.
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "what does this do");
+    useChat.getState().appendToLastAssistant("it is a terminal");
+    useChat.getState().addTurn("user", "what about the tests");
+
+    const history = useChat.getState().history();
+    expect(history).toHaveLength(3);
+    expect(history[0].role).toBe("user");
+    expect(history[1].role).toBe("assistant");
+    expect(history[2].content[0]).toMatchObject({ text: "what about the tests" });
+  });
+
+  it("sends only the active conversation, not every session", () => {
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "in the old one");
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "in the new one");
+
+    const history = useChat.getState().history();
+    expect(history).toHaveLength(1);
+    expect(JSON.stringify(history)).not.toContain("old one");
+  });
+
+  it("writes conversations to storage as they change", () => {
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "remember this");
+
+    expect(localStorage.getItem("jky.chat.sessions")).toContain("remember this");
+  });
+
+  it("reads saved conversations back", () => {
+    // A restart is simulated by seeding storage rather than by clearing state:
+    // clearing state fires the save subscriber and wipes what was stored,
+    // which is correct behaviour for a real deletion and wrong for a restart.
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "remember this");
+    const saved = localStorage.getItem("jky.chat.sessions")!;
+
+    useChat.setState({ sessions: [], activeId: null });
+    localStorage.setItem("jky.chat.sessions", saved);
+    useChat.getState().restore();
+
+    expect(useChat.getState().sessions).toHaveLength(1);
+    expect(useChat.getState().sessions[0].turns[0].text).toBe("remember this");
+  });
+
+  it("reopens the most recent conversation on restore", () => {
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "older");
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "newest");
+    const saved = localStorage.getItem("jky.chat.sessions")!;
+
+    useChat.setState({ sessions: [], activeId: null });
+    localStorage.setItem("jky.chat.sessions", saved);
+    useChat.getState().restore();
+
+    const active = useChat.getState().sessions.find((s) => s.id === useChat.getState().activeId);
+    expect(active!.turns[0].text).toBe("newest");
+  });
+
+  it("restores nothing rather than crashing on a corrupt store", () => {
+    // Losing history is bad; refusing to start is worse.
+    localStorage.setItem("jky.chat.sessions", "{ not json");
+    useChat.getState().restore();
+    expect(useChat.getState().sessions).toEqual([]);
+  });
+
+  it("ignores saved entries that are not conversations", () => {
+    localStorage.setItem("jky.chat.sessions", JSON.stringify([{ nonsense: true }, 42]));
+    useChat.getState().restore();
+    expect(useChat.getState().sessions).toEqual([]);
+  });
+
+  it("a deletion is persisted, not just hidden", () => {
+    const id = useChat.getState().newSession();
+    useChat.getState().addTurn("user", "doomed");
+    useChat.getState().deleteSession(id);
+
+    expect(localStorage.getItem("jky.chat.sessions")).not.toContain("doomed");
   });
 
   it("starts a session on the first turn if none is open", () => {

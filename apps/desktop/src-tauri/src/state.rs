@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use jky_audit::AuditLog;
@@ -43,6 +44,9 @@ pub struct AppState {
     pub audit: Arc<AuditLog>,
     /// The turn currently in flight, if any. One at a time in v0.1.
     pub turn: Arc<Mutex<Option<TurnState>>>,
+    /// Set when the user asks to stop. Checked between stream chunks and
+    /// between rounds, so a long answer stops rather than being hidden.
+    pub cancelled: Arc<AtomicBool>,
 }
 
 impl AppState {
@@ -57,6 +61,7 @@ impl AppState {
             config_dir: config_dir.to_path_buf(),
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
             turn: Arc::new(Mutex::new(None)),
+            cancelled: Arc::new(AtomicBool::new(false)),
         }
     }
 }

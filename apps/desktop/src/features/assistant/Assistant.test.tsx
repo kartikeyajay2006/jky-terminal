@@ -129,6 +129,20 @@ describe("Assistant", () => {
     expect(container.querySelectorAll('[data-role="user"]')).toHaveLength(1);
   });
 
+  it("offers a way to stop an answer in flight", () => {
+    // A long answer you no longer want should be stoppable, not merely
+    // hidden — it is being paid for either way.
+    useChat.setState({ busy: true });
+    render(<Assistant />);
+    expect(screen.getByRole("button", { name: /stop/i })).toBeInTheDocument();
+  });
+
+  it("offers send rather than stop when nothing is running", () => {
+    render(<Assistant />);
+    expect(screen.getByRole("button", { name: /send/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /stop/i })).not.toBeInTheDocument();
+  });
+
   it("will not send an empty message", () => {
     render(<Assistant />);
     expect(screen.getByRole("button", { name: /send/i })).toBeDisabled();

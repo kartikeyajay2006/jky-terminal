@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import type { ToolRequest } from "../platform";
+import type { AiMessage, ToolRequest } from "../platform";
 
 /**
  * How many conversations are kept.
@@ -43,10 +43,51 @@ interface ChatState {
   addTool: (request: ToolRequest) => void;
   clearTool: (id: string) => void;
   setProvider: (provider: string) => void;
+  restore: () => void;
+  history: () => AiMessage[];
 }
 
 let counter = 0;
 const nextId = () => `chat-${Date.now()}-${++counter}`;
+
+const STORAGE_KEY = "jky.chat.sessions";
+
+/**
+ * Read saved conversations.
+ *
+ * Storage can be absent, cleared, or throw outright in a locked-down browser,
+ * and a corrupt value should not take the app down with it — losing history is
+ * bad, refusing to start is worse.
+ */
+export function loadSessions(): Session[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return [];
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+
+    return parsed
+      .filter(
+        (s): s is Session =>
+          typeof s === "object" &&
+          s !== null &&
+          typeof (s as Session).id === "string" &&
+          Array.isArray((s as Session).turns),
+      )
+      .slice(-MAX_SESSIONS);
+  } catch {
+    return [];
+  }
+}
+
+function saveSessions(sessions: Session[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+  } catch {
+    // Quota exceeded or storage disabled. A conversation that cannot be saved
+    // is still worth having in front of the user.
+  }
+}
 
 const UNTITLED = "New conversation";
 
@@ -162,4 +203,29 @@ export const useChat = create<ChatState>((set, get) => ({
   clearTool: (id) => set((s) => ({ tools: s.tools.filter((t) => t.id !== id) })),
 
   setProvider: (provider) => set({ provider }),
+
+  /** Load saved conversations. Called once at startup. */
+  restore: () => {
+    const sessions = loadSessions();
+    set({ sessions, activeId: sessions[sessions.length - 1]?.id ?? null });
+  },
+
+  /**
+   * The conversation so far, in the shape the provider expects.
+   *
+   * Without this every question arrives with no idea the previous one
+   * happened, and a session is a display of history the model never sees.
+   */
+  history: () => {
+    const { sessions, activeId } = get();
+    const turns = sessions.find((s) => s.id === activeId)?.turns ?? [];
+    return turns.map((turn) => ({
+      role: turn.role,
+      content: [{ type: "text" as const, text: turn.text }],
+    }));
+  },
 }));
+
+// Persist on every change. Conversations are small and capped at
+// MAX_SESSIONS, so writing the whole list is cheaper than tracking deltas.
+useChat.subscribe((state) => saveSessions(state.sessions));
