@@ -76,19 +76,23 @@
 /* ---- the masthead every panel wears ------------------------------------ */
 
 .mast {
-  display: flex;
-  align-items: baseline;
-  flex-wrap: wrap;
-  gap: var(--s2) var(--s3);
-  padding-bottom: var(--s3);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "brand status"
+    "where status";
+  align-items: end;
+  gap: var(--s1) var(--s4);
+  padding-bottom: var(--s4);
   border-bottom: 1px solid var(--line);
 }
 
-/* The brand is the part that never changes, so it recedes. It used to be the
-   boldest thing in the header, which told you nothing about where you were. */
+/* An eyebrow. The brand is the part that never changes, so it stays small
+   and out of the way of the part that does. */
 .mast__brand {
+  grid-area: brand;
   font-size: 11px;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.22em;
   color: var(--text-dim);
 }
 
@@ -97,30 +101,54 @@
   color: var(--accent);
 }
 
-.mast__sep {
-  color: var(--line-strong);
-  font-size: 15px;
+/* The section name is the only thing on the page that says where you are,
+   so it gets the size and the colour. The gradient runs accent → magenta;
+   both clear WCAG's large-text floor against every theme's ground, and the
+   solid accent underneath shows through if background-clip is unsupported. */
+.mast__where {
+  grid-area: where;
+  margin: 0;
+  font-size: clamp(26px, 3vw, 34px);
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+  color: var(--accent);
+  background: linear-gradient(100deg, var(--accent), var(--magenta) 90%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
 }
 
-/* The section name is the part that changes, so it carries the weight. */
-.mast__where {
-  margin: 0;
-  font-size: 19px;
-  font-weight: 600;
-  letter-spacing: -0.01em;
+/* High Contrast exists for people the other themes fail; a gradient is the
+   opposite of what it is for. */
+:root[data-theme="contrast"] .mast__where {
+  background: none;
+  -webkit-text-fill-color: var(--text);
   color: var(--text);
 }
 
 .mast__status {
-  margin-left: auto;
+  grid-area: status;
+  align-self: end;
   font-size: 12px;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .mast__status b {
   color: var(--accent);
   font-weight: 600;
+}
+
+@media (max-width: 560px) {
+  .mast {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "brand" "where" "status";
+  }
+  .mast__status {
+    align-self: start;
+  }
 }
 
 .swatches {

@@ -75,6 +75,9 @@ const REQUIREMENTS: Array<{ token: string; min: number; why: string }> = [
   // honest bar for it rather than pretending it meets the body-text one.
   { token: "--text-dim", min: 3, why: "de-emphasised text" },
   { token: "--accent", min: 3, why: "links and active states" },
+  // The panel headings are a large bold accent → magenta gradient, so both
+  // ends have to clear WCAG's large-text floor, not just the accent.
+  { token: "--magenta", min: 3, why: "the far end of the heading gradient" },
   { token: "--danger", min: 3, why: "error text" },
 ];
 

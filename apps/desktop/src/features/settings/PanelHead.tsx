@@ -20,14 +20,11 @@ export function PanelHead({
 }) {
   return (
     <header className="mast">
-      {/* Decorative, and hidden from the accessible name: a heading that
+      {/* An eyebrow, and hidden from the accessible name: a heading that
           reads "JKY·TERMINAL" on all four panels says nothing about which
           one you are looking at. */}
       <span className="mast__brand" aria-hidden="true">
         JKY<i>·</i>TERMINAL
-      </span>
-      <span className="mast__sep" aria-hidden="true">
-        /
       </span>
 
       <h2 className="mast__where" id={headingId}>
