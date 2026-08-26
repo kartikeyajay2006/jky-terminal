@@ -97,7 +97,14 @@ jobs:
           # Documentation legitimately shows example keys. Code fixtures must
           # opt out explicitly and visibly, one line at a time, so every
           # exemption is reviewable rather than hidden behind a path glob.
-          hits=$(git grep -nE 'sk-ant-[A-Za-z0-9_-]{20,}' -- ':!docs' \
+          # One pattern per provider we support. A guard that only knows
+          # about the first provider stops being a guard the moment a second
+          # one is added.
+          patterns='sk-ant-[A-Za-z0-9_-]{20,}|sk-proj-[A-Za-z0-9_-]{20,}'
+          patterns="$patterns|gsk_[A-Za-z0-9]{20,}|xai-[A-Za-z0-9]{20,}"
+          patterns="$patterns|sk-or-[A-Za-z0-9_-]{20,}|AIza[A-Za-z0-9_-]{30,}"
+          patterns="$patterns|gh[pousr]_[A-Za-z0-9]{30,}|AKIA[0-9A-Z]{16}"
+          hits=$(git grep -nE "$patterns" -- ':!docs' \
                  | grep -v 'pragma: allowlist secret' || true)
           if [ -n "$hits" ]; then
             echo "SECURITY: an API key is committed to the repository:"
