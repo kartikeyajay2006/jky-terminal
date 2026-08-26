@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
 import { useTabs } from "./app/tabStore";
+import { useShortcuts } from "./app/useShortcuts";
 import { ProviderVault } from "./features/settings/ProviderVault";
 import { Terminal } from "./features/terminal/Terminal";
 import "./styles/tokens.css";
@@ -12,6 +13,8 @@ export function App() {
   const [section, setSection] = useState("terminal");
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
+
+  useShortcuts();
 
   return (
     <Shell activeId={section} onSelect={setSection}>
