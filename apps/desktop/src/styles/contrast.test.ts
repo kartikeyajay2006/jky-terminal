@@ -79,6 +79,12 @@ const REQUIREMENTS: Array<{ token: string; min: number; why: string }> = [
   // ends have to clear WCAG's large-text floor, not just the accent.
   { token: "--magenta", min: 3, why: "the far end of the heading gradient" },
   { token: "--danger", min: 3, why: "error text" },
+  // The event dots. A dot is a graphical object, so 3:1 is the applicable
+  // WCAG bar; below it, an event on a calendar square is a smudge.
+  { token: "--warn", min: 3, why: "the amber event dot" },
+  { token: "--violet", min: 3, why: "the violet event dot" },
+  { token: "--mint", min: 3, why: "the mint event dot" },
+  { token: "--accent-dim", min: 3, why: "the azure event dot" },
 ];
 
 describe("theme contrast", () => {

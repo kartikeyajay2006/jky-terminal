@@ -19,6 +19,7 @@
   --violet: #bd93f9;
   --magenta: #ff79c6;
   --danger: #ff5555;
+  --mint: #50fa7b;
   --warn: #ffb86c;
 }
 
@@ -37,6 +38,7 @@
   --violet: #b48ead;
   --magenta: #b48ead;
   --danger: #bf616a;
+  --mint: #a3be8c;
   --warn: #ebcb8b;
 }
 
@@ -55,6 +57,7 @@
   --violet: #6c71c4;
   --magenta: #d33682;
   --danger: #dc322f;
+  --mint: #2aa198;
   --warn: #b58900;
 }
 
@@ -73,6 +76,7 @@
   --violet: #6929c4;
   --magenta: #d02670;
   --danger: #da1e28;
+  --mint: #0f7b5f;
   --warn: #8e6a00;
   color-scheme: light;
 }
@@ -97,6 +101,7 @@
   --violet: #d0a0ff;
   --magenta: #ff8ae2;
   --danger: #ff8080;
+  --mint: #4ee88a;
   --warn: #ffd24d;
 }
 
@@ -127,6 +132,7 @@
   --violet: #a34608;
   --magenta: #8a4b0d;
   --danger: #a91414;
+  --mint: #2f7d55;
   --warn: #8a5a05;
   color-scheme: light;
 }

@@ -1,0 +1,775 @@
+/* The dashboard: a sub-navigation down the side and one panel beside it,
+   matching the settings screen so the two do not read as different apps. */
+
+.dash {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+}
+
+.dash__nav {
+  border-right: 1px solid var(--line);
+  padding: var(--s5) var(--s3);
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.dash__title {
+  margin: 0 0 var(--s4) var(--s3);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.dash__nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.dash__link {
+  display: grid;
+  grid-template-columns: 1.6em minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s3);
+  border-left: 2px solid transparent;
+  border-radius: var(--radius);
+  text-align: left;
+  color: var(--text-muted);
+  transition: all var(--fast) var(--ease);
+}
+
+.dash__link:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.dash__link[aria-current="page"] {
+  border-left-color: var(--accent);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+
+.dash__glyph {
+  color: var(--text-dim);
+}
+
+.dash__link[aria-current="page"] .dash__glyph {
+  color: var(--accent);
+}
+
+.dash__count {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.dash__note {
+  margin: auto 0 0;
+  padding: var(--s4) var(--s3) 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.dash__panel {
+  overflow-y: auto;
+  min-width: 0;
+}
+
+/* The overview grid needs more room than a reading column. */
+.panel--wide {
+  max-width: 1280px;
+}
+
+.dash__subhead {
+  margin: var(--s3) 0 0;
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* ---- empty states ------------------------------------------------------- */
+
+.empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s7) var(--s4);
+  text-align: center;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+
+.empty__glyph {
+  font-size: 26px;
+  color: var(--text-dim);
+}
+
+.empty__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+}
+
+.empty__hint {
+  margin: 0;
+  max-width: 42ch;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ---- the widget grid ---------------------------------------------------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: var(--s4);
+  align-items: start;
+}
+
+.card {
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.card__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+}
+
+.card__glyph {
+  color: var(--accent);
+}
+
+.card__title {
+  margin: 0;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+
+.card__action {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  transition: color var(--fast) var(--ease);
+}
+
+.card__action:hover {
+  color: var(--accent);
+}
+
+.card__body {
+  padding: var(--s4);
+  display: grid;
+  gap: var(--s3);
+}
+
+.card__open {
+  display: grid;
+  gap: var(--s2);
+  text-align: left;
+  width: 100%;
+}
+
+.card__note-title {
+  color: var(--text);
+  font-size: 13px;
+}
+
+.card__note-body {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  /* Four lines of preview, then it stops. A card is not the editor. */
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.card__month {
+  margin: 0;
+  text-align: center;
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* ---- quick actions ------------------------------------------------------ */
+
+.quick {
+  display: grid;
+  gap: var(--s2);
+}
+
+.quick__btn {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  text-align: left;
+  transition: all var(--fast) var(--ease);
+}
+
+.quick__btn:hover {
+  border-color: var(--accent-dim);
+  color: var(--text);
+  background: var(--surface-raised);
+}
+
+.quick__btn span[aria-hidden] {
+  color: var(--accent);
+}
+
+/* ---- event colours ------------------------------------------------------ */
+
+/* Named, so each theme resolves them itself. A hex dot chosen against the
+   dark ground would be wrong in six palettes and invisible in High Contrast. */
+.dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.dot--sm {
+  width: 5px;
+  height: 5px;
+}
+
+.dot[data-colour="rose"] { background: var(--danger); }
+.dot[data-colour="azure"] { background: var(--accent-dim); }
+.dot[data-colour="mint"] { background: var(--mint); }
+.dot[data-colour="amber"] { background: var(--warn); }
+.dot[data-colour="violet"] { background: var(--violet); }
+.dot[data-colour="cyan"] { background: var(--accent); }
+
+.dot-choice {
+  cursor: pointer;
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid transparent;
+  border-radius: 50%;
+}
+
+.dot-choice input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.dot-choice:has(input:checked) {
+  border-color: var(--text);
+}
+
+.dot-choice:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---- events ------------------------------------------------------------- */
+
+.events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.event {
+  display: grid;
+  grid-template-columns: auto 11ch 9ch minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.event:hover {
+  background: var(--surface-raised);
+}
+
+.event__date {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.event__time {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.event__title {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+.event__alert {
+  color: var(--accent-dim);
+  font-size: 11px;
+}
+
+.event__remove,
+.checklist__remove {
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+  padding: 0 var(--s1);
+  transition: color var(--fast) var(--ease);
+}
+
+.event__remove:hover,
+.checklist__remove:hover {
+  color: var(--danger);
+}
+
+/* Been-and-gone events stay, dimmed. They are a record of what happened. */
+.events--past .event {
+  opacity: 0.55;
+}
+
+.events--compact .event {
+  grid-template-columns: auto 11ch 9ch minmax(0, 1fr);
+}
+
+/* ---- checklists --------------------------------------------------------- */
+
+.checklist {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.checklist__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+  font-size: 12px;
+}
+
+.checklist__row:hover {
+  background: var(--surface-raised);
+}
+
+.checklist__check {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: 1;
+  cursor: pointer;
+  min-width: 0;
+}
+
+.checklist__check input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.checklist__when {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+  flex-shrink: 0;
+}
+
+.checklist__text {
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+
+/* Struck through and dimmed, not hidden: a finished item is still a record
+   of what you did today. */
+.checklist__row[data-done] .checklist__text {
+  text-decoration: line-through;
+  color: var(--text-dim);
+}
+
+.checklist--tight .checklist__row {
+  padding: 1px var(--s2);
+}
+
+/* ---- forms -------------------------------------------------------------- */
+
+.row-form,
+.eventform {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+}
+
+.row-form .input,
+.eventform .input:not(.input--date):not(.input--time):not(.input--select) {
+  flex: 1;
+  min-width: 12ch;
+}
+
+.input--date,
+.input--time,
+.input--select {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+}
+
+.eventform__colours {
+  display: flex;
+  gap: 2px;
+  border: none;
+  margin: 0;
+  padding: 0;
+}
+
+.eventform__alert {
+  display: inline-flex;
+}
+
+/* ---- notes -------------------------------------------------------------- */
+
+.notes {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: var(--s4);
+  min-height: 460px;
+}
+
+.notes__list {
+  border-right: 1px solid var(--line);
+  padding-right: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+.notes__new {
+  width: 100%;
+}
+
+.notes__none {
+  margin: 0;
+}
+
+.notes__list ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1px;
+  overflow-y: auto;
+}
+
+.notes__link {
+  display: grid;
+  gap: 1px;
+  width: 100%;
+  padding: var(--s2) var(--s3);
+  border-left: 2px solid transparent;
+  border-radius: var(--radius);
+  text-align: left;
+  color: var(--text-muted);
+  transition: all var(--fast) var(--ease);
+}
+
+.notes__link:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.notes__link[aria-current="true"] {
+  border-left-color: var(--accent);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+
+.notes__link-title {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.notes__link-when {
+  font-size: 10px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.notes__editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+.notes__bar {
+  display: flex;
+  gap: var(--s2);
+  align-items: center;
+}
+
+.notes__title {
+  flex: 1;
+  font-size: 14px;
+}
+
+.notes__confirm {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.notes__confirm .hint {
+  margin: 0;
+  white-space: nowrap;
+}
+
+/* The line-numbered paper from the reference. The gutter is decorative and
+   aria-hidden; the textarea is the whole control. */
+.notes__paper {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  flex: 1;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--ground);
+  overflow: hidden;
+}
+
+.notes__gutter {
+  display: flex;
+  flex-direction: column;
+  padding: var(--s3) var(--s2);
+  border-right: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 12px;
+  line-height: 1.7;
+  text-align: right;
+  user-select: none;
+  min-width: 3.4ch;
+}
+
+.notes__body {
+  padding: var(--s3);
+  border: none;
+  background: none;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  resize: none;
+  min-height: 320px;
+}
+
+.notes__body:focus {
+  outline: none;
+}
+
+.notes__paper:focus-within {
+  border-color: var(--accent-dim);
+}
+
+/* ---- calendar ----------------------------------------------------------- */
+
+.cal {
+  display: grid;
+  gap: var(--s4);
+}
+
+.cal__bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s4);
+}
+
+.cal__month {
+  margin: 0;
+  font-size: 15px;
+  color: var(--text);
+  min-width: 10ch;
+  text-align: center;
+}
+
+.cal__step {
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1;
+  padding: var(--s1) var(--s3);
+  border-radius: var(--radius);
+  transition: all var(--fast) var(--ease);
+}
+
+.cal__step:hover {
+  color: var(--accent);
+  background: var(--surface-raised);
+}
+
+.cal__grid {
+  display: grid;
+  gap: 2px;
+}
+
+.cal__weekdays,
+.cal__week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+}
+
+.cal__weekday {
+  text-align: center;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-dim);
+  padding-bottom: var(--s2);
+}
+
+.cal__day {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 3px;
+  min-height: 46px;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  transition: all var(--fast) var(--ease);
+}
+
+.cal__day:hover {
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+/* The neighbouring months' days are present so the grid keeps its shape,
+   and dimmed so they do not read as this month's. */
+.cal__day[data-outside] {
+  color: var(--text-dim);
+  opacity: 0.5;
+}
+
+.cal__day[data-today] {
+  background: var(--accent);
+  color: var(--ground);
+  font-weight: 600;
+}
+
+.cal__day[aria-selected="true"]:not([data-today]) {
+  box-shadow: inset 0 0 0 1px var(--accent-dim);
+  color: var(--text);
+}
+
+.cal__dots {
+  display: flex;
+  gap: 2px;
+}
+
+.cal__grid--mini .cal__day--mini {
+  min-height: 22px;
+  font-size: 11px;
+  display: grid;
+  place-content: center;
+  border-radius: 3px;
+}
+
+.cal__day--mini[data-has]:not([data-today]) {
+  box-shadow: inset 0 0 0 1px var(--accent-dim);
+}
+
+.cal__day-detail {
+  display: grid;
+  gap: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+/* ---- the mail-alerts notice --------------------------------------------- */
+
+.notice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: start;
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--warn);
+  border-radius: var(--radius);
+  background: linear-gradient(90deg, var(--accent-glow), transparent 60%);
+}
+
+.notice__glyph {
+  color: var(--warn);
+  font-size: 15px;
+}
+
+.notice p {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--text-muted);
+}
+
+.notice p + p {
+  margin-top: var(--s3);
+}
+
+.notice strong {
+  color: var(--text);
+}
+
+@media (max-width: 900px) {
+  .dash {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr);
+  }
+  .dash__nav {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+  }
+  .notes {
+    grid-template-columns: 1fr;
+  }
+  .notes__list {
+    border-right: none;
+    border-bottom: 1px solid var(--line);
+    padding-right: 0;
+    padding-bottom: var(--s3);
+  }
+  .event {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+  }
+  .event__date,
+  .event__time {
+    grid-column: 2;
+  }
+}

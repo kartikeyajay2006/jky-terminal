@@ -1,16 +1,24 @@
 import { createTauriPlatform } from "./tauri";
 import { createWebPlatform } from "./web";
 import type { Platform } from "./types";
+export { EVENT_COLOURS } from "./types";
 
 export type {
   AiApi,
-  AuditEvent,
-  CommandSpec,
   AiMessage,
+  AuditEvent,
+  CollectionApi,
+  CommandSpec,
+  Event,
+  EventColour,
+  Note,
   Platform,
   ProviderStatus,
   PtyApi,
+  Reminder,
   SettingsApi,
+  StoreApi,
+  Todo,
   ToolRan,
   ToolRequest,
   VaultApi,

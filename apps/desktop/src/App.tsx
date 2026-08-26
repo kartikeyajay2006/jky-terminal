@@ -6,6 +6,7 @@ import { useChat } from "./app/chatStore";
 import { useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
 import { Assistant } from "./features/assistant/Assistant";
+import { Dashboard } from "./features/dashboard/Dashboard";
 import { Settings } from "./features/settings/Settings";
 import { Terminal } from "./features/terminal/Terminal";
 import { getPlatform } from "./platform";
@@ -77,6 +78,8 @@ export function App() {
     <Shell activeId={section} onSelect={setSection}>
       {section === "settings" ? (
         <Settings />
+      ) : section === "dashboard" ? (
+        <Dashboard />
       ) : section === "assistant" ? (
         <Assistant />
       ) : (

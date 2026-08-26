@@ -36,6 +36,8 @@
   --violet: #7c3aed;
   --magenta: #ff3cf0;
   --danger: #ff4d6a;
+  /* The sixth event colour. Every theme sets its own. */
+  --mint: #3ddc97;
   --warn: #ffb340;
 
   /* Type */
