@@ -28,6 +28,7 @@ describe("Shell", () => {
     render(<Shell>{null}</Shell>);
     const nav = screen.getByRole("navigation", { name: /workspace/i });
     expect(nav).toHaveTextContent(/terminal/i);
+    expect(nav).toHaveTextContent(/assistant/i);
     expect(nav).toHaveTextContent(/providers/i);
   });
 

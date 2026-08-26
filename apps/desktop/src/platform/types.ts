@@ -55,9 +55,37 @@ export interface PtyApi {
   attach(id: string): Promise<void>;
 }
 
+export interface AiMessage {
+  role: "user" | "assistant";
+  content: Array<
+    | { type: "text"; text: string }
+    | { type: "tool_use"; id: string; name: string; input: unknown }
+    | { type: "tool_result"; tool_use_id: string; content: string; is_error?: boolean }
+  >;
+}
+
+export interface ToolRequest {
+  id: string;
+  name: string;
+  command: string;
+  reason: string;
+  destructive: boolean;
+}
+
+export interface AiApi {
+  send(provider: string, conversation: AiMessage[]): Promise<void>;
+  approveTool(id: string): Promise<void>;
+  rejectTool(id: string): Promise<void>;
+  onDelta(handler: (text: string) => void): Promise<() => void>;
+  onToolRequest(handler: (req: ToolRequest) => void): Promise<() => void>;
+  onDone(handler: (stopReason: string) => void): Promise<() => void>;
+  onError(handler: (message: string) => void): Promise<() => void>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
   readonly settings: SettingsApi;
   readonly pty: PtyApi;
+  readonly ai: AiApi;
 }

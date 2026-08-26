@@ -2,7 +2,16 @@ import { createTauriPlatform } from "./tauri";
 import { createWebPlatform } from "./web";
 import type { Platform } from "./types";
 
-export type { Platform, ProviderStatus, VaultApi, PtyApi, SettingsApi } from "./types";
+export type {
+  AiApi,
+  AiMessage,
+  Platform,
+  ProviderStatus,
+  PtyApi,
+  SettingsApi,
+  ToolRequest,
+  VaultApi,
+} from "./types";
 export { createWebPlatform } from "./web";
 
 let instance: Platform | null = null;

@@ -7,6 +7,7 @@ export interface RailItem {
 
 export const RAIL_ITEMS: RailItem[] = [
   { id: "terminal", label: "Terminal", glyph: "❯" },
+  { id: "assistant", label: "Assistant", glyph: "✦" },
   { id: "providers", label: "Providers", glyph: "◈" },
 ];
 

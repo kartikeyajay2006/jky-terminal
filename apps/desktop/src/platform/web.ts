@@ -1,5 +1,13 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
-import type { Platform, ProviderStatus, PtyApi, SettingsApi, VaultApi } from "./types";
+import type {
+  AiApi,
+  Platform,
+  ProviderStatus,
+  PtyApi,
+  SettingsApi,
+  ToolRequest,
+  VaultApi,
+} from "./types";
 
 /**
  * Development-only backend.
@@ -73,5 +81,53 @@ export function createWebPlatform(): Platform {
     },
   };
 
-  return { kind: "web", vault, settings, pty };
+  // A fake assistant so the panel is developable in a browser. It streams a
+  // canned reply word by word, which is enough to exercise the same code path
+  // the real provider drives.
+  const aiHandlers = {
+    delta: [] as Array<(t: string) => void>,
+    tool: [] as Array<(r: ToolRequest) => void>,
+    done: [] as Array<(s: string) => void>,
+    error: [] as Array<(m: string) => void>,
+  };
+
+  const ai: AiApi = {
+    async send(_provider, conversation) {
+      const last = conversation[conversation.length - 1];
+      const first = last?.content[0];
+      const asked = first && first.type === "text" ? first.text : "";
+      for (const word of `You said: ${asked}`.split(" ")) {
+        aiHandlers.delta.forEach((h) => h(`${word} `));
+      }
+      aiHandlers.done.forEach((h) => h("end_turn"));
+    },
+    async approveTool() {},
+    async rejectTool() {},
+    async onDelta(h) {
+      aiHandlers.delta.push(h);
+      return () => {
+        aiHandlers.delta.splice(aiHandlers.delta.indexOf(h), 1);
+      };
+    },
+    async onToolRequest(h) {
+      aiHandlers.tool.push(h);
+      return () => {
+        aiHandlers.tool.splice(aiHandlers.tool.indexOf(h), 1);
+      };
+    },
+    async onDone(h) {
+      aiHandlers.done.push(h);
+      return () => {
+        aiHandlers.done.splice(aiHandlers.done.indexOf(h), 1);
+      };
+    },
+    async onError(h) {
+      aiHandlers.error.push(h);
+      return () => {
+        aiHandlers.error.splice(aiHandlers.error.indexOf(h), 1);
+      };
+    },
+  };
+
+  return { kind: "web", vault, settings, pty, ai };
 }

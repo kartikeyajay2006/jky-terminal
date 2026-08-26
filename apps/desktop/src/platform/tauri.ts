@@ -1,11 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
+  AiApi,
   ModelOption,
   Platform,
   ProviderStatus,
   PtyApi,
   SettingsApi,
+  ToolRequest,
   VaultApi,
 } from "./types";
 
@@ -83,5 +85,21 @@ export function createTauriPlatform(): Platform {
     },
   };
 
-  return { kind: "tauri", vault, settings, pty };
+  const ai: AiApi = {
+    async send(provider, conversation) {
+      await invoke<void>("ai_send", { provider, conversation });
+    },
+    async approveTool(id) {
+      await invoke<void>("ai_approve_tool", { callId: id });
+    },
+    async rejectTool(id) {
+      await invoke<void>("ai_reject_tool", { callId: id });
+    },
+    onDelta: (h) => listen<string>("ai:delta", (e) => h(e.payload)),
+    onToolRequest: (h) => listen<ToolRequest>("ai:tool_request", (e) => h(e.payload)),
+    onDone: (h) => listen<string>("ai:done", (e) => h(e.payload)),
+    onError: (h) => listen<string>("ai:error", (e) => h(e.payload)),
+  };
+
+  return { kind: "tauri", vault, settings, pty, ai };
 }

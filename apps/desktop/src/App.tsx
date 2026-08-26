@@ -3,6 +3,7 @@ import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
 import { useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
+import { Assistant } from "./features/assistant/Assistant";
 import { ProviderVault } from "./features/settings/ProviderVault";
 import { Terminal } from "./features/terminal/Terminal";
 import "./styles/tokens.css";
@@ -20,6 +21,8 @@ export function App() {
     <Shell activeId={section} onSelect={setSection}>
       {section === "providers" ? (
         <ProviderVault />
+      ) : section === "assistant" ? (
+        <Assistant />
       ) : (
         <div className="workspace">
           <TabBar />
