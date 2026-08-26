@@ -1,6 +1,9 @@
 use std::io::Read;
 
-use jky_pty::{PtySession, SpawnConfig, default_shell, home_dir, resolve_start_dir};
+use jky_pty::{
+    PtySession, SpawnConfig, default_shell, home_dir, install_launchers, launcher_dir,
+    resolve_start_dir,
+};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
@@ -24,6 +27,7 @@ pub fn pty_spawn(
     state: State<'_, AppState>,
     cols: u16,
     rows: u16,
+    banner: String,
 ) -> Result<String, String> {
     // Never current_dir(): that is wherever the binary was launched from,
     // which is the project folder in development and something arbitrary from
@@ -31,11 +35,19 @@ pub fn pty_spawn(
     let configured = state.settings.terminal_start_dir().unwrap_or(None);
     let cwd = resolve_start_dir(configured.as_deref(), home_dir());
 
+    // Refresh on every spawn so the banner the command prints matches the
+    // theme that was active when this terminal opened. A failure here must
+    // not stop a terminal from starting — the shell is the feature, the
+    // convenience command is not.
+    let bin_dir = launcher_dir(&state.config_dir);
+    let launchers_ok = install_launchers(&bin_dir, &banner).is_ok();
+
     let session = PtySession::spawn(SpawnConfig {
         shell: default_shell(),
         cwd,
         cols,
         rows,
+        path_prepend: launchers_ok.then_some(bin_dir),
     })
     .map_err(|e| e.to_string())?;
 

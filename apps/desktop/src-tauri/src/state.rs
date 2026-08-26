@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use jky_pty::PtyRegistry;
@@ -11,6 +11,8 @@ pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub settings: Arc<SettingsStore>,
     pub ptys: Arc<PtyRegistry>,
+    /// Kept so the pty layer can place its shell launchers under it.
+    pub config_dir: PathBuf,
 }
 
 impl AppState {
@@ -22,6 +24,7 @@ impl AppState {
             secrets: Arc::new(KeyringStore::new(KEYCHAIN_SERVICE)),
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
             ptys: Arc::new(PtyRegistry::new()),
+            config_dir: config_dir.to_path_buf(),
         }
     }
 }

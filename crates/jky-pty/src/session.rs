@@ -4,6 +4,7 @@ use std::sync::Mutex;
 
 use portable_pty::{Child, CommandBuilder, PtyPair, PtySize, native_pty_system};
 
+use crate::launcher::path_with;
 use crate::shell::{ShellSpec, default_shell, pty_env};
 use crate::start_dir::{home_dir, resolve_start_dir};
 
@@ -24,6 +25,10 @@ pub struct SpawnConfig {
     pub cwd: PathBuf,
     pub cols: u16,
     pub rows: u16,
+    /// Prepended to PATH for this session only, so `jky-terminal` resolves
+    /// inside our shells without installing anything system-wide or editing
+    /// the user's shell configuration.
+    pub path_prepend: Option<PathBuf>,
 }
 
 impl Default for SpawnConfig {
@@ -36,6 +41,7 @@ impl Default for SpawnConfig {
             cwd: resolve_start_dir(None, home_dir()),
             cols: 80,
             rows: 24,
+            path_prepend: None,
         }
     }
 }
@@ -73,6 +79,9 @@ impl PtySession {
         cmd.cwd(&config.cwd);
         for (k, v) in pty_env() {
             cmd.env(k, v);
+        }
+        if let Some(dir) = &config.path_prepend {
+            cmd.env("PATH", path_with(dir, std::env::var("PATH").ok()));
         }
 
         let child = pair.slave.spawn_command(cmd).map_err(|e| PtyError::Spawn {
@@ -148,7 +157,13 @@ mod tests {
     }
 
     fn config(shell: ShellSpec) -> SpawnConfig {
-        SpawnConfig { shell, cwd: std::env::temp_dir(), cols: 80, rows: 24 }
+        SpawnConfig {
+            shell,
+            cwd: std::env::temp_dir(),
+            cols: 80,
+            rows: 24,
+            path_prepend: None,
+        }
     }
 
     #[test]

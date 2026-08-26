@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildBanner, hexToAnsi, parseHex } from "./banner";
+import { buildBanner, hexToAnsi, parseHex, shade } from "./banner";
 
 const ESC = "\u001b";
 // Stripping ANSI is exactly a control-character match, so the rule is
@@ -44,9 +44,36 @@ describe("buildBanner", () => {
     expect(text.split("\r\n").length).toBeGreaterThan(5);
   });
 
-  it("states the product name and version", () => {
+  it("draws the bevel dimmer than the letter face", () => {
+    // The two-weight treatment is what makes the mark read as a logo rather
+    // than as ASCII art, so it is worth pinning. A single readable stop
+    // flattens the gradient to one colour, which makes the face and bevel
+    // values exact rather than position-dependent.
+    const flat = { accent: "#00e5ff", violet: "not-a-colour", magenta: "" };
+    const out = buildBanner({ cols: 100, version: "0.1.0", palette: flat });
+
+    const face = hexToAnsi([0, 229, 255]);
+    const bevel = hexToAnsi(shade([0, 229, 255], 0.42));
+    expect(face).not.toBe(bevel);
+    expect(out).toContain(face);
+    expect(out).toContain(bevel);
+  });
+
+  it("separates the mark from the hints with a rule", () => {
+    const text = strip(buildBanner({ cols: 60, version: "0.1.0", palette }));
+    expect(text).toContain("─");
+  });
+
+  it("right-aligns the version against the pane width", () => {
+    const lines = strip(buildBanner({ cols: 70, version: "0.1.0", palette })).split("\r\n");
+    const line = lines.find((l) => l.includes("v0.1.0"))!;
+    expect(line).toContain("Infinite Possibilities.");
+    expect(line.trimEnd().endsWith("v0.1.0")).toBe(true);
+  });
+
+  it("states the tagline and version", () => {
     const text = strip(buildBanner({ cols: 100, version: "0.1.0", palette }));
-    expect(text).toContain("JKY Terminal");
+    expect(text).toContain("Infinite Possibilities.");
     expect(text).toContain("0.1.0");
   });
 
@@ -76,14 +103,20 @@ describe("buildBanner", () => {
       palette: { accent: "", violet: "", magenta: "" },
     });
     expect(out).not.toContain(`${ESC}[38;2;`);
-    expect(strip(out)).toContain("JKY Terminal");
+    expect(strip(out)).toContain("Infinite Possibilities.");
   });
 
   it("falls back to a compact form in a narrow pane", () => {
     const wide = strip(buildBanner({ cols: 100, version: "0.1.0", palette }));
-    const narrow = strip(buildBanner({ cols: 30, version: "0.1.0", palette }));
+    // Below the wordmark's width plus its gutters, so the compact form applies.
+    const narrow = strip(buildBanner({ cols: 20, version: "0.1.0", palette }));
     expect(narrow.length).toBeLessThan(wide.length);
     expect(narrow).toContain("JKY Terminal");
+  });
+
+  it("describes shade as a darkening of the input", () => {
+    expect(shade([100, 200, 50], 0.5)).toEqual([50, 100, 25]);
+    expect(shade([10, 10, 10], 1)).toEqual([10, 10, 10]);
   });
 
   it("never emits a line wider than the pane", () => {

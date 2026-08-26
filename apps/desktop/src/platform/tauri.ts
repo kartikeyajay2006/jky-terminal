@@ -61,8 +61,8 @@ export function createTauriPlatform(): Platform {
   };
 
   const pty: PtyApi = {
-    async spawn(cols, rows) {
-      return invoke<string>("pty_spawn", { cols, rows });
+    async spawn(cols, rows, banner) {
+      return invoke<string>("pty_spawn", { cols, rows, banner });
     },
     async write(id, data) {
       await invoke<void>("pty_write", { id, data });

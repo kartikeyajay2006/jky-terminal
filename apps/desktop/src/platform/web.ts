@@ -48,7 +48,7 @@ export function createWebPlatform(): Platform {
   let ptyCounter = 0;
 
   const pty: PtyApi = {
-    async spawn() {
+    async spawn(_cols, _rows, _banner) {
       // Deliberately silent. The prompt is emitted when a handler subscribes,
       // not here: spawn resolves before onData registers, so anything emitted
       // at spawn time is written to nobody.

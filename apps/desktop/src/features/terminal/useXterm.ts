@@ -52,22 +52,23 @@ export function useXterm(container: React.RefObject<HTMLDivElement | null>) {
     // overlaid, so it lives in the scrollback like a real MOTD, and coloured
     // from the live theme tokens so it follows whatever theme is active.
     const tokens = getComputedStyle(document.documentElement);
-    xterm.write(
-      buildBanner({
-        cols: xterm.cols,
-        version: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.1.0",
-        palette: {
-          accent: tokens.getPropertyValue("--accent"),
-          violet: tokens.getPropertyValue("--violet"),
-          magenta: tokens.getPropertyValue("--magenta"),
-        },
-      }),
-    );
+    const banner = buildBanner({
+      cols: xterm.cols,
+      version: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.1.0",
+      palette: {
+        accent: tokens.getPropertyValue("--accent"),
+        violet: tokens.getPropertyValue("--violet"),
+        magenta: tokens.getPropertyValue("--magenta"),
+      },
+    });
+    xterm.write(banner);
 
     const platform = getPlatform();
 
     void (async () => {
-      const id = await platform.pty.spawn(xterm.cols, xterm.rows);
+      // The same banner goes to the backend, which stores it so the
+      // `jky-terminal` shell command can reprint exactly what was shown.
+      const id = await platform.pty.spawn(xterm.cols, xterm.rows, banner);
       if (cancelled) {
         // StrictMode unmounted us mid-spawn. Kill it rather than leaking a
         // shell process for the lifetime of the app.

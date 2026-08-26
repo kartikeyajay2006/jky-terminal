@@ -40,7 +40,8 @@ export interface SettingsApi {
 }
 
 export interface PtyApi {
-  spawn(cols: number, rows: number): Promise<string>;
+  /** `banner` is stored so the `jky-terminal` shell command can reprint it. */
+  spawn(cols: number, rows: number, banner: string): Promise<string>;
   write(id: string, data: string): Promise<void>;
   resize(id: string, cols: number, rows: number): Promise<void>;
   kill(id: string): Promise<void>;

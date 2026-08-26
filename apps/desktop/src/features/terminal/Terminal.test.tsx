@@ -60,7 +60,7 @@ describe("Terminal", () => {
 
   it("greets with the JKY wordmark before the shell speaks", async () => {
     render(<Terminal tabId="tab-1" />);
-    await waitFor(() => expect(writes.join("")).toContain("JKY Terminal"));
+    await waitFor(() => expect(writes.join("")).toContain("Infinite Possibilities."));
     expect(writes.join("")).toContain("\u2588");
   });
 

@@ -11,9 +11,12 @@
  * would put a literal outside the one file allowed to hold them.
  */
 
+import { WORDMARK, WORDMARK_WIDTH, isBevel } from "./wordmark";
+
 const ESC = "\u001b";
 const RESET = `${ESC}[0m`;
 const DIM = `${ESC}[2m`;
+const BOLD = `${ESC}[1m`;
 
 export type Rgb = [number, number, number];
 
@@ -60,7 +63,16 @@ function mix(a: Rgb, b: Rgb, t: number): Rgb {
   ];
 }
 
-/** Sample a three-stop ramp at `t` in [0, 1]. */
+/** Scale a colour toward black. Used to sink the bevel behind the face. */
+export function shade(colour: Rgb, factor: number): Rgb {
+  return [
+    Math.round(colour[0] * factor),
+    Math.round(colour[1] * factor),
+    Math.round(colour[2] * factor),
+  ];
+}
+
+/** Sample a multi-stop ramp at `t` in [0, 1]. */
 function ramp(stops: Rgb[], t: number): Rgb {
   if (stops.length === 1) return stops[0];
   const scaled = Math.min(0.999, Math.max(0, t)) * (stops.length - 1);
@@ -68,37 +80,36 @@ function ramp(stops: Rgb[], t: number): Rgb {
   return mix(stops[i], stops[i + 1], scaled - i);
 }
 
-/**
- * The JKY wordmark. Five rows of block characters, 22 columns wide.
- * Kept as data rather than generated, because a hand-set wordmark reads
- * better than anything an algorithm would produce at this size.
- */
-const WORDMARK = [
-  "    ██  ██  ██  ██  ██",
-  "    ██  ██ ██    ████ ",
-  "    ██  ████      ██  ",
-  "██  ██  ██ ██     ██  ",
-  " ████   ██  ██    ██  ",
-];
-
-const WORDMARK_WIDTH = 22;
-const GUTTER = 2;
+/** How far the bevel is sunk behind the letter face. */
+const BEVEL_SHADE = 0.42;
 
 /**
- * Colour a line by horizontal position, so the gradient runs across the
- * wordmark rather than down it. Whitespace is emitted uncoloured to keep the
- * escape count down — a terminal redrawing this on every resize benefits.
+ * Draw one row of the wordmark.
+ *
+ * The gradient runs diagonally rather than straight across: sampling on
+ * `x + y` means the ramp travels through the mark instead of banding each row
+ * identically, which is what makes it read as lit rather than striped.
  */
-function gradientLine(line: string, stops: Rgb[], width: number): string {
+function drawRow(row: string, rowIndex: number, rows: number, stops: Rgb[]): string {
   let out = "";
   let current = "";
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
+
+  for (let x = 0; x < row.length; x++) {
+    const ch = row[x];
     if (ch === " ") {
       out += ch;
       continue;
     }
-    const colour = hexToAnsi(ramp(stops, i / Math.max(1, width - 1)));
+
+    // Weight x more heavily than y so the ramp still reads left-to-right,
+    // with just enough vertical drift to feel like light falling across it.
+    const t =
+      (x / Math.max(1, WORDMARK_WIDTH - 1)) * 0.82 +
+      (rowIndex / Math.max(1, rows - 1)) * 0.18;
+
+    const base = ramp(stops, t);
+    const colour = hexToAnsi(isBevel(ch) ? shade(base, BEVEL_SHADE) : base);
+
     if (colour !== current) {
       out += colour;
       current = colour;
@@ -106,51 +117,6 @@ function gradientLine(line: string, stops: Rgb[], width: number): string {
     out += ch;
   }
   return out;
-}
-
-export function buildBanner({ cols, version, palette }: BannerOptions): string {
-  const stops = [palette.accent, palette.violet, palette.magenta]
-    .map(parseHex)
-    .filter((c): c is Rgb => c !== null);
-
-  const colour = (text: string) =>
-    stops.length > 0 ? `${hexToAnsi(stops[0])}${text}${RESET}` : text;
-
-  const lines: string[] = [];
-  const compact = cols < WORDMARK_WIDTH + GUTTER * 2;
-
-  if (compact) {
-    // No room for the wordmark. Say who we are and get out of the way.
-    lines.push("");
-    lines.push(colour("JKY Terminal") + DIM + ` ${version}` + RESET);
-    lines.push("");
-  } else {
-    const pad = " ".repeat(GUTTER);
-    lines.push("");
-    for (const row of WORDMARK) {
-      const drawn =
-        stops.length > 0 ? gradientLine(row, stops, WORDMARK_WIDTH) : row;
-      lines.push(pad + drawn + (stops.length > 0 ? RESET : ""));
-    }
-    lines.push("");
-    lines.push(
-      pad +
-        colour("JKY Terminal") +
-        DIM +
-        `  v${version}  ·  AI Terminal. Infinite Possibilities.` +
-        RESET,
-    );
-    lines.push(
-      pad + DIM + "Ctrl+T new terminal   Ctrl+W close   Ctrl+1-9 jump" + RESET,
-    );
-    lines.push("");
-  }
-
-  // Truncate on visible length, not raw length: an escape sequence occupies
-  // no columns, so measuring the raw string would clip real characters.
-  const fitted = lines.map((line) => fitToWidth(line, cols));
-
-  return fitted.join("\r\n") + `\r\n${RESET}\r\n`;
 }
 
 /** Cut a line to `width` visible characters, ignoring escape sequences. */
@@ -172,4 +138,56 @@ function fitToWidth(line: string, width: number): string {
     i++;
   }
   return out;
+}
+
+const GUTTER = 2;
+const TAGLINE = "AI Terminal. Infinite Possibilities.";
+const HINTS = "Ctrl+T  new terminal      Ctrl+W  close      Ctrl+1-9  switch";
+
+export function buildBanner({ cols, version, palette }: BannerOptions): string {
+  const stops = [palette.accent, palette.violet, palette.magenta]
+    .map(parseHex)
+    .filter((c): c is Rgb => c !== null);
+
+  const hasColour = stops.length > 0;
+  const tint = (text: string, colour?: Rgb) =>
+    hasColour ? `${hexToAnsi(colour ?? stops[0])}${text}${RESET}` : text;
+
+  const lines: string[] = [];
+  const pad = " ".repeat(GUTTER);
+  const inner = Math.max(0, cols - GUTTER * 2);
+  const compact = cols < WORDMARK_WIDTH + GUTTER * 2;
+
+  if (compact) {
+    // No room for the mark. Say who we are and get out of the way.
+    lines.push("");
+    lines.push(pad + tint(`${BOLD}JKY Terminal`) + DIM + ` v${version}` + RESET);
+    lines.push("");
+  } else {
+    lines.push("");
+    WORDMARK.forEach((row, i) => {
+      const drawn = hasColour ? drawRow(row, i, WORDMARK.length, stops) : row;
+      lines.push(pad + drawn + (hasColour ? RESET : ""));
+    });
+    lines.push("");
+
+    // Tagline left, version right, both on one line. Right-aligning the
+    // version against the pane width is what makes the block feel set rather
+    // than merely printed.
+    const versionLabel = `v${version}`;
+    const spacer = Math.max(1, inner - TAGLINE.length - versionLabel.length);
+    lines.push(
+      pad + tint(TAGLINE) + " ".repeat(spacer) + DIM + versionLabel + RESET,
+    );
+
+    // A hairline the full width of the text block, sunk well back so it reads
+    // as a division rather than as content.
+    const ruleColour = hasColour ? hexToAnsi(shade(stops[0], 0.34)) : "";
+    lines.push(pad + ruleColour + "─".repeat(inner) + (hasColour ? RESET : ""));
+
+    lines.push(pad + DIM + HINTS + RESET);
+    lines.push("");
+  }
+
+  return lines.map((line) => fitToWidth(line, cols)).join("\r\n") + `\r\n${RESET}\r\n`;
 }
