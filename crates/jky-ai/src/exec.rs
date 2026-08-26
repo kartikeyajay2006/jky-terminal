@@ -127,7 +127,7 @@ fn search_codebase(root: &Path, input: &serde_json::Value) -> ToolOutcome {
     };
 
     let mut hits = Vec::new();
-    walk(root, root, &mut |file| {
+    walk(root, &mut |file| {
         let Ok(text) = std::fs::read_to_string(file) else {
             return; // binary or unreadable; not an error, just not a match
         };
@@ -145,7 +145,8 @@ fn search_codebase(root: &Path, input: &serde_json::Value) -> ToolOutcome {
     ToolOutcome::ok(truncate(hits.join("\n")))
 }
 
-fn walk(root: &Path, dir: &Path, visit: &mut impl FnMut(&Path)) {
+/// Depth-first over the project, skipping directories nobody means to search.
+fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
@@ -157,7 +158,7 @@ fn walk(root: &Path, dir: &Path, visit: &mut impl FnMut(&Path)) {
             if SKIP_DIRS.contains(&name.as_str()) || name.starts_with('.') {
                 continue;
             }
-            walk(root, &path, visit);
+            walk(&path, visit);
         } else {
             visit(&path);
         }
