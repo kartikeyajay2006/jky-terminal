@@ -183,3 +183,38 @@
 .tabbar__add:hover {
   color: var(--accent);
 }
+
+.workspace {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100%;
+}
+
+.workspace__body {
+  position: relative;
+  min-height: 0;
+}
+
+.workspace__pane {
+  position: absolute;
+  inset: 0;
+}
+
+.workspace__pane[hidden] {
+  display: none;
+}
+
+.workspace__empty {
+  padding: var(--s6);
+  color: var(--text-dim);
+  font-family: var(--font-sans);
+}
+
+.workspace__empty kbd {
+  padding: 1px var(--s1);
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}

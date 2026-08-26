@@ -1,5 +1,5 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
-import type { Platform, ProviderStatus, SettingsApi, VaultApi } from "./types";
+import type { Platform, ProviderStatus, PtyApi, SettingsApi, VaultApi } from "./types";
 
 /**
  * Development-only backend.
@@ -42,5 +42,32 @@ export function createWebPlatform(): Platform {
     },
   };
 
-  return { kind: "web", vault, settings };
+  // A fake shell so the browser build and the test suite exercise the same
+  // interface as the desktop build, where a real pty exists.
+  const ptyHandlers = new Map<string, (chunk: string) => void>();
+  let ptyCounter = 0;
+
+  const pty: PtyApi = {
+    async spawn() {
+      // Deliberately silent. The prompt is emitted when a handler subscribes,
+      // not here: spawn resolves before onData registers, so anything emitted
+      // at spawn time is written to nobody.
+      return `web-pty-${++ptyCounter}`;
+    },
+    async write(id, data) {
+      // Echo input back the way a real pty does, and answer Enter with a prompt.
+      ptyHandlers.get(id)?.(data === "\r" ? "\r\njky $ " : data);
+    },
+    async resize() {},
+    async kill(id) {
+      ptyHandlers.delete(id);
+    },
+    async onData(id, handler) {
+      ptyHandlers.set(id, handler);
+      queueMicrotask(() => handler("jky $ "));
+      return () => ptyHandlers.delete(id);
+    },
+  };
+
+  return { kind: "web", vault, settings, pty };
 }

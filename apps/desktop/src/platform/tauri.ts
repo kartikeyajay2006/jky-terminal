@@ -1,5 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ModelOption, Platform, ProviderStatus, SettingsApi, VaultApi } from "./types";
+import { listen } from "@tauri-apps/api/event";
+import type {
+  ModelOption,
+  Platform,
+  ProviderStatus,
+  PtyApi,
+  SettingsApi,
+  VaultApi,
+} from "./types";
 
 /** Wire shape from Rust: serde emits snake_case. */
 interface RawProviderStatus {
@@ -52,5 +60,25 @@ export function createTauriPlatform(): Platform {
     },
   };
 
-  return { kind: "tauri", vault, settings };
+  const pty: PtyApi = {
+    async spawn(cols, rows) {
+      return invoke<string>("pty_spawn", { cols, rows });
+    },
+    async write(id, data) {
+      await invoke<void>("pty_write", { id, data });
+    },
+    async resize(id, cols, rows) {
+      await invoke<void>("pty_resize", { id, cols, rows });
+    },
+    async kill(id) {
+      await invoke<void>("pty_kill", { id });
+    },
+    async onData(id, handler) {
+      return listen<{ id: string; chunk: string }>(`pty:data:${id}`, (e) =>
+        handler(e.payload.chunk),
+      );
+    },
+  };
+
+  return { kind: "tauri", vault, settings, pty };
 }

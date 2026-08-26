@@ -39,8 +39,18 @@ export interface SettingsApi {
   setActiveProvider(provider: string): Promise<void>;
 }
 
+export interface PtyApi {
+  spawn(cols: number, rows: number): Promise<string>;
+  write(id: string, data: string): Promise<void>;
+  resize(id: string, cols: number, rows: number): Promise<void>;
+  kill(id: string): Promise<void>;
+  /** Subscribe to this session's output. Resolves to an unsubscribe function. */
+  onData(id: string, handler: (chunk: string) => void): Promise<() => void>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
   readonly settings: SettingsApi;
+  readonly pty: PtyApi;
 }

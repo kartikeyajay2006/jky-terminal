@@ -1873,11 +1873,10 @@ and the tests exercise the same interface:
 
   const pty: PtyApi = {
     async spawn() {
-      const id = `web-pty-${++ptyCounter}`;
-      // Give the fake shell a prompt so the terminal is visibly alive in the
-      // browser build, where no real pty exists.
-      queueMicrotask(() => ptyHandlers.get(id)?.("jky $ "));
-      return id;
+      // Deliberately silent. The prompt is emitted when a handler subscribes,
+      // not here: spawn resolves before onData registers, so anything emitted
+      // at spawn time is written to nobody.
+      return `web-pty-${++ptyCounter}`;
     },
     async write(id, data) {
       // Echo input back, like a real pty would, and answer Enter with a prompt.
@@ -1889,6 +1888,7 @@ and the tests exercise the same interface:
     },
     async onData(id, handler) {
       ptyHandlers.set(id, handler);
+      queueMicrotask(() => handler("jky $ "));
       return () => ptyHandlers.delete(id);
     },
   };
