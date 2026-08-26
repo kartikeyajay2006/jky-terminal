@@ -14,6 +14,7 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::state::{AppState, PendingTool, TurnState};
+use crate::audit_detail;
 use crate::turn::{MAX_ROUNDS, append_round, declined_result, needs_another_round};
 
 const SYSTEM_PROMPT: &str = "\
@@ -199,7 +200,7 @@ async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
 
                 let _ = ctx.audit.append(AuditEvent::new(
                     AuditKind::ToolCall,
-                    &format!("{name} proposed: {command}"),
+                    &audit_detail::tool_proposed(name, &command),
                 ));
 
                 turn.awaiting.insert(
@@ -222,7 +223,7 @@ async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
             let outcome = execute_read_tool(&ctx.root, name, input);
             let _ = ctx.audit.append(AuditEvent::new(
                 AuditKind::ToolCall,
-                &format!("{name} {input} -> {}", if outcome.is_error { "error" } else { "ok" }),
+                &audit_detail::tool_ran(name, input, outcome.is_error),
             ));
             let _ = ctx.app.emit(
                 "ai:tool_ran",
@@ -311,11 +312,11 @@ pub async fn ai_send(
 
     let _ = ctx.audit.append(AuditEvent::new(
         AuditKind::SecretRead,
-        &format!("read the {provider} key to send a request"),
+        &audit_detail::secret_read(&provider),
     ));
     let _ = ctx.audit.append(AuditEvent::new(
         AuditKind::ProviderRequest,
-        &format!("{provider} / {}: {} messages", ctx.model, conversation.len()),
+        &audit_detail::provider_request(&provider, &ctx.model, conversation.len()),
     ));
 
     state.cancelled.store(false, Ordering::Relaxed);
@@ -365,7 +366,7 @@ async fn decide(
         let outcome = run_approved_command(&ctx.root, &pending.command, COMMAND_TIMEOUT);
         let _ = ctx.audit.append(AuditEvent::new(
             AuditKind::CommandRun,
-            &format!("approved {}: {}", pending.name, pending.command),
+            &audit_detail::command(&pending.command),
         ));
         let _ = app.emit(
             "ai:tool_ran",
@@ -384,7 +385,7 @@ async fn decide(
     } else {
         let _ = ctx.audit.append(AuditEvent::new(
             AuditKind::CommandRejected,
-            &format!("declined {}: {}", pending.name, pending.command),
+            &audit_detail::command(&pending.command),
         ));
         declined_result(&call_id)
     };

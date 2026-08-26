@@ -191,57 +191,113 @@
   margin: 0;
 }
 
-.activity {
+/* The activity log, as a terminal stream.
+
+   The underlying file is JSONL you could tail, so this is styled as though
+   you were tailing it: mono, inset, one line per event. A table would dress
+   it up as something more processed than it is. */
+.stream {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ground);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  padding: var(--s3) 0;
+  max-height: 60vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.stream__day + .stream__day {
+  margin-top: var(--s4);
+}
+
+/* `── today ──────────────` — a rule with the day sitting in it. */
+.stream__rule {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: 0 var(--s3);
+  margin-bottom: var(--s1);
+  color: var(--text-dim);
+}
+
+.stream__rule::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+.stream__label {
+  text-transform: lowercase;
+  letter-spacing: 0.08em;
+}
+
+.stream__rows {
   list-style: none;
   margin: 0;
   padding: 0;
-  display: grid;
-  gap: 1px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  overflow: hidden;
 }
 
-.activity__row {
+.stream__row {
   display: grid;
-  grid-template-columns: 150px 120px minmax(0, 1fr);
-  gap: var(--s3);
-  padding: var(--s2) var(--s3);
-  background: var(--surface);
-  font-size: 12px;
+  grid-template-columns: 8ch 1.5ch 9ch minmax(0, 1fr);
+  gap: var(--s2);
+  padding: 1px var(--s3);
   align-items: baseline;
 }
 
-.activity__when {
+/* Following a line across four columns is easier with something under it. */
+.stream__row:hover {
+  background: var(--surface);
+}
+
+.stream__time {
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
 }
 
-.activity__kind {
+.stream__glyph,
+.stream__kind {
   color: var(--text-muted);
 }
 
-/* The two entries worth spotting at a glance. */
-.activity__row[data-kind="CommandRun"] .activity__kind {
-  color: var(--warn);
-}
-
-.activity__row[data-kind="CommandRejected"] .activity__kind {
-  color: var(--danger);
-}
-
-.activity__row[data-kind="SecretRead"] .activity__kind {
+.stream__row[data-tone="accent"] .stream__glyph,
+.stream__row[data-tone="accent"] .stream__kind {
   color: var(--accent);
 }
 
-.activity__detail {
+.stream__row[data-tone="warn"] .stream__glyph,
+.stream__row[data-tone="warn"] .stream__kind {
+  color: var(--warn);
+}
+
+/* A declined command is the one entry you want to find without looking. */
+.stream__row[data-tone="danger"] .stream__glyph,
+.stream__row[data-tone="danger"] .stream__kind {
+  color: var(--danger);
+}
+
+.stream__detail {
   color: var(--text);
   overflow-wrap: anywhere;
 }
 
+/* Narrow: the time keeps its column and the rest wraps beneath the glyph,
+   rather than four columns each squeezed to a few characters. */
 @media (max-width: 720px) {
-  .activity__row {
-    grid-template-columns: minmax(0, 1fr);
-    gap: 2px;
+  .stream__row {
+    grid-template-columns: 8ch 1.5ch minmax(0, 1fr);
+    padding: var(--s1) var(--s3);
+  }
+
+  .stream__kind {
+    grid-column: 3;
+  }
+
+  .stream__detail {
+    grid-column: 3;
   }
 }
