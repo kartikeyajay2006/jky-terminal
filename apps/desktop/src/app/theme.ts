@@ -4,6 +4,7 @@ export type ThemeId =
   | "nord"
   | "solarized"
   | "light"
+  | "gold"
   | "contrast";
 
 export interface ThemeSpec {
@@ -19,6 +20,7 @@ export const THEMES: ThemeSpec[] = [
   { id: "nord", label: "Nord", swatch: "#88c0d0" },
   { id: "solarized", label: "Solarized", swatch: "#2aa198" },
   { id: "light", label: "Light", swatch: "#0f62fe" },
+  { id: "gold", label: "Gold", swatch: "#9a6d0a" },
   { id: "contrast", label: "High Contrast", swatch: "#ffffff" },
 ];
 

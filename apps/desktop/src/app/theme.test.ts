@@ -14,6 +14,7 @@ describe("theme", () => {
       "nord",
       "solarized",
       "light",
+      "gold",
       "contrast",
     ]);
   });

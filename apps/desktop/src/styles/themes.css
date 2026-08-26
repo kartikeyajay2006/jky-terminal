@@ -99,3 +99,34 @@
   --danger: #ff8080;
   --warn: #ffd24d;
 }
+
+/*
+ * Gold: a warm light theme.
+ *
+ * The ground is parchment rather than white — pure white under a dark-room
+ * setup is the thing people turn light themes off to avoid. Accents run gold
+ * through amber to bronze, which keeps the banner gradient harmonious instead
+ * of merely tinted.
+ *
+ * The golds are darker than they look in a swatch: gold at its most golden is
+ * around 3:1 on a light ground, which fails as text. These are chosen for
+ * contrast first and hue second.
+ */
+:root[data-theme="gold"] {
+  --ground: #fbf7ef;
+  --surface: #fffdf8;
+  --surface-raised: #ffffff;
+  --line: #e8dfc9;
+  --line-strong: #cfc1a0;
+  --text-dim: #7a6c50;
+  --text-muted: #5f5540;
+  --text: #2e2617;
+  --accent: #8a6108;
+  --accent-dim: #6d4c06;
+  --accent-glow: rgba(138, 97, 8, 0.16);
+  --violet: #a34608;
+  --magenta: #8a4b0d;
+  --danger: #a91414;
+  --warn: #8a5a05;
+  color-scheme: light;
+}

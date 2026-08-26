@@ -1,6 +1,7 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { THEMES } from "../../app/theme";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import { Settings } from "./Settings";
 
@@ -143,7 +144,7 @@ describe("Settings", () => {
   it("offers every theme as a swatch, not only in the dropdown", () => {
     render(<Settings />);
     const swatches = screen.getByRole("group", { name: /theme previews/i });
-    expect(within(swatches).getAllByRole("button")).toHaveLength(6);
+    expect(within(swatches).getAllByRole("button")).toHaveLength(THEMES.length);
   });
 
   it("points at the accessible theme for anyone struggling to read the others", () => {
