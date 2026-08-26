@@ -10,6 +10,7 @@ import { createWebPlatform, __setPlatformForTests } from "../platform";
 import { ProviderVault } from "../features/settings/ProviderVault";
 import { Settings } from "../features/settings/Settings";
 import { Assistant } from "../features/assistant/Assistant";
+import { ConversationHeader } from "../features/assistant/ConversationHeader";
 import { SessionList } from "../features/assistant/SessionList";
 import { Welcome } from "../features/assistant/Welcome";
 import { useChat } from "./chatStore";
@@ -65,6 +66,13 @@ describe("accessibility", () => {
 
   it("the assistant's empty state has no violations", async () => {
     const { container } = render(<Welcome onPick={() => {}} />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the conversation header has no violations", async () => {
+    useChat.getState().newSession();
+    useChat.getState().addTurn("user", "a question");
+    const { container } = render(<ConversationHeader />);
     expect(await axe(container)).toHaveNoViolations();
   });
 

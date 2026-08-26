@@ -3,6 +3,7 @@ import { useAsk } from "../../app/askStore";
 import { useChat } from "../../app/chatStore";
 import { getPlatform, type AiMessage } from "../../platform";
 import { describeError } from "./errors";
+import { ConversationHeader } from "./ConversationHeader";
 import { SessionList } from "./SessionList";
 import { ToolCard } from "./ToolCard";
 import { Welcome } from "./Welcome";
@@ -65,6 +66,7 @@ export function Assistant() {
   return (
     <div className="chat">
       <SessionList />
+      <ConversationHeader />
 
       <div className="chat__log">
         {turns.length === 0 && tools.length === 0 ? (

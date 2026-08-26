@@ -103,13 +103,39 @@ mod tests {
 
     #[test]
     fn an_absolute_path_outside_the_project_is_refused() {
+        // A real directory that exists on every platform, rather than
+        // /etc/passwd: on Windows that path does not exist, canonicalize
+        // fails first, and the test would pass for the wrong reason while
+        // proving nothing about containment.
         let dir = project();
-        for attempt in ["/etc/passwd", "/", "/home"] {
+        let outside = TempDir::new().unwrap();
+        fs::write(outside.path().join("secret"), "s3cret").unwrap();
+
+        for attempt in [
+            outside.path().join("secret").to_string_lossy().to_string(),
+            outside.path().to_string_lossy().to_string(),
+        ] {
             assert!(
-                matches!(resolve_within(dir.path(), attempt), Err(SandboxError::Escape(_))),
+                matches!(resolve_within(dir.path(), &attempt), Err(SandboxError::Escape(_))),
                 "absolute path not refused: {attempt}"
             );
         }
+    }
+
+    #[test]
+    fn a_readable_file_outside_the_project_is_still_refused() {
+        // The property that matters: not "the path is odd" but "this file is
+        // readable and must not be reachable through a tool".
+        let dir = project();
+        let outside = TempDir::new().unwrap();
+        let secret = outside.path().join("id_rsa");
+        fs::write(&secret, "PRIVATE KEY").unwrap();
+        assert!(secret.is_file(), "the fixture must actually exist");
+
+        assert!(matches!(
+            resolve_within(dir.path(), &secret.to_string_lossy()),
+            Err(SandboxError::Escape(_))
+        ));
     }
 
     #[test]
@@ -169,7 +195,10 @@ mod tests {
         // Errors are shown to the model. Telling it where the project sits on
         // disk hands it the information it needs to aim the next attempt.
         let dir = project();
-        let err = resolve_within(dir.path(), "/etc/passwd").unwrap_err();
+        let outside = TempDir::new().unwrap();
+        fs::write(outside.path().join("secret"), "s").unwrap();
+        let err = resolve_within(dir.path(), &outside.path().join("secret").to_string_lossy())
+            .unwrap_err();
         let text = err.to_string();
         assert!(
             !text.contains(&dir.path().to_string_lossy().to_string()),

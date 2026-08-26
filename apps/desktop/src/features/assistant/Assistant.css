@@ -319,3 +319,70 @@
     display: none;
   }
 }
+
+.convo {
+  grid-area: convo;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  min-width: 0;
+}
+
+.convo__title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.convo__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex-shrink: 0;
+}
+
+.convo__ask {
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.convo__action {
+  padding: 2px var(--s2);
+  border-radius: 3px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.convo__action:hover {
+  color: var(--text);
+}
+
+.convo__action--danger:hover {
+  color: var(--danger);
+}
+
+/* The header sits between the sessions rail and the log. */
+.chat {
+  grid-template-areas:
+    "sessions convo"
+    "sessions log"
+    "sessions compose";
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
+@media (max-width: 720px) {
+  .chat {
+    grid-template-areas:
+      "convo"
+      "log"
+      "compose";
+  }
+}

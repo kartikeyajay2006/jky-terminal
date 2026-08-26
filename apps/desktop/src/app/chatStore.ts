@@ -34,6 +34,8 @@ interface ChatState {
   newSession: () => string;
   switchTo: (id: string) => void;
   deleteSession: (id: string) => void;
+  /** Empty a conversation without removing it. */
+  clearSession: (id: string) => void;
   addTurn: (role: Turn["role"], text: string) => void;
   appendToLastAssistant: (text: string) => void;
   setBusy: (busy: boolean) => void;
@@ -88,6 +90,19 @@ export const useChat = create<ChatState>((set, get) => ({
       activeId: activeId === id ? (remaining[remaining.length - 1]?.id ?? null) : activeId,
     });
   },
+
+  clearSession: (id) =>
+    set((s) => ({
+      sessions: s.sessions.map((session) =>
+        // The title goes back to untitled: keeping the old one would name an
+        // empty conversation after a question it no longer contains.
+        session.id === id
+          ? { ...session, turns: [], title: UNTITLED }
+          : session,
+      ),
+      tools: [],
+      error: null,
+    })),
 
   addTurn: (role, text) => {
     // Asking a question should not require choosing to start a session first.

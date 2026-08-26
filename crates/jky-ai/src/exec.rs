@@ -193,10 +193,27 @@ mod tests {
 
     #[test]
     fn read_file_refuses_a_path_outside_the_project() {
+        // A file that genuinely exists outside the project, so the refusal is
+        // about containment rather than about the path being missing. On
+        // Windows /etc/passwd does not exist and would pass for the wrong
+        // reason.
         let dir = project();
-        let out = run(&dir, "read_file", serde_json::json!({"path": "/etc/passwd"}));
+        let outside = TempDir::new().unwrap();
+        let secret = outside.path().join("id_rsa");
+        fs::write(&secret, "PRIVATE KEY").unwrap();
+
+        let out = run(
+            &dir,
+            "read_file",
+            serde_json::json!({"path": secret.to_string_lossy()}),
+        );
         assert!(out.is_error);
-        assert!(out.text.to_lowercase().contains("outside the project"));
+        assert!(
+            out.text.to_lowercase().contains("outside the project"),
+            "wrong refusal reason: {}",
+            out.text
+        );
+        assert!(!out.text.contains("PRIVATE KEY"), "the file was read anyway");
     }
 
     #[test]
@@ -249,8 +266,16 @@ mod tests {
     #[test]
     fn list_dir_refuses_a_path_outside_the_project() {
         let dir = project();
-        let out = run(&dir, "list_dir", serde_json::json!({"path": "/etc"}));
+        let outside = TempDir::new().unwrap();
+        fs::write(outside.path().join("secret"), "s").unwrap();
+
+        let out = run(
+            &dir,
+            "list_dir",
+            serde_json::json!({"path": outside.path().to_string_lossy()}),
+        );
         assert!(out.is_error);
+        assert!(!out.text.contains("secret"), "the directory was listed anyway");
     }
 
     #[test]
