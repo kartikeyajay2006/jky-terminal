@@ -1,6 +1,6 @@
 use std::io::Read;
 
-use jky_pty::{PtySession, SpawnConfig, default_shell};
+use jky_pty::{PtySession, SpawnConfig, default_shell, home_dir, resolve_start_dir};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
@@ -25,9 +25,15 @@ pub fn pty_spawn(
     cols: u16,
     rows: u16,
 ) -> Result<String, String> {
+    // Never current_dir(): that is wherever the binary was launched from,
+    // which is the project folder in development and something arbitrary from
+    // an installed shortcut. A configured directory wins, then home.
+    let configured = state.settings.terminal_start_dir().unwrap_or(None);
+    let cwd = resolve_start_dir(configured.as_deref(), home_dir());
+
     let session = PtySession::spawn(SpawnConfig {
         shell: default_shell(),
-        cwd: std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir()),
+        cwd,
         cols,
         rows,
     })

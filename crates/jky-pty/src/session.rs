@@ -5,6 +5,7 @@ use std::sync::Mutex;
 use portable_pty::{Child, CommandBuilder, PtyPair, PtySize, native_pty_system};
 
 use crate::shell::{ShellSpec, default_shell, pty_env};
+use crate::start_dir::{home_dir, resolve_start_dir};
 
 #[derive(Debug, thiserror::Error)]
 pub enum PtyError {
@@ -29,7 +30,10 @@ impl Default for SpawnConfig {
     fn default() -> Self {
         Self {
             shell: default_shell(),
-            cwd: std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir()),
+            // Not current_dir(): that is wherever the binary was launched
+            // from, which is the project folder in development and something
+            // arbitrary from an installed shortcut.
+            cwd: resolve_start_dir(None, home_dir()),
             cols: 80,
             rows: 24,
         }

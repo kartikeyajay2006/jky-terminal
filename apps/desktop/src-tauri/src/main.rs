@@ -24,6 +24,7 @@ fn main() {
             vault::vault_list_providers,
             settings::settings_set_selected_model,
             settings::settings_set_active_provider,
+            settings::settings_set_terminal_start_dir,
             pty::pty_spawn,
             pty::pty_write,
             pty::pty_resize,

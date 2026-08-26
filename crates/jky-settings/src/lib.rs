@@ -29,6 +29,11 @@ pub struct Settings {
     /// The provider the assistant currently talks to.
     #[serde(default)]
     pub active_provider: Option<String>,
+
+    /// Where new terminals open. None means the user's home directory.
+    /// May contain a leading `~`, which is expanded when the pty is spawned.
+    #[serde(default)]
+    pub terminal_start_dir: Option<String>,
 }
 
 pub struct SettingsStore {
@@ -80,6 +85,23 @@ impl SettingsStore {
         let mut s = self.load()?;
         s.active_provider = Some(provider.to_string());
         self.save(&s)
+    }
+
+    /// Set where new terminals open. An empty or whitespace-only value clears
+    /// the preference, which returns new terminals to the home directory.
+    pub fn set_terminal_start_dir(&self, dir: &str) -> Result<(), SettingsError> {
+        let mut s = self.load()?;
+        let trimmed = dir.trim();
+        s.terminal_start_dir = if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        };
+        self.save(&s)
+    }
+
+    pub fn terminal_start_dir(&self) -> Result<Option<String>, SettingsError> {
+        Ok(self.load()?.terminal_start_dir)
     }
 }
 
@@ -179,6 +201,37 @@ mod tests {
             SettingsStore::new(&path).selected_model("openai").unwrap().as_deref(),
             Some("gpt-4o")
         );
+    }
+
+    #[test]
+    fn the_terminal_start_directory_round_trips() {
+        let (_d, s) = store();
+        s.set_terminal_start_dir("~/projects").unwrap();
+        assert_eq!(s.terminal_start_dir().unwrap().as_deref(), Some("~/projects"));
+    }
+
+    #[test]
+    fn clearing_the_start_directory_returns_to_the_default() {
+        let (_d, s) = store();
+        s.set_terminal_start_dir("~/projects").unwrap();
+        s.set_terminal_start_dir("   ").unwrap();
+        assert_eq!(s.terminal_start_dir().unwrap(), None);
+    }
+
+    #[test]
+    fn the_start_directory_is_trimmed_before_storing() {
+        // A path pasted from a file manager often carries trailing whitespace.
+        let (_d, s) = store();
+        s.set_terminal_start_dir("  ~/projects  ").unwrap();
+        assert_eq!(s.terminal_start_dir().unwrap().as_deref(), Some("~/projects"));
+    }
+
+    #[test]
+    fn setting_the_start_directory_leaves_model_choices_alone() {
+        let (_d, s) = store();
+        s.set_selected_model("anthropic", "claude-opus-5").unwrap();
+        s.set_terminal_start_dir("~/projects").unwrap();
+        assert_eq!(s.selected_model("anthropic").unwrap().as_deref(), Some("claude-opus-5"));
     }
 
     #[test]

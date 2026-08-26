@@ -9,3 +9,6 @@ authors.workspace = true
 portable-pty.workspace = true
 thiserror.workspace = true
 serde.workspace = true
+
+[dev-dependencies]
+tempfile = "3"

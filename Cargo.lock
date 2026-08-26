@@ -1936,6 +1936,7 @@ version = "0.1.0"
 dependencies = [
  "portable-pty",
  "serde",
+ "tempfile",
  "thiserror 2.0.20",
 ]
 

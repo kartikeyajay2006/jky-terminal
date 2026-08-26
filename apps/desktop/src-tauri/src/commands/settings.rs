@@ -28,6 +28,13 @@ pub(crate) fn set_active_provider_logic(
     store.set_active_provider(id.as_key()).map_err(|e| e.to_string())
 }
 
+pub(crate) fn set_terminal_start_dir_logic(
+    store: &SettingsStore,
+    dir: &str,
+) -> Result<(), String> {
+    store.set_terminal_start_dir(dir).map_err(|e| e.to_string())
+}
+
 // --- IPC surface ------------------------------------------------------------
 
 #[tauri::command]
@@ -45,6 +52,14 @@ pub fn settings_set_active_provider(
     provider: String,
 ) -> Result<(), String> {
     set_active_provider_logic(state.settings.as_ref(), &provider)
+}
+
+#[tauri::command]
+pub fn settings_set_terminal_start_dir(
+    state: State<'_, AppState>,
+    dir: String,
+) -> Result<(), String> {
+    set_terminal_start_dir_logic(state.settings.as_ref(), &dir)
 }
 
 #[cfg(test)]
@@ -97,6 +112,21 @@ mod tests {
     fn an_unknown_provider_is_rejected() {
         let (_d, s) = store();
         assert!(set_selected_model_logic(&s, "skynet", "gpt-4o").is_err());
+    }
+
+    #[test]
+    fn a_terminal_start_directory_persists() {
+        let (_d, s) = store();
+        set_terminal_start_dir_logic(&s, "~/projects").unwrap();
+        assert_eq!(s.terminal_start_dir().unwrap().as_deref(), Some("~/projects"));
+    }
+
+    #[test]
+    fn clearing_the_start_directory_returns_new_terminals_to_home() {
+        let (_d, s) = store();
+        set_terminal_start_dir_logic(&s, "~/projects").unwrap();
+        set_terminal_start_dir_logic(&s, "").unwrap();
+        assert_eq!(s.terminal_start_dir().unwrap(), None);
     }
 
     #[test]

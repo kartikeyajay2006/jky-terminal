@@ -94,6 +94,7 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "pty_write".to_string(),
         "settings_set_active_provider".to_string(),
         "settings_set_selected_model".to_string(),
+        "settings_set_terminal_start_dir".to_string(),
         "vault_delete_secret".to_string(),
         "vault_has_secret".to_string(),
         "vault_list_providers".to_string(),

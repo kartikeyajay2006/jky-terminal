@@ -23,10 +23,13 @@ pub fn resolve_shell(shell_var: Option<String>, comspec_var: Option<String>) -> 
         if let Some(comspec) = non_empty(comspec_var) {
             return ShellSpec { program: comspec, args: vec![] };
         }
-        return ShellSpec {
+        // Tail expression, not `return`: clippy's needless_return fires here,
+        // and this branch only compiles on Windows so the lint is invisible
+        // on any other machine.
+        ShellSpec {
             program: "powershell.exe".to_string(),
             args: vec!["-NoLogo".to_string()],
-        };
+        }
     }
 
     #[cfg(not(windows))]
