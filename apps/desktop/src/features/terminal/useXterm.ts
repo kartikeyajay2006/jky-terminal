@@ -3,6 +3,7 @@ import { Terminal as Xterm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { getPlatform } from "../../platform";
+import { buildBanner } from "./banner";
 
 /**
  * Owns one xterm instance bound to one pty session.
@@ -46,6 +47,22 @@ export function useXterm(container: React.RefObject<HTMLDivElement | null>) {
     } catch {
       /* container not measurable yet; the resize observer will retry */
     }
+
+    // Greet before the shell speaks. Written into the pty stream rather than
+    // overlaid, so it lives in the scrollback like a real MOTD, and coloured
+    // from the live theme tokens so it follows whatever theme is active.
+    const tokens = getComputedStyle(document.documentElement);
+    xterm.write(
+      buildBanner({
+        cols: xterm.cols,
+        version: typeof __APP_VERSION__ === "string" ? __APP_VERSION__ : "0.1.0",
+        palette: {
+          accent: tokens.getPropertyValue("--accent"),
+          violet: tokens.getPropertyValue("--violet"),
+          magenta: tokens.getPropertyValue("--magenta"),
+        },
+      }),
+    );
 
     const platform = getPlatform();
 

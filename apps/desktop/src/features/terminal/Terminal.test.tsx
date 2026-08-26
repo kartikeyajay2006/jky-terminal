@@ -58,6 +58,12 @@ describe("Terminal", () => {
     expect(await screen.findByRole("application", { name: /terminal/i })).toBeInTheDocument();
   });
 
+  it("greets with the JKY wordmark before the shell speaks", async () => {
+    render(<Terminal tabId="tab-1" />);
+    await waitFor(() => expect(writes.join("")).toContain("JKY Terminal"));
+    expect(writes.join("")).toContain("\u2588");
+  });
+
   it("writes pty output into the terminal", async () => {
     render(<Terminal tabId="tab-1" />);
     await waitFor(() => expect(writes.join("")).toContain("jky $"));
