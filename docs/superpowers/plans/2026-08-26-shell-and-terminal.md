@@ -1356,8 +1356,10 @@ use crate::shell::{ShellSpec, default_shell, pty_env};
 pub enum PtyError {
     #[error("could not open a pty: {0}")]
     Open(String),
-    #[error("could not start '{program}': {source}")]
-    Spawn { program: String, source: String },
+    // Not named `source`: thiserror treats a field with that name as a nested
+    // std::error::Error and will not accept a String.
+    #[error("could not start '{program}': {reason}")]
+    Spawn { program: String, reason: String },
     #[error("pty io error: {0}")]
     Io(String),
 }
@@ -1381,7 +1383,11 @@ impl Default for SpawnConfig {
 }
 
 pub struct PtySession {
-    pair: PtyPair,
+    // PtyPair holds Send-but-not-Sync trait objects, and this session lives in
+    // Tauri's managed state, which requires Sync. A Mutex is a real guarantee;
+    // an `unsafe impl Sync` would only assert that the pty implementations are
+    // internally thread-safe, which their types deliberately do not promise.
+    pair: Mutex<PtyPair>,
     child: Mutex<Box<dyn Child + Send + Sync>>,
     writer: Mutex<Box<dyn Write + Send>>,
 }
@@ -1411,7 +1417,7 @@ impl PtySession {
 
         let child = pair.slave.spawn_command(cmd).map_err(|e| PtyError::Spawn {
             program: config.shell.program.clone(),
-            source: e.to_string(),
+            reason: e.to_string(),
         })?;
 
         let writer = pair
@@ -1457,11 +1463,6 @@ impl PtySession {
         Ok(())
     }
 }
-
-// The pty handles are safe to share; the interior mutability above guards the
-// writer and the child handle.
-unsafe impl Send for PtySession {}
-unsafe impl Sync for PtySession {}
 ```
 
 - [ ] **Step 9: Write the registry**
