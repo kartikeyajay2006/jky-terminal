@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { TabBar } from "./TabBar";
@@ -30,13 +30,34 @@ describe("TabBar", () => {
     expect(useTabs.getState().activeId).toBe(a);
   });
 
-  it("closes a tab from its close control without focusing it first", async () => {
+  it("closes a tab by clicking its close glyph", async () => {
     useTabs.getState().openTab("terminal", "Terminal 1");
     useTabs.getState().openTab("terminal", "Terminal 2");
     render(<TabBar />);
 
-    await userEvent.setup().click(screen.getByRole("button", { name: /close terminal 1/i }));
+    const tab = screen.getByRole("tab", { name: /Terminal 1/ });
+    await userEvent.setup().click(within(tab).getByText("\u00d7"));
     expect(useTabs.getState().tabs.map((t) => t.title)).toEqual(["Terminal 2"]);
+  });
+
+  it("closes the focused tab with Delete", async () => {
+    useTabs.getState().openTab("terminal", "Terminal 1");
+    useTabs.getState().openTab("terminal", "Terminal 2");
+    render(<TabBar />);
+
+    const user = userEvent.setup();
+    screen.getByRole("tab", { name: /Terminal 1/ }).focus();
+    await user.keyboard("{Delete}");
+    expect(useTabs.getState().tabs.map((t) => t.title)).toEqual(["Terminal 2"]);
+  });
+
+  it("advertises the delete shortcut to assistive technology", () => {
+    useTabs.getState().openTab("terminal", "Terminal 1");
+    render(<TabBar />);
+    expect(screen.getByRole("tab", { name: /Terminal 1/ })).toHaveAttribute(
+      "aria-keyshortcuts",
+      "Delete",
+    );
   });
 
   it("opens a new terminal from the add control", async () => {

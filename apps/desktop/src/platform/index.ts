@@ -2,14 +2,30 @@ import { createTauriPlatform } from "./tauri";
 import { createWebPlatform } from "./web";
 import type { Platform } from "./types";
 
-export type { Platform, ProviderStatus, VaultApi } from "./types";
+export type { Platform, ProviderStatus, VaultApi, PtyApi, SettingsApi } from "./types";
 export { createWebPlatform } from "./web";
 
 let instance: Platform | null = null;
 
+/**
+ * Detect the real backend at runtime.
+ *
+ * This was previously a build-time flag, and nothing ever set it — so the
+ * desktop app silently ran the browser mock: keys went to an in-memory map
+ * instead of the OS keychain, and the terminal was a fake echo shell with no
+ * working backspace. A build flag is only as good as the one place that
+ * remembers to set it.
+ *
+ * Tauri v2 injects `__TAURI_INTERNALS__` into the webview before any app code
+ * runs, so its presence is the authoritative answer and cannot drift.
+ */
+export function hasTauriRuntime(): boolean {
+  return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
 export function getPlatform(): Platform {
   if (!instance) {
-    instance = __JKY_PLATFORM__ === "tauri" ? createTauriPlatform() : createWebPlatform();
+    instance = hasTauriRuntime() ? createTauriPlatform() : createWebPlatform();
   }
   return instance;
 }
