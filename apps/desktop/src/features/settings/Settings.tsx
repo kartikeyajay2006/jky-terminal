@@ -1,14 +1,16 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
 import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
+import { getPlatform, type CommandSpec } from "../../platform";
 import { ProviderVault } from "./ProviderVault";
 import "./Settings.css";
 
-type Panel = "appearance" | "providers";
+type Panel = "appearance" | "providers" | "commands";
 
 const PANELS: Array<{ id: Panel; label: string; blurb: string }> = [
   { id: "appearance", label: "Appearance", blurb: "Theme and how the app looks" },
   { id: "providers", label: "Providers", blurb: "API keys and model selection" },
+  { id: "commands", label: "Commands", blurb: "What you can type in a terminal" },
 ];
 
 export function Settings() {
@@ -81,10 +83,62 @@ export function Settings() {
               ))}
             </div>
           </section>
+        ) : panel === "commands" ? (
+          <CommandList />
         ) : (
           <ProviderVault />
         )}
       </div>
     </div>
+  );
+}
+
+function CommandList() {
+  const [commands, setCommands] = useState<CommandSpec[]>([]);
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    void getPlatform()
+      .listCommands()
+      .then(setCommands)
+      .catch(() => setFailed(true));
+  }, []);
+
+  return (
+    <section className="settings__section" aria-labelledby="commands-heading">
+      <h2 id="commands-heading">Commands</h2>
+      <p className="hint">
+        These work in any JKY Terminal tab. Typing <code>jky commands</code>
+        prints the same list without leaving the terminal.
+      </p>
+
+      {failed && (
+        <p className="alert" role="alert">
+          Could not read the command list from the backend.
+        </p>
+      )}
+
+      {/* A <ul> rather than a <dl>: a definition list carries no implicit
+          ARIA role, so a screen reader announces neither that this is a list
+          nor how many items it has. */}
+      <ul className="cmds" aria-label="JKY commands">
+        {commands.map((cmd) => (
+          <li key={cmd.usage} className="cmds__row">
+            <p className="cmds__head">
+              <code className="cmds__usage">{cmd.usage}</code>
+              {cmd.names.length > 1 && (
+                <span className="cmds__aliases">
+                  also {cmd.names.slice(1).join(", ")}
+                </span>
+              )}
+            </p>
+            <p className="cmds__body">
+              <strong className="cmds__summary">{cmd.summary}</strong>
+              <span className="cmds__detail">{cmd.detail}</span>
+            </p>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

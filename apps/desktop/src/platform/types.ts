@@ -41,7 +41,7 @@ export interface SettingsApi {
 
 export interface PtyApi {
   /** `banner` is stored so the `jky-terminal` shell command can reprint it. */
-  spawn(cols: number, rows: number, banner: string): Promise<string>;
+  spawn(cols: number, rows: number, banner: string, accent: string): Promise<string>;
   write(id: string, data: string): Promise<void>;
   resize(id: string, cols: number, rows: number): Promise<void>;
   kill(id: string): Promise<void>;
@@ -82,10 +82,20 @@ export interface AiApi {
   onError(handler: (message: string) => void): Promise<() => void>;
 }
 
+export interface CommandSpec {
+  /** Every spelling that works. The first is the canonical one. */
+  names: string[];
+  usage: string;
+  summary: string;
+  detail: string;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
   readonly settings: SettingsApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
+  /** The shell commands JKY Terminal installs. */
+  listCommands(): Promise<CommandSpec[]>;
 }

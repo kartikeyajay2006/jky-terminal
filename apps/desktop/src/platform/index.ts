@@ -4,6 +4,7 @@ import type { Platform } from "./types";
 
 export type {
   AiApi,
+  CommandSpec,
   AiMessage,
   Platform,
   ProviderStatus,

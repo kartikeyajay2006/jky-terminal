@@ -92,6 +92,7 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),
         "audit_read".to_string(),
+        "commands_list".to_string(),
         "pty_attach".to_string(),
         "pty_kill".to_string(),
         "pty_resize".to_string(),

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AiApi,
+  CommandSpec,
   ModelOption,
   Platform,
   ProviderStatus,
@@ -63,8 +64,8 @@ export function createTauriPlatform(): Platform {
   };
 
   const pty: PtyApi = {
-    async spawn(cols, rows, banner) {
-      return invoke<string>("pty_spawn", { cols, rows, banner });
+    async spawn(cols, rows, banner, accent) {
+      return invoke<string>("pty_spawn", { cols, rows, banner, accent });
     },
     async write(id, data) {
       await invoke<void>("pty_write", { id, data });
@@ -101,5 +102,12 @@ export function createTauriPlatform(): Platform {
     onError: (h) => listen<string>("ai:error", (e) => h(e.payload)),
   };
 
-  return { kind: "tauri", vault, settings, pty, ai };
+  return {
+    kind: "tauri",
+    vault,
+    settings,
+    pty,
+    ai,
+    listCommands: () => invoke<CommandSpec[]>("commands_list"),
+  };
 }

@@ -12,6 +12,9 @@ pub const LAUNCHER_NAMES: &[&str] = &["jky-terminal", "jkyterminal", "jkyTermina
 /// Filename holding the pre-rendered banner the launchers print.
 const BANNER_FILE: &str = "banner.ansi";
 
+/// Filename holding the pre-rendered command list.
+const COMMANDS_FILE: &str = "commands.ansi";
+
 /// OSC code carrying a question from the shell to the assistant panel.
 ///
 /// 1337 is the iTerm2 convention for application-defined sequences. Terminals
@@ -25,16 +28,19 @@ pub const ASK_OSC: u16 = 1337;
 /// command: drop a launcher in a directory and put that directory on the PATH
 /// of the shell we spawn. Nothing is installed system-wide, nothing outlives
 /// the session, and the user's shell configuration is never touched.
-pub fn install_launchers(bin_dir: &Path, banner: &str) -> io::Result<()> {
+pub fn install_launchers(bin_dir: &Path, banner: &str, commands: &str) -> io::Result<()> {
     std::fs::create_dir_all(bin_dir)?;
 
     let banner_path = bin_dir.join(BANNER_FILE);
     std::fs::write(&banner_path, banner)?;
 
+    let commands_path = bin_dir.join(COMMANDS_FILE);
+    std::fs::write(&commands_path, commands)?;
+
     for name in LAUNCHER_NAMES {
         write_launcher(bin_dir, name, &banner_path)?;
     }
-    write_ask_launcher(bin_dir, &banner_path)?;
+    write_ask_launcher(bin_dir, &banner_path, &commands_path)?;
     Ok(())
 }
 
@@ -45,7 +51,11 @@ pub fn install_launchers(bin_dir: &Path, banner: &str) -> io::Result<()> {
 /// it, and nothing has to know the app's address or hold a socket open. Run
 /// outside JKY Terminal it prints nothing and does no harm.
 #[cfg(not(windows))]
-fn write_ask_launcher(bin_dir: &Path, banner_path: &Path) -> io::Result<()> {
+fn write_ask_launcher(
+    bin_dir: &Path,
+    banner_path: &Path,
+    commands_path: &Path,
+) -> io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
     let script = bin_dir.join("jky");
@@ -64,30 +74,45 @@ case "$1" in
     payload=$(printf '%s' "$*" | base64 | tr -d '\n')
     printf '\033]{osc};JKYAsk=%s\007' "$payload"
     ;;
+  commands|command|help|--help|-h)
+    cat "{commands}"
+    ;;
   ""|banner)
     cat "{banner}"
     ;;
   *)
-    echo "usage: jky ask <question>   |   jky banner" >&2
+    echo "jky: unknown command '$1'" >&2
+    cat "{commands}" >&2
     exit 1
     ;;
 esac
 "#,
         osc = ASK_OSC,
-        banner = banner_path.display()
+        banner = banner_path.display(),
+        commands = commands_path.display()
     );
     std::fs::write(&script, body)?;
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
 }
 
 #[cfg(windows)]
-fn write_ask_launcher(bin_dir: &Path, banner_path: &Path) -> io::Result<()> {
+fn write_ask_launcher(
+    bin_dir: &Path,
+    banner_path: &Path,
+    commands_path: &Path,
+) -> io::Result<()> {
     let script = bin_dir.join("jky.cmd");
     let body = format!(
         "@echo off\r\n\
          if /i \"%1\"==\"ask\" goto ask\r\n\
          if /i \"%1\"==\"asks\" goto ask\r\n\
+         if /i \"%1\"==\"commands\" goto cmds\r\n\
+         if /i \"%1\"==\"command\" goto cmds\r\n\
+         if /i \"%1\"==\"help\" goto cmds\r\n\
          type \"{banner}\"\r\n\
+         goto :eof\r\n\
+         :cmds\r\n\
+         type \"{commands}\"\r\n\
          goto :eof\r\n\
          :ask\r\n\
          shift\r\n\
@@ -95,7 +120,8 @@ fn write_ask_launcher(bin_dir: &Path, banner_path: &Path) -> io::Result<()> {
          [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($q)); \
          [Console]::Write([char]27 + ']{osc};JKYAsk=' + $b + [char]7)\" %*\r\n",
         osc = ASK_OSC,
-        banner = banner_path.display()
+        banner = banner_path.display(),
+        commands = commands_path.display()
     );
     std::fs::write(script, body)
 }
@@ -149,7 +175,7 @@ mod tests {
     #[test]
     fn every_spelling_of_the_command_is_installed() {
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "hello").unwrap();
+        install_launchers(dir.path(), "hello", "COMMAND-LIST").unwrap();
 
         for name in LAUNCHER_NAMES {
             let unix = dir.path().join(name);
@@ -165,7 +191,7 @@ mod tests {
     fn the_banner_is_written_verbatim() {
         let dir = TempDir::new().unwrap();
         let banner = "\u{1b}[38;2;0;229;255m█\u{1b}[0m\r\n";
-        install_launchers(dir.path(), banner).unwrap();
+        install_launchers(dir.path(), banner, "COMMAND-LIST").unwrap();
 
         let written = std::fs::read_to_string(dir.path().join(BANNER_FILE)).unwrap();
         assert_eq!(written, banner, "escape sequences must survive intact");
@@ -175,7 +201,7 @@ mod tests {
     fn the_launcher_directory_is_created_if_missing() {
         let dir = TempDir::new().unwrap();
         let nested = dir.path().join("deep/deeper/bin");
-        install_launchers(&nested, "hello").unwrap();
+        install_launchers(&nested, "hello", "COMMAND-LIST").unwrap();
         assert!(nested.is_dir());
     }
 
@@ -183,8 +209,8 @@ mod tests {
     fn installing_twice_overwrites_rather_than_failing() {
         // The banner changes with the theme, so this runs on every spawn.
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "first").unwrap();
-        install_launchers(dir.path(), "second").unwrap();
+        install_launchers(dir.path(), "first", "c1").unwrap();
+        install_launchers(dir.path(), "second", "c2").unwrap();
         assert_eq!(
             std::fs::read_to_string(dir.path().join(BANNER_FILE)).unwrap(),
             "second"
@@ -197,7 +223,7 @@ mod tests {
         use std::os::unix::fs::PermissionsExt;
 
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "hello").unwrap();
+        install_launchers(dir.path(), "hello", "COMMAND-LIST").unwrap();
 
         let mode = std::fs::metadata(dir.path().join("jky-terminal"))
             .unwrap()
@@ -212,7 +238,7 @@ mod tests {
         // The point of the whole module. If this fails, typing the command
         // does nothing useful no matter how correct the rest looks.
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "JKY-BANNER-MARKER").unwrap();
+        install_launchers(dir.path(), "JKY-BANNER-MARKER", "COMMAND-LIST").unwrap();
 
         let out = std::process::Command::new(dir.path().join("jky-terminal"))
             .output()
@@ -223,7 +249,7 @@ mod tests {
     #[test]
     fn the_jky_command_is_installed() {
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "hello").unwrap();
+        install_launchers(dir.path(), "hello", "COMMAND-LIST").unwrap();
         assert!(
             dir.path().join("jky").is_file() || dir.path().join("jky.cmd").is_file(),
             "the jky command is missing"
@@ -234,7 +260,7 @@ mod tests {
     #[cfg(not(windows))]
     fn jky_ask_emits_an_osc_sequence_carrying_the_question() {
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "banner").unwrap();
+        install_launchers(dir.path(), "banner", "COMMAND-LIST").unwrap();
 
         let out = std::process::Command::new(dir.path().join("jky"))
             .args(["ask", "what", "does", "ls", "do"])
@@ -260,7 +286,7 @@ mod tests {
     fn jky_asks_is_accepted_as_well_as_jky_ask() {
         // People type what they remember, and both readings are natural.
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "banner").unwrap();
+        install_launchers(dir.path(), "banner", "COMMAND-LIST").unwrap();
 
         let out = std::process::Command::new(dir.path().join("jky"))
             .args(["asks", "hello"])
@@ -273,7 +299,7 @@ mod tests {
     #[cfg(not(windows))]
     fn jky_ask_with_no_question_explains_itself_instead_of_emitting_nothing() {
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "banner").unwrap();
+        install_launchers(dir.path(), "banner", "COMMAND-LIST").unwrap();
 
         let out = std::process::Command::new(dir.path().join("jky"))
             .arg("ask")
@@ -287,7 +313,7 @@ mod tests {
     #[cfg(not(windows))]
     fn bare_jky_prints_the_banner() {
         let dir = TempDir::new().unwrap();
-        install_launchers(dir.path(), "THE-BANNER").unwrap();
+        install_launchers(dir.path(), "THE-BANNER", "COMMAND-LIST").unwrap();
 
         let out = std::process::Command::new(dir.path().join("jky"))
             .output()
@@ -315,6 +341,43 @@ mod tests {
             }
         }
         out
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_commands_prints_the_command_list() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "banner", "THE-COMMAND-LIST").unwrap();
+
+        for spelling in ["commands", "command", "help"] {
+            let out = std::process::Command::new(dir.path().join("jky"))
+                .arg(spelling)
+                .output()
+                .expect("jky runs");
+            assert_eq!(
+                String::from_utf8_lossy(&out.stdout),
+                "THE-COMMAND-LIST",
+                "`jky {spelling}` did not print the list"
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn an_unknown_subcommand_shows_the_list_rather_than_a_bare_error() {
+        // Being told a command does not exist, without being told what does,
+        // is the least useful possible response.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "banner", "THE-COMMAND-LIST").unwrap();
+
+        let out = std::process::Command::new(dir.path().join("jky"))
+            .arg("nonsense")
+            .output()
+            .expect("jky runs");
+        assert!(!out.status.success());
+        let stderr = String::from_utf8_lossy(&out.stderr);
+        assert!(stderr.contains("unknown command"));
+        assert!(stderr.contains("THE-COMMAND-LIST"));
     }
 
     #[test]

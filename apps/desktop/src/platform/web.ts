@@ -1,6 +1,7 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
   AiApi,
+  CommandSpec,
   Platform,
   ProviderStatus,
   PtyApi,
@@ -15,6 +16,43 @@ import type {
  * Values live in closures and die with the tab. Deliberately NOT localStorage
  * or sessionStorage — the browser build must never write credentials to disk.
  */
+/**
+ * Mirror of `commands()` in crates/jky-pty/src/commands.rs.
+ *
+ * The desktop build reads the real catalogue over IPC; this exists so the
+ * browser build and the tests see the same list. A test parses the Rust
+ * source and fails if the two ever disagree.
+ */
+const WEB_COMMANDS: CommandSpec[] = [
+  {
+    names: ["jky-terminal", "jkyterminal", "jkyTerminal"],
+    usage: "jky-terminal",
+    summary: "Print the JKY Terminal banner",
+    detail:
+      "Reprints the wordmark shown when a terminal opens, in the theme that terminal started with. Three spellings work because people type what they remember.",
+  },
+  {
+    names: ["jky ask", "jky asks"],
+    usage: "jky ask <question>",
+    summary: "Ask the assistant without leaving the terminal",
+    detail:
+      "Sends the question to the Assistant panel and brings it into view. Everything after the word ask is the question, so quotes are not needed.",
+  },
+  {
+    names: ["jky commands", "jky command"],
+    usage: "jky commands",
+    summary: "List every JKY command",
+    detail: "Prints this list. The same list appears under Settings, Commands.",
+  },
+  {
+    names: ["jky banner"],
+    usage: "jky banner",
+    summary: "Print the banner",
+    detail:
+      "The same output as jky-terminal, reachable through the jky command for consistency.",
+  },
+];
+
 export function createWebPlatform(): Platform {
   const keys = new Map<string, string>();
   const models = new Map<string, string>();
@@ -56,7 +94,7 @@ export function createWebPlatform(): Platform {
   let ptyCounter = 0;
 
   const pty: PtyApi = {
-    async spawn(_cols, _rows, _banner) {
+    async spawn(_cols, _rows, _banner, _accent) {
       // Deliberately silent. The prompt is emitted when a handler subscribes,
       // not here: spawn resolves before onData registers, so anything emitted
       // at spawn time is written to nobody.
@@ -129,5 +167,14 @@ export function createWebPlatform(): Platform {
     },
   };
 
-  return { kind: "web", vault, settings, pty, ai };
+  return {
+    kind: "web",
+    vault,
+    settings,
+    pty,
+    ai,
+    async listCommands() {
+      return WEB_COMMANDS;
+    },
+  };
 }

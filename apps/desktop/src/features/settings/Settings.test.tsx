@@ -33,6 +33,48 @@ describe("Settings", () => {
     expect(await screen.findByLabelText(/of \d+ keys added/i)).toBeInTheDocument();
   });
 
+  it("lists the jky commands", async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: /commands/i }));
+
+    // Scoped to the list: the hint above it also mentions `jky commands`, so
+    // an unscoped query matches twice and proves nothing about the list.
+    const list = await screen.findByRole("list", { name: /jky commands/i });
+    expect(within(list).getByText("jky-terminal")).toBeInTheDocument();
+    expect(within(list).getByText("jky ask <question>")).toBeInTheDocument();
+    expect(within(list).getByText("jky commands")).toBeInTheDocument();
+  });
+
+  it("shows the alternative spellings of a command", async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: /commands/i }));
+    // Knowing only the canonical spelling is knowing two thirds of nothing.
+    expect(await screen.findByText(/jkyterminal, jkyTerminal/)).toBeInTheDocument();
+    expect(screen.getByText(/jky asks/)).toBeInTheDocument();
+  });
+
+  it("explains what each command does, not just its name", async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: /commands/i }));
+    expect(
+      await screen.findByText(/Ask the assistant without leaving the terminal/),
+    ).toBeInTheDocument();
+  });
+
+  it("says the same list is available from the terminal", async () => {
+    const user = userEvent.setup();
+    render(<Settings />);
+
+    await user.click(screen.getByRole("button", { name: /commands/i }));
+    expect(await screen.findByText(/prints the same list/i)).toBeInTheDocument();
+  });
+
   it("changes the theme from the swatch grid", async () => {
     const user = userEvent.setup();
     render(<Settings />);

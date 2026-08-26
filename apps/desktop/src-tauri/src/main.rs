@@ -30,6 +30,7 @@ fn main() {
             pty::pty_write,
             pty::pty_resize,
             pty::pty_kill,
+            pty::commands_list,
             ai::ai_send,
             ai::ai_approve_tool,
             ai::ai_reject_tool,

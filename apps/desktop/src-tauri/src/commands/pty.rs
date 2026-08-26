@@ -2,7 +2,7 @@ use std::io::Read;
 
 use jky_pty::{
     PtySession, SpawnConfig, default_shell, home_dir, install_launchers, launcher_dir,
-    resolve_start_dir,
+    parse_accent, render_commands, resolve_start_dir,
 };
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -28,6 +28,7 @@ pub fn pty_spawn(
     cols: u16,
     rows: u16,
     banner: String,
+    accent: String,
 ) -> Result<String, String> {
     // Never current_dir(): that is wherever the binary was launched from,
     // which is the project folder in development and something arbitrary from
@@ -40,7 +41,10 @@ pub fn pty_spawn(
     // not stop a terminal from starting — the shell is the feature, the
     // convenience command is not.
     let bin_dir = launcher_dir(&state.config_dir);
-    let launchers_ok = install_launchers(&bin_dir, &banner).is_ok();
+    // The command list is rendered here rather than in the frontend because
+    // the catalogue lives in Rust — one definition, rendered for whoever asks.
+    let command_list = render_commands(parse_accent(&accent), cols.max(40) as usize);
+    let launchers_ok = install_launchers(&bin_dir, &banner, &command_list).is_ok();
 
     let session = PtySession::spawn(SpawnConfig {
         shell: default_shell(),
@@ -90,6 +94,15 @@ pub fn pty_attach(app: AppHandle, state: State<'_, AppState>, id: String) -> Res
     });
 
     Ok(())
+}
+
+/// The command catalogue, for the Settings screen.
+///
+/// Reads the same definition the shell list is rendered from, so a command
+/// cannot be documented in one place and missing from the other.
+#[tauri::command]
+pub fn commands_list() -> Vec<jky_pty::CommandSpec> {
+    jky_pty::commands().to_vec()
 }
 
 #[tauri::command]

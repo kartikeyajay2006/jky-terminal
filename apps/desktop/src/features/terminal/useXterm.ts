@@ -81,7 +81,12 @@ export function useXterm(container: React.RefObject<HTMLDivElement | null>) {
     void (async () => {
       // The same banner goes to the backend, which stores it so the
       // `jky-terminal` shell command can reprint exactly what was shown.
-      const id = await platform.pty.spawn(xterm.cols, xterm.rows, banner);
+      const id = await platform.pty.spawn(
+        xterm.cols,
+        xterm.rows,
+        banner,
+        tokens.getPropertyValue("--accent"),
+      );
       if (cancelled) {
         // StrictMode unmounted us mid-spawn. Kill it rather than leaking a
         // shell process for the lifetime of the app.
