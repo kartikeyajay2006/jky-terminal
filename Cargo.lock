@@ -2028,6 +2028,8 @@ dependencies = [
 name = "jky-terminal"
 version = "0.1.0"
 dependencies = [
+ "jky-ai",
+ "jky-audit",
  "jky-pty",
  "jky-secrets",
  "jky-settings",
@@ -2036,6 +2038,7 @@ dependencies = [
  "tauri",
  "tauri-build",
  "tempfile",
+ "tokio",
 ]
 
 [[package]]

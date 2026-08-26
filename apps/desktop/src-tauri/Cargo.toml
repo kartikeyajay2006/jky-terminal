@@ -13,6 +13,9 @@ tauri = { version = "2", features = [] }
 jky-secrets = { path = "../../../crates/jky-secrets" }
 jky-settings = { path = "../../../crates/jky-settings" }
 jky-pty = { path = "../../../crates/jky-pty" }
+jky-ai = { path = "../../../crates/jky-ai" }
+jky-audit = { path = "../../../crates/jky-audit" }
+tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 

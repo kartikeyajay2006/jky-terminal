@@ -3,7 +3,7 @@
 mod commands;
 mod state;
 
-use commands::{pty, settings, vault};
+use commands::{ai, pty, settings, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -30,6 +30,10 @@ fn main() {
             pty::pty_write,
             pty::pty_resize,
             pty::pty_kill,
+            ai::ai_send,
+            ai::ai_approve_tool,
+            ai::ai_reject_tool,
+            ai::audit_read,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");
