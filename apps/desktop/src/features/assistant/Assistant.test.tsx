@@ -57,6 +57,29 @@ describe("Assistant", () => {
     expect(screen.getAllByText(/^(you|jky)$/)).toHaveLength(2);
   });
 
+  it("shows the backend's own error text rather than a generic one", async () => {
+    // Tauri rejects with a plain string. An `instanceof Error` check discards
+    // it, which is how a 400 explaining exactly what was wrong became
+    // "The request failed."
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      ai: {
+        ...platform.ai,
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        send: (_provider, _conversation) =>
+          Promise.reject("400 Bad Request: max_tokens is too large"),
+      },
+    });
+
+    const user = userEvent.setup();
+    render(<Assistant />);
+    await user.type(screen.getByRole("textbox", { name: /message/i }), "hi");
+    await user.click(screen.getByRole("button", { name: /send/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/max_tokens is too large/);
+  });
+
   it("will not send an empty message", () => {
     render(<Assistant />);
     expect(screen.getByRole("button", { name: /send/i })).toBeDisabled();

@@ -207,6 +207,29 @@ impl ProviderId {
         }
     }
 
+    /// The most completion tokens this provider will accept in one request.
+    ///
+    /// Providers differ by an order of magnitude here, and the failure modes
+    /// are not symmetric: asking for more than a model allows is a hard 400
+    /// that kills the request, while asking for less merely truncates a long
+    /// answer. So these are deliberately conservative — comfortably inside
+    /// every model each provider offers, rather than at any one model's
+    /// ceiling.
+    pub fn max_output_tokens(&self) -> u32 {
+        use ProviderId::*;
+        match self {
+            // Current Claude models accept up to 128K output; 32K is far more
+            // than a terminal assistant needs and safe across the family.
+            Anthropic => 32_000,
+            // The gpt-4o family caps completion tokens well below Anthropic's.
+            OpenAi => 16_384,
+            // OpenRouter proxies many vendors, so the effective limit is
+            // whichever model is behind it. Assume the smallest.
+            OpenRouter => 8_192,
+            Google | Mistral | Groq | DeepSeek | XAi | Ollama => 8_192,
+        }
+    }
+
     /// The model selected when the user has expressed no preference.
     pub fn default_model(&self) -> &'static str {
         self.models()[0].id
@@ -352,6 +375,27 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn every_provider_declares_a_usable_output_limit() {
+        for p in ProviderId::all() {
+            let limit = p.max_output_tokens();
+            assert!(limit >= 1_024, "{} allows too little to be useful", p.as_key());
+            // 64k was sent to every provider at one point and OpenAI rejected
+            // it outright. Nothing here may exceed the most permissive real
+            // ceiling among the models we offer.
+            assert!(limit <= 32_000, "{} exceeds a safe ceiling", p.as_key());
+        }
+    }
+
+    #[test]
+    fn openai_asks_for_fewer_tokens_than_anthropic() {
+        // Not a stylistic preference: the gpt-4o family rejects the value that
+        // is comfortable for Claude.
+        assert!(
+            ProviderId::OpenAi.max_output_tokens() < ProviderId::Anthropic.max_output_tokens()
+        );
     }
 
     #[test]

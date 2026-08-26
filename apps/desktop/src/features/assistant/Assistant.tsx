@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPlatform, type AiMessage, type ToolRequest } from "../../platform";
+import { describeError } from "./errors";
 import { ToolCard } from "./ToolCard";
 import "./Assistant.css";
 
@@ -73,7 +74,7 @@ export function Assistant() {
     try {
       await getPlatform().ai.send("openai", conversation);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "The request failed.");
+      setError(describeError(e));
       setBusy(false);
     }
   }, [draft]);

@@ -152,7 +152,9 @@ pub async fn ai_send(
         system: SYSTEM_PROMPT.to_string(),
         messages: conversation,
         tools: assistant_tools(),
-        max_tokens: 64_000,
+        // Per-provider, not one number for all of them. 64k is comfortable
+        // for Claude and a hard 400 on the gpt-4o family.
+        max_tokens: id.max_output_tokens(),
     };
 
     let mut handler = make_handler(app, audit, pending);
