@@ -11,18 +11,31 @@ fn crate_root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
 }
 
+/// Every source file in the crate, not only those under `src/commands`.
+///
+/// This used to read that one directory. A module added anywhere else could
+/// then expose commands to the renderer without appearing in the pinned list
+/// at all, which is the review these tests exist to force — and it happened
+/// the moment the mail commands were written in `src/alerts.rs`.
 fn command_sources() -> Vec<(PathBuf, String)> {
-    let dir = crate_root().join("src/commands");
-    fs::read_dir(&dir)
-        .unwrap_or_else(|e| panic!("cannot read {}: {e}", dir.display()))
-        .filter_map(Result::ok)
-        .map(|e| e.path())
-        .filter(|p| p.extension().is_some_and(|x| x == "rs"))
-        .map(|p| {
-            let body = fs::read_to_string(&p).expect("readable source file");
-            (p, body)
-        })
-        .collect()
+    fn walk(dir: &PathBuf, out: &mut Vec<(PathBuf, String)>) {
+        let entries = fs::read_dir(dir)
+            .unwrap_or_else(|e| panic!("cannot read {}: {e}", dir.display()));
+        for entry in entries.filter_map(Result::ok) {
+            let path = entry.path();
+            if path.is_dir() {
+                walk(&path, out);
+            } else if path.extension().is_some_and(|x| x == "rs") {
+                let body = fs::read_to_string(&path).expect("readable source file");
+                out.push((path, body));
+            }
+        }
+    }
+
+    let mut out = Vec::new();
+    walk(&crate_root().join("src"), &mut out);
+    out.sort_by(|a, b| a.0.cmp(&b.0));
+    out
 }
 
 /// Every `#[tauri::command]` exposed to the renderer, as `(file, fn_name)`.
@@ -93,6 +106,16 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),
         "commands_list".to_string(),
+        // Email alerts. set/has/delete follow the vault's rule exactly: a
+        // password goes in, its presence can be checked, it can be removed,
+        // and nothing reads it back. send_test proves the settings without
+        // ever returning the password it used.
+        "mail_delete_password".to_string(),
+        "mail_has_password".to_string(),
+        "mail_read_config".to_string(),
+        "mail_save_config".to_string(),
+        "mail_send_test".to_string(),
+        "mail_set_password".to_string(),
         "pty_attach".to_string(),
         "pty_kill".to_string(),
         "pty_resize".to_string(),

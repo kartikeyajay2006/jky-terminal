@@ -2081,6 +2081,7 @@ version = "0.1.0"
 dependencies = [
  "jky-ai",
  "jky-audit",
+ "jky-mail",
  "jky-pty",
  "jky-secrets",
  "jky-settings",
