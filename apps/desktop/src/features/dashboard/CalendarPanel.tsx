@@ -5,6 +5,12 @@ import { EventForm } from "./EventForm";
 import { EventRow } from "./EventRow";
 import { GRID_ROWS, WEEKDAYS, localDay, monthGrid, monthLabel, nextMonth, prevMonth } from "./calendar";
 import { eventsOn } from "./upcoming";
+import { describe as describeMoment } from "./eventTime";
+
+/** `Thu 27 Aug 2026` — the heading over a day's events. */
+function describeDay(day: string): string {
+  return describeMoment(day, "12:00").replace(/, \d{2}:\d{2}$/, "");
+}
 
 export function CalendarPanel() {
   const events = useDashboard((s) => s.events);
@@ -106,7 +112,7 @@ export function CalendarPanel() {
         </div>
 
         <div className="cal__day-detail">
-          <h3 className="dash__subhead">{selected}</h3>
+          <h3 className="dash__subhead">{describeDay(selected)}</h3>
           {onSelected.length === 0 ? (
             <p className="hint">Nothing on this day.</p>
           ) : (
@@ -116,7 +122,16 @@ export function CalendarPanel() {
               ))}
             </ul>
           )}
-          <EventForm day={selected} onAdd={(e) => void saveEvent(e)} />
+          {selected < localDay(today) ? (
+            /* A day that has gone cannot take a new event, and saying so
+               here is clearer than a form that refuses when submitted. */
+            <p className="hint">
+              {selected} has passed. Choose today or a later day to add an
+              event.
+            </p>
+          ) : (
+            <EventForm day={selected} onAdd={(e) => void saveEvent(e)} />
+          )}
         </div>
       </div>
     </section>

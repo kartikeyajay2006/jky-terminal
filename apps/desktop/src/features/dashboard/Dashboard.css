@@ -867,3 +867,77 @@
     grid-column: 2;
   }
 }
+
+/* ---- labelled field rows ------------------------------------------------ */
+
+/* A date box and a time box side by side say nothing about which is which.
+   Each field carries its own small label above it. */
+.field-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  align-items: flex-end;
+  width: 100%;
+}
+
+.field-cell {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.field-cell--grow {
+  flex: 1;
+  min-width: 14ch;
+}
+
+.field-cell__label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.eventform {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.eventform__go {
+  align-self: flex-end;
+}
+
+/* What the boxes add up to, in words. A wrong month is invisible in a date
+   input and obvious in a sentence. */
+.eventform__when {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.eventform__rel {
+  color: var(--text-dim);
+}
+
+.eventform__when[data-bad] {
+  color: var(--danger);
+}
+
+/* Native date and time controls render their own text and picker glyph; both
+   need telling about a dark ground or they come out black on black. */
+.input--date,
+.input--time {
+  color-scheme: light dark;
+}
+
+.eventform__colours {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+  min-height: 30px;
+}

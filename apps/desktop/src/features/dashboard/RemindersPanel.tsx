@@ -49,24 +49,41 @@ export function RemindersPanel() {
         </p>
       )}
 
-      <form className="row-form" onSubmit={add}>
-        <input
-          className="input input--time"
-          type="time"
-          aria-label="Reminder time"
-          value={at}
-          onChange={(e) => setAt(e.target.value)}
-        />
-        <input
-          className="input"
-          aria-label="New reminder"
-          placeholder="Morning exercise"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-        />
-        <button type="submit" className="btn btn--primary" disabled={!text.trim()}>
-          Add
-        </button>
+      <form className="eventform" onSubmit={add}>
+        <div className="field-row">
+          <label className="field-cell">
+            <span className="field-cell__label">Time</span>
+            <input
+              className="input input--time"
+              type="time"
+              aria-label="Reminder time"
+              value={at}
+              onChange={(e) => setAt(e.target.value)}
+            />
+          </label>
+
+          <label className="field-cell field-cell--grow">
+            <span className="field-cell__label">Reminder</span>
+            <input
+              className="input"
+              aria-label="New reminder"
+              placeholder="Morning exercise"
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+            />
+          </label>
+
+          <button type="submit" className="btn btn--primary eventform__go" disabled={!text.trim()}>
+            Add
+          </button>
+        </div>
+
+        {/* No past check here, unlike an event: a reminder is a time of day
+            that comes round again tomorrow, not a fixed moment. */}
+        <p className="eventform__when">
+          <span aria-hidden="true">→ </span>
+          Every day at {clockFromHhMm(at)}
+        </p>
       </form>
 
       {reminders.length === 0 ? (
