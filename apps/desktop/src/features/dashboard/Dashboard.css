@@ -1064,3 +1064,39 @@
   color: var(--text-dim);
   text-align: center;
 }
+
+/* ---- mail alerts -------------------------------------------------------- */
+
+.mail__stored {
+  color: var(--mint);
+  letter-spacing: 0;
+}
+
+.mail__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.mail__switch {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex: 1;
+  min-width: 22ch;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.mail__switch input {
+  accent-color: var(--accent);
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.mail__switch input:disabled + span {
+  color: var(--text-dim);
+}

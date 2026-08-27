@@ -334,15 +334,13 @@ describe("mail alerts", () => {
   beforeEach(reset);
   afterEach(() => __setPlatformForTests(null));
 
-  it("says plainly that delivery is not built yet", async () => {
-    // Promising a feature that does nothing is worse than saying where the
-    // work has got to.
+  it("says alerts arrive with the app closed", async () => {
     const user = userEvent.setup();
     render(<Dashboard />);
     const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
     await user.click(within(nav).getByRole("button", { name: /mail alerts/i }));
 
-    expect(screen.getByText(/not built yet/i)).toBeInTheDocument();
+    expect(screen.getByText(/even while JKY Terminal is/i)).toBeInTheDocument();
   });
 
   it("does not claim it works with the computer off", async () => {

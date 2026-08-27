@@ -177,6 +177,38 @@ export interface StoreApi {
   readonly reminders: CollectionApi<Reminder>;
 }
 
+// --- email alerts -----------------------------------------------------------
+
+export interface MailConfig {
+  /** Alerts are sent from this address, to this address. */
+  address: string;
+  host: string;
+  port: number;
+  enabled: boolean;
+}
+
+/** A known provider, so nobody has to look up a port number. */
+export interface MailPreset {
+  id: string;
+  label: string;
+  host: string;
+  port: number;
+  /** What the user has to do before this will work. */
+  note: string;
+}
+
+export interface MailApi {
+  readConfig(): Promise<MailConfig>;
+  /** Saves, and registers or removes the background helper to match. */
+  saveConfig(config: MailConfig): Promise<void>;
+  /** The app password goes in and does not come back. */
+  setPassword(password: string): Promise<void>;
+  hasPassword(): Promise<boolean>;
+  deletePassword(): Promise<void>;
+  /** Sends one message now, so the settings can be proved. */
+  sendTest(): Promise<void>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
@@ -185,6 +217,8 @@ export interface Platform {
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */
   readonly store: StoreApi;
+  /** Email alerts for events. */
+  readonly mail: MailApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
 }

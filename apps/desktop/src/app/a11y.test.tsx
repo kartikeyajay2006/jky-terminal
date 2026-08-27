@@ -169,6 +169,21 @@ describe("accessibility", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  it("the mail alerts panel with everything filled in has no violations", async () => {
+    // Its empty state is already covered by the loop over every section; this
+    // is the state with a stored password, a provider note and a switch in it.
+    const user = userEvent.setup();
+    const { container } = render(<Dashboard />);
+    const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
+    await user.click(within(nav).getByRole("button", { name: /mail alerts/i }));
+
+    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
+    await user.type(screen.getByLabelText(/app password/i), "pw");
+    await user.click(screen.getByRole("button", { name: /^store$/i }));
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("an open date picker has no violations", async () => {
     // A calendar popover is a grid of forty-two buttons; getting its roles
     // and labels wrong would be easy and invisible.

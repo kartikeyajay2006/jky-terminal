@@ -5,6 +5,8 @@ import type {
   CollectionApi,
   CommandSpec,
   Event,
+  MailApi,
+  MailConfig,
   ModelOption,
   Note,
   Platform,
@@ -143,6 +145,15 @@ export function createTauriPlatform(): Platform {
     ),
   };
 
+  const mail: MailApi = {
+    readConfig: () => invoke<MailConfig>("mail_read_config"),
+    saveConfig: (config) => invoke<void>("mail_save_config", { config }),
+    setPassword: (password) => invoke<void>("mail_set_password", { password }),
+    hasPassword: () => invoke<boolean>("mail_has_password"),
+    deletePassword: () => invoke<void>("mail_delete_password"),
+    sendTest: () => invoke<void>("mail_send_test"),
+  };
+
   return {
     kind: "tauri",
     vault,
@@ -150,6 +161,7 @@ export function createTauriPlatform(): Platform {
     pty,
     ai,
     store,
+    mail,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
   };
 }
