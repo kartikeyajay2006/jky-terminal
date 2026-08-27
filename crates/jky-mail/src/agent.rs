@@ -283,9 +283,19 @@ mod tests {
     fn linux_units_go_under_the_users_own_config() {
         // A system unit would need root and would run as the wrong user, with
         // no access to the events file.
+        //
+        // Compared as paths, not as strings: these tests compile on every
+        // platform, and on Windows a PathBuf joins with backslashes, so
+        // looking for "/home/someone/.config" in the printed form fails on a
+        // path that is perfectly correct.
+        let expected = home().join(".config").join("systemd").join("user");
         for unit in linux_units(&home(), &exe()) {
-            let path = unit.path.display().to_string();
-            assert!(path.contains("/home/someone/.config/systemd/user"), "{path}");
+            assert!(
+                unit.path.starts_with(&expected),
+                "{} is not under {}",
+                unit.path.display(),
+                expected.display()
+            );
         }
     }
 
@@ -314,9 +324,14 @@ mod tests {
     #[test]
     fn the_macos_agent_goes_in_the_users_launch_agents() {
         let plist = macos_plist(&home(), &exe());
-        let path = plist.path.display().to_string();
-        assert!(path.contains("/home/someone/Library/LaunchAgents"), "{path}");
-        assert!(path.ends_with(".plist"), "{path}");
+        let expected = home().join("Library").join("LaunchAgents");
+        assert!(
+            plist.path.starts_with(&expected),
+            "{} is not under {}",
+            plist.path.display(),
+            expected.display()
+        );
+        assert_eq!(plist.path.extension().and_then(|e| e.to_str()), Some("plist"));
     }
 
     #[test]
@@ -371,8 +386,11 @@ mod tests {
     fn every_platform_registers_under_the_same_name() {
         // So that turning alerts off finds what turning them on installed,
         // even across an upgrade.
-        assert!(linux_units(&home(), &exe())[0].path.display().to_string().contains(AGENT_ID));
-        assert!(macos_plist(&home(), &exe()).path.display().to_string().contains(AGENT_ID));
+        let named = |p: &std::path::Path| {
+            p.file_name().map(|n| n.to_string_lossy().contains(AGENT_ID)).unwrap_or(false)
+        };
+        assert!(named(&linux_units(&home(), &exe())[0].path));
+        assert!(named(&macos_plist(&home(), &exe()).path));
         assert!(windows_create_args(&exe()).contains(&AGENT_ID.to_string()));
     }
 }
