@@ -176,6 +176,18 @@ describe("accessibility", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
+  it("an open date picker has no violations", async () => {
+    // A calendar popover is a grid of forty-two buttons; getting its roles
+    // and labels wrong would be easy and invisible.
+    const user = userEvent.setup();
+    const { container } = render(<Dashboard />);
+    const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
+    await user.click(within(nav).getByRole("button", { name: /upcoming events/i }));
+    await user.click(screen.getByRole("button", { name: "Event date" }));
+
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("an open dropdown has no violations", async () => {
     const user = userEvent.setup();
     const { container, findByRole } = render(<Shell>{null}</Shell>);

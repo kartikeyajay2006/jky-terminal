@@ -5,12 +5,7 @@ import { EventForm } from "./EventForm";
 import { EventRow } from "./EventRow";
 import { GRID_ROWS, WEEKDAYS, localDay, monthGrid, monthLabel, nextMonth, prevMonth } from "./calendar";
 import { eventsOn } from "./upcoming";
-import { describe as describeMoment } from "./eventTime";
-
-/** `Thu 27 Aug 2026` — the heading over a day's events. */
-function describeDay(day: string): string {
-  return describeMoment(day, "12:00").replace(/, \d{2}:\d{2}$/, "");
-}
+import { describeDay } from "./DatePicker";
 
 export function CalendarPanel() {
   const events = useDashboard((s) => s.events);

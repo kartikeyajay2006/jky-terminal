@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { EVENT_COLOURS, type Event, type EventColour } from "../../platform";
 import { newId } from "./dashboardStore";
+import { DatePicker } from "./DatePicker";
 import { defaultWhen, describe, localDate, relative, toInstant, whyNot } from "./eventTime";
 
 const LEADS = [
@@ -80,19 +81,19 @@ export function EventForm({
           />
         </label>
 
-        <label className="field-cell">
-          <span className="field-cell__label">Date</span>
-          <input
-            className="input input--date"
-            type="date"
-            aria-label="Event date"
-            // The picker stops offering days that have gone, so the rule is
-            // visible before it is enforced rather than only after.
-            min={today}
+        <div className="field-cell">
+          <span className="field-cell__label" id="event-date-label">
+            Date
+          </span>
+          {/* Our own picker rather than the native one: it can be closed with
+              a button and with Esc, and it wears the app's theme. */}
+          <DatePicker
             value={date}
-            onChange={(e) => setDate(e.target.value)}
+            min={today}
+            label="Event date"
+            onChange={setDate}
           />
-        </label>
+        </div>
 
         <label className="field-cell">
           <span className="field-cell__label">Time</span>

@@ -2,6 +2,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { EventForm } from "./EventForm";
+import { describeDay } from "./DatePicker";
 import { localDate, localTime } from "./eventTime";
 
 function dayOffset(days: number): string {
@@ -20,15 +21,14 @@ describe("the event form", () => {
   });
 
   it("spells out the moment the two boxes add up to", async () => {
-    const user = userEvent.setup();
-    render(<EventForm onAdd={() => {}} />);
-
-    const date = screen.getByLabelText("Event date");
-    await user.clear(date);
-    await user.type(date, "2099-08-27");
+    const { container } = render(<EventForm day="2099-08-27" onAdd={() => {}} />);
 
     // A wrong month is invisible in a date box and obvious in a sentence.
-    expect(await screen.findByText(/Thu 27 Aug 2099/)).toBeInTheDocument();
+    // Scoped to the summary line: the trigger button says the day too, which
+    // is the point, but this is checking that the summary spells out both
+    // halves together.
+    const summary = container.querySelector(".eventform__when")!;
+    expect(summary.textContent).toMatch(/Thu 27 Aug 2099, \d{2}:\d{2}/);
   });
 
   it("follows the calendar day it is given", async () => {
@@ -36,11 +36,15 @@ describe("the event form", () => {
     // kept whichever day was selected when it mounted and every later click
     // on the calendar did nothing at all.
     const { rerender } = render(<EventForm day="2099-08-27" onAdd={() => {}} />);
-    expect(screen.getByLabelText("Event date")).toHaveValue("2099-08-27");
+    expect(screen.getByRole("button", { name: "Event date" })).toHaveTextContent(
+      "Thu 27 Aug 2099",
+    );
 
     rerender(<EventForm day="2099-09-15" onAdd={() => {}} />);
     await waitFor(() =>
-      expect(screen.getByLabelText("Event date")).toHaveValue("2099-09-15"),
+      expect(screen.getByRole("button", { name: "Event date" })).toHaveTextContent(
+        "Tue 15 Sep 2099",
+      ),
     );
   });
 
@@ -57,10 +61,45 @@ describe("the event form", () => {
     expect(onAdd).not.toHaveBeenCalled();
   });
 
-  it("stops the picker offering past days at all", () => {
+  it("stops the calendar offering past days at all", async () => {
     // The rule is visible before it is enforced, rather than only after.
+    const user = userEvent.setup();
     render(<EventForm onAdd={() => {}} />);
-    expect(screen.getByLabelText("Event date")).toHaveAttribute("min", localDate(new Date()));
+
+    await user.click(screen.getByRole("button", { name: "Event date" }));
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    expect(
+      screen.getByRole("gridcell", { name: describeDay(localDate(yesterday)) }),
+    ).toBeDisabled();
+  });
+
+  it("lets the calendar be closed, unlike the native picker", async () => {
+    // Why this replaced it: nothing could put a close control on a picker the
+    // operating system draws outside the page.
+    const user = userEvent.setup();
+    render(<EventForm onAdd={() => {}} />);
+
+    await user.click(screen.getByRole("button", { name: "Event date" }));
+    expect(screen.getByText(/press esc to close/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /close the calendar/i }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("takes a day chosen from the calendar", async () => {
+    const user = userEvent.setup();
+    const onAdd = vi.fn();
+    render(<EventForm day={dayOffset(2)} onAdd={onAdd} />);
+
+    await user.click(screen.getByRole("button", { name: "Event date" }));
+    const target = dayOffset(5);
+    await user.click(screen.getByRole("gridcell", { name: describeDay(target) }));
+
+    await user.type(screen.getByLabelText("Event title"), "Chosen from the calendar");
+    await user.click(screen.getByRole("button", { name: /add event/i }));
+
+    expect(localDate(new Date(onAdd.mock.calls[0][0].starts_at))).toBe(target);
   });
 
   it("refuses a time earlier today, not just an earlier day", async () => {
@@ -118,7 +157,9 @@ describe("the event form", () => {
     await user.click(screen.getByRole("button", { name: /add event/i }));
 
     expect(screen.getByLabelText("Event title")).toHaveValue("");
-    expect(screen.getByLabelText("Event date")).toHaveValue(when);
+    expect(screen.getByRole("button", { name: "Event date" })).toHaveTextContent(
+      describeDay(when),
+    );
   });
 
   it("will not add an event with no title", async () => {
