@@ -114,3 +114,20 @@ a:hover {
   white-space: nowrap;
   border: 0;
 }
+
+/* The hidden attribute has to actually hide.
+ *
+ * The browser's own stylesheet says `[hidden] { display: none }`, but any
+ * author rule beats it — `.workspace { display: grid }` is enough, and then
+ * `hidden` silently does nothing. That is how the terminal ended up stacked
+ * above the assistant: it was marked hidden and stayed on screen, because a
+ * class rule three files away outranked the browser's.
+ *
+ * !important is the point rather than a shortcut: the attribute is a
+ * statement that the element is not part of the page right now, and no
+ * layout rule should be able to argue with it. This also puts it out of the
+ * accessibility tree, which display:none does and visibility tricks do not.
+ */
+[hidden] {
+  display: none !important;
+}

@@ -204,10 +204,6 @@
   inset: 0;
 }
 
-.workspace__pane[hidden] {
-  display: none;
-}
-
 .workspace__empty {
   padding: var(--s6);
   color: var(--text-dim);
