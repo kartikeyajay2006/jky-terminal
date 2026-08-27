@@ -144,6 +144,8 @@ pub fn windows_delete_args() -> Vec<String> {
 
 // --- installing and removing ------------------------------------------------
 
+/// Only Linux and macOS install a file; Windows registers a task instead.
+#[cfg(any(target_os = "linux", target_os = "macos"))]
 fn write(file: &AgentFile) -> Result<(), AgentError> {
     if let Some(dir) = file.path.parent() {
         std::fs::create_dir_all(dir).map_err(|e| AgentError::Write {

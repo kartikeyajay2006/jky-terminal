@@ -29,11 +29,11 @@ describe("mail preset parity", () => {
     });
   }
 
-  it("uses TLS from the first byte wherever the provider allows it", () => {
-    // 587 with STARTTLS opens in the clear and asks the server to upgrade.
-    // iCloud offers nothing else; everyone else does.
+  it("never uses a plaintext port", () => {
+    // 465 is implicit TLS, 587 is STARTTLS. 25 and 2525 have no encryption
+    // at all, and a password would go over them in the clear.
     for (const p of MAIL_PRESETS) {
-      expect(p.port === 465 || p.id === "icloud", `${p.id} uses ${p.port}`).toBe(true);
+      expect([465, 587], `${p.id} uses ${p.port}`).toContain(p.port);
     }
   });
 

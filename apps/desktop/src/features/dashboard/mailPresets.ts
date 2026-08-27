@@ -3,9 +3,9 @@ import type { MailPreset } from "../../platform";
 /**
  * Known providers, mirrored from the Rust catalogue.
  *
- * Port 465 throughout except iCloud: implicit TLS, encrypted from the first
- * byte. 587 with STARTTLS opens in the clear and asks the server to upgrade,
- * which is one downgrade away from a password sent in plain text.
+ * Ports are what each provider actually listens on. 465 is implicit TLS and
+ * preferred where it exists; 587 is STARTTLS, which is all Outlook and iCloud
+ * offer. Neither is ever plaintext.
  */
 export const MAIL_PRESETS: MailPreset[] = [
   {
@@ -19,8 +19,8 @@ export const MAIL_PRESETS: MailPreset[] = [
     id: "outlook",
     label: "Outlook",
     host: "smtp-mail.outlook.com",
-    port: 465,
-    note: "Outlook needs an app password when two-factor sign-in is on.",
+    port: 587,
+    note: "Outlook needs an app password when two-factor sign-in is on, and Microsoft has been retiring password sign-in for personal accounts — if it is refused, the account may no longer allow it.",
   },
   {
     id: "yahoo",

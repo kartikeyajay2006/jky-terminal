@@ -28,22 +28,34 @@ pub enum MailError {
 /// is testable without sending anything.
 pub fn compose(event: &Event, minutes: u32) -> (String, String) {
     let lead = describe_lead(minutes);
-    let subject = format!("{} — {}", event.title, lead);
 
-    let when = readable(&event.starts_at);
+    // No separator and no dash. "Team meeting in 30 minutes" reads as a
+    // sentence, and an em dash would be encoded as =?utf-8?b?...?= on the
+    // wire, which is correct but pointless when plain words say the same.
+    let subject = format!("{} {}", event.title, lead);
+
     let body = format!(
         "{title}\n\
          {when} UTC\n\
          \n\
-         This is your {lead} reminder from JKY Terminal.\n\
+         {sentence}\n\
          \n\
          You set this alert on the event itself. Remove it there, or turn off \
          email alerts under Dashboard, Mail Alerts, and this stops.\n",
         title = event.title,
-        when = when,
-        lead = lead,
+        when = readable(&event.starts_at),
+        sentence = capitalise(&lead),
     );
     (subject, body)
+}
+
+/// "in 30 minutes" to "In 30 minutes." — a sentence on its own line.
+fn capitalise(lead: &str) -> String {
+    let mut chars = lead.chars();
+    match chars.next() {
+        Some(first) => format!("{}{}.", first.to_uppercase(), chars.as_str()),
+        None => String::new(),
+    }
 }
 
 fn describe_lead(minutes: u32) -> String {
@@ -113,19 +125,112 @@ pub fn send(
         .body(body)
         .map_err(|e| MailError::Build(e.to_string()))?;
 
+    // Bounded before lettre sees it.
+    //
+    // lettre's own timeout covers reads and writes on an established socket,
+    // not the connect, so a port nothing listens on hangs until the operating
+    // system gives up — a full minute, watched by hand against Outlook on
+    // 465. A test button that does nothing for a minute reads as a broken
+    // app rather than a wrong port.
+    reachable(&config.host, config.port, CONNECT_TIMEOUT)?;
+
     let creds = Credentials::new(config.address.clone(), password.to_string());
 
-    // relay() is implicit TLS from the first byte. starttls_relay() would open
-    // in the clear and ask the server to upgrade, which a server — or anything
-    // between — can decline.
-    let transport = SmtpTransport::relay(&config.host)
+    let transport = transport_for(&config.host, config.port)
         .map_err(|e| MailError::Send(explain(&e.to_string())))?
         .port(config.port)
         .credentials(creds)
+        .timeout(Some(IO_TIMEOUT))
         .build();
 
     transport.send(&message).map_err(|e| MailError::Send(explain(&e.to_string())))?;
     Ok(())
+}
+
+/// How long to wait for a server to accept a connection.
+const CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
+
+/// How long to wait on an established connection.
+///
+/// Generously longer than the connect: a mail server that has accepted the
+/// connection is talking, and a large provider can be slow to answer AUTH
+/// without anything being wrong. Twenty seconds was tried and cut Outlook
+/// off mid-exchange.
+const IO_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(45);
+
+/// Can anything be reached there at all?
+///
+/// Every address the host resolves to is tried, because a host with both an
+/// IPv6 and an IPv4 address may only be reachable on one of them from a given
+/// network, and giving up on the first is how a working provider looks
+/// broken.
+///
+/// The budget is for the whole attempt, not for each address.
+/// smtp-mail.outlook.com resolves to eight of them here, and a timeout per
+/// address turned a wrong port into eighty seconds of nothing.
+fn reachable(host: &str, port: u16, budget: std::time::Duration) -> Result<(), MailError> {
+    use std::net::ToSocketAddrs;
+
+    let addrs: Vec<_> = (host, port)
+        .to_socket_addrs()
+        .map_err(|e| MailError::Send(explain(&format!("could not resolve {host}: {e}"))))?
+        .collect();
+
+    if addrs.is_empty() {
+        return Err(MailError::Send(format!("{host} does not resolve to anything.")));
+    }
+
+    let started = std::time::Instant::now();
+    let mut last = String::new();
+    for addr in &addrs {
+        let left = budget.saturating_sub(started.elapsed());
+        if left.is_zero() {
+            break;
+        }
+        // Never less than a second each, or the last few addresses get a
+        // timeout so short that a reachable one looks unreachable.
+        let each = left.max(std::time::Duration::from_secs(1));
+        match std::net::TcpStream::connect_timeout(addr, each) {
+            Ok(_) => return Ok(()),
+            Err(e) => last = e.to_string(),
+        }
+    }
+
+    Err(MailError::Send(format!(
+        "Nothing answered at {host} on port {port}. Check the port — {} \
+         ({last})",
+        if port == 465 {
+            "some providers use 587 rather than 465"
+        } else {
+            "some providers use 465 rather than 587"
+        }
+    )))
+}
+
+/// The port decides how TLS is established.
+///
+/// 465 is implicit TLS: encrypted from the first byte, and the whole
+/// conversation including EHLO is inside it. Everything else — 587 in
+/// practice — has to open in the clear and issue STARTTLS, because that is
+/// the only thing listening there. iCloud offers nothing else at all, which
+/// is how this was found: an implicit handshake against 587 came back as
+/// "received corrupt message", rustls reading a plaintext greeting.
+///
+/// starttls_relay is lettre's *required* variant, not its opportunistic one:
+/// if the upgrade is refused or stripped, it fails rather than sending a
+/// password in the clear. Never use SmtpTransport::builder_dangerous, and
+/// never set Tls::Opportunistic — either would send in plain text whenever
+/// something between here and the server said to.
+fn transport_for(
+    host: &str,
+    port: u16,
+) -> Result<lettre::transport::smtp::SmtpTransportBuilder, lettre::transport::smtp::Error> {
+    const IMPLICIT_TLS: u16 = 465;
+    if port == IMPLICIT_TLS {
+        SmtpTransport::relay(host)
+    } else {
+        SmtpTransport::starttls_relay(host)
+    }
 }
 
 /// Turn a server's answer into something worth reading.
@@ -174,7 +279,7 @@ mod tests {
     fn the_subject_names_the_event_and_when_it_is() {
         // It has to be readable in a notification, where the body is not.
         let (subject, _) = compose(&event("Team meeting", "2026-08-27T12:30:00Z"), 30);
-        assert_eq!(subject, "Team meeting — in 30 minutes");
+        assert_eq!(subject, "Team meeting in 30 minutes");
     }
 
     #[test]
@@ -200,6 +305,38 @@ mod tests {
     }
 
     #[test]
+    fn the_subject_needs_no_mime_encoding() {
+        // An em dash is encoded as =?utf-8?b?4oCU?= on the wire. Correct, and
+        // pointless when plain words say the same thing.
+        let (subject, _) = compose(&event("Team meeting", "2026-08-27T12:30:00Z"), 30);
+        assert!(subject.is_ascii(), "{subject} would be encoded on the wire");
+    }
+
+    #[test]
+    fn the_body_reads_as_english() {
+        // It used to say "This is your in 30 minutes reminder from JKY
+        // Terminal", which every test passed because they all checked that
+        // the body contained things rather than that it read as a sentence.
+        let (_, body) = compose(&event("Team meeting", "2026-08-27T12:30:00Z"), 30);
+        assert!(body.contains("In 30 minutes."), "{body}");
+        assert!(!body.contains("your in "), "{body}");
+        assert!(!body.contains("is your in"), "{body}");
+    }
+
+    #[test]
+    fn every_lead_time_makes_a_sentence() {
+        for minutes in [0, 30, 45, 60, 120, 1440, 2880] {
+            let (subject, body) = compose(&event("Standup", "2026-08-27T12:30:00Z"), minutes);
+            let sentence = body.lines().nth(3).unwrap();
+            assert!(
+                sentence.starts_with(char::is_uppercase) && sentence.ends_with('.'),
+                "{minutes} gives {sentence:?}"
+            );
+            assert!(subject.starts_with("Standup "), "{subject}");
+        }
+    }
+
+    #[test]
     fn the_body_says_how_to_make_it_stop() {
         // Every automated email owes the reader this.
         let (_, body) = compose(&event("t", "2026-08-27T12:30:00Z"), 30);
@@ -219,6 +356,57 @@ mod tests {
     fn an_unreadable_timestamp_is_printed_raw_rather_than_invented() {
         assert_eq!(readable("whenever"), "whenever");
         assert_eq!(readable("2026-99-27T12:30:00Z"), "2026-99-27T12:30:00Z");
+    }
+
+    #[test]
+    fn a_port_nothing_listens_on_fails_quickly_rather_than_hanging() {
+        // Discard reserved port 9 on localhost: resolvable, refused at once.
+        let started = std::time::Instant::now();
+        let err = reachable("127.0.0.1", 9, std::time::Duration::from_secs(2)).unwrap_err();
+        assert!(started.elapsed() < std::time::Duration::from_secs(5), "took too long");
+        assert!(err.to_string().contains("Nothing answered"), "{err}");
+    }
+
+    #[test]
+    fn many_addresses_still_share_one_budget() {
+        // smtp-mail.outlook.com resolves to eight addresses here. A timeout
+        // per address turned a wrong port into eighty seconds of nothing.
+        let started = std::time::Instant::now();
+        let _ = reachable("localhost", 9, std::time::Duration::from_secs(3));
+        assert!(
+            started.elapsed() < std::time::Duration::from_secs(10),
+            "took {:?}, so the budget is per address",
+            started.elapsed()
+        );
+    }
+
+    #[test]
+    fn an_unreachable_port_suggests_the_other_one() {
+        // Outlook does not answer on 465 and iCloud does not answer on 587;
+        // the wrong one is the likeliest reason nothing is listening.
+        let err = reachable("127.0.0.1", 465, std::time::Duration::from_secs(2)).unwrap_err();
+        assert!(err.to_string().contains("587"), "{err}");
+
+        let err = reachable("127.0.0.1", 587, std::time::Duration::from_secs(2)).unwrap_err();
+        assert!(err.to_string().contains("465"), "{err}");
+    }
+
+    #[test]
+    fn a_host_that_does_not_exist_says_so() {
+        let err = reachable(
+            "no-such-host.invalid",
+            465,
+            std::time::Duration::from_secs(2),
+        )
+        .unwrap_err();
+        assert!(err.to_string().contains("server address"), "{err}");
+    }
+
+    #[test]
+    fn the_connect_timeout_is_shorter_than_the_io_timeout() {
+        // A connection that never opens should give up long before one that
+        // is open and merely slow.
+        const { assert!(CONNECT_TIMEOUT.as_secs() < IO_TIMEOUT.as_secs()) };
     }
 
     #[test]
@@ -252,12 +440,23 @@ mod tests {
     }
 
     #[test]
-    fn the_connection_is_encrypted_from_the_first_byte() {
-        // Swapping relay() for starttls_relay() compiles, passes every other
-        // test here, and quietly changes the connection to one that opens in
-        // the clear and asks the server to upgrade — which the server, or
-        // anything sitting between, can decline. The password goes over that
-        // connection, so the choice is worth pinning where it can be seen.
+    fn port_465_is_implicit_tls_and_everything_else_negotiates() {
+        // Not a cosmetic choice. An implicit handshake against 587 comes back
+        // as "received corrupt message", which is rustls reading a plaintext
+        // SMTP greeting — the iCloud preset failed exactly that way until
+        // this existed.
+        assert!(transport_for("smtp.gmail.com", 465).is_ok());
+        assert!(transport_for("smtp.mail.me.com", 587).is_ok());
+    }
+
+    #[test]
+    fn the_connection_is_never_left_unencrypted() {
+        // The password goes over this connection. lettre offers three ways to
+        // get it wrong quietly: builder_dangerous skips TLS entirely,
+        // Tls::None sends in the clear, and Tls::Opportunistic upgrades only
+        // if the server offers to — so anything able to strip one line from
+        // the greeting gets the password. Each compiles and passes every
+        // other test here, so the choice is pinned where it can be seen.
         let source = include_str!("send.rs");
         // Comments out. The first version of this matched the comment above
         // the transport, which names starttls_relay in order to say why it is
@@ -271,12 +470,17 @@ mod tests {
             .collect::<Vec<_>>()
             .join("\n");
 
+        for forbidden in ["builder_dangerous", "Tls::None", "Tls::Opportunistic"] {
+            assert!(
+                !code.contains(forbidden),
+                "SECURITY: {forbidden} allows the password to go out unencrypted."
+            );
+        }
+        assert!(code.contains("SmtpTransport::relay"), "no implicit-TLS path at all");
         assert!(
-            !code.contains("starttls_relay"),
-            "SECURITY: the transport opens in the clear and negotiates TLS. \
-             Use SmtpTransport::relay, which is encrypted from the first byte."
+            code.contains("SmtpTransport::starttls_relay"),
+            "no STARTTLS path, so port 587 cannot work"
         );
-        assert!(code.contains("SmtpTransport::relay"), "no transport is built at all");
     }
 
     #[test]

@@ -32,10 +32,14 @@ pub struct Preset {
     pub note: &'static str,
 }
 
-/// Port 465 throughout: implicit TLS, encrypted from the first byte.
+/// Ports are what each provider actually listens on, not what would be
+/// tidiest.
 ///
-/// 587 with STARTTLS begins in the clear and asks the server to upgrade, which
-/// is one downgrade away from sending a password in plain text.
+/// 465 is implicit TLS and preferred where it exists. 587 is STARTTLS, and it
+/// is what Outlook and iCloud offer — Outlook does not answer on 465 at all,
+/// which a connection attempt from a real machine showed and no test could
+/// have. Neither is ever plaintext: the STARTTLS path refuses to send if the
+/// upgrade does not happen.
 pub const PRESETS: &[Preset] = &[
     Preset {
         id: "gmail",
@@ -49,8 +53,10 @@ pub const PRESETS: &[Preset] = &[
         id: "outlook",
         label: "Outlook",
         host: "smtp-mail.outlook.com",
-        port: 465,
-        note: "Outlook needs an app password when two-factor sign-in is on.",
+        port: 587,
+        note: "Outlook needs an app password when two-factor sign-in is on, \
+               and Microsoft has been retiring password sign-in for personal \
+               accounts — if it is refused, the account may no longer allow it.",
     },
     Preset {
         id: "yahoo",
@@ -149,12 +155,17 @@ mod tests {
     }
 
     #[test]
-    fn presets_use_implicit_tls() {
-        // 587 with STARTTLS begins in the clear and asks the server to
-        // upgrade, which is one downgrade away from a password in plain text.
-        // iCloud is the exception and only offers 587.
+    fn no_preset_uses_a_plaintext_port() {
+        // 465 is implicit TLS; 587 is STARTTLS, which this crate only ever
+        // uses in its required form. 25 and 2525 have no encryption at all,
+        // and a password would go over them in the clear.
         for p in PRESETS {
-            assert!(p.port == 465 || p.id == "icloud", "{} uses port {}", p.id, p.port);
+            assert!(
+                p.port == 465 || p.port == 587,
+                "{} uses port {}, which is not an encrypted submission port",
+                p.id,
+                p.port
+            );
         }
     }
 
