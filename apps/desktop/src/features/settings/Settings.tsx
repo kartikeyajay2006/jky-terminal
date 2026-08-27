@@ -2,18 +2,16 @@ import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
 import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { getPlatform, type CommandSpec } from "../../platform";
-import { ActivityLog } from "./ActivityLog";
 import { PanelHead } from "./PanelHead";
 import { ProviderVault } from "./ProviderVault";
 import "./Settings.css";
 
-type Panel = "appearance" | "providers" | "commands" | "activity";
+type Panel = "appearance" | "providers" | "commands";
 
 const PANELS: Array<{ id: Panel; label: string; blurb: string }> = [
   { id: "appearance", label: "Appearance", blurb: "Theme and how the app looks" },
   { id: "providers", label: "Providers", blurb: "API keys and model selection" },
   { id: "commands", label: "Commands", blurb: "What you can type in a terminal" },
-  { id: "activity", label: "Activity", blurb: "Every key read, tool call and command" },
 ];
 
 export function Settings() {
@@ -96,8 +94,6 @@ export function Settings() {
           </section>
         ) : panel === "commands" ? (
           <CommandList />
-        ) : panel === "activity" ? (
-          <ActivityLog />
         ) : (
           <ProviderVault />
         )}

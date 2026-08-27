@@ -19,46 +19,20 @@ pub fn data_dir(bin_dir: &Path) -> PathBuf {
     bin_dir.join("data")
 }
 
-/// A short, stable handle for a record.
+/// The handles shown beside each record: 1, 2, 3, in the order they are
+/// listed.
 ///
-/// The real ids carry a millisecond timestamp and are far too long to type.
-/// This is four hex characters of a hash of the full id: stable across runs,
-/// so a handle written down stays valid, and lengthened only where two
-/// records would otherwise collide.
-fn short_of(id: &str, len: usize) -> String {
-    // FNV-1a for the accumulation.
-    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
-    for byte in id.as_bytes() {
-        hash ^= u64::from(*byte);
-        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
-    }
-
-    // Then a finaliser, because FNV alone barely disturbs the high bits and
-    // these handles are the high bits. Ids that differ only in a trailing
-    // counter — which is exactly how they are generated — came out as
-    // 12244c and 12244d: unique, but one keystroke apart, so a typo silently
-    // opens the wrong record. Mixing first spreads that difference across the
-    // whole word.
-    hash ^= hash >> 33;
-    hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
-    hash ^= hash >> 33;
-
-    format!("{hash:016x}")[..len].to_string()
-}
-
-/// Short handles for a whole collection, guaranteed distinct.
-pub fn short_ids(ids: &[String]) -> Vec<String> {
-    for len in 4..=16 {
-        let shorts: Vec<String> = ids.iter().map(|id| short_of(id, len)).collect();
-        let unique: std::collections::HashSet<&String> = shorts.iter().collect();
-        if unique.len() == shorts.len() {
-            return shorts;
-        }
-    }
-    // Sixteen hex characters is the whole hash; two ids colliding there is not
-    // a case worth designing for, but falling back to the full id is still
-    // correct rather than ambiguous.
-    ids.to_vec()
+/// These were four hex characters of a hash, which had the nice property of
+/// never changing when a neighbour was deleted. They were also unreadable and
+/// unmemorable, and nobody types `6786` when a list is sitting in front of
+/// them numbered from one.
+///
+/// The cost is real and worth stating: delete the second of three notes and
+/// the third becomes 2, so a number copied out of old scrollback can point
+/// at a different record. Re-running the listing always shows the truth, and
+/// the listing is one command away.
+pub fn handles(count: usize) -> Vec<String> {
+    (1..=count).map(|n| n.to_string()).collect()
 }
 
 fn fg(rgb: (u8, u8, u8)) -> String {
@@ -162,12 +136,11 @@ pub fn render_notes(notes: &[Note], accent: Option<(u8, u8, u8)>) -> String {
     if notes.is_empty() {
         out.push_str(&empty(&p, "one"));
     } else {
-        let ids: Vec<String> = notes.iter().map(|n| n.id.clone()).collect();
-        for (note, short) in notes.iter().zip(short_ids(&ids)) {
+        for (note, short) in notes.iter().zip(handles(notes.len())) {
             line(
                 &mut out,
                 &format!(
-                    "  {}{}{}  {}  {}{}{}",
+                    "  {}{:>3}{}  {}  {}{}{}",
                     p.tint,
                     short,
                     p.reset,
@@ -179,7 +152,7 @@ pub fn render_notes(notes: &[Note], accent: Option<(u8, u8, u8)>) -> String {
             );
         }
     }
-    out.push_str(&footer(&p, "jky notes <id>  to read one"));
+    out.push_str(&footer(&p, "jky notes 1  to read one"));
     out
 }
 
@@ -223,8 +196,7 @@ pub fn render_events(events: &[Event], accent: Option<(u8, u8, u8)>) -> String {
         let mut sorted: Vec<&Event> = events.iter().collect();
         sorted.sort_by(|a, b| a.starts_at.cmp(&b.starts_at));
 
-        let ids: Vec<String> = sorted.iter().map(|e| e.id.clone()).collect();
-        for (event, short) in sorted.iter().zip(short_ids(&ids)) {
+        for (event, short) in sorted.iter().zip(handles(sorted.len())) {
             let alert = match event.alert_minutes_before {
                 Some(m) => format!("  {}✉ {}{}", p.dim, lead(m), p.reset),
                 None => String::new(),
@@ -232,7 +204,7 @@ pub fn render_events(events: &[Event], accent: Option<(u8, u8, u8)>) -> String {
             line(
                 &mut out,
                 &format!(
-                    "  {}{}{}  {}{}{}  {}{}{}  {}{}",
+                    "  {}{:>3}{}  {}{}{}  {}{}{}  {}{}",
                     p.tint,
                     short,
                     p.reset,
@@ -248,7 +220,7 @@ pub fn render_events(events: &[Event], accent: Option<(u8, u8, u8)>) -> String {
             );
         }
     }
-    out.push_str(&footer(&p, "jky events <id>  for one · times are UTC as stored"));
+    out.push_str(&footer(&p, "jky events 1  for one · times are UTC as stored"));
     out
 }
 
@@ -292,10 +264,9 @@ pub fn render_reminders(reminders: &[Reminder], accent: Option<(u8, u8, u8)>) ->
         let mut sorted: Vec<&Reminder> = reminders.iter().collect();
         sorted.sort_by(|a, b| a.at.cmp(&b.at));
 
-        let ids: Vec<String> = sorted.iter().map(|r| r.id.clone()).collect();
-        for (r, short) in sorted.iter().zip(short_ids(&ids)) {
+        for (r, short) in sorted.iter().zip(handles(sorted.len())) {
             out.push_str(&format!(
-                "  {}{}{}  {}  {}{}{}  {}\r\n",
+                "  {}{:>3}{}  {}  {}{}{}  {}\r\n",
                 p.tint,
                 short,
                 p.reset,
@@ -307,7 +278,7 @@ pub fn render_reminders(reminders: &[Reminder], accent: Option<(u8, u8, u8)>) ->
             ));
         }
     }
-    out.push_str(&footer(&p, "jky reminders <id>  for one"));
+    out.push_str(&footer(&p, "jky reminders 1  for one"));
     out
 }
 
@@ -335,10 +306,9 @@ pub fn render_todos(todos: &[Todo], accent: Option<(u8, u8, u8)>) -> String {
     if todos.is_empty() {
         out.push_str(&empty(&p, "one"));
     } else {
-        let ids: Vec<String> = todos.iter().map(|t| t.id.clone()).collect();
-        for (t, short) in todos.iter().zip(short_ids(&ids)) {
+        for (t, short) in todos.iter().zip(handles(todos.len())) {
             out.push_str(&format!(
-                "  {}{}{}  {}  {}\r\n",
+                "  {}{:>3}{}  {}  {}\r\n",
                 p.tint,
                 short,
                 p.reset,
@@ -347,7 +317,7 @@ pub fn render_todos(todos: &[Todo], accent: Option<(u8, u8, u8)>) -> String {
             ));
         }
     }
-    out.push_str(&footer(&p, "jky todos <id>  for one"));
+    out.push_str(&footer(&p, "jky todos 1  for one"));
     out
 }
 
@@ -392,39 +362,30 @@ pub fn write_all(store: &Store, bin_dir: &Path, accent: Option<(u8, u8, u8)>) ->
 
     if let Ok(notes) = store.notes().list() {
         write_one(&dir, "notes", &render_notes(&notes, accent))?;
-        let ids: Vec<String> = notes.iter().map(|n| n.id.clone()).collect();
-        write_records(&dir, "notes", &short_ids(&ids), |i| {
-            render_note(&notes[i], &short_ids(&ids)[i], accent)
-        })?;
+        let hs = handles(notes.len());
+        write_records(&dir, "notes", &hs, |i| render_note(&notes[i], &hs[i], accent))?;
     }
 
     if let Ok(events) = store.events().list() {
         write_one(&dir, "events", &render_events(&events, accent))?;
         let mut sorted: Vec<Event> = events.clone();
         sorted.sort_by(|a, b| a.starts_at.cmp(&b.starts_at));
-        let ids: Vec<String> = sorted.iter().map(|e| e.id.clone()).collect();
-        let shorts = short_ids(&ids);
-        write_records(&dir, "events", &shorts, |i| {
-            render_event(&sorted[i], &shorts[i], accent)
-        })?;
+        let hs = handles(sorted.len());
+        write_records(&dir, "events", &hs, |i| render_event(&sorted[i], &hs[i], accent))?;
     }
 
     if let Ok(reminders) = store.reminders().list() {
         write_one(&dir, "reminders", &render_reminders(&reminders, accent))?;
         let mut sorted: Vec<Reminder> = reminders.clone();
         sorted.sort_by(|a, b| a.at.cmp(&b.at));
-        let ids: Vec<String> = sorted.iter().map(|r| r.id.clone()).collect();
-        let shorts = short_ids(&ids);
-        write_records(&dir, "reminders", &shorts, |i| {
-            render_reminder(&sorted[i], &shorts[i], accent)
-        })?;
+        let hs = handles(sorted.len());
+        write_records(&dir, "reminders", &hs, |i| render_reminder(&sorted[i], &hs[i], accent))?;
     }
 
     if let Ok(todos) = store.todos().list() {
         write_one(&dir, "todos", &render_todos(&todos, accent))?;
-        let ids: Vec<String> = todos.iter().map(|t| t.id.clone()).collect();
-        let shorts = short_ids(&ids);
-        write_records(&dir, "todos", &shorts, |i| render_todo(&todos[i], &shorts[i], accent))?;
+        let hs = handles(todos.len());
+        write_records(&dir, "todos", &hs, |i| render_todo(&todos[i], &hs[i], accent))?;
     }
 
     Ok(())
@@ -481,95 +442,48 @@ mod tests {
     }
 
     #[test]
-    fn short_ids_are_short_enough_to_type() {
-        let ids = vec!["note-1756280000000-1".to_string(), "note-1756280000000-2".to_string()];
-        for short in short_ids(&ids) {
-            assert!(short.len() <= 6, "'{short}' is too long to type");
-        }
+    fn handles_are_counted_from_one() {
+        // A list in front of you numbered from one is what people type.
+        assert_eq!(handles(3), ["1", "2", "3"]);
     }
 
     #[test]
-    fn short_ids_are_stable_across_calls() {
-        // A handle someone wrote down has to keep working.
-        let ids = vec!["note-a".to_string(), "note-b".to_string()];
-        assert_eq!(short_ids(&ids), short_ids(&ids));
+    fn an_empty_collection_has_no_handles() {
+        assert_eq!(handles(0), Vec::<String>::new());
     }
 
     #[test]
-    fn handles_for_neighbouring_records_do_not_look_alike() {
-        // Ids are generated with a trailing counter, so consecutive records
-        // differ by one character. Handles derived from them must not: 12244c
-        // and 12244d are unique and useless, because mistyping one silently
-        // opens the other.
-        let ids: Vec<String> = (0..40).map(|i| format!("note-1756280000000-{i}")).collect();
-        let shorts = short_ids(&ids);
-
-        let firsts: std::collections::HashSet<char> =
-            shorts.iter().filter_map(|s| s.chars().next()).collect();
-        assert!(
-            firsts.len() > 6,
-            "handles barely differ; only {} distinct first characters: {:?}",
-            firsts.len(),
-            &shorts[..8],
-        );
-
-        for pair in shorts.windows(2) {
-            let differing = pair[0]
-                .chars()
-                .zip(pair[1].chars())
-                .filter(|(a, b)| a != b)
-                .count();
-            assert!(differing >= 2, "'{}' and '{}' differ by one keystroke", pair[0], pair[1]);
-        }
+    fn handles_keep_going_past_nine() {
+        let hs = handles(12);
+        assert_eq!(hs[9], "10");
+        assert_eq!(hs.last().unwrap(), "12");
     }
 
     #[test]
-    fn no_row_has_trailing_whitespace() {
-        // Padded columns leave it hanging wherever the last field is short.
-        let out = render_events(
-            &[
-                {
-                    let mut e = event("e1", "No alert", "2026-08-27T10:00:00Z");
-                    e.alert_minutes_before = None;
-                    e
-                },
-                event("e2", "With alert", "2026-08-28T10:00:00Z"),
-            ],
-            None,
-        );
-        for l in out.lines() {
-            assert_eq!(l, l.trim_end(), "trailing whitespace: {l:?}");
-        }
-    }
+    fn handles_match_the_order_things_are_listed_in() {
+        // The number beside a row has to be the number that fetches that row,
+        // and events are listed by when they happen rather than when they
+        // were added.
+        let events = [
+            event("e2", "Later", "2026-09-05T16:00:00Z"),
+            event("e1", "Sooner", "2026-08-27T10:00:00Z"),
+        ];
+        let listing = render_events(&events, None);
 
-    #[test]
-    fn short_ids_do_not_collide() {
-        let ids: Vec<String> = (0..500).map(|i| format!("note-1756280000000-{i}")).collect();
-        let shorts = short_ids(&ids);
-        let unique: std::collections::HashSet<&String> = shorts.iter().collect();
-        assert_eq!(unique.len(), shorts.len());
-    }
-
-    #[test]
-    fn a_short_id_does_not_change_when_a_neighbour_is_deleted() {
-        // Deriving it from position would renumber everything the moment one
-        // record was removed, and every handle in the terminal's scrollback
-        // would then point at the wrong thing.
-        let all = vec!["a".to_string(), "b".to_string(), "c".to_string()];
-        let fewer = vec!["a".to_string(), "c".to_string()];
-        assert_eq!(short_ids(&all)[2], short_ids(&fewer)[1]);
+        let first_row = listing.lines().find(|l| l.contains("Sooner")).unwrap();
+        assert!(first_row.trim_start().starts_with('1'), "{first_row}");
     }
 
     #[test]
     fn the_notes_listing_shows_a_handle_and_a_title() {
         let out = render_notes(&[note("n1", "Today's Plan")], None);
         assert!(out.contains("Today's Plan"), "{out}");
-        assert!(out.contains(&short_ids(&["n1".to_string()])[0]), "{out}");
+        assert!(out.contains(" 1  "), "no handle in: {out}");
     }
 
     #[test]
     fn the_notes_listing_says_how_to_read_one() {
-        assert!(render_notes(&[note("n1", "Plan")], None).contains("jky notes <id>"));
+        assert!(render_notes(&[note("n1", "Plan")], None).contains("jky notes 1"));
     }
 
     #[test]
@@ -704,9 +618,8 @@ mod tests {
 
         let data = data_dir(&bin);
         assert!(data.join("notes.ansi").is_file());
-        let shorts = short_ids(&["n1".to_string(), "n2".to_string()]);
-        for short in &shorts {
-            assert!(data.join("notes").join(format!("{short}.ansi")).is_file(), "{short}");
+        for handle in ["1", "2"] {
+            assert!(data.join("notes").join(format!("{handle}.ansi")).is_file(), "{handle}");
         }
     }
 
@@ -721,11 +634,15 @@ mod tests {
         let bin = dir.path().join("bin");
         write_all(&store, &bin, None).unwrap();
 
-        let gone = short_ids(&["n1".to_string(), "n2".to_string()])[1].clone();
+        // Two notes, so handles 1 and 2 exist. After removing one there is
+        // only 1, and 2 must stop answering rather than pointing at whatever
+        // is left.
+        assert!(data_dir(&bin).join("notes").join("2.ansi").exists());
         store.notes().remove("n2").unwrap();
         write_all(&store, &bin, None).unwrap();
 
-        assert!(!data_dir(&bin).join("notes").join(format!("{gone}.ansi")).exists());
+        assert!(!data_dir(&bin).join("notes").join("2.ansi").exists());
+        assert!(data_dir(&bin).join("notes").join("1.ansi").exists());
     }
 
     /// The whole chain: save a record, render, then run the real script.
@@ -754,14 +671,13 @@ mod tests {
         assert!(out.status.success(), "jky notes failed: {}", String::from_utf8_lossy(&out.stderr));
         assert!(stdout.contains("Today's Plan"), "{stdout}");
 
-        let short = &short_ids(&["note-1756280000000-1".to_string()])[0];
-        assert!(stdout.contains(short.as_str()), "no handle in: {stdout}");
+        assert!(stdout.contains(" 1  "), "no handle in: {stdout}");
 
         // And the handle it printed actually resolves.
         let one = std::process::Command::new("sh")
             .arg(bin.join("jky"))
             .arg("notes")
-            .arg(short)
+            .arg("1")
             .output()
             .expect("script runs");
         assert!(one.status.success());
@@ -780,14 +696,13 @@ mod tests {
         jky_pty::install_launchers(&bin, "BANNER", "COMMANDS").unwrap();
         write_all(&store, &bin, None).unwrap();
 
-        let gone = short_ids(&["n1".to_string(), "n2".to_string()])[1].clone();
         store.notes().remove("n2").unwrap();
         write_all(&store, &bin, None).unwrap();
 
         let out = std::process::Command::new("sh")
             .arg(bin.join("jky"))
             .arg("notes")
-            .arg(&gone)
+            .arg("2")
             .output()
             .expect("script runs");
         assert!(!out.status.success(), "a deleted note is still readable");

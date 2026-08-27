@@ -92,7 +92,6 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "ai_cancel".to_string(),
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),
-        "audit_read".to_string(),
         "commands_list".to_string(),
         "pty_attach".to_string(),
         "pty_kill".to_string(),
@@ -151,6 +150,25 @@ fn no_ipc_command_is_declared_inside_a_macro() {
              command declared there is exposed to the renderer without appearing in the \
              pinned list. Write it out.",
             file.display()
+        );
+    }
+}
+
+#[test]
+fn the_audit_log_is_written_but_never_handed_to_the_renderer() {
+    // It records every key read, tool call and command decision, and it is
+    // for the person who owns the machine — readable with `cat`, beside the
+    // settings file. No IPC command hands it to the window, so a prompt
+    // injection that reaches the assistant cannot ask the frontend to read
+    // back the history of everything the app has touched.
+    for (file, name) in exposed_commands() {
+        let lowered = name.to_lowercase();
+        assert!(
+            !lowered.contains("audit") && !lowered.contains("activity"),
+            "SECURITY: IPC command `{name}` in {} exposes the audit log to the \
+             renderer. It is written for the machine's owner to read directly, \
+             not for the window.",
+            file
         );
     }
 }

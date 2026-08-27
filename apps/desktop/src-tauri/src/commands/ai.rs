@@ -447,11 +447,6 @@ pub fn ai_cancel(app: AppHandle, state: State<'_, AppState>) -> Result<(), Strin
     Ok(())
 }
 
-#[tauri::command]
-pub fn audit_read(state: State<'_, AppState>) -> Result<Vec<AuditEvent>, String> {
-    state.audit.read_all().map_err(|e| e.to_string())
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

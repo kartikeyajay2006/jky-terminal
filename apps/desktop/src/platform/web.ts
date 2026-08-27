@@ -1,7 +1,6 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
   AiApi,
-  AuditEvent,
   CollectionApi,
   CommandSpec,
   Event,
@@ -54,31 +53,31 @@ const WEB_COMMANDS: CommandSpec[] = [
   },
   {
     names: ["jky notes", "jky note"],
-    usage: "jky notes [id]",
+    usage: "jky notes [number]",
     summary: "List your notes, or read one",
     detail:
-      "With no argument it prints every saved note with its short id and title. Give it an id and it prints that note in full. The same notes appear under Dashboard, Notes.",
+      "With no argument it prints every saved note, numbered from one. Give it a number and it prints that note in full. The numbers follow the list, so deleting one renumbers the rest.",
   },
   {
     names: ["jky events", "jky event"],
-    usage: "jky events [id]",
+    usage: "jky events [number]",
     summary: "List your events, or read one",
     detail:
-      "Every event in the order it happens, with its short id, date, time and any email alert. Times are shown as stored, in UTC; the Dashboard shows them on your own clock.",
+      "Every event in the order it happens, numbered from one, with its date, time and any email alert. Times are shown as stored, in UTC; the Dashboard shows them on your own clock.",
   },
   {
     names: ["jky reminders", "jky reminder"],
-    usage: "jky reminders [id]",
+    usage: "jky reminders [number]",
     summary: "List your reminders, or read one",
     detail:
-      "The daily checklist in the order of the day, ticked or not. Give it an id to see one on its own.",
+      "The daily checklist in the order of the day, ticked or not, numbered from one. Give it a number to see one on its own.",
   },
   {
     names: ["jky todos", "jky todo"],
-    usage: "jky todos [id]",
+    usage: "jky todos [number]",
     summary: "List your todos, or read one",
     detail:
-      "Everything on the list, done and not done. Nothing is removed for being finished.",
+      "Everything on the list, numbered from one, done and not done. Nothing is removed for being finished.",
   },
   {
     names: ["jky banner"],
@@ -257,10 +256,6 @@ export function createWebPlatform(): Platform {
     store,
     async listCommands() {
       return WEB_COMMANDS;
-    },
-    async readAudit(): Promise<AuditEvent[]> {
-      // The browser build has no backend to have recorded anything.
-      return [];
     },
   };
 }

@@ -38,7 +38,6 @@ fn main() {
             ai::ai_cancel,
             ai::ai_approve_tool,
             ai::ai_reject_tool,
-            ai::audit_read,
             store::store_list_notes,
             store::store_save_note,
             store::store_delete_note,

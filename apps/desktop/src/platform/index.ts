@@ -6,7 +6,6 @@ export { EVENT_COLOURS } from "./types";
 export type {
   AiApi,
   AiMessage,
-  AuditEvent,
   CollectionApi,
   CommandSpec,
   Event,

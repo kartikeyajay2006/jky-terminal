@@ -18,6 +18,15 @@ describe("Settings", () => {
     expect(await screen.findByRole("heading", { name: /appearance/i })).toBeInTheDocument();
   });
 
+  it("does not offer an activity panel", () => {
+    // The audit log is still written — it is beside the settings file and
+    // readable with `cat` — but the window has no way to read it back, so
+    // there is nothing here to show.
+    render(<Settings />);
+    const nav = screen.getByRole("navigation", { name: /settings sections/i });
+    expect(nav).not.toHaveTextContent(/activity/i);
+  });
+
   it("lists its sections", () => {
     render(<Settings />);
     const nav = screen.getByRole("navigation", { name: /settings sections/i });
@@ -74,32 +83,6 @@ describe("Settings", () => {
 
     await user.click(screen.getByRole("button", { name: /commands/i }));
     expect(await screen.findByText(/prints the same list/i)).toBeInTheDocument();
-  });
-
-  it("shows the activity log", async () => {
-    const user = userEvent.setup();
-    render(<Settings />);
-
-    await user.click(screen.getByRole("button", { name: /activity/i }));
-    expect(await screen.findByRole("heading", { name: /^activity$/i })).toBeInTheDocument();
-  });
-
-  it("explains that the activity file is readable without the app", async () => {
-    // An audit trail you can only inspect through the thing being audited is
-    // worth less, and the user should know it is not the only way in.
-    const user = userEvent.setup();
-    render(<Settings />);
-
-    await user.click(screen.getByRole("button", { name: /activity/i }));
-    expect(await screen.findByText(/without this app/i)).toBeInTheDocument();
-  });
-
-  it("says so when nothing has been recorded rather than showing an empty box", async () => {
-    const user = userEvent.setup();
-    render(<Settings />);
-
-    await user.click(screen.getByRole("button", { name: /activity/i }));
-    expect(await screen.findByText(/nothing recorded yet/i)).toBeInTheDocument();
   });
 
   it("changes the theme from the swatch grid", async () => {
@@ -167,7 +150,7 @@ describe("settings panels", () => {
   beforeEach(() => __setPlatformForTests(createWebPlatform()));
   afterEach(() => __setPlatformForTests(null));
 
-  const PANELS = ["Appearance", "Providers", "Commands", "Activity"];
+  const PANELS = ["Appearance", "Providers", "Commands"];
 
   for (const name of PANELS) {
     it(`${name} sits in the shared centred container`, async () => {

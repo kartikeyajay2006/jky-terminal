@@ -44,33 +44,33 @@ const COMMANDS: &[CommandSpec] = &[
     },
     CommandSpec {
         names: &["jky notes", "jky note"],
-        usage: "jky notes [id]",
+        usage: "jky notes [number]",
         summary: "List your notes, or read one",
-        detail: "With no argument it prints every saved note with its short id \
-                 and title. Give it an id and it prints that note in full. The \
-                 same notes appear under Dashboard, Notes.",
+        detail: "With no argument it prints every saved note, numbered from \
+                 one. Give it a number and it prints that note in full. The \
+                 numbers follow the list, so deleting one renumbers the rest.",
     },
     CommandSpec {
         names: &["jky events", "jky event"],
-        usage: "jky events [id]",
+        usage: "jky events [number]",
         summary: "List your events, or read one",
-        detail: "Every event in the order it happens, with its short id, date, \
-                 time and any email alert. Times are shown as stored, in UTC; \
-                 the Dashboard shows them on your own clock.",
+        detail: "Every event in the order it happens, numbered from one, with \
+                 its date, time and any email alert. Times are shown as \
+                 stored, in UTC; the Dashboard shows them on your own clock.",
     },
     CommandSpec {
         names: &["jky reminders", "jky reminder"],
-        usage: "jky reminders [id]",
+        usage: "jky reminders [number]",
         summary: "List your reminders, or read one",
-        detail: "The daily checklist in the order of the day, ticked or not. \
-                 Give it an id to see one on its own.",
+        detail: "The daily checklist in the order of the day, ticked or not, \
+                 numbered from one. Give it a number to see one on its own.",
     },
     CommandSpec {
         names: &["jky todos", "jky todo"],
-        usage: "jky todos [id]",
+        usage: "jky todos [number]",
         summary: "List your todos, or read one",
-        detail: "Everything on the list, done and not done. Nothing is removed \
-                 for being finished.",
+        detail: "Everything on the list, numbered from one, done and not done. \
+                 Nothing is removed for being finished.",
     },
     CommandSpec {
         names: &["jky banner"],

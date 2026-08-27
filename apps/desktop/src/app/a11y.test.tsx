@@ -70,13 +70,6 @@ describe("accessibility", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("the activity log has no violations", async () => {
-    const user = userEvent.setup();
-    const { container } = render(<Settings />);
-    await user.click(screen.getByRole("button", { name: /activity/i }));
-    expect(await axe(container)).toHaveNoViolations();
-  });
-
   it("the assistant panel has no violations", async () => {
     const { container } = render(<Assistant />);
     expect(await axe(container)).toHaveNoViolations();

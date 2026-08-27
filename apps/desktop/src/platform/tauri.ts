@@ -2,7 +2,6 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AiApi,
-  AuditEvent,
   CollectionApi,
   CommandSpec,
   Event,
@@ -152,6 +151,5 @@ export function createTauriPlatform(): Platform {
     ai,
     store,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
-    readAudit: () => invoke<AuditEvent[]>("audit_read"),
   };
 }

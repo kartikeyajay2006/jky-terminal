@@ -76,32 +76,34 @@ export function App() {
 
   return (
     <Shell activeId={section} onSelect={setSection}>
-      {section === "settings" ? (
-        <Settings />
-      ) : section === "dashboard" ? (
-        <Dashboard />
-      ) : section === "assistant" ? (
-        <Assistant />
-      ) : (
-        <div className="workspace">
-          <TabBar />
-          <div className="workspace__body">
-            {tabs.map((tab) => (
-              // Kept mounted but hidden. A terminal that unmounts loses its
-              // scrollback and kills its shell.
-              <div key={tab.id} className="workspace__pane" hidden={tab.id !== activeId}>
-                <Terminal tabId={tab.id} />
-              </div>
-            ))}
-            {tabs.length === 0 && (
-              <p className="workspace__empty">
-                No terminal open. Choose <b>+ New terminal</b> above, or press{" "}
-                <kbd>Ctrl</kbd>+<kbd>T</kbd>.
-              </p>
-            )}
-          </div>
+      {/* Hidden rather than unmounted, for the same reason the tabs inside it
+          are: a terminal that unmounts disposes its display and kills its
+          shell, so everything typed is gone and coming back spawns a fresh
+          one. The rule was applied between tabs and not between sections, so
+          a trip to the dashboard threw away every open shell. */}
+      <div className="workspace" hidden={section !== "terminal"}>
+        <TabBar />
+        <div className="workspace__body">
+          {tabs.map((tab) => (
+            <div key={tab.id} className="workspace__pane" hidden={tab.id !== activeId}>
+              <Terminal tabId={tab.id} />
+            </div>
+          ))}
+          {tabs.length === 0 && (
+            <p className="workspace__empty">
+              No terminal open. Choose <b>+ New terminal</b> above, or press{" "}
+              <kbd>Ctrl</kbd>+<kbd>T</kbd>.
+            </p>
+          )}
         </div>
-      )}
+      </div>
+
+      {/* These three keep their state in stores, so unmounting costs nothing
+          and mounting them all at once would run four sets of effects on
+          every start. */}
+      {section === "settings" && <Settings />}
+      {section === "dashboard" && <Dashboard />}
+      {section === "assistant" && <Assistant />}
     </Shell>
   );
 }

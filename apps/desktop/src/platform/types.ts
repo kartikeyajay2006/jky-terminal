@@ -79,12 +79,6 @@ export interface ToolRan {
   is_error: boolean;
 }
 
-export interface AuditEvent {
-  at: string;
-  kind: string;
-  detail: string;
-}
-
 export interface AiApi {
   send(provider: string, conversation: AiMessage[]): Promise<void>;
   /** Stop the turn in flight. */
@@ -193,6 +187,4 @@ export interface Platform {
   readonly store: StoreApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
-  /** Every recorded secret read, tool call and command decision. */
-  readAudit(): Promise<AuditEvent[]>;
 }
