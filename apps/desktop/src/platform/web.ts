@@ -53,6 +53,34 @@ const WEB_COMMANDS: CommandSpec[] = [
     detail: "Prints this list. The same list appears under Settings, Commands.",
   },
   {
+    names: ["jky notes", "jky note"],
+    usage: "jky notes [id]",
+    summary: "List your notes, or read one",
+    detail:
+      "With no argument it prints every saved note with its short id and title. Give it an id and it prints that note in full. The same notes appear under Dashboard, Notes.",
+  },
+  {
+    names: ["jky events", "jky event"],
+    usage: "jky events [id]",
+    summary: "List your events, or read one",
+    detail:
+      "Every event in the order it happens, with its short id, date, time and any email alert. Times are shown as stored, in UTC; the Dashboard shows them on your own clock.",
+  },
+  {
+    names: ["jky reminders", "jky reminder"],
+    usage: "jky reminders [id]",
+    summary: "List your reminders, or read one",
+    detail:
+      "The daily checklist in the order of the day, ticked or not. Give it an id to see one on its own.",
+  },
+  {
+    names: ["jky todos", "jky todo"],
+    usage: "jky todos [id]",
+    summary: "List your todos, or read one",
+    detail:
+      "Everything on the list, done and not done. Nothing is removed for being finished.",
+  },
+  {
     names: ["jky banner"],
     usage: "jky banner",
     summary: "Print the banner",

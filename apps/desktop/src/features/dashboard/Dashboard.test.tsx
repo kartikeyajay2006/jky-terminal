@@ -3,7 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Dashboard, SECTIONS } from "./Dashboard";
 import { useDashboard } from "./dashboardStore";
-import { __setPlatformForTests, createWebPlatform } from "../../platform";
+import { EVENT_COLOURS, __setPlatformForTests, createWebPlatform } from "../../platform";
 
 function reset() {
   __setPlatformForTests(createWebPlatform());
@@ -59,6 +59,81 @@ describe("dashboard navigation", () => {
     // than only being true in the code.
     render(<Dashboard />);
     expect(screen.getByText(/stays until you delete it/i)).toBeInTheDocument();
+  });
+});
+
+describe("the overview grid", () => {
+  beforeEach(reset);
+  afterEach(() => __setPlatformForTests(null));
+
+  it("gives every card its own colour", async () => {
+    // The point of six colours is finding the widget you want before reading
+    // a word. A card added later with no tone would be the grey one.
+    const { container } = render(<Dashboard />);
+    await screen.findByRole("heading", { name: "Overview" });
+
+    const cards = [...container.querySelectorAll(".card")];
+    expect(cards.length).toBeGreaterThan(0);
+
+    const tones = cards.map((c) => c.getAttribute("data-tone"));
+    expect(tones.every(Boolean), "a card has no tone").toBe(true);
+    expect(new Set(tones).size, `two cards share a colour: ${tones}`).toBe(tones.length);
+  });
+
+  it("uses only colours the themes define", async () => {
+    const { container } = render(<Dashboard />);
+    await screen.findByRole("heading", { name: "Overview" });
+
+    for (const card of container.querySelectorAll(".card")) {
+      expect(EVENT_COLOURS).toContain(card.getAttribute("data-tone"));
+    }
+  });
+
+  it("shows every widget the user asked for", async () => {
+    render(<Dashboard />);
+    await screen.findByRole("heading", { name: "Overview" });
+
+    for (const name of [
+      "Notes",
+      "Calendar",
+      "Reminders",
+      "Upcoming Events",
+      "Todos",
+      "Quick Actions",
+    ]) {
+      expect(screen.getByRole("region", { name })).toBeTruthy();
+    }
+  });
+
+  it("quick actions reach the panels they name", async () => {
+    const user = userEvent.setup();
+    render(<Dashboard />);
+    const quick = await screen.findByRole("region", { name: "Quick Actions" });
+
+    await user.click(within(quick).getByRole("button", { name: /add event/i }));
+    expect(screen.getByRole("heading", { name: "Calendar" })).toBeInTheDocument();
+  });
+
+  it("ticking a reminder on the overview ticks it everywhere", async () => {
+    // The cards are views of the same store, not copies of it.
+    const user = userEvent.setup();
+    // Seeded through the platform, not the store: the dashboard loads on
+    // mount, and state set beforehand would be overwritten by that load.
+    const platform = createWebPlatform();
+    await platform.store.reminders.save({
+      id: "r1",
+      text: "Exercise",
+      at: "07:00",
+      done: false,
+    });
+    __setPlatformForTests(platform);
+
+    render(<Dashboard />);
+    const card = await screen.findByRole("region", { name: "Reminders" });
+    const box = await within(card).findByRole("checkbox");
+
+    await user.click(box);
+    await waitFor(() => expect(useDashboard.getState().reminders[0].done).toBe(true));
   });
 });
 

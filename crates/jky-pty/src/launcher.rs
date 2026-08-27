@@ -40,7 +40,7 @@ pub fn install_launchers(bin_dir: &Path, banner: &str, commands: &str) -> io::Re
     for name in LAUNCHER_NAMES {
         write_launcher(bin_dir, name, &banner_path)?;
     }
-    write_ask_launcher(bin_dir, &banner_path, &commands_path)?;
+    write_ask_launcher(bin_dir, &banner_path, &commands_path, &bin_dir.join("data"))?;
     Ok(())
 }
 
@@ -55,6 +55,7 @@ fn write_ask_launcher(
     bin_dir: &Path,
     banner_path: &Path,
     commands_path: &Path,
+    data_dir: &Path,
 ) -> io::Result<()> {
     use std::os::unix::fs::PermissionsExt;
 
@@ -77,6 +78,35 @@ case "$1" in
   commands|command|help|--help|-h)
     cat "{commands}"
     ;;
+  notes|note|events|event|reminders|reminder|todos|todo)
+    # The app rewrites these files whenever the dashboard changes, so the
+    # shell needs no JSON parser and no way to reach back into the app.
+    case "$1" in
+      note) kind=notes ;;
+      event) kind=events ;;
+      reminder) kind=reminders ;;
+      todo) kind=todos ;;
+      *) kind="$1" ;;
+    esac
+    shift
+    if [ $# -eq 0 ]; then
+      if [ -f "{data}/$kind.ansi" ]; then
+        cat "{data}/$kind.ansi"
+      else
+        echo "jky: nothing saved yet. Add something from the Dashboard." >&2
+        exit 1
+      fi
+    else
+      one="{data}/$kind/$1.ansi"
+      if [ -f "$one" ]; then
+        cat "$one"
+      else
+        echo "jky: no $kind entry '$1'" >&2
+        [ -f "{data}/$kind.ansi" ] && cat "{data}/$kind.ansi" >&2
+        exit 1
+      fi
+    fi
+    ;;
   ""|banner)
     cat "{banner}"
     ;;
@@ -89,7 +119,8 @@ esac
 "#,
         osc = ASK_OSC,
         banner = banner_path.display(),
-        commands = commands_path.display()
+        commands = commands_path.display(),
+        data = data_dir.display()
     );
     std::fs::write(&script, body)?;
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
@@ -100,6 +131,7 @@ fn write_ask_launcher(
     bin_dir: &Path,
     banner_path: &Path,
     commands_path: &Path,
+    data_dir: &Path,
 ) -> io::Result<()> {
     let script = bin_dir.join("jky.cmd");
     let body = format!(
@@ -109,7 +141,22 @@ fn write_ask_launcher(
          if /i \"%1\"==\"commands\" goto cmds\r\n\
          if /i \"%1\"==\"command\" goto cmds\r\n\
          if /i \"%1\"==\"help\" goto cmds\r\n\
+         if /i \"%1\"==\"notes\" set KIND=notes&& goto data\r\n\
+         if /i \"%1\"==\"note\" set KIND=notes&& goto data\r\n\
+         if /i \"%1\"==\"events\" set KIND=events&& goto data\r\n\
+         if /i \"%1\"==\"event\" set KIND=events&& goto data\r\n\
+         if /i \"%1\"==\"reminders\" set KIND=reminders&& goto data\r\n\
+         if /i \"%1\"==\"reminder\" set KIND=reminders&& goto data\r\n\
+         if /i \"%1\"==\"todos\" set KIND=todos&& goto data\r\n\
+         if /i \"%1\"==\"todo\" set KIND=todos&& goto data\r\n\
          type \"{banner}\"\r\n\
+         goto :eof\r\n\
+         :data\r\n\
+         if \"%2\"==\"\" (\r\n\
+         if exist \"{data}\\%KIND%.ansi\" (type \"{data}\\%KIND%.ansi\") else (echo jky: nothing saved yet. Add something from the Dashboard. 1>&2)\r\n\
+         ) else (\r\n\
+         if exist \"{data}\\%KIND%\\%2.ansi\" (type \"{data}\\%KIND%\\%2.ansi\") else (echo jky: no %KIND% entry '%2' 1>&2 & if exist \"{data}\\%KIND%.ansi\" type \"{data}\\%KIND%.ansi\" 1>&2)\r\n\
+         )\r\n\
          goto :eof\r\n\
          :cmds\r\n\
          type \"{commands}\"\r\n\
@@ -121,7 +168,8 @@ fn write_ask_launcher(
          [Console]::Write([char]27 + ']{osc};JKYAsk=' + $b + [char]7)\" %*\r\n",
         osc = ASK_OSC,
         banner = banner_path.display(),
-        commands = commands_path.display()
+        commands = commands_path.display(),
+        data = data_dir.display()
     );
     std::fs::write(script, body)
 }
@@ -171,6 +219,168 @@ pub fn launcher_dir(config_dir: &Path) -> PathBuf {
 mod tests {
     use super::*;
     use tempfile::TempDir;
+
+    /// Run an installed launcher, retrying past a fork/exec race.
+    ///
+    /// When one thread writes an executable while another forks to spawn a
+    /// process, the child inherits a duplicate of the still-open write
+    /// descriptor, and the kernel refuses to exec the file until it closes —
+    /// ETXTBSY, "Text file busy". These tests install scripts and spawn
+    /// processes concurrently, so the window is wide enough to hit regularly.
+    ///
+    /// It is a property of running the tests in parallel, not of the product:
+    /// the app writes its launchers once at startup and the user's shell
+    /// execs them later, from a different process entirely. Retrying keeps
+    /// the assertion honest — the script really is executed — where routing
+    /// everything through `sh` would stop proving the execute bit is set.
+    #[cfg(not(windows))]
+    fn run_script(path: &Path, args: &[&str]) -> std::process::Output {
+        const ETXTBSY: i32 = 26;
+        for _ in 0..100 {
+            match std::process::Command::new(path).args(args).output() {
+                Ok(out) => return out,
+                Err(e) if e.raw_os_error() == Some(ETXTBSY) => {
+                    std::thread::sleep(std::time::Duration::from_millis(10));
+                }
+                Err(e) => panic!("could not run {}: {e}", path.display()),
+            }
+        }
+        panic!("{} stayed busy", path.display());
+    }
+
+    /// Run the generated `jky` script and give back (stdout, stderr, ok).
+    ///
+    /// A shell script checked only by matching strings in its source is not
+    /// tested at all — a stray quote or an unbalanced `case` passes every
+    /// such check and fails the moment a person types the command.
+    #[cfg(not(windows))]
+    fn run_jky(dir: &Path, args: &[&str]) -> (String, String, bool) {
+        let out = run_script(&dir.join("jky"), args);
+        (
+            String::from_utf8_lossy(&out.stdout).to_string(),
+            String::from_utf8_lossy(&out.stderr).to_string(),
+            out.status.success(),
+        )
+    }
+
+    #[cfg(not(windows))]
+    fn with_listings(dir: &Path) {
+        let data = dir.join("data");
+        std::fs::create_dir_all(data.join("notes")).unwrap();
+        std::fs::write(data.join("notes.ansi"), "NOTES-LISTING").unwrap();
+        std::fs::write(data.join("notes").join("a3f2.ansi"), "ONE-NOTE").unwrap();
+        std::fs::write(data.join("events.ansi"), "EVENTS-LISTING").unwrap();
+        std::fs::write(data.join("reminders.ansi"), "REMINDERS-LISTING").unwrap();
+        std::fs::write(data.join("todos.ansi"), "TODOS-LISTING").unwrap();
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn the_generated_script_is_valid_shell() {
+        // Catches an unbalanced quote or case arm before a user does.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        let out = std::process::Command::new("sh")
+            .arg("-n")
+            .arg(dir.path().join("jky"))
+            .output()
+            .expect("sh runs");
+        assert!(
+            out.status.success(),
+            "script does not parse: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_notes_prints_the_listing() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        with_listings(dir.path());
+
+        let (stdout, _, ok) = run_jky(dir.path(), &["notes"]);
+        assert!(ok);
+        assert_eq!(stdout, "NOTES-LISTING");
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn both_spellings_of_each_listing_work() {
+        // People type what they remember, singular or plural.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        with_listings(dir.path());
+
+        for (arg, expected) in [
+            ("notes", "NOTES-LISTING"),
+            ("note", "NOTES-LISTING"),
+            ("events", "EVENTS-LISTING"),
+            ("event", "EVENTS-LISTING"),
+            ("reminders", "REMINDERS-LISTING"),
+            ("reminder", "REMINDERS-LISTING"),
+            ("todos", "TODOS-LISTING"),
+            ("todo", "TODOS-LISTING"),
+        ] {
+            let (stdout, stderr, ok) = run_jky(dir.path(), &[arg]);
+            assert!(ok, "`jky {arg}` failed: {stderr}");
+            assert_eq!(stdout, expected, "`jky {arg}`");
+        }
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_notes_with_an_id_prints_that_note() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        with_listings(dir.path());
+
+        let (stdout, _, ok) = run_jky(dir.path(), &["notes", "a3f2"]);
+        assert!(ok);
+        assert_eq!(stdout, "ONE-NOTE");
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn an_unknown_id_fails_and_shows_the_list_instead() {
+        // Failing silently would leave someone retyping a handle that cannot
+        // work; showing the list puts the real ones in front of them.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        with_listings(dir.path());
+
+        let (_, stderr, ok) = run_jky(dir.path(), &["notes", "nope"]);
+        assert!(!ok, "an unknown id should be an error");
+        assert!(stderr.contains("no notes entry 'nope'"), "{stderr}");
+        assert!(stderr.contains("NOTES-LISTING"), "{stderr}");
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn asking_before_anything_is_saved_says_so() {
+        // No listing files exist yet on a first run.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        let (_, stderr, ok) = run_jky(dir.path(), &["notes"]);
+        assert!(!ok);
+        assert!(stderr.contains("Dashboard"), "{stderr}");
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn the_older_commands_still_work() {
+        // The new case arms sit alongside these; a mistake in one would
+        // swallow the others.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        assert_eq!(run_jky(dir.path(), &[]).0, "BANNER");
+        assert_eq!(run_jky(dir.path(), &["banner"]).0, "BANNER");
+        assert_eq!(run_jky(dir.path(), &["commands"]).0, "COMMANDS");
+        assert!(run_jky(dir.path(), &["ask", "how do I list files"]).0.contains("JKYAsk="));
+    }
 
     #[test]
     fn every_spelling_of_the_command_is_installed() {
@@ -262,10 +472,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "banner", "COMMAND-LIST").unwrap();
 
-        let out = std::process::Command::new(dir.path().join("jky"))
-            .args(["ask", "what", "does", "ls", "do"])
-            .output()
-            .expect("jky runs");
+        let out = run_script(&dir.path().join("jky"), &["ask", "what", "does", "ls", "do"]);
         let stdout = String::from_utf8_lossy(&out.stdout);
 
         assert!(stdout.contains("JKYAsk="), "no ask marker in: {stdout:?}");
@@ -288,10 +495,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "banner", "COMMAND-LIST").unwrap();
 
-        let out = std::process::Command::new(dir.path().join("jky"))
-            .args(["asks", "hello"])
-            .output()
-            .expect("jky runs");
+        let out = run_script(&dir.path().join("jky"), &["asks", "hello"]);
         assert!(String::from_utf8_lossy(&out.stdout).contains("JKYAsk="));
     }
 
@@ -301,10 +505,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "banner", "COMMAND-LIST").unwrap();
 
-        let out = std::process::Command::new(dir.path().join("jky"))
-            .arg("ask")
-            .output()
-            .expect("jky runs");
+        let out = run_script(&dir.path().join("jky"), &["ask"]);
         assert!(!out.status.success());
         assert!(String::from_utf8_lossy(&out.stderr).contains("usage"));
     }
@@ -315,9 +516,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "THE-BANNER", "COMMAND-LIST").unwrap();
 
-        let out = std::process::Command::new(dir.path().join("jky"))
-            .output()
-            .expect("jky runs");
+        let out = run_script(&dir.path().join("jky"), &[]);
         assert_eq!(String::from_utf8_lossy(&out.stdout), "THE-BANNER");
     }
 
@@ -350,10 +549,7 @@ mod tests {
         install_launchers(dir.path(), "banner", "THE-COMMAND-LIST").unwrap();
 
         for spelling in ["commands", "command", "help"] {
-            let out = std::process::Command::new(dir.path().join("jky"))
-                .arg(spelling)
-                .output()
-                .expect("jky runs");
+            let out = run_script(&dir.path().join("jky"), &[spelling]);
             assert_eq!(
                 String::from_utf8_lossy(&out.stdout),
                 "THE-COMMAND-LIST",
@@ -370,10 +566,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "banner", "THE-COMMAND-LIST").unwrap();
 
-        let out = std::process::Command::new(dir.path().join("jky"))
-            .arg("nonsense")
-            .output()
-            .expect("jky runs");
+        let out = run_script(&dir.path().join("jky"), &["nonsense"]);
         assert!(!out.status.success());
         let stderr = String::from_utf8_lossy(&out.stderr);
         assert!(stderr.contains("unknown command"));

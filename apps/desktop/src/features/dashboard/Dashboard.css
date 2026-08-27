@@ -137,14 +137,60 @@
   align-items: start;
 }
 
+/* Each card resolves --tone to one of the six event colours, so the whole
+   card — glyph, rule, hover, focus — is coloured from one declaration and
+   you find the widget you want before reading a word of it. */
 .card {
+  --tone: var(--accent);
+  position: relative;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
   background: var(--surface);
   overflow: hidden;
+  transition:
+    border-color var(--normal) var(--ease),
+    transform var(--normal) var(--ease);
+}
+
+.card[data-tone="rose"] { --tone: var(--danger); }
+.card[data-tone="azure"] { --tone: var(--accent-dim); }
+.card[data-tone="mint"] { --tone: var(--mint); }
+.card[data-tone="amber"] { --tone: var(--warn); }
+.card[data-tone="violet"] { --tone: var(--violet); }
+.card[data-tone="cyan"] { --tone: var(--accent); }
+
+/* The tone as a wash across the top, strongest at the header and gone by the
+   time it reaches the content. */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto;
+  height: 96px;
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--tone) 12%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+
+.card:hover {
+  border-color: color-mix(in srgb, var(--tone) 55%, var(--line-strong));
+  transform: translateY(-1px);
+}
+
+/* Motion is a nicety; for anyone who has asked for less of it, it is not. */
+@media (prefers-reduced-motion: reduce) {
+  .card {
+    transition: border-color var(--normal) var(--ease);
+  }
+  .card:hover {
+    transform: none;
+  }
 }
 
 .card__head {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--s2);
@@ -152,8 +198,22 @@
   border-bottom: 1px solid var(--line);
 }
 
+/* A short rule in the card's own colour, sitting on the border under the
+   title rather than across the whole card. */
+.card__head::after {
+  content: "";
+  position: absolute;
+  left: var(--s4);
+  bottom: -1px;
+  width: 44px;
+  height: 2px;
+  background: var(--tone);
+  border-radius: 2px;
+}
+
 .card__glyph {
-  color: var(--accent);
+  color: var(--tone);
+  font-size: 14px;
 }
 
 .card__title {
@@ -168,17 +228,21 @@
   margin-left: auto;
   font-size: 11px;
   color: var(--text-dim);
+  white-space: nowrap;
   transition: color var(--fast) var(--ease);
 }
 
 .card__action:hover {
-  color: var(--accent);
+  color: var(--tone);
 }
 
 .card__body {
+  position: relative;
   padding: var(--s4);
   display: grid;
   gap: var(--s3);
+  min-height: 96px;
+  align-content: start;
 }
 
 .card__open {
@@ -186,6 +250,18 @@
   gap: var(--s2);
   text-align: left;
   width: 100%;
+  padding: var(--s2);
+  margin: calc(var(--s2) * -1);
+  border-radius: var(--radius);
+  transition: background var(--fast) var(--ease);
+}
+
+.card__open:hover {
+  background: color-mix(in srgb, var(--tone) 8%, transparent);
+}
+
+.card__open:hover .card__note-title {
+  color: var(--tone);
 }
 
 .card__note-title {
@@ -232,13 +308,27 @@
 }
 
 .quick__btn:hover {
-  border-color: var(--accent-dim);
+  border-color: color-mix(in srgb, var(--tone) 60%, var(--line-strong));
   color: var(--text);
-  background: var(--surface-raised);
+  background: color-mix(in srgb, var(--tone) 8%, var(--surface-raised));
+  /* A nudge rightward on hover: the row you are on is unmistakable without
+     anything moving on the page. */
+  padding-left: var(--s4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quick__btn:hover {
+    padding-left: var(--s3);
+  }
 }
 
 .quick__btn span[aria-hidden] {
-  color: var(--accent);
+  color: var(--tone);
+  font-size: 13px;
+}
+
+.quick__btn {
+  transition: all var(--fast) var(--ease);
 }
 
 /* ---- event colours ------------------------------------------------------ */
@@ -389,7 +479,7 @@
 }
 
 .checklist__check input {
-  accent-color: var(--accent);
+  accent-color: var(--tone, var(--accent));
   width: 15px;
   height: 15px;
   flex-shrink: 0;
@@ -702,7 +792,11 @@
 }
 
 .cal__day--mini[data-has]:not([data-today]) {
-  box-shadow: inset 0 0 0 1px var(--accent-dim);
+  box-shadow: inset 0 0 0 1px var(--tone, var(--accent-dim));
+}
+
+.cal__grid--mini .cal__day--mini[data-today] {
+  background: var(--tone, var(--accent));
 }
 
 .cal__day-detail {

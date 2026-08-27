@@ -1,4 +1,5 @@
 import { PanelHead } from "../settings/PanelHead";
+import type { EventColour } from "../../platform";
 import { useDashboard, newId, nowIso } from "./dashboardStore";
 import type { DashPanel } from "./Dashboard";
 import { GRID_ROWS, WEEKDAYS, monthGrid, monthLabel } from "./calendar";
@@ -37,7 +38,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
       />
 
       <div className="grid">
-        <Card title="Notes" glyph="▤" action={{ label: "+ New note", onClick: () => {
+        <Card title="Notes" glyph="▤" tone="amber" action={{ label: "+ New note", onClick: () => {
           const now = nowIso();
           void saveNote({ id: newId("note"), title: "Untitled", body: "", created_at: now, updated_at: now });
           onOpen("notes");
@@ -54,7 +55,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
           )}
         </Card>
 
-        <Card title="Calendar" glyph="▦" action={{ label: "View all", onClick: () => onOpen("calendar") }}>
+        <Card title="Calendar" glyph="▦" tone="azure" action={{ label: "View all", onClick: () => onOpen("calendar") }}>
           <p className="card__month">{monthLabel(year, month)}</p>
           <div className="cal__grid cal__grid--mini">
             <div className="cal__weekdays">
@@ -82,7 +83,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
           </div>
         </Card>
 
-        <Card title="Reminders" glyph="◔" action={{ label: "+ Add", onClick: () => onOpen("reminders") }}>
+        <Card title="Reminders" glyph="◔" tone="violet" action={{ label: "+ Add", onClick: () => onOpen("reminders") }}>
           {reminders.length === 0 ? (
             <p className="hint">None set.</p>
           ) : (
@@ -104,7 +105,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
           )}
         </Card>
 
-        <Card title="Upcoming Events" glyph="★" action={{ label: "View all", onClick: () => onOpen("events") }}>
+        <Card title="Upcoming Events" glyph="★" tone="cyan" action={{ label: "View all", onClick: () => onOpen("events") }}>
           {ahead.length === 0 ? (
             <p className="hint">Nothing scheduled.</p>
           ) : (
@@ -121,7 +122,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
           )}
         </Card>
 
-        <Card title="Todos" glyph="☑" action={{ label: "+ Add", onClick: () => onOpen("todos") }}>
+        <Card title="Todos" glyph="☑" tone="mint" action={{ label: "+ Add", onClick: () => onOpen("todos") }}>
           {todos.length === 0 ? (
             <p className="hint">Nothing on the list.</p>
           ) : (
@@ -143,7 +144,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
           )}
         </Card>
 
-        <Card title="Quick Actions" glyph="⚡">
+        <Card title="Quick Actions" glyph="⚡" tone="rose">
           <div className="quick">
             <button type="button" className="quick__btn" onClick={() => {
               const now = nowIso();
@@ -171,19 +172,28 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
   );
 }
 
+/**
+ * A widget.
+ *
+ * `tone` names one of the six event colours. Each card wearing its own means
+ * you find the one you want by colour before you have read a single word,
+ * which is the whole point of a grid of six.
+ */
 function Card({
   title,
   glyph,
+  tone,
   action,
   children,
 }: {
   title: string;
   glyph: string;
+  tone: EventColour;
   action?: { label: string; onClick: () => void };
   children: React.ReactNode;
 }) {
   return (
-    <section className="card" aria-label={title}>
+    <section className="card" data-tone={tone} aria-label={title}>
       <header className="card__head">
         <span className="card__glyph" aria-hidden="true">
           {glyph}

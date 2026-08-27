@@ -2,6 +2,7 @@
 
 mod commands;
 mod audit_detail;
+mod listing;
 mod turn;
 mod state;
 

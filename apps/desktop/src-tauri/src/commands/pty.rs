@@ -46,6 +46,11 @@ pub fn pty_spawn(
     let command_list = render_commands(parse_accent(&accent), cols.max(40) as usize);
     let launchers_ok = install_launchers(&bin_dir, &banner, &command_list).is_ok();
 
+    // What `jky notes` and friends print. Rendered here too so a terminal
+    // opened before anything was saved still shows the current state, and in
+    // the same accent as the banner beside it.
+    let _ = crate::listing::write_all(&state.store, &bin_dir, parse_accent(&accent));
+
     let session = PtySession::spawn(SpawnConfig {
         shell: default_shell(),
         cwd,

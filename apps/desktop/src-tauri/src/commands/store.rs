@@ -142,6 +142,17 @@ where
     c.list().map_err(|e| e.to_string())
 }
 
+/// Rewrite the terminal listings after a change.
+///
+/// `jky notes` reads files the app renders, so a note saved in the dashboard
+/// has to reach them before the user types the command. A failure is ignored
+/// on purpose: a stale listing is a nuisance, and refusing to save someone's
+/// note because a convenience file could not be written would be worse.
+fn refresh_listings(state: &State<'_, AppState>) {
+    let bin_dir = jky_pty::launcher_dir(&state.config_dir);
+    let _ = crate::listing::write_all(&state.store, &bin_dir, None);
+}
+
 fn save_into<T>(c: Collection<T>, record: T) -> Result<Vec<T>, String>
 where
     T: Serialize + DeserializeOwned + Identified,
@@ -165,12 +176,16 @@ pub fn store_list_notes(state: State<'_, AppState>) -> Result<Vec<Note>, String>
 
 #[tauri::command]
 pub fn store_save_note(state: State<'_, AppState>, record: Note) -> Result<Vec<Note>, String> {
-    save_into(state.store.notes(), check_note(&record)?)
+    let out = save_into(state.store.notes(), check_note(&record)?);
+    refresh_listings(&state);
+    out
 }
 
 #[tauri::command]
 pub fn store_delete_note(state: State<'_, AppState>, id: String) -> Result<Vec<Note>, String> {
-    delete_from(state.store.notes(), &id)
+    let out = delete_from(state.store.notes(), &id);
+    refresh_listings(&state);
+    out
 }
 
 // --- todos ------------------------------------------------------------------
@@ -182,12 +197,16 @@ pub fn store_list_todos(state: State<'_, AppState>) -> Result<Vec<Todo>, String>
 
 #[tauri::command]
 pub fn store_save_todo(state: State<'_, AppState>, record: Todo) -> Result<Vec<Todo>, String> {
-    save_into(state.store.todos(), check_todo(&record)?)
+    let out = save_into(state.store.todos(), check_todo(&record)?);
+    refresh_listings(&state);
+    out
 }
 
 #[tauri::command]
 pub fn store_delete_todo(state: State<'_, AppState>, id: String) -> Result<Vec<Todo>, String> {
-    delete_from(state.store.todos(), &id)
+    let out = delete_from(state.store.todos(), &id);
+    refresh_listings(&state);
+    out
 }
 
 // --- events -----------------------------------------------------------------
@@ -199,12 +218,16 @@ pub fn store_list_events(state: State<'_, AppState>) -> Result<Vec<Event>, Strin
 
 #[tauri::command]
 pub fn store_save_event(state: State<'_, AppState>, record: Event) -> Result<Vec<Event>, String> {
-    save_into(state.store.events(), check_event(&record)?)
+    let out = save_into(state.store.events(), check_event(&record)?);
+    refresh_listings(&state);
+    out
 }
 
 #[tauri::command]
 pub fn store_delete_event(state: State<'_, AppState>, id: String) -> Result<Vec<Event>, String> {
-    delete_from(state.store.events(), &id)
+    let out = delete_from(state.store.events(), &id);
+    refresh_listings(&state);
+    out
 }
 
 // --- reminders --------------------------------------------------------------
@@ -219,7 +242,9 @@ pub fn store_save_reminder(
     state: State<'_, AppState>,
     record: Reminder,
 ) -> Result<Vec<Reminder>, String> {
-    save_into(state.store.reminders(), check_reminder(&record)?)
+    let out = save_into(state.store.reminders(), check_reminder(&record)?);
+    refresh_listings(&state);
+    out
 }
 
 #[tauri::command]
@@ -227,7 +252,9 @@ pub fn store_delete_reminder(
     state: State<'_, AppState>,
     id: String,
 ) -> Result<Vec<Reminder>, String> {
-    delete_from(state.store.reminders(), &id)
+    let out = delete_from(state.store.reminders(), &id);
+    refresh_listings(&state);
+    out
 }
 
 #[cfg(test)]
