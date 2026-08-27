@@ -1,0 +1,24 @@
+[package]
+name = "jky-mail"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+jky-store = { path = "../jky-store" }
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+# rustls rather than native-tls, for the same reason reqwest uses it here:
+# it needs no OpenSSL headers on the Windows and macOS runners.
+lettre = { version = "0.11", default-features = false, features = [
+    "smtp-transport",
+    "rustls-tls",
+    "rustls-platform-verifier",
+    "builder",
+    "pool",
+] }
+
+[dev-dependencies]
+tempfile = "3"
