@@ -21,6 +21,15 @@ vi.mock("@xterm/xterm", () => ({
     onResize() {
       return { dispose() {} };
     }
+    // Copy-on-select subscribes to this.
+    onSelectionChange() {
+      return { dispose() {} };
+    }
+    getSelection() {
+      return "";
+    }
+    clear() {}
+    focus() {}
     loadAddon() {}
     // The real Terminal exposes a parser for escape-sequence handlers; the
     // app registers an OSC handler for `jky ask`.
@@ -44,6 +53,28 @@ vi.mock("@xterm/addon-fit", () => ({
 }));
 vi.mock("@xterm/addon-webgl", () => ({
   WebglAddon: class {
+    activate() {}
+    dispose() {}
+  },
+}));
+vi.mock("@xterm/addon-search", () => ({
+  SearchAddon: class {
+    activate() {}
+    dispose() {}
+    onDidChangeResults() {
+      return { dispose() {} };
+    }
+    findNext() {
+      return false;
+    }
+    findPrevious() {
+      return false;
+    }
+    clearDecorations() {}
+  },
+}));
+vi.mock("@xterm/addon-web-links", () => ({
+  WebLinksAddon: class {
     activate() {}
     dispose() {}
   },

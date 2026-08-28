@@ -1,5 +1,6 @@
 pub mod ai;
 pub mod games;
+pub mod open;
 pub mod pty;
 pub mod settings;
 pub mod store;

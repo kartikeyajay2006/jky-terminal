@@ -111,6 +111,12 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // ids all live in Rust, so the widest this can do is print a wrong
         // score. It reads nothing and returns nothing.
         "games_publish_scores".to_string(),
+        // Hands one validated http(s) URL to the OS opener. This is the only
+        // place a string from the window becomes a process argument, so the
+        // rule it is checked against is itself unit-tested: scheme allow-list,
+        // no whitespace, no quotes, length bound. It opens outside the app, so
+        // the CSP that forbids the webview reaching any host is untouched.
+        "open_external".to_string(),
         "pty_attach".to_string(),
         "pty_kill".to_string(),
         "pty_resize".to_string(),

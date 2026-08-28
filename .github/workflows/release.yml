@@ -1,0 +1,105 @@
+name: Release
+
+# Tag-driven. Pushing `v0.1.0` builds installers for all three platforms and
+# attaches them to a draft GitHub Release, which is then published by hand —
+# a draft is the last chance to notice that something built but is wrong.
+on:
+  push:
+    tags:
+      - "v*"
+  # Also runnable by hand, so the pipeline itself can be exercised without
+  # burning a version number on a tag that may not ship.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (leave blank to build the current commit)"
+        required: false
+        type: string
+
+# Needed by tauri-action to create the release and upload artifacts.
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing must not cancel the others: a macOS signing
+      # problem should still leave you with working Linux and Windows builds.
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux (deb, rpm, AppImage)
+            args: ""
+          - os: macos-latest
+            label: macOS (Apple Silicon)
+            args: "--target aarch64-apple-darwin"
+          - os: macos-latest
+            label: macOS (Intel)
+            args: "--target x86_64-apple-darwin"
+          - os: windows-latest
+            label: Windows (msi, exe)
+            args: ""
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable
+        shell: bash
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          # macOS runners are Apple Silicon, so the Intel build is a cross
+          # compile and needs its target installed explicitly.
+          targets: ${{ matrix.os == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+
+      # Tauri needs GTK/WebKit development headers on Linux only. macOS uses
+      # WKWebView and Windows uses WebView2, both already on the runners.
+      - name: Install Tauri system dependencies (Linux)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev build-essential curl wget file \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.os }}-${{ matrix.args }}
+
+      - run: pnpm install --frozen-lockfile
+        shell: bash
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Signing is off until there are certificates to sign with. See
+          # docs/RELEASING.md — the pipeline works without them, it just
+          # produces builds the OS will warn about on first run.
+          #
+          # macOS:   APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD,
+          #          APPLE_SIGNING_IDENTITY, APPLE_ID, APPLE_PASSWORD,
+          #          APPLE_TEAM_ID
+          # Windows: WINDOWS_CERTIFICATE, WINDOWS_CERTIFICATE_PASSWORD
+          # Updater: TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.sha) }}
+          releaseName: "JKY Terminal __VERSION__"
+          releaseBody: |
+            Download the installer for your platform below.
+
+            Builds are currently unsigned, so macOS and Windows will warn on
+            first launch. See `docs/RELEASING.md` for what turning signing on
+            requires.
+          # Drafted, not published. The last chance to notice that something
+          # built cleanly and is still wrong.
+          releaseDraft: true
+          prerelease: false
+          args: ${{ matrix.args }}

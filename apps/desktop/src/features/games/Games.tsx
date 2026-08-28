@@ -7,6 +7,7 @@ import { Arcade, type ArcadeGame } from "./Arcade";
 import { getPlatform } from "../../platform";
 import { highScore, padScore, type GameId } from "./scores";
 import { useOpenGame } from "./openStore";
+import { useNav } from "../../app/navStore";
 import "./Games.css";
 
 /** Where the section is: the front, or one of the games. */
@@ -127,6 +128,14 @@ export function Games() {
     const taken = useOpenGame.getState().take();
     if (taken) setView(taken);
   }, [pendingGame]);
+
+  // The palette can ask for the arcade front by name.
+  const pendingNav = useNav((s) => s.pending);
+  useEffect(() => {
+    const wanted = useNav.getState().takePanel("games");
+    if (wanted === "arcade") setView("arcade");
+    else if (wanted && GAMES.some((g) => g.id === wanted)) setView(wanted as GameId);
+  }, [pendingNav]);
 
   // Hand the shell listing its numbers whenever this section is on screen.
   // Scores live in browser storage, which `jky games` cannot see, so without

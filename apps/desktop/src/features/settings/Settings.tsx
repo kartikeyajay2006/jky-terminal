@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Select } from "../../components/Select";
 import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { getPlatform, type CommandSpec } from "../../platform";
+import { useNav } from "../../app/navStore";
 import { PanelHead } from "./PanelHead";
 import { ProviderVault } from "./ProviderVault";
 import "./Settings.css";
@@ -17,6 +18,13 @@ const PANELS: Array<{ id: Panel; label: string; blurb: string }> = [
 export function Settings() {
   const [panel, setPanel] = useState<Panel>("appearance");
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
+
+  // The palette asks for a panel by leaving it on the nav store.
+  const pendingNav = useNav((s) => s.pending);
+  useEffect(() => {
+    const wanted = useNav.getState().takePanel("settings");
+    if (wanted && PANELS.some((p) => p.id === wanted)) setPanel(wanted as Panel);
+  }, [pendingNav]);
 
   function changeTheme(id: ThemeId) {
     setTheme(id);

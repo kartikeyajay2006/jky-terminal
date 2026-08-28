@@ -205,4 +205,12 @@ export interface Platform {
   readonly games: GamesApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
+  /**
+   * Hand a link to the operating system.
+   *
+   * Not `window.open`: the CSP forbids the webview reaching any external
+   * host, and this opens the user's real browser outside the app instead.
+   * Only http and https are accepted, checked in Rust.
+   */
+  openExternal(url: string): Promise<void>;
 }

@@ -159,5 +159,6 @@ export function createTauriPlatform(): Platform {
     store,
     games,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
+    openExternal: (url) => invoke<void>("open_external", { url }),
   };
 }

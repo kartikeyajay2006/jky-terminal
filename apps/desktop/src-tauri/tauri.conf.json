@@ -30,6 +30,28 @@
     "targets": "all",
     "icon": [
       "icons/icon.png"
-    ]
+    ],
+    "category": "DeveloperTool",
+    "shortDescription": "AI Terminal. Infinite Possibilities.",
+    "longDescription": "JKY Terminal is an AI-native command centre: a real terminal, an AI assistant, a local-first dashboard and a small arcade, in one fast desktop app. Your API key lives in the OS keychain and is never readable by the window.",
+    "publisher": "kartikeyajay2006",
+    "copyright": "MIT licensed. Free for everyone.",
+    "licenseFile": "../../../LICENSE",
+    "linux": {
+      "deb": {
+        "depends": [
+          "libwebkit2gtk-4.1-0",
+          "libgtk-3-0"
+        ]
+      }
+    },
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser"
+      }
+    },
+    "macOS": {
+      "minimumSystemVersion": "10.15"
+    }
   }
 }

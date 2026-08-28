@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { PanelHead } from "../settings/PanelHead";
 import { useDashboard } from "./dashboardStore";
+import { useNav } from "../../app/navStore";
 import { Overview } from "./Overview";
 import { NotesPanel } from "./NotesPanel";
 import { TodosPanel } from "./TodosPanel";
@@ -35,6 +36,14 @@ export function Dashboard() {
   useEffect(() => {
     void load();
   }, [load]);
+
+  // The palette asks for a panel by leaving it on the nav store. Taken here
+  // rather than in App, because App owns the section and this owns the panel.
+  const pendingNav = useNav((s) => s.pending);
+  useEffect(() => {
+    const wanted = useNav.getState().takePanel("dashboard");
+    if (wanted && SECTIONS.some((s) => s.id === wanted)) setPanel(wanted as DashPanel);
+  }, [pendingNav]);
 
   return (
     <div className="dash">

@@ -10,6 +10,8 @@ import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
 import { Games } from "./features/games/Games";
 import { useOpenGame } from "./features/games/openStore";
+import { useNav } from "./app/navStore";
+import { Palette } from "./features/palette/Palette";
 import { Settings } from "./features/settings/Settings";
 import { Terminal } from "./features/terminal/Terminal";
 import { getPlatform } from "./platform";
@@ -19,6 +21,7 @@ import "./styles/base.css";
 
 export function App() {
   const [section, setSection] = useState("terminal");
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const tabs = useTabs((s) => s.tabs);
   const activeId = useTabs((s) => s.activeId);
 
@@ -91,6 +94,27 @@ export function App() {
     if (pendingGame) setSection("games");
   }, [pendingGame]);
 
+  // The palette navigates by leaving a request here. The section is taken
+  // now; any panel inside it is taken by that section itself, which is why
+  // this reads the target rather than clearing it outright.
+  const pendingNav = useNav((s) => s.pending);
+  useEffect(() => {
+    if (pendingNav) setSection(pendingNav.section);
+  }, [pendingNav]);
+
+  // Ctrl/Cmd+K, bound here rather than in useShortcuts because the palette is
+  // the one shortcut that has to work while a terminal has the keyboard.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   return (
     <Shell activeId={section} onSelect={setSection}>
       {/* Hidden rather than unmounted, for the same reason the tabs inside it
@@ -125,6 +149,8 @@ export function App() {
           the four games animate, and one left running in the background
           would burn a core painting a board nobody is looking at. */}
       {section === "games" && <Games />}
+
+      {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
     </Shell>
   );
 }

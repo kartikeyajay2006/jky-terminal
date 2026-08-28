@@ -19,6 +19,15 @@ vi.mock("@xterm/xterm", () => ({
     onResize() {
       return { dispose() {} };
     }
+    // Copy-on-select subscribes to this.
+    onSelectionChange() {
+      return { dispose() {} };
+    }
+    getSelection() {
+      return "";
+    }
+    clear() {}
+    focus() {}
     loadAddon() {}
     parser = { registerOscHandler: () => ({ dispose() {} }) };
     dispose() {
@@ -30,6 +39,28 @@ vi.mock("@xterm/addon-fit", () => ({
   FitAddon: class {
     activate() {}
     fit() {}
+    dispose() {}
+  },
+}));
+vi.mock("@xterm/addon-search", () => ({
+  SearchAddon: class {
+    activate() {}
+    dispose() {}
+    onDidChangeResults() {
+      return { dispose() {} };
+    }
+    findNext() {
+      return false;
+    }
+    findPrevious() {
+      return false;
+    }
+    clearDecorations() {}
+  },
+}));
+vi.mock("@xterm/addon-web-links", () => ({
+  WebLinksAddon: class {
+    activate() {}
     dispose() {}
   },
 }));

@@ -265,5 +265,9 @@ export function createWebPlatform(): Platform {
     async listCommands() {
       return WEB_COMMANDS;
     },
+    // The browser build has a real browser around it already.
+    async openExternal(url: string) {
+      window.open(url, "_blank", "noopener,noreferrer");
+    },
   };
 }
