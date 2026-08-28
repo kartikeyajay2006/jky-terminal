@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Grid } from "../engine/grid";
 import { useGameLoop } from "../engine/loop";
 import { isActionKey, useGameKeys } from "../engine/keys";
+import { Particles } from "../engine/particles";
+import { BIG_ROWS, bigWord, countdownDone, countdownPulse, countdownWord } from "../engine/countdown";
 import { GameScreen, type GameScreenHandle } from "../GameScreen";
 import { GameWindow, Panel, Readout } from "../GameChrome";
 import { highScore, padScore, submitScore } from "../scores";
+import { recordPlay } from "../stats";
 import {
   BIRD_X,
   COLS,
@@ -29,11 +32,20 @@ export function FlappyBird() {
   const grid = useRef(new Grid(COLS, ROWS));
   const rand = useRef(makeRandom(Date.now() & 0xffff));
   const state = useRef<FlappyState>(initialState(rand.current));
+  const bits = useRef(new Particles());
   const banked = useRef(false);
+  /** Milliseconds into the pre-run countdown, or null when not counting. */
+  const counting = useRef<number | null>(null);
+  /** The score last frame, so clearing a pipe can be celebrated once. */
+  const lastScore = useRef(0);
 
   const [phase, setPhase] = useState(state.current.phase);
   const [score, setScore] = useState(0);
   const [best, setBest] = useState(() => highScore("flappy"));
+  const [beatRecord, setBeatRecord] = useState(false);
+  const [paused, setPaused] = useState(false);
+  /** Mirrors the countdown ref, purely so a change restarts the loop. */
+  const [counted, setCounted] = useState(false);
 
   const paint = useCallback(() => {
     const s = state.current;
@@ -94,6 +106,8 @@ export function FlappyBird() {
       }
     }
 
+    bits.current.draw(g);
+
     // --- the bird ---
     const climbing = s.vy < 0;
     const sprite = s.phase === "over" ? BIRD_DEAD : climbing ? BIRD_UP : BIRD_DOWN;
@@ -111,7 +125,30 @@ export function FlappyBird() {
       g.centre(2, padScore(s.score, 4), "text");
     }
 
-    if (s.phase === "ready") {
+    const count = counting.current;
+    if (count !== null) {
+      const word = countdownWord(count);
+      if (word) {
+        const art = bigWord(word);
+        const paint = word === "GO" ? "mint" : "accent";
+        const width = Math.max(...art.map((r) => r.length));
+        const left = Math.floor((COLS - width) / 2);
+        const top = Math.round(10) - Math.floor(BIG_ROWS / 2);
+        // Cleared behind the digits, or they read as terrain rather than as
+        // a countdown — which is exactly what a one-character "3" did.
+        for (let r = -1; r <= BIG_ROWS; r += 1) {
+          g.hLine(left - 5, top + r, width + 10, " ", "bg");
+        }
+        art.forEach((row, r) => g.text(left, top + r, row, paint));
+        // A tick under it that shortens, so the wait is visible rather than
+        // only being three numbers that change.
+        const remaining = countdownPulse(count);
+        g.hLine(left, top + BIG_ROWS + 1, Math.round(width * remaining), "▬", "dim");
+      }
+    } else if (paused) {
+      g.banner(10, "── P A U S E D ──", "warn");
+      g.banner(12, "SPACE or P to resume", "dim");
+    } else if (s.phase === "ready") {
       g.banner(9, "╔═══════════════════════════╗", "accent");
       g.banner(10, "║    F L A P P Y   B I R D  ║", "accent");
       g.banner(11, "╚═══════════════════════════╝", "accent");
@@ -122,37 +159,102 @@ export function FlappyBird() {
       g.banner(10, "║      G A M E  O V E R     ║", "danger");
       g.banner(11, "╚═══════════════════════════╝", "danger");
       g.banner(13, `YOU CLEARED ${s.score} PIPES`, "text");
-      g.banner(15, "PRESS SPACE TO FLY AGAIN", "dim");
+      if (beatRecord) g.banner(14, "★  NEW RECORD  ★", "warn");
+      g.banner(16, "PRESS SPACE TO FLY AGAIN", "dim");
     }
 
     screen.current?.draw(g);
-  }, []);
+  }, [paused, beatRecord]);
 
-  useGameLoop(phase === "running", (dt) => {
+  useGameLoop(phase === "running" || counted, (dt) => {
     const s = state.current;
+
+    // The countdown runs its own clock but not the world: no pipe can kill
+    // you until it reaches GO.
+    if (counting.current !== null) {
+      counting.current += dt;
+      bits.current.step(dt);
+      if (countdownDone(counting.current)) {
+        counting.current = null;
+        setCounted(false);
+        s.phase = "running";
+        setPhase("running");
+      }
+      paint();
+      return;
+    }
+
+    if (paused) return;
+
+    const wasAlive = s.phase === "running";
     step(s, dt, rand.current);
+    bits.current.step(dt);
+
+    // A feather or two behind the bird while it climbs.
+    if (s.vy < 0 && Math.random() < 0.4) {
+      bits.current.trail(BIRD_X, s.y + 1, rand.current, "warn");
+    }
+
+    // Cleared a pipe: a little sparkle where it went through.
+    if (s.score > lastScore.current) {
+      bits.current.burst(BIRD_X + 4, s.y + 1, rand.current, "mint", 8, 16);
+      lastScore.current = s.score;
+    }
+
+    // Hit something.
+    if (wasAlive && s.phase === "over") {
+      bits.current.burst(BIRD_X + 2, s.y + 1, rand.current, "danger", 16, 28);
+      screen.current?.shake("big");
+      screen.current?.flash("danger");
+    }
+
     paint();
 
     if (s.score !== score) setScore(s.score);
 
     if (s.phase === "over" && !banked.current) {
       banked.current = true;
+      const previous = highScore("flappy");
       setBest(submitScore("flappy", s.score));
+      recordPlay("flappy", s.score);
+      if (s.score > previous && s.score > 0) {
+        setBeatRecord(true);
+        screen.current?.flash("warn");
+      }
       setPhase("over");
     }
   });
 
   const begin = useCallback(() => {
     state.current = start(state.current);
+    // Held at ready while the countdown runs, so nothing moves until GO.
+    state.current.phase = "ready";
+    bits.current.clear();
     banked.current = false;
+    counting.current = 0;
+    lastScore.current = 0;
+    setBeatRecord(false);
+    setPaused(false);
+    setCounted(true);
     setScore(0);
-    setPhase("running");
+    setPhase("ready");
     paint();
   }, [paint]);
 
   useGameKeys(true, (key) => {
     const s = state.current;
+
+    if (key === "p" || key === "P") {
+      if (s.phase === "running" && counting.current === null) setPaused((p) => !p);
+      return;
+    }
+
     if (isActionKey(key) || key === "ArrowUp" || key === "w" || key === "W") {
+      if (counting.current !== null) return;
+      if (paused) {
+        setPaused(false);
+        return;
+      }
       if (s.phase === "running") flap(s);
       else begin();
     }
@@ -166,7 +268,7 @@ export function FlappyBird() {
     <GameWindow
       title="FLAPPY BIRD"
       glyph="🐦"
-      hint="SPACE to flap"
+      hint="SPACE to flap · P pause"
       right={
         <span className="gw__scores">
           <Readout label="SCORE" value={padScore(score, 4)} tone="warn" />
@@ -185,10 +287,14 @@ export function FlappyBird() {
             </p>
           </Panel>
 
-          <p className="game-tip">
-            {phase === "running"
-              ? "AVOID THE PIPES AND FLY AS FAR AS YOU CAN!"
-              : "PRESS SPACE TO TAKE OFF"}
+          <p className="game-tip" data-cheer={beatRecord || undefined}>
+            {beatRecord
+              ? "★ NEW RECORD — NOBODY HAS FLOWN FURTHER ★"
+              : paused
+                ? "PAUSED — PRESS P TO CARRY ON"
+                : phase === "running"
+                  ? "AVOID THE PIPES AND FLY AS FAR AS YOU CAN!"
+                  : "PRESS SPACE TO TAKE OFF"}
           </p>
 
           <Panel title="Best" tone="mint">

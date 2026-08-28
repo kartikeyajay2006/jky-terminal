@@ -353,14 +353,28 @@
 
 /* ---- the playfield ------------------------------------------------------ */
 
-.gamescreen {
-  margin: 0;
-  padding: var(--s3);
+/* ---- the CRT the playfield sits behind ---------------------------------- */
+
+.gamescreen__frame {
+  position: relative;
+  flex: 1;
+  min-width: 0;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   /* Slightly darker than the window, so the playfield reads as a screen
      inset into the cabinet rather than as more of the same surface. */
   background: color-mix(in srgb, var(--ground) 92%, #000);
+  overflow: hidden;
+  box-shadow:
+    inset 0 0 70px rgb(0 0 0 / 60%),
+    0 0 0 1px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.gamescreen {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  padding: var(--s3);
   color: var(--text-muted);
   font-family: var(--font-mono);
   /* clamp so the board fits a narrow window without a horizontal scrollbar,
@@ -373,11 +387,109 @@
   /* The board is drawn as text; selecting it mid-game does nothing useful
      and the highlight obscures the picture. */
   user-select: none;
-  box-shadow: inset 0 0 60px rgb(0 0 0 / 55%);
 }
 
 .gamescreen:focus {
   outline: none;
+}
+
+/*
+ * Scanlines and a vignette, which is most of what makes this read as a screen
+ * rather than as text on a page. Both are decoration only: pointer-events off
+ * so neither can eat a click, and both are dropped entirely for anyone who
+ * has asked for less motion and contrast.
+ */
+.gamescreen__scanlines,
+.gamescreen__vignette,
+.gamescreen__flash {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.gamescreen__scanlines {
+  z-index: 2;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgb(0 0 0 / 0%) 0px,
+    rgb(0 0 0 / 0%) 2px,
+    rgb(0 0 0 / 22%) 3px,
+    rgb(0 0 0 / 22%) 4px
+  );
+  opacity: 0.55;
+}
+
+.gamescreen__vignette {
+  z-index: 3;
+  background: radial-gradient(
+    ellipse at center,
+    rgb(0 0 0 / 0%) 45%,
+    rgb(0 0 0 / 38%) 100%
+  );
+}
+
+/* A wash of colour on a hit, a pickup, or a new record. */
+.gamescreen__flash {
+  z-index: 4;
+  opacity: 0;
+  background: var(--flash-tone, var(--danger));
+  mix-blend-mode: screen;
+}
+
+.gamescreen__flash[data-tone="danger"] { --flash-tone: var(--danger); }
+.gamescreen__flash[data-tone="mint"] { --flash-tone: var(--mint); }
+.gamescreen__flash[data-tone="warn"] { --flash-tone: var(--warn); }
+.gamescreen__flash[data-tone="accent"] { --flash-tone: var(--accent); }
+
+.gamescreen__flash--on {
+  animation: gs-flash 320ms var(--ease);
+}
+
+@keyframes gs-flash {
+  0% { opacity: 0.26; }
+  100% { opacity: 0; }
+}
+
+/*
+ * Screen shake. A transform rather than moving cells: this runs on the
+ * compositor and costs the game loop nothing, where shifting the grid would
+ * mean repainting every character for a purely decorative wobble.
+ */
+.gamescreen__frame--shake {
+  animation: gs-shake 420ms var(--ease);
+}
+
+.gamescreen__frame--shake-big {
+  animation: gs-shake-big 420ms var(--ease);
+}
+
+@keyframes gs-shake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  60% { transform: translate(-1px, -1px); }
+  80% { transform: translate(1px, 1px); }
+}
+
+@keyframes gs-shake-big {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  15% { transform: translate(-5px, 2px) rotate(-0.4deg); }
+  30% { transform: translate(5px, -3px) rotate(0.4deg); }
+  45% { transform: translate(-4px, -2px) rotate(-0.3deg); }
+  60% { transform: translate(4px, 3px) rotate(0.3deg); }
+  80% { transform: translate(-2px, 1px) rotate(0deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gamescreen__scanlines,
+  .gamescreen__vignette {
+    display: none;
+  }
+  .gamescreen__frame--shake,
+  .gamescreen__frame--shake-big,
+  .gamescreen__flash--on {
+    animation: none;
+  }
 }
 
 .game-layout {
@@ -391,7 +503,7 @@
   flex-direction: column;
 }
 
-.game-layout .gamescreen {
+.game-layout .gamescreen__frame {
   flex: 1;
   min-width: 0;
 }
@@ -555,6 +667,17 @@
 
 /* ---- the grid renderer's paint classes ---------------------------------- */
 
+/* A little bloom on the bright colours, which is what a phosphor screen
+   does and what separates a game board from a wall of text. */
+.gp-accent,
+.gp-mint,
+.gp-warn,
+.gp-violet,
+.gp-magenta,
+.gp-danger {
+  text-shadow: 0 0 6px currentColor;
+}
+
 .gp-bg { color: transparent; }
 .gp-dim { color: var(--text-dim); }
 .gp-muted { color: var(--text-muted); }
@@ -641,12 +764,264 @@
     grid-auto-flow: column;
   }
 
-  .game-layout .gamescreen {
+  .game-layout .gamescreen__frame {
     flex: 1 1 100%;
     order: -1;
   }
 
   .game-strip {
     flex-wrap: wrap;
+  }
+}
+
+/* ---- the arcade front --------------------------------------------------- */
+
+.arcade {
+  display: grid;
+  gap: var(--s4);
+  align-content: start;
+}
+
+.arcade__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex-wrap: wrap;
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--line);
+}
+
+.arcade__title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  color: var(--accent);
+  text-shadow: 0 0 22px var(--accent-glow);
+}
+
+.arcade__sub {
+  margin: var(--s1) 0 0;
+  max-width: 52ch;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.arcade__totals {
+  display: flex;
+  gap: var(--s4);
+  margin: 0;
+}
+
+.arcade__totals div {
+  display: grid;
+  gap: 2px;
+  text-align: right;
+}
+
+.arcade__totals dt {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+
+.arcade__totals dd {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.arcade__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--s4);
+}
+
+.arcade__hint {
+  margin: 0;
+  padding-top: var(--s2);
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+.arcade__hint code {
+  padding: 1px 5px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--surface);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* ---- one game's card ---------------------------------------------------- */
+
+.acard {
+  --card-tone: var(--accent);
+  display: grid;
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--line-strong);
+  border-top: 2px solid var(--card-tone);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface) 80%, transparent);
+  transition: all var(--normal) var(--ease);
+}
+
+.acard[data-tone="mint"] { --card-tone: var(--mint); }
+.acard[data-tone="accent"] { --card-tone: var(--accent); }
+.acard[data-tone="violet"] { --card-tone: var(--violet); }
+.acard[data-tone="warn"] { --card-tone: var(--warn); }
+
+.acard:hover {
+  border-color: var(--card-tone);
+  background: var(--surface-raised);
+  transform: translateY(-2px);
+  box-shadow: 0 14px 32px rgb(0 0 0 / 40%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .acard:hover {
+    transform: none;
+  }
+}
+
+.acard__head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.acard__index {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--card-tone) 20%, transparent);
+  color: var(--card-tone);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.acard__glyph {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.acard__title {
+  margin: 0;
+  flex: 1;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--text);
+}
+
+/* A still of the game, so a card shows what it is rather than describing it. */
+.acard__art {
+  margin: 0;
+  padding: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--ground) 92%, #000);
+  color: var(--card-tone);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.15;
+  white-space: pre;
+  overflow: hidden;
+  text-shadow: 0 0 6px currentColor;
+  user-select: none;
+}
+
+.acard__blurb {
+  margin: 0;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.acard__stats {
+  display: flex;
+  gap: var(--s4);
+  margin: 0;
+  padding: var(--s2) 0;
+  border-top: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+}
+
+.acard__stats div {
+  display: grid;
+  gap: 1px;
+}
+
+.acard__stats dt {
+  font-size: 8px;
+  letter-spacing: 0.14em;
+  color: var(--text-dim);
+}
+
+.acard__stats dd {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.acard__foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+}
+
+.acard__keys {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.acard__play {
+  padding: var(--s1) var(--s3);
+  border: 1px solid var(--card-tone);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--card-tone) 12%, transparent);
+  color: var(--card-tone);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  transition: all var(--fast) var(--ease);
+}
+
+.acard__play:hover {
+  background: var(--card-tone);
+  color: var(--ground);
+}
+
+/* ---- a beaten record ---------------------------------------------------- */
+
+.game-tip[data-cheer] {
+  border-color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 12%, transparent);
+  color: var(--warn);
+  animation: tip-cheer 900ms var(--ease) infinite alternate;
+}
+
+@keyframes tip-cheer {
+  from { box-shadow: 0 0 0 rgb(0 0 0 / 0%); }
+  to { box-shadow: 0 0 18px color-mix(in srgb, var(--warn) 40%, transparent); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .game-tip[data-cheer] {
+    animation: none;
   }
 }

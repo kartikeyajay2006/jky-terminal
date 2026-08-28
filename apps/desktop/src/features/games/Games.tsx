@@ -3,28 +3,37 @@ import { DinoRun } from "./dino/DinoRun";
 import { SnakeGame } from "./snake/SnakeGame";
 import { TicTacToe } from "./tictactoe/TicTacToe";
 import { FlappyBird } from "./flappy/FlappyBird";
+import { Arcade, type ArcadeGame } from "./Arcade";
 import { getPlatform } from "../../platform";
 import { highScore, padScore, type GameId } from "./scores";
 import { useOpenGame } from "./openStore";
 import "./Games.css";
 
-interface GameSpec {
-  id: GameId;
-  label: string;
-  glyph: string;
-  blurb: string;
-  /** Whether this game keeps a high score, for the sub-nav to show one. */
-  scored: boolean;
-}
+/** Where the section is: the front, or one of the games. */
+type View = "arcade" | GameId;
 
-/** The suite, in the order the sub-nav lists them. */
-export const GAMES: GameSpec[] = [
+/**
+ * The suite, in the order the sub-nav lists them.
+ *
+ * This order is also the shell command's contract — `jky games 2` means the
+ * second of these — which `openStore` asserts against.
+ */
+export const GAMES: ArcadeGame[] = [
   {
     id: "dino",
     label: "Dino Run",
     glyph: "🦖",
     blurb: "Jump the cactuses. It only gets faster.",
     scored: true,
+    keys: "SPACE · ↓",
+    tone: "mint",
+    art: [
+      "    ▄███▄      ",
+      "    █▀█▀█   ▓  ",
+      "▄▄▄██████  ▓▓▓ ",
+      "███████▀    ▓  ",
+      "───────────────",
+    ],
   },
   {
     id: "snake",
@@ -32,6 +41,15 @@ export const GAMES: GameSpec[] = [
     glyph: "🐍",
     blurb: "Eat, grow, and try not to corner yourself.",
     scored: true,
+    keys: "↑ ↓ ← → · SPACE",
+    tone: "accent",
+    art: [
+      "┌─────────────┐",
+      "│ ███▓▓▓    ◆ │",
+      "│     ▓       │",
+      "│     ▓▓▓▓    │",
+      "└─────────────┘",
+    ],
   },
   {
     id: "tictactoe",
@@ -39,6 +57,15 @@ export const GAMES: GameSpec[] = [
     glyph: "⨯○",
     blurb: "Two players, one keyboard.",
     scored: false,
+    keys: "1 – 9 · ENTER",
+    tone: "violet",
+    art: [
+      "   X │ O │ X   ",
+      "  ───┼───┼───  ",
+      "   O │ X │ O   ",
+      "  ───┼───┼───  ",
+      "   X │ O │ X   ",
+    ],
   },
   {
     id: "flappy",
@@ -46,19 +73,30 @@ export const GAMES: GameSpec[] = [
     glyph: "🐦",
     blurb: "Mind the gap. The gap gets smaller.",
     scored: true,
+    keys: "SPACE",
+    tone: "warn",
+    art: [
+      "█▌       ▐█   ",
+      "█▌  ▄██▖ ▐█   ",
+      "      ▝▘      ",
+      "█▌       ▐█   ",
+      "▀▀▀▀▀▀▀▀▀▀▀▀▀ ",
+    ],
   },
 ];
 
-const LAST_PLAYED_KEY = "jky.games.last";
+const LAST_VIEW_KEY = "jky.games.last";
 
-function loadLastPlayed(): GameId {
+function loadLastView(): View {
   try {
-    const stored = localStorage.getItem(LAST_PLAYED_KEY);
+    const stored = localStorage.getItem(LAST_VIEW_KEY);
+    if (stored === "arcade") return "arcade";
     if (GAMES.some((g) => g.id === stored)) return stored as GameId;
   } catch {
     // Storage can throw in a private window; the default is fine.
   }
-  return "dino";
+  // The front, not a game: on a first visit the point is to see what is here.
+  return "arcade";
 }
 
 /**
@@ -72,22 +110,22 @@ function loadLastPlayed(): GameId {
  * you read your notes.
  */
 export function Games() {
-  const [active, setActive] = useState<GameId>(loadLastPlayed);
+  const [view, setView] = useState<View>(loadLastView);
 
   useEffect(() => {
     try {
-      localStorage.setItem(LAST_PLAYED_KEY, active);
+      localStorage.setItem(LAST_VIEW_KEY, view);
     } catch {
       // Preference lost, game fine.
     }
-  }, [active]);
+  }, [view]);
 
   // A game asked for from a shell wins over whichever was last played.
   const pendingGame = useOpenGame((s) => s.pending);
   useEffect(() => {
     if (!pendingGame) return;
     const taken = useOpenGame.getState().take();
-    if (taken) setActive(taken);
+    if (taken) setView(taken);
   }, [pendingGame]);
 
   // Hand the shell listing its numbers whenever this section is on screen.
@@ -100,20 +138,37 @@ export function Games() {
       best: highScore(g.id),
     }));
     void getPlatform().games.publishScores(scores).catch(() => {});
-  }, [active]);
+  }, [view]);
 
   return (
     <div className="games">
       <nav className="games__nav" aria-label="Games">
         <h1 className="games__title">Games</h1>
         <ul>
+          <li>
+            <button
+              type="button"
+              className="games__link games__link--arcade"
+              aria-current={view === "arcade" ? "page" : undefined}
+              onClick={() => setView("arcade")}
+            >
+              <span className="games__index" aria-hidden="true">
+                ◆
+              </span>
+              <span className="games__glyph" aria-hidden="true">
+                ▤
+              </span>
+              <span className="games__label">Arcade</span>
+            </button>
+          </li>
+
           {GAMES.map((game, i) => (
             <li key={game.id}>
               <button
                 type="button"
                 className="games__link"
-                aria-current={active === game.id ? "page" : undefined}
-                onClick={() => setActive(game.id)}
+                aria-current={view === game.id ? "page" : undefined}
+                onClick={() => setView(game.id)}
               >
                 <span className="games__index" aria-hidden="true">
                   {i + 1}
@@ -135,10 +190,11 @@ export function Games() {
       </nav>
 
       <div className="games__stage">
-        {active === "dino" && <DinoRun />}
-        {active === "snake" && <SnakeGame />}
-        {active === "tictactoe" && <TicTacToe />}
-        {active === "flappy" && <FlappyBird />}
+        {view === "arcade" && <Arcade games={GAMES} onPlay={setView} />}
+        {view === "dino" && <DinoRun />}
+        {view === "snake" && <SnakeGame />}
+        {view === "tictactoe" && <TicTacToe />}
+        {view === "flappy" && <FlappyBird />}
       </div>
     </div>
   );

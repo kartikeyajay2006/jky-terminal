@@ -130,6 +130,11 @@ describe("accessibility", () => {
     });
   }
 
+  it("the arcade front has no violations", async () => {
+    const { container } = render(<Games />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   // Every game, not just the one it opens on. Each is a different layout,
   // and a playfield made of text needs its label to survive review.
   for (const game of GAMES) {

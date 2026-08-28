@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Games, GAMES } from "./Games";
 import { submitScore, writeTally } from "./scores";
+import { recordPlay } from "./stats";
 import { useOpenGame } from "./openStore";
 import { __setPlatformForTests, createWebPlatform } from "../../platform";
 
@@ -33,9 +34,9 @@ describe("the games section", () => {
     expect(GAMES.map((g) => g.id)).toEqual(["dino", "snake", "tictactoe", "flappy"]);
   });
 
-  it("opens on Dino Run", () => {
+  it("opens on the arcade, so a first visit shows what is here", () => {
     render(<Games />);
-    expect(screen.getByRole("region", { name: "DINO RUN" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Arcade" })).toBeInTheDocument();
   });
 
   it("switches to another game when its name is clicked", async () => {
@@ -79,10 +80,21 @@ describe("the games section", () => {
     expect(screen.getByRole("region", { name: "TIC TAC TOE" })).toBeInTheDocument();
   });
 
-  it("falls back to the first game when the remembered one is nonsense", () => {
+  it("falls back to the arcade when the remembered view is nonsense", () => {
     localStorage.setItem("jky.games.last", "pinball");
     render(<Games />);
-    expect(screen.getByRole("region", { name: "DINO RUN" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Arcade" })).toBeInTheDocument();
+  });
+
+  it("remembers the arcade itself, not just a game", async () => {
+    localStorage.setItem("jky.games.last", "snake");
+    const user = userEvent.setup();
+    const { unmount } = render(<Games />);
+    await user.click(within(nav()).getByRole("button", { name: /arcade/i }));
+    unmount();
+
+    render(<Games />);
+    expect(screen.getByRole("region", { name: "Arcade" })).toBeInTheDocument();
   });
 
   it("shows a high score beside a game that has one", () => {
@@ -98,7 +110,7 @@ describe("the games section", () => {
 
   it("says where high scores are kept, rather than leaving it a mystery", () => {
     render(<Games />);
-    expect(screen.getByText(/kept on this machine/i)).toBeInTheDocument();
+    expect(within(nav()).getByText(/kept on this machine/i)).toBeInTheDocument();
   });
 });
 
@@ -196,33 +208,103 @@ describe("publishing scores to the shell", () => {
       },
     });
     expect(() => render(<Games />)).not.toThrow();
-    expect(screen.getByRole("region", { name: "DINO RUN" })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Arcade" })).toBeInTheDocument();
   });
 });
 
 describe("dino run", () => {
-  beforeEach(() => localStorage.clear());
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenGame.setState({ pending: null });
+  });
 
-  it("waits to be started rather than running on arrival", () => {
+  async function openDino() {
+    const user = userEvent.setup();
     render(<Games />);
+    await user.click(within(nav()).getByRole("button", { name: /dino run/i }));
+    return user;
+  }
+
+  it("waits to be started rather than running on arrival", async () => {
+    await openDino();
     expect(screen.getByText(/press space to begin/i)).toBeInTheDocument();
   });
 
-  it("shows three lives", () => {
-    render(<Games />);
+  it("shows three lives", async () => {
+    await openDino();
     const status = screen.getByRole("region", { name: "Status" });
     expect(within(status).getAllByText("♥")).toHaveLength(3);
   });
 
-  it("shows a score and a high score", () => {
+  it("shows a score and a high score", async () => {
     submitScore("dino", 4567);
-    render(<Games />);
+    await openDino();
     expect(screen.getByText("04567")).toBeInTheDocument();
   });
 
-  it("gives the playfield a label, since it is a picture made of text", () => {
-    render(<Games />);
+  it("gives the playfield a label, since it is a picture made of text", async () => {
+    await openDino();
     expect(screen.getByRole("img", { name: /dino run playfield/i })).toBeInTheDocument();
+  });
+});
+
+describe("the arcade front", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenGame.setState({ pending: null });
+  });
+
+  it("shows a card for every game", () => {
+    render(<Games />);
+    const arcade = screen.getByRole("region", { name: "Arcade" });
+    for (const game of GAMES) {
+      expect(within(arcade).getByRole("article", { name: game.label })).toBeInTheDocument();
+    }
+  });
+
+  it("shows a dash rather than a zero for a game never played", () => {
+    // A zero would read as "scored nothing", which is a different claim.
+    render(<Games />);
+    const card = screen.getByRole("article", { name: "Dino Run" });
+    expect(within(card).getByText("BEST").parentElement).toHaveTextContent("—");
+  });
+
+  it("shows a record once one has been set", () => {
+    submitScore("dino", 1256);
+    render(<Games />);
+    const card = screen.getByRole("article", { name: "Dino Run" });
+    expect(within(card).getByText("BEST").parentElement).toHaveTextContent("1256");
+  });
+
+  it("says tic tac toe is two-player rather than showing it a score", () => {
+    render(<Games />);
+    const card = screen.getByRole("article", { name: "Tic Tac Toe" });
+    expect(within(card).getByText("MODE").parentElement).toHaveTextContent("2P");
+    expect(within(card).queryByText("BEST")).toBeNull();
+  });
+
+  it("plays a game when its card is clicked", async () => {
+    const user = userEvent.setup();
+    render(<Games />);
+    const card = screen.getByRole("article", { name: "Snake" });
+    await user.click(within(card).getByRole("button", { name: /play/i }));
+
+    expect(screen.getByRole("region", { name: "SNAKE GAME" })).toBeInTheDocument();
+  });
+
+  it("counts rounds played across the whole arcade", () => {
+    recordPlay("dino", 10);
+    recordPlay("snake", 20);
+    render(<Games />);
+    // Scoped to the header totals: each card carries its own ROUNDS too.
+    const totals = screen.getByLabelText("Arcade totals");
+    expect(within(totals).getByText("ROUNDS").parentElement).toHaveTextContent("002");
+  });
+
+  it("points at the shell command, so it is discoverable", () => {
+    render(<Games />);
+    const arcade = screen.getByRole("region", { name: "Arcade" });
+    expect(within(arcade).getByText("jky games")).toBeInTheDocument();
   });
 });
 

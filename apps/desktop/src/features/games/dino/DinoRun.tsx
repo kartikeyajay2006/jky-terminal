@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Grid } from "../engine/grid";
 import { useGameLoop } from "../engine/loop";
 import { isActionKey, useGameKeys } from "../engine/keys";
+import { Particles } from "../engine/particles";
+import { BIG_ROWS, bigWord, countdownDone, countdownPulse, countdownWord } from "../engine/countdown";
 import { GameScreen, type GameScreenHandle } from "../GameScreen";
 import { GameWindow, Panel, Readout } from "../GameChrome";
 import { highScore, padScore, submitScore } from "../scores";
+import { recordPlay } from "../stats";
 import {
   COLS,
   DINO_X,
@@ -52,13 +55,24 @@ export function DinoRun() {
   const grid = useRef(new Grid(COLS, ROWS));
   const state = useRef<DinoState>(initialState());
   const rand = useRef(makeRandom(Date.now() & 0xffff));
+  const bits = useRef(new Particles());
   const banked = useRef(false);
+  /** Milliseconds into the pre-run countdown, or null when not counting. */
+  const counting = useRef<number | null>(null);
+  /** Lives at the last frame, so a fresh hit can be spotted and reacted to. */
+  const lastLives = useRef(state.current.lives);
+  /** Was the dino in the air last frame, for the landing puff. */
+  const wasAirborne = useRef(false);
 
   const [phase, setPhase] = useState(state.current.phase);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(state.current.lives);
   const [speed, setSpeed] = useState(state.current.speed);
   const [best, setBest] = useState(() => highScore("dino"));
+  const [beatRecord, setBeatRecord] = useState(false);
+  const [paused, setPaused] = useState(false);
+  /** Mirrors the countdown ref, purely so a change restarts the loop. */
+  const [counted, setCounted] = useState(false);
 
   const paint = useCallback(() => {
     const s = state.current;
@@ -112,6 +126,8 @@ export function DinoRun() {
       }
     }
 
+    bits.current.draw(g);
+
     // --- the dino ---
     const h = dinoHeight(s);
     const top = GROUND_Y - h - Math.round(s.y);
@@ -131,26 +147,85 @@ export function DinoRun() {
     }
 
     // --- overlays ---
-    if (s.phase === "ready") {
+    const count = counting.current;
+    if (count !== null) {
+      const word = countdownWord(count);
+      if (word) {
+        const art = bigWord(word);
+        const paint = word === "GO" ? "mint" : "accent";
+        const width = Math.max(...art.map((r) => r.length));
+        const left = Math.floor((COLS - width) / 2);
+        const top = Math.round(10) - Math.floor(BIG_ROWS / 2);
+        // Cleared behind the digits, or they read as terrain rather than as
+        // a countdown — which is exactly what a one-character "3" did.
+        for (let r = -1; r <= BIG_ROWS; r += 1) {
+          g.hLine(left - 5, top + r, width + 10, " ", "bg");
+        }
+        art.forEach((row, r) => g.text(left, top + r, row, paint));
+        // A tick under it that shortens, so the wait is visible rather than
+        // only being three numbers that change.
+        const remaining = countdownPulse(count);
+        g.hLine(left, top + BIG_ROWS + 1, Math.round(width * remaining), "▬", "dim");
+      }
+    } else if (s.phase === "ready") {
       g.banner(9, "╔══════════════════════════════╗", "accent");
       g.banner(10, "║      D I N O   R U N         ║", "accent");
       g.banner(11, "╚══════════════════════════════╝", "accent");
       g.banner(13, "PRESS SPACE TO RUN", "text");
-      g.banner(15, "SPACE jump   ↓ duck", "dim");
+      g.banner(15, "SPACE jump   ↓ duck   P pause", "dim");
+    } else if (paused) {
+      g.banner(10, "── P A U S E D ──", "warn");
+      g.banner(12, "SPACE or P to resume", "dim");
     } else if (s.phase === "over") {
       g.banner(9, "╔══════════════════════════════╗", "danger");
       g.banner(10, "║        G A M E  O V E R      ║", "danger");
       g.banner(11, "╚══════════════════════════════╝", "danger");
       g.banner(13, `YOU RAN ${s.score} METRES`, "text");
-      g.banner(15, "PRESS SPACE TO RUN AGAIN", "dim");
+      if (beatRecord) g.banner(14, "★  NEW RECORD  ★", "warn");
+      g.banner(16, "PRESS SPACE TO RUN AGAIN", "dim");
     }
 
     screen.current?.draw(g);
-  }, []);
+  }, [paused, beatRecord]);
 
-  useGameLoop(phase === "running", (dt) => {
+  useGameLoop(phase === "running" || counted, (dt) => {
     const s = state.current;
+
+    // The countdown runs its own clock but not the world: nothing can kill
+    // you until it reaches GO.
+    if (counting.current !== null) {
+      counting.current += dt;
+      bits.current.step(dt);
+      if (countdownDone(counting.current)) {
+        counting.current = null;
+        setCounted(false);
+        s.phase = "running";
+        setPhase("running");
+      }
+      paint();
+      return;
+    }
+
+    if (paused) return;
+
     step(s, dt, rand.current);
+    bits.current.step(dt);
+
+    // A puff where the feet land.
+    const inAir = airborne(s);
+    if (wasAirborne.current && !inAir && s.phase === "running") {
+      bits.current.dust(DINO_X + 2, GROUND_Y - 1, rand.current);
+    }
+    wasAirborne.current = inAir;
+
+    // A hit: shatter, rattle, redden.
+    if (s.lives < lastLives.current) {
+      bits.current.burst(DINO_X + 4, GROUND_Y - 3, rand.current, "danger", 14, 26);
+      screen.current?.shake(s.lives === 0 ? "big" : "small");
+      screen.current?.flash("danger");
+    }
+    lastLives.current = s.lives;
+
     paint();
 
     // Committed to React only when the shown value actually changes, so a
@@ -162,29 +237,55 @@ export function DinoRun() {
 
     if (s.phase === "over" && !banked.current) {
       banked.current = true;
+      const previous = highScore("dino");
       setBest(submitScore("dino", s.score));
+      recordPlay("dino", s.score);
+      if (s.score > previous && s.score > 0) {
+        setBeatRecord(true);
+        screen.current?.flash("warn");
+      }
       setPhase("over");
     }
   });
 
   const begin = useCallback(() => {
     state.current = start(state.current);
+    // Held at ready while the countdown runs, so nothing moves until GO.
+    state.current.phase = "ready";
+    bits.current.clear();
     banked.current = false;
+    counting.current = 0;
+    lastLives.current = state.current.lives;
+    wasAirborne.current = false;
+    setBeatRecord(false);
+    setPaused(false);
+    setCounted(true);
     setScore(0);
     setLives(state.current.lives);
-    setPhase("running");
+    setPhase("ready");
     paint();
   }, [paint]);
 
   useGameKeys(true, (key) => {
     const s = state.current;
+
+    if (key === "p" || key === "P") {
+      if (s.phase === "running" && counting.current === null) setPaused((p) => !p);
+      return;
+    }
+
     if (isActionKey(key)) {
+      if (counting.current !== null) return;
+      if (paused) {
+        setPaused(false);
+        return;
+      }
       if (s.phase === "running") jump(s);
       else begin();
       return;
     }
     if (key === "ArrowUp" || key === "w" || key === "W") {
-      jump(s);
+      if (!paused) jump(s);
       return;
     }
     if (key === "ArrowDown" || key === "s" || key === "S") setDucking(s, true);
@@ -212,7 +313,7 @@ export function DinoRun() {
     <GameWindow
       title="DINO RUN"
       glyph="🦖"
-      hint="SPACE to jump · ↓ to duck"
+      hint="SPACE jump · ↓ duck · P pause"
       right={
         <span className="gw__scores">
           <Readout label="SCORE" value={padScore(score)} tone="mint" />
@@ -237,8 +338,14 @@ export function DinoRun() {
             </p>
           </Panel>
 
-          <p className="game-tip">
-            {phase === "running" ? "JUMP OVER THE CACTUSES!" : "PRESS SPACE TO BEGIN"}
+          <p className="game-tip" data-cheer={beatRecord || undefined}>
+            {beatRecord
+              ? "★ NEW RECORD — NOBODY HAS RUN FURTHER ★"
+              : paused
+                ? "PAUSED — PRESS P TO CARRY ON"
+                : phase === "running"
+                  ? "JUMP OVER THE CACTUSES!"
+                  : "PRESS SPACE TO BEGIN"}
           </p>
 
           <Panel title="Speed" tone="mint">

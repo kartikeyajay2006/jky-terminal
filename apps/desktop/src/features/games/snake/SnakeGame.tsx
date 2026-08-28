@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Grid } from "../engine/grid";
 import { drainSteps, useGameLoop } from "../engine/loop";
 import { directionFor, isActionKey, useGameKeys } from "../engine/keys";
+import { Particles } from "../engine/particles";
+import { BIG_ROWS, bigWord, countdownDone, countdownPulse, countdownWord } from "../engine/countdown";
 import { GameScreen, type GameScreenHandle } from "../GameScreen";
 import { GameWindow, Meter, Panel, Readout } from "../GameChrome";
 import { highScore, padScore, submitScore } from "../scores";
+import { recordPlay } from "../stats";
 import {
   COLS,
   ROWS,
@@ -28,9 +31,17 @@ export function SnakeGame() {
   const rand = useRef(makeRandom(Date.now() & 0xffff));
   const state = useRef<SnakeState>(initialState(rand.current));
   const accumulator = useRef(0);
+  const bits = useRef(new Particles());
   const banked = useRef(false);
+  /** Milliseconds into the pre-run countdown, or null when not counting. */
+  const counting = useRef<number | null>(null);
+  /** The score last frame, so eating can be celebrated exactly once. */
+  const lastScore = useRef(0);
 
   const [phase, setPhase] = useState(state.current.phase);
+  const [beatRecord, setBeatRecord] = useState(false);
+  /** Mirrors the countdown ref, purely so a change restarts the loop. */
+  const [counted, setCounted] = useState(false);
   const [score, setScore] = useState(0);
   const [length, setLength] = useState(state.current.body.length);
   const [interval, setIntervalMs] = useState(state.current.intervalMs);
@@ -66,7 +77,29 @@ export function SnakeGame() {
       );
     }
 
-    if (s.phase === "ready") {
+    bits.current.draw(g);
+
+    const count = counting.current;
+    if (count !== null) {
+      const word = countdownWord(count);
+      if (word) {
+        const art = bigWord(word);
+        const paint = word === "GO" ? "mint" : "accent";
+        const width = Math.max(...art.map((r) => r.length));
+        const left = Math.floor((COLS + PAD_X * 2 - width) / 2);
+        const top = Math.round(ROWS / 2) - Math.floor(BIG_ROWS / 2);
+        // Cleared behind the digits, or they read as terrain rather than as
+        // a countdown — which is exactly what a one-character "3" did.
+        for (let r = -1; r <= BIG_ROWS; r += 1) {
+          g.hLine(left - 5, top + r, width + 10, " ", "bg");
+        }
+        art.forEach((row, r) => g.text(left, top + r, row, paint));
+        // A tick under it that shortens, so the wait is visible rather than
+        // only being three numbers that change.
+        const remaining = countdownPulse(count);
+        g.hLine(left, top + BIG_ROWS + 1, Math.round(width * remaining), "▬", "dim");
+      }
+    } else if (s.phase === "ready") {
       g.banner(ROWS / 2 - 1, "╔════════════════════════╗", "accent");
       g.banner(ROWS / 2, "║   S N A K E   G A M E  ║", "accent");
       g.banner(ROWS / 2 + 1, "╚════════════════════════╝", "accent");
@@ -79,15 +112,33 @@ export function SnakeGame() {
       g.banner(ROWS / 2, "║     G A M E  O V E R   ║", "danger");
       g.banner(ROWS / 2 + 1, "╚════════════════════════╝", "danger");
       g.banner(ROWS / 2 + 3, `LENGTH ${s.body.length} · SCORE ${s.score}`, "text");
-      g.banner(ROWS / 2 + 4, "SPACE to play again", "dim");
+      if (beatRecord) g.banner(ROWS / 2 + 4, "★  NEW RECORD  ★", "warn");
+      g.banner(ROWS / 2 + 5, "SPACE to play again", "dim");
     }
 
     screen.current?.draw(g);
-  }, []);
+  }, [beatRecord]);
 
-  useGameLoop(phase === "running", (dt) => {
+  useGameLoop(phase === "running" || counted, (dt) => {
     const s = state.current;
+
+    // The countdown runs its own clock but not the snake.
+    if (counting.current !== null) {
+      counting.current += dt;
+      bits.current.step(dt);
+      if (countdownDone(counting.current)) {
+        counting.current = null;
+        setCounted(false);
+        s.phase = "running";
+        setPhase("running");
+      }
+      paint();
+      return;
+    }
+
     accumulator.current += dt;
+    bits.current.step(dt);
+    const wasAlive = s.phase === "running";
 
     // A snake moves in whole cells on a fixed tick while the screen redraws
     // at whatever rate it likes, so the two are drained apart.
@@ -95,6 +146,22 @@ export function SnakeGame() {
     accumulator.current = rest;
     for (let i = 0; i < steps && s.phase === "running"; i += 1) {
       tick(s, rand.current);
+    }
+
+    // Ate an apple: a burst where it was.
+    if (s.score > lastScore.current) {
+      const head = s.body[0];
+      bits.current.burst(head.x + PAD_X, head.y + PAD_Y, rand.current, "danger", 10, 18);
+      screen.current?.flash("mint");
+      lastScore.current = s.score;
+    }
+
+    // Ran into something.
+    if (wasAlive && s.phase === "over") {
+      const head = s.body[0];
+      bits.current.burst(head.x + PAD_X, head.y + PAD_Y, rand.current, "danger", 16, 26);
+      screen.current?.shake("big");
+      screen.current?.flash("danger");
     }
 
     paint();
@@ -105,19 +172,32 @@ export function SnakeGame() {
 
     if (s.phase === "over" && !banked.current) {
       banked.current = true;
+      const previous = highScore("snake");
       setBest(submitScore("snake", s.score));
+      recordPlay("snake", s.score);
+      if (s.score > previous && s.score > 0) {
+        setBeatRecord(true);
+        screen.current?.flash("warn");
+      }
       setPhase("over");
     }
   });
 
   const begin = useCallback(() => {
     state.current = start(rand.current);
+    // Held at ready while the countdown runs, so nothing moves until GO.
+    state.current.phase = "ready";
     accumulator.current = 0;
+    bits.current.clear();
     banked.current = false;
+    counting.current = 0;
+    lastScore.current = 0;
+    setBeatRecord(false);
+    setCounted(true);
     setScore(0);
     setLength(state.current.body.length);
     setIntervalMs(state.current.intervalMs);
-    setPhase("running");
+    setPhase("ready");
     paint();
   }, [paint]);
 
@@ -125,6 +205,7 @@ export function SnakeGame() {
     const s = state.current;
 
     if (isActionKey(key)) {
+      if (counting.current !== null) return;
       if (s.phase === "running") {
         s.phase = "paused";
         setPhase("paused");
@@ -206,7 +287,11 @@ export function SnakeGame() {
         </div>
       </div>
 
-      <p className="game-tip">Eat food, grow longer, beat your high score!</p>
+      <p className="game-tip" data-cheer={beatRecord || undefined}>
+        {beatRecord
+          ? "★ NEW RECORD — LONGEST YET ★"
+          : "Eat food, grow longer, beat your high score!"}
+      </p>
     </GameWindow>
   );
 }
