@@ -10,6 +10,9 @@ jky-store = { path = "../jky-store" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+# Already resolved in the tree via rustls/ring; declared directly here rather
+# than relied on transitively, since the OTP code depends on it by name.
+getrandom = "0.2"
 # rustls rather than native-tls, for the same reason reqwest uses it here:
 # it needs no OpenSSL headers on the Windows and macOS runners.
 lettre = { version = "0.11", default-features = false, features = [

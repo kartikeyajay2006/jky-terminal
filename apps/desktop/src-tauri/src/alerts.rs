@@ -120,12 +120,30 @@ pub fn mail_save_config(
     state: State<'_, AppState>,
     config: MailConfig,
 ) -> Result<(), String> {
+    persist_and_register(&app, &state, &config)
+}
+
+/// The part `mail_save_config` and a successful `mail_verify_otp` share:
+/// validate, write to disk, and install or remove the background helper to
+/// match.
+///
+/// Turning alerts on requires a verified address, not merely a well-formed
+/// one — a mailbox the user has not proven they can read is not somewhere
+/// this app should be told to rely on.
+fn persist_and_register(
+    app: &tauri::AppHandle,
+    state: &AppState,
+    config: &MailConfig,
+) -> Result<(), String> {
     if config.enabled {
-        if let Some(why) = jky_mail::why_not(&config) {
+        if let Some(why) = jky_mail::why_not(config) {
             return Err(why);
         }
+        if !jky_mail::is_verified(config) {
+            return Err("Verify this email address first.".into());
+        }
     }
-    jky_mail::save_config(&state.config_dir, &config).map_err(|e| e.to_string())?;
+    jky_mail::save_config(&state.config_dir, config).map_err(|e| e.to_string())?;
 
     let home = app.path().home_dir().map_err(|e| e.to_string())?;
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
@@ -164,12 +182,16 @@ pub fn mail_delete_password(state: State<'_, AppState>) -> Result<(), String> {
 /// Send one message now, so the settings can be proved before an event
 /// depends on them.
 ///
+/// Takes `config` from the caller rather than reading the saved settings:
+/// this button exists to prove what is currently on screen works, and a form
+/// filled in but not yet saved must not silently test whatever was saved
+/// last (or nothing, on a first run).
+///
 /// Everything about this configuration is invisible until something arrives —
 /// wrong port, wrong password, blocked outbound mail all look identical from
 /// the settings screen.
 #[tauri::command]
-pub fn mail_send_test(state: State<'_, AppState>) -> Result<(), String> {
-    let config = jky_mail::load_config(&state.config_dir);
+pub fn mail_send_test(state: State<'_, AppState>, config: MailConfig) -> Result<(), String> {
     if let Some(why) = jky_mail::why_not(&config) {
         return Err(why);
     }
@@ -179,20 +201,85 @@ pub fn mail_send_test(state: State<'_, AppState>) -> Result<(), String> {
     }
     let password = state.secrets.get(MAIL_ACCOUNT).map_err(|e| e.to_string())?;
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
-
     let sample = jky_store::Event {
         id: "test".into(),
         title: "JKY Terminal test alert".into(),
-        starts_at: to_rfc3339(now + 1800),
+        starts_at: to_rfc3339(now_secs() + 1800),
         colour: jky_store::EventColour::Cyan,
         alert_minutes_before: Some(30),
     };
 
     jky_mail::send(&config, password.expose(), &sample, 30).map_err(|e| e.to_string())
+}
+
+/// Email a one-time code to the address in `config`, so the next step can
+/// prove it belongs to whoever is sitting here.
+///
+/// Requires a stored password, because it sends through the exact path an
+/// alert would use — a successful send is itself proof the address, host,
+/// port and password all actually work together, not merely that they are
+/// well-formed.
+#[tauri::command]
+pub fn mail_send_otp(state: State<'_, AppState>, config: MailConfig) -> Result<(), String> {
+    if let Some(why) = jky_mail::why_not(&config) {
+        return Err(why);
+    }
+    if !state.secrets.has(MAIL_ACCOUNT).map_err(|e| e.to_string())? {
+        return Err("Store an app password first.".into());
+    }
+    let password = state.secrets.get(MAIL_ACCOUNT).map_err(|e| e.to_string())?;
+
+    let code = jky_mail::generate_code();
+    jky_mail::send_otp(&config, password.expose(), &code).map_err(|e| e.to_string())?;
+
+    *state.mail_otp.lock().unwrap() = Some(jky_mail::OtpState {
+        address: config.address.trim().to_string(),
+        code,
+        expires_at: now_secs() + jky_mail::OTP_TTL_SECS,
+    });
+    Ok(())
+}
+
+/// Check a typed code against the one most recently sent.
+///
+/// `false` means the code did not match — a mistyped digit is a normal
+/// outcome, not an error. A matching code persists `config` with the address
+/// marked verified and registers or removes the background helper to match,
+/// exactly as `mail_save_config` would.
+#[tauri::command]
+pub fn mail_verify_otp(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    config: MailConfig,
+    code: String,
+) -> Result<bool, String> {
+    let now = now_secs();
+    let otp = state.mail_otp.lock().unwrap().clone();
+
+    match jky_mail::check(otp.as_ref(), config.address.trim(), &code, now) {
+        jky_mail::OtpOutcome::Verified => {
+            *state.mail_otp.lock().unwrap() = None;
+            let mut verified = config;
+            verified.verified_address = Some(verified.address.trim().to_string());
+            persist_and_register(&app, &state, &verified)?;
+            Ok(true)
+        }
+        jky_mail::OtpOutcome::Mismatch => Ok(false),
+        jky_mail::OtpOutcome::Expired => {
+            *state.mail_otp.lock().unwrap() = None;
+            Err("That code expired. Send a new one.".into())
+        }
+        jky_mail::OtpOutcome::NoneSent => Err("Send a verification code first.".into()),
+    }
+}
+
+/// Seconds since the epoch, for the two call sites here that need "now" and
+/// have no event loop to get it from.
+fn now_secs() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
 }
 
 /// Seconds since the epoch back to the stored timestamp shape.

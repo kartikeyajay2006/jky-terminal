@@ -185,6 +185,12 @@ export interface MailConfig {
   host: string;
   port: number;
   enabled: boolean;
+  /**
+   * The address a one-time code has proven belongs to whoever is here.
+   * `null` until verified, and it stops matching the moment `address` is
+   * edited — proving the old address said nothing about the new one.
+   */
+  verified_address: string | null;
 }
 
 /** A known provider, so nobody has to look up a port number. */
@@ -205,8 +211,12 @@ export interface MailApi {
   setPassword(password: string): Promise<void>;
   hasPassword(): Promise<boolean>;
   deletePassword(): Promise<void>;
-  /** Sends one message now, so the settings can be proved. */
-  sendTest(): Promise<void>;
+  /** Sends one message now, using exactly what is on screen. */
+  sendTest(config: MailConfig): Promise<void>;
+  /** Emails a one-time code to the address in `config`. Requires a stored password. */
+  sendOtp(config: MailConfig): Promise<void>;
+  /** Checks a code against the one most recently sent. `false` means it did not match — not an error. */
+  verifyOtp(config: MailConfig, code: string): Promise<boolean>;
 }
 
 export interface Platform {

@@ -20,6 +20,12 @@ pub struct MailConfig {
     /// Whether alerts are being delivered at all.
     #[serde(default)]
     pub enabled: bool,
+    /// The address a one-time code has proven belongs to whoever is sitting
+    /// here. `None` until verified, and it stops matching the moment
+    /// `address` is edited — proving the old address said nothing about the
+    /// new one.
+    #[serde(default)]
+    pub verified_address: Option<String>,
 }
 
 /// A known provider, so nobody has to look up a port number.
@@ -105,6 +111,17 @@ pub fn why_not(config: &MailConfig) -> Option<String> {
     None
 }
 
+/// Whether the configured address has been proven with a one-time code.
+///
+/// Checked against the *current* address rather than "was anything ever
+/// verified": the two can only agree if nothing has changed since the last
+/// successful check, so editing the address always requires proving it
+/// again.
+pub fn is_verified(config: &MailConfig) -> bool {
+    let address = config.address.trim();
+    !address.is_empty() && config.verified_address.as_deref() == Some(address)
+}
+
 /// Deliberately loose.
 ///
 /// A regular expression that tries to be exactly right about what an address
@@ -134,6 +151,7 @@ mod tests {
             host: "smtp.gmail.com".into(),
             port: 465,
             enabled: true,
+            verified_address: None,
         }
     }
 
@@ -152,6 +170,7 @@ mod tests {
         let empty: MailConfig = serde_json::from_str("{}").unwrap();
         assert!(!empty.enabled);
         assert!(empty.address.is_empty());
+        assert!(empty.verified_address.is_none());
     }
 
     #[test]
@@ -235,5 +254,43 @@ mod tests {
         ] {
             assert!(looks_like_an_address(good), "refused '{good}'");
         }
+    }
+
+    #[test]
+    fn an_address_with_no_code_sent_is_not_verified() {
+        assert!(!is_verified(&config()));
+    }
+
+    #[test]
+    fn a_matching_verified_address_is_verified() {
+        let mut c = config();
+        c.verified_address = Some(c.address.clone());
+        assert!(is_verified(&c));
+    }
+
+    #[test]
+    fn editing_the_address_drops_verification() {
+        // The whole point: a code proves the address it was sent to, not
+        // whatever the address field happens to hold later.
+        let mut c = config();
+        c.verified_address = Some(c.address.clone());
+        c.address = "someone-else@gmail.com".into();
+        assert!(!is_verified(&c));
+    }
+
+    #[test]
+    fn a_blank_address_is_never_verified() {
+        let mut c = config();
+        c.address = String::new();
+        c.verified_address = Some(String::new());
+        assert!(!is_verified(&c));
+    }
+
+    #[test]
+    fn verification_tolerates_surrounding_whitespace_in_the_address() {
+        let mut c = config();
+        c.address = "  someone@gmail.com  ".into();
+        c.verified_address = Some("someone@gmail.com".into());
+        assert!(is_verified(&c));
     }
 }

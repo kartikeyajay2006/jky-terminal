@@ -151,7 +151,9 @@ export function createTauriPlatform(): Platform {
     setPassword: (password) => invoke<void>("mail_set_password", { password }),
     hasPassword: () => invoke<boolean>("mail_has_password"),
     deletePassword: () => invoke<void>("mail_delete_password"),
-    sendTest: () => invoke<void>("mail_send_test"),
+    sendTest: (config) => invoke<void>("mail_send_test", { config }),
+    sendOtp: (config) => invoke<void>("mail_send_otp", { config }),
+    verifyOtp: (config, code) => invoke<boolean>("mail_verify_otp", { config, code }),
   };
 
   return {

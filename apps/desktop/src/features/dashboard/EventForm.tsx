@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { EVENT_COLOURS, type Event, type EventColour } from "../../platform";
+import { EVENT_COLOURS, getPlatform, type Event, type EventColour } from "../../platform";
 import { newId } from "./dashboardStore";
 import { DatePicker } from "./DatePicker";
 import { defaultWhen, describe, localDate, relative, toInstant, whyNot } from "./eventTime";
+import { isMailReady } from "./mailPresets";
 
 const LEADS = [
   { value: "", label: "No email alert" },
@@ -37,6 +38,7 @@ export function EventForm({
   const [colour, setColour] = useState<EventColour>("cyan");
   const [alert, setAlert] = useState<number | null>(null);
   const [tried, setTried] = useState(false);
+  const [mailReady, setMailReady] = useState(false);
 
   // Follow the calendar. useState only reads its argument on the first
   // render, so without this the form kept whichever day happened to be
@@ -44,6 +46,22 @@ export function EventForm({
   useEffect(() => {
     if (day) setDate(day);
   }, [day]);
+
+  // Whether an alert picked here could ever actually fire. Checked once on
+  // mount: this form does not need to react to mail settings changing in
+  // another panel while it happens to be open.
+  useEffect(() => {
+    let cancelled = false;
+    void getPlatform()
+      .mail.readConfig()
+      .then((config) => {
+        if (!cancelled) setMailReady(isMailReady(config));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const problem = whyNot(date, time);
   const ready = title.trim().length > 0 && problem === null;
@@ -61,7 +79,9 @@ export function EventForm({
       title: t,
       starts_at: instant,
       colour,
-      alert_minutes_before: alert,
+      // Belt and braces: the select is disabled while mail isn't ready, so
+      // this only matters if that state changed underneath an open form.
+      alert_minutes_before: mailReady ? alert : null,
     });
     setTitle("");
     setTried(false);
@@ -139,6 +159,7 @@ export function EventForm({
             className="input input--select"
             aria-label="Email alert"
             value={alert ?? ""}
+            disabled={!mailReady}
             onChange={(e) => setAlert(e.target.value === "" ? null : Number(e.target.value))}
           >
             {LEADS.map((l) => (
@@ -153,6 +174,12 @@ export function EventForm({
           Add event
         </button>
       </div>
+
+      {!mailReady && (
+        <p className="hint">
+          Set up email alerts first, under Dashboard → Mail Alerts.
+        </p>
+      )}
 
       {/* What the two boxes actually add up to. Without it a wrong month is
           invisible until the event turns up in the wrong place. */}

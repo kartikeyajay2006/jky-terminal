@@ -124,6 +124,7 @@ mod tests {
             host: "smtp.gmail.com".into(),
             port: 465,
             enabled: true,
+            verified_address: None,
         }
     }
 

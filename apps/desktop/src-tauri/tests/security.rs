@@ -109,13 +109,17 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // Email alerts. set/has/delete follow the vault's rule exactly: a
         // password goes in, its presence can be checked, it can be removed,
         // and nothing reads it back. send_test proves the settings without
-        // ever returning the password it used.
+        // ever returning the password it used. send_otp/verify_otp prove an
+        // address is reachable the same way: a code goes out, and verify
+        // answers true or false, never the code itself.
         "mail_delete_password".to_string(),
         "mail_has_password".to_string(),
         "mail_read_config".to_string(),
         "mail_save_config".to_string(),
+        "mail_send_otp".to_string(),
         "mail_send_test".to_string(),
         "mail_set_password".to_string(),
+        "mail_verify_otp".to_string(),
         "pty_attach".to_string(),
         "pty_kill".to_string(),
         "pty_resize".to_string(),

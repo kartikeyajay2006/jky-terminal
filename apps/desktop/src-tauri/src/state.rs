@@ -50,6 +50,10 @@ pub struct AppState {
     /// Set when the user asks to stop. Checked between stream chunks and
     /// between rounds, so a long answer stops rather than being hidden.
     pub cancelled: Arc<AtomicBool>,
+    /// The one-time code most recently emailed to prove a mail address,
+    /// waiting to be matched. In memory only, like the app password itself
+    /// while it is being typed — never written to disk.
+    pub mail_otp: Arc<Mutex<Option<jky_mail::OtpState>>>,
 }
 
 impl AppState {
@@ -66,6 +70,7 @@ impl AppState {
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
             turn: Arc::new(Mutex::new(None)),
             cancelled: Arc::new(AtomicBool::new(false)),
+            mail_otp: Arc::new(Mutex::new(None)),
         }
     }
 }

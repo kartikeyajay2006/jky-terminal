@@ -108,13 +108,22 @@ describe("mail alerts", () => {
 
   it("turns alerts on once everything is there", async () => {
     const saveConfig = vi.fn(async (_config: MailConfig) => {});
-    __setPlatformForTests(platform({ saveConfig }));
+    __setPlatformForTests(
+      platform({
+        saveConfig,
+        readConfig: async () => ({
+          address: "someone@gmail.com",
+          host: "smtp.gmail.com",
+          port: 465,
+          enabled: false,
+          verified_address: "someone@gmail.com",
+        }),
+        hasPassword: async () => true,
+      }),
+    );
 
     const user = userEvent.setup();
     render(<MailAlertsPanel />);
-    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
-    await user.type(screen.getByLabelText(/app password/i), "pw");
-    await user.click(screen.getByRole("button", { name: /^store$/i }));
 
     await waitFor(() => expect(screen.getByRole("checkbox")).toBeEnabled());
     await user.click(screen.getByRole("checkbox"));
@@ -125,15 +134,37 @@ describe("mail alerts", () => {
       host: "smtp.gmail.com",
       port: 465,
       enabled: true,
+      verified_address: "someone@gmail.com",
     });
   });
 
-  it("says a helper was registered when alerts go on", async () => {
+  it("will not turn alerts on before the email is verified", async () => {
+    // A stored password is not proof the address is reachable — only a
+    // matched code is.
+    __setPlatformForTests(platform({ hasPassword: async () => true }));
     const user = userEvent.setup();
     render(<MailAlertsPanel />);
     await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
-    await user.type(screen.getByLabelText(/app password/i), "pw");
-    await user.click(screen.getByRole("button", { name: /^store$/i }));
+
+    expect(screen.getByRole("checkbox")).toBeDisabled();
+    expect(screen.getByText(/verify this address/i)).toBeInTheDocument();
+  });
+
+  it("says a helper was registered when alerts go on", async () => {
+    __setPlatformForTests(
+      platform({
+        readConfig: async () => ({
+          address: "someone@gmail.com",
+          host: "smtp.gmail.com",
+          port: 465,
+          enabled: false,
+          verified_address: "someone@gmail.com",
+        }),
+        hasPassword: async () => true,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<MailAlertsPanel />);
     await waitFor(() => expect(screen.getByRole("checkbox")).toBeEnabled());
     await user.click(screen.getByRole("checkbox"));
 
@@ -142,7 +173,15 @@ describe("mail alerts", () => {
 
   it("says the helper was removed when alerts go off", async () => {
     __setPlatformForTests(
-      platform({ readConfig: async () => ({ address: "a@gmail.com", host: "smtp.gmail.com", port: 465, enabled: true }) }),
+      platform({
+        readConfig: async () => ({
+          address: "a@gmail.com",
+          host: "smtp.gmail.com",
+          port: 465,
+          enabled: true,
+          verified_address: "a@gmail.com",
+        }),
+      }),
     );
     const user = userEvent.setup();
     render(<MailAlertsPanel />);
@@ -152,11 +191,92 @@ describe("mail alerts", () => {
     expect(await screen.findByText(/helper has been removed/i)).toBeInTheDocument();
   });
 
-  it("reports what the server actually said", async () => {
+  it("sends a verification code once a password is stored", async () => {
+    const sendOtp = vi.fn(async (_config: MailConfig) => {});
+    __setPlatformForTests(platform({ hasPassword: async () => true, sendOtp }));
+    const user = userEvent.setup();
+    render(<MailAlertsPanel />);
+    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
+
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /send verification code/i })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: /send verification code/i }));
+
+    expect(sendOtp.mock.calls[0][0]).toMatchObject({ address: "someone@gmail.com" });
+    expect(await screen.findByLabelText(/verification code/i)).toBeInTheDocument();
+  });
+
+  it("offers to resend the code once one has gone out", async () => {
+    __setPlatformForTests(platform({ hasPassword: async () => true, sendOtp: async () => {} }));
+    const user = userEvent.setup();
+    render(<MailAlertsPanel />);
+    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /send verification code/i })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: /send verification code/i }));
+
+    expect(await screen.findByRole("button", { name: /resend code/i })).toBeInTheDocument();
+  });
+
+  it("verifies with the right code and shows the address as verified", async () => {
+    const verifyOtp = vi.fn(async () => true);
+    __setPlatformForTests(
+      platform({ hasPassword: async () => true, sendOtp: async () => {}, verifyOtp }),
+    );
+    const user = userEvent.setup();
+    render(<MailAlertsPanel />);
+    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /send verification code/i })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: /send verification code/i }));
+
+    const codeBox = await screen.findByLabelText(/verification code/i);
+    await user.type(codeBox, "123456");
+    await user.click(screen.getByRole("button", { name: /^verify$/i }));
+
+    expect(verifyOtp).toHaveBeenCalledWith(
+      expect.objectContaining({ address: "someone@gmail.com" }),
+      "123456",
+    );
+    expect(await screen.findByText(/· verified/i)).toBeInTheDocument();
+  });
+
+  it("says when the code does not match, without treating it as a crash", async () => {
+    __setPlatformForTests(
+      platform({
+        hasPassword: async () => true,
+        sendOtp: async () => {},
+        verifyOtp: async () => false,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<MailAlertsPanel />);
+    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /send verification code/i })).toBeEnabled(),
+    );
+    await user.click(screen.getByRole("button", { name: /send verification code/i }));
+    await user.type(await screen.findByLabelText(/verification code/i), "000000");
+    await user.click(screen.getByRole("button", { name: /^verify$/i }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent(/doesn't match/i);
+  });
+
+  it("reports what the server actually said when a test send fails", async () => {
     // Wrong port, wrong password and blocked outgoing mail all look the same
     // from here, so the server's answer is the only useful thing to show.
     __setPlatformForTests(
       platform({
+        readConfig: async () => ({
+          address: "someone@gmail.com",
+          host: "smtp.gmail.com",
+          port: 465,
+          enabled: false,
+          verified_address: "someone@gmail.com",
+        }),
         hasPassword: async () => true,
         sendTest: async () => {
           throw "The server refused that username and password.";
@@ -165,7 +285,6 @@ describe("mail alerts", () => {
     );
     const user = userEvent.setup();
     render(<MailAlertsPanel />);
-    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /send a test/i })).toBeEnabled(),
     );
@@ -175,10 +294,21 @@ describe("mail alerts", () => {
   });
 
   it("confirms where a test message went", async () => {
-    __setPlatformForTests(platform({ hasPassword: async () => true, sendTest: async () => {} }));
+    __setPlatformForTests(
+      platform({
+        readConfig: async () => ({
+          address: "someone@gmail.com",
+          host: "smtp.gmail.com",
+          port: 465,
+          enabled: false,
+          verified_address: "someone@gmail.com",
+        }),
+        hasPassword: async () => true,
+        sendTest: async () => {},
+      }),
+    );
     const user = userEvent.setup();
     render(<MailAlertsPanel />);
-    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /send a test/i })).toBeEnabled(),
     );
@@ -187,11 +317,11 @@ describe("mail alerts", () => {
     expect(await screen.findByText(/check someone@gmail\.com/i)).toBeInTheDocument();
   });
 
-  it("cannot send a test before a password is stored", async () => {
+  it("cannot send a verification code before a password is stored", async () => {
     const user = userEvent.setup();
     render(<MailAlertsPanel />);
     await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
-    expect(screen.getByRole("button", { name: /send a test/i })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /send verification code/i })).toBeDisabled();
   });
 
   it("lists the events that have an alert set", async () => {

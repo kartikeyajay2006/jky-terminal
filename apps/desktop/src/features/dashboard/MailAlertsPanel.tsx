@@ -5,9 +5,15 @@ import { getPlatform, type MailConfig } from "../../platform";
 import { useDashboard } from "./dashboardStore";
 import { formatLead } from "./EventRow";
 import { upcoming } from "./upcoming";
-import { MAIL_PRESETS, presetFor, whyNot } from "./mailPresets";
+import { MAIL_PRESETS, isVerified, presetFor, whyNot } from "./mailPresets";
 
-const BLANK: MailConfig = { address: "", host: "", port: 465, enabled: false };
+const BLANK: MailConfig = {
+  address: "",
+  host: "",
+  port: 465,
+  enabled: false,
+  verified_address: null,
+};
 
 function describeError(e: unknown): string {
   // Tauri rejects with a plain string, so `instanceof Error` throws the real
@@ -24,7 +30,11 @@ export function MailAlertsPanel() {
   const [config, setConfig] = useState<MailConfig>(BLANK);
   const [password, setPassword] = useState("");
   const [hasPassword, setHasPassword] = useState(false);
-  const [busy, setBusy] = useState<null | "saving" | "testing">(null);
+  const [code, setCode] = useState("");
+  const [otpSent, setOtpSent] = useState(false);
+  const [busy, setBusy] = useState<null | "saving" | "testing" | "sendingCode" | "verifying">(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [said, setSaid] = useState<string | null>(null);
 
@@ -36,7 +46,8 @@ export function MailAlertsPanel() {
   useEffect(load, [load]);
 
   const problem = whyNot(config);
-  const canEnable = problem === null && hasPassword;
+  const verified = isVerified(config);
+  const canEnable = problem === null && hasPassword && verified;
 
   function edit(patch: Partial<MailConfig>) {
     setSaid(null);
@@ -48,6 +59,9 @@ export function MailAlertsPanel() {
   function changeAddress(address: string) {
     const guess = presetFor(address);
     edit(guess ? { address, host: guess.host, port: guess.port } : { address });
+    // A code sent to the old address proves nothing about this one.
+    setOtpSent(false);
+    setCode("");
   }
 
   function choosePreset(id: string) {
@@ -96,8 +110,46 @@ export function MailAlertsPanel() {
     setError(null);
     setSaid(null);
     try {
-      await getPlatform().mail.sendTest();
+      await getPlatform().mail.sendTest(config);
       setSaid(`Sent. Check ${config.address}.`);
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function sendCode() {
+    setBusy("sendingCode");
+    setError(null);
+    setSaid(null);
+    try {
+      await getPlatform().mail.sendOtp(config);
+      setOtpSent(true);
+      setSaid(`A code was sent to ${config.address}. It expires in 10 minutes.`);
+    } catch (e) {
+      setError(describeError(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function verify() {
+    const value = code.trim();
+    if (!value) return;
+    setBusy("verifying");
+    setError(null);
+    setSaid(null);
+    try {
+      const ok = await getPlatform().mail.verifyOtp(config, value);
+      if (ok) {
+        setConfig((c) => ({ ...c, verified_address: c.address }));
+        setOtpSent(false);
+        setCode("");
+        setSaid("Email verified.");
+      } else {
+        setError("That code doesn't match. Check your email and try again.");
+      }
     } catch (e) {
       setError(describeError(e));
     } finally {
@@ -146,7 +198,9 @@ export function MailAlertsPanel() {
       <form className="eventform" onSubmit={(e) => e.preventDefault()}>
         <div className="field-row">
           <label className="field-cell field-cell--grow">
-            <span className="field-cell__label">Your email</span>
+            <span className="field-cell__label">
+              Your email {verified && <span className="mail__stored">· verified</span>}
+            </span>
             <input
               className="input"
               type="email"
@@ -236,6 +290,60 @@ export function MailAlertsPanel() {
         </p>
       </form>
 
+      <h3 className="dash__subhead">Verify your email</h3>
+      <p className="hint">
+        A one-time code proves this inbox is really yours before anything can
+        be sent to it.
+      </p>
+
+      {!verified ? (
+        <div className="mail__actions">
+          <button
+            type="button"
+            className="btn"
+            disabled={busy !== null || problem !== null || !hasPassword}
+            onClick={() => void sendCode()}
+          >
+            {busy === "sendingCode"
+              ? "Sending…"
+              : otpSent
+                ? "Resend code"
+                : "Send verification code"}
+          </button>
+
+          {otpSent && (
+            <>
+              <input
+                className="input input--time"
+                aria-label="Verification code"
+                placeholder="123456"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+              />
+              <button
+                type="button"
+                className="btn btn--primary"
+                disabled={busy !== null || !code.trim()}
+                onClick={() => void verify()}
+              >
+                {busy === "verifying" ? "Verifying…" : "Verify"}
+              </button>
+            </>
+          )}
+        </div>
+      ) : (
+        <div className="mail__actions">
+          <button
+            type="button"
+            className="btn"
+            disabled={busy !== null || problem !== null}
+            onClick={() => void test()}
+          >
+            {busy === "testing" ? "Sending…" : "Send a test email"}
+          </button>
+        </div>
+      )}
+
       <h3 className="dash__subhead">Delivery</h3>
 
       <div className="mail__actions">
@@ -248,15 +356,6 @@ export function MailAlertsPanel() {
           />
           <span>Send alerts even when JKY Terminal is closed</span>
         </label>
-
-        <button
-          type="button"
-          className="btn"
-          disabled={busy !== null || problem !== null || !hasPassword}
-          onClick={() => void test()}
-        >
-          {busy === "testing" ? "Sending…" : "Send a test email"}
-        </button>
 
         {!config.enabled && (
           <button
@@ -276,6 +375,9 @@ export function MailAlertsPanel() {
       {problem && !config.enabled && <p className="hint">{problem}</p>}
       {problem === null && !hasPassword && (
         <p className="hint">Store an app password to turn alerts on.</p>
+      )}
+      {problem === null && hasPassword && !verified && (
+        <p className="hint">Verify this address above to turn alerts on.</p>
       )}
 
       {error && (

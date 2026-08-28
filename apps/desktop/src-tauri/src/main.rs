@@ -66,6 +66,8 @@ fn main() {
             mail::mail_has_password,
             mail::mail_delete_password,
             mail::mail_send_test,
+            mail::mail_send_otp,
+            mail::mail_verify_otp,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");

@@ -307,8 +307,25 @@ describe("events", () => {
   });
 
   it("carries the chosen alert lead time", async () => {
+    // The alert field is locked until email alerts are verified and on.
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      mail: {
+        ...platform.mail,
+        readConfig: async () => ({
+          address: "someone@gmail.com",
+          host: "smtp.gmail.com",
+          port: 465,
+          enabled: true,
+          verified_address: "someone@gmail.com",
+        }),
+      },
+    });
+
     const user = userEvent.setup();
     await openEvents(user);
+    await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
     await user.type(screen.getByRole("textbox", { name: /event title/i }), "Standup");
     await user.selectOptions(screen.getByRole("combobox"), "60");
     await user.click(screen.getByRole("button", { name: /add event/i }));

@@ -255,8 +255,16 @@ export function createWebPlatform(): Platform {
    * A mock that pretended to send would make a broken configuration look
    * like a working one, which is the opposite of what the test button is for.
    */
-  let mailConfig: MailConfig = { address: "", host: "", port: 465, enabled: false };
+  let mailConfig: MailConfig = {
+    address: "",
+    host: "",
+    port: 465,
+    enabled: false,
+    verified_address: null,
+  };
   let mailPassword = "";
+
+  const CANNOT_SEND = "The browser preview cannot send mail. Use the desktop app.";
 
   const mail: MailApi = {
     async readConfig() {
@@ -275,7 +283,13 @@ export function createWebPlatform(): Platform {
       mailPassword = "";
     },
     async sendTest() {
-      throw new Error("The browser preview cannot send mail. Use the desktop app.");
+      throw new Error(CANNOT_SEND);
+    },
+    async sendOtp() {
+      throw new Error(CANNOT_SEND);
+    },
+    async verifyOtp() {
+      throw new Error(CANNOT_SEND);
     },
   };
 

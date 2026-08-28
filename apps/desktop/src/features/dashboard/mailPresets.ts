@@ -84,3 +84,21 @@ export function whyNot(config: {
   if (!config.port) return "A port is needed. 465 is the usual one.";
   return null;
 }
+
+/** Whether the configured address has been proven with a one-time code. */
+export function isVerified(config: {
+  address: string;
+  verified_address: string | null;
+}): boolean {
+  const address = config.address.trim();
+  return address.length > 0 && config.verified_address === address;
+}
+
+/** Whether alerts can actually fire: a verified address, and the switch on. */
+export function isMailReady(config: {
+  address: string;
+  verified_address: string | null;
+  enabled: boolean;
+}): boolean {
+  return config.enabled && isVerified(config);
+}

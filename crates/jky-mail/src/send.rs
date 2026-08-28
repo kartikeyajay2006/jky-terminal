@@ -111,9 +111,54 @@ pub fn send(
     if let Some(why) = crate::config::why_not(config) {
         return Err(MailError::Config(why));
     }
-
     let (subject, body) = compose(event, minutes);
+    dispatch(config, password, subject, body)
+}
 
+/// What the verification email says.
+///
+/// Built here rather than inline in `send_otp`, so the wording is testable
+/// without sending anything — the same reason `compose` is split out for
+/// alert mail.
+pub fn compose_otp(code: &str) -> (String, String) {
+    let subject = "Your JKY Terminal verification code".to_string();
+    let body = format!(
+        "Your verification code is {code}.\n\
+         \n\
+         Enter it in JKY Terminal to confirm this is your inbox. It expires \
+         in 10 minutes.\n\
+         \n\
+         If you did not request this, nothing else happens. Ignore it.\n"
+    );
+    (subject, body)
+}
+
+/// Send a one-time verification code to the address in `config`.
+///
+/// Reuses the exact path an alert would use, so a successful send proves the
+/// whole configuration — address, host, port and password — actually works,
+/// not merely that it is well-formed.
+pub fn send_otp(config: &MailConfig, password: &str, code: &str) -> Result<(), MailError> {
+    if let Some(why) = crate::config::why_not(config) {
+        return Err(MailError::Config(why));
+    }
+    let (subject, body) = compose_otp(code);
+    dispatch(config, password, subject, body)
+}
+
+/// The part that actually talks to a server.
+///
+/// Shared by alert mail and the verification code: same address, same
+/// connection, same encryption rules — only the subject and body differ.
+///
+/// `password` is taken by value and dropped at the end of the call; it is
+/// never held in a struct, logged, or returned in an error.
+fn dispatch(
+    config: &MailConfig,
+    password: &str,
+    subject: String,
+    body: String,
+) -> Result<(), MailError> {
     // From and To are the same address. This is a reminder to yourself, and
     // sending anywhere else would need a recipient field that could be filled
     // in by anything that can write events.json.
@@ -489,6 +534,51 @@ mod tests {
         let config = MailConfig::default();
         let err = send(&config, "hunter2-app-password", &event("t", "2026-08-27T12:30:00Z"), 30)
             .unwrap_err();
+        assert!(!err.to_string().contains("hunter2"), "{err}");
+    }
+
+    #[test]
+    fn the_otp_subject_names_the_app() {
+        let (subject, _) = compose_otp("123456");
+        assert!(subject.contains("JKY Terminal"), "{subject}");
+    }
+
+    #[test]
+    fn the_otp_body_contains_the_code() {
+        let (_, body) = compose_otp("123456");
+        assert!(body.contains("123456"), "{body}");
+    }
+
+    #[test]
+    fn the_otp_body_says_it_expires() {
+        let (_, body) = compose_otp("123456");
+        assert!(body.to_lowercase().contains("expires"), "{body}");
+    }
+
+    #[test]
+    fn the_otp_body_says_what_to_do_if_it_was_not_requested() {
+        let (_, body) = compose_otp("123456");
+        assert!(body.to_lowercase().contains("did not request"), "{body}");
+    }
+
+    #[test]
+    fn the_otp_message_needs_no_mime_encoding() {
+        let (subject, body) = compose_otp("123456");
+        assert!(subject.is_ascii(), "{subject} would be encoded on the wire");
+        assert!(body.is_ascii(), "body would be encoded on the wire");
+    }
+
+    #[test]
+    fn sending_an_otp_with_an_incomplete_config_fails_before_any_network_call() {
+        let config = MailConfig::default();
+        let err = send_otp(&config, "pw", "123456").unwrap_err();
+        assert!(matches!(err, MailError::Config(_)), "{err}");
+    }
+
+    #[test]
+    fn no_error_from_sending_an_otp_ever_carries_the_password() {
+        let config = MailConfig::default();
+        let err = send_otp(&config, "hunter2-app-password", "123456").unwrap_err();
         assert!(!err.to_string().contains("hunter2"), "{err}");
     }
 }
