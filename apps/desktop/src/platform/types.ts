@@ -177,6 +177,22 @@ export interface StoreApi {
   readonly reminders: CollectionApi<Reminder>;
 }
 
+/** A game's best score, as the window reports it to the shell listing. */
+export interface GameScore {
+  id: string;
+  best: number;
+}
+
+export interface GamesApi {
+  /**
+   * Hand the shell listing its numbers.
+   *
+   * High scores live in the window, so `jky games` — which runs in a shell
+   * that cannot see browser storage — would otherwise have nothing to print.
+   */
+  publishScores(scores: GameScore[]): Promise<void>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
@@ -185,6 +201,8 @@ export interface Platform {
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */
   readonly store: StoreApi;
+  /** What the games need from the backend. */
+  readonly games: GamesApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
 }

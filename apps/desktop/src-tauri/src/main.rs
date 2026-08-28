@@ -6,7 +6,7 @@ mod listing;
 mod turn;
 mod state;
 
-use commands::{ai, pty, settings, store, vault};
+use commands::{ai, games, pty, settings, store, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -50,6 +50,7 @@ fn main() {
             store::store_list_reminders,
             store::store_save_reminder,
             store::store_delete_reminder,
+            games::games_publish_scores,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");

@@ -10,6 +10,8 @@ export type {
   CommandSpec,
   Event,
   EventColour,
+  GameScore,
+  GamesApi,
   Note,
   Platform,
   ProviderStatus,

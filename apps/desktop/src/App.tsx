@@ -9,6 +9,7 @@ import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
 import { Games } from "./features/games/Games";
+import { useOpenGame } from "./features/games/openStore";
 import { Settings } from "./features/settings/Settings";
 import { Terminal } from "./features/terminal/Terminal";
 import { getPlatform } from "./platform";
@@ -81,6 +82,14 @@ export function App() {
   useEffect(() => {
     if (pendingQuestion) setSection("assistant");
   }, [pendingQuestion]);
+
+  // `jky games <n>` in a terminal brings the arcade up on that game. The
+  // request is left in the store for the section to take, so which game was
+  // asked for survives the switch.
+  const pendingGame = useOpenGame((s) => s.pending);
+  useEffect(() => {
+    if (pendingGame) setSection("games");
+  }, [pendingGame]);
 
   return (
     <Shell activeId={section} onSelect={setSection}>

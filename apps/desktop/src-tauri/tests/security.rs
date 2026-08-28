@@ -106,6 +106,11 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),
         "commands_list".to_string(),
+        // Takes four numbers the window already has and renders the listing
+        // `jky games` prints. The path, the format and the set of valid game
+        // ids all live in Rust, so the widest this can do is print a wrong
+        // score. It reads nothing and returns nothing.
+        "games_publish_scores".to_string(),
         "pty_attach".to_string(),
         "pty_kill".to_string(),
         "pty_resize".to_string(),

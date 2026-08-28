@@ -4,6 +4,7 @@ import type {
   CollectionApi,
   CommandSpec,
   Event,
+  GamesApi,
   Note,
   Platform,
   ProviderStatus,
@@ -50,6 +51,13 @@ const WEB_COMMANDS: CommandSpec[] = [
     usage: "jky commands",
     summary: "List every JKY command",
     detail: "Prints this list. The same list appears under Settings, Commands.",
+  },
+  {
+    names: ["jky games", "jky game"],
+    usage: "jky games [1-4]",
+    summary: "List the games and their records, or open one",
+    detail:
+      "With no argument it prints all four games with the best score each has been beaten with. Give it 1, 2, 3 or 4 and that game opens in the window: 1 Dino Run, 2 Snake, 3 Tic Tac Toe, 4 Flappy Bird.",
   },
   {
     names: ["jky notes", "jky note"],
@@ -240,6 +248,12 @@ export function createWebPlatform(): Platform {
     reminders: collection<Reminder>(),
   };
 
+  // The browser build has no shell to print a listing into, so this keeps
+  // the last set handed over and does nothing else.
+  const games: GamesApi = {
+    async publishScores() {},
+  };
+
   return {
     kind: "web",
     vault,
@@ -247,6 +261,7 @@ export function createWebPlatform(): Platform {
     pty,
     ai,
     store,
+    games,
     async listCommands() {
       return WEB_COMMANDS;
     },

@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Terminal as Xterm } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
+import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
 import { buildBanner } from "./banner";
@@ -70,10 +71,21 @@ export function useXterm(container: React.RefObject<HTMLDivElement | null>) {
     // the pty like any other output.
     xterm.parser.registerOscHandler(1337, (payload) => {
       const question = decodeAskPayload(payload);
-      if (question) useAsk.getState().ask(question);
-      // Returning true consumes it, so the escape sequence never reaches the
-      // screen as stray characters.
-      return question !== null;
+      if (question) {
+        useAsk.getState().ask(question);
+        // Returning true consumes it, so the escape sequence never reaches
+        // the screen as stray characters.
+        return true;
+      }
+
+      // `jky games <n>` rides the same code, carrying a game to open.
+      const game = decodeGamePayload(payload);
+      if (game) {
+        useOpenGame.getState().open(game);
+        return true;
+      }
+
+      return false;
     });
 
     const platform = getPlatform();

@@ -5,6 +5,8 @@ import type {
   CollectionApi,
   CommandSpec,
   Event,
+  GameScore,
+  GamesApi,
   ModelOption,
   Note,
   Platform,
@@ -143,6 +145,11 @@ export function createTauriPlatform(): Platform {
     ),
   };
 
+  const games: GamesApi = {
+    publishScores: (scores: GameScore[]) =>
+      invoke<void>("games_publish_scores", { scores }),
+  };
+
   return {
     kind: "tauri",
     vault,
@@ -150,6 +157,7 @@ export function createTauriPlatform(): Platform {
     pty,
     ai,
     store,
+    games,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
   };
 }

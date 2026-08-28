@@ -265,6 +265,69 @@ pub fn render_todo(t: &Todo, short: &str, accent: Option<(u8, u8, u8)>) -> Strin
     )
 }
 
+/// The four games, in the order the Games section lists them.
+///
+/// Named here as well as in the frontend because the shell listing is
+/// rendered by Rust: the window sends scores, and a score for a game this
+/// does not know about is refused rather than printed.
+pub const GAME_IDS: [&str; 4] = ["dino", "snake", "tictactoe", "flappy"];
+
+/// A game's best score, as the window reports it.
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct GameScore {
+    pub id: String,
+    pub best: u32,
+}
+
+/// The label and one-line description shown for each game.
+fn game_label(id: &str) -> Option<(&'static str, &'static str)> {
+    match id {
+        "dino" => Some(("Dino Run", "jump the cactuses")),
+        "snake" => Some(("Snake", "eat, grow, do not corner yourself")),
+        "tictactoe" => Some(("Tic Tac Toe", "two players, one keyboard")),
+        "flappy" => Some(("Flappy Bird", "mind the gap")),
+        _ => None,
+    }
+}
+
+/// `jky games` — every game and what it has been beaten with.
+///
+/// Tic tac toe has no high score to show, so it says so rather than
+/// printing a zero that would read as "never scored".
+pub fn render_games(scores: &[GameScore], accent: Option<(u8, u8, u8)>) -> String {
+    let p = Paint::new(accent);
+    let mut out = header(&p, "GAMES", GAME_IDS.len(), "games");
+
+    for (i, id) in GAME_IDS.iter().enumerate() {
+        let Some((label, blurb)) = game_label(id) else { continue };
+        let best = scores.iter().find(|s| s.id == *id).map(|s| s.best);
+
+        let record = match (id, best) {
+            (&"tictactoe", _) => format!("{}two player{}", p.dim, p.reset),
+            (_, Some(b)) if b > 0 => format!("{}best {:05}{}", p.tint, b, p.reset),
+            _ => format!("{}not played yet{}", p.dim, p.reset),
+        };
+
+        line(
+            &mut out,
+            &format!(
+                "  {}{:>3}{}  {}  {}{}{}  {}",
+                p.tint,
+                i + 1,
+                p.reset,
+                col(label, 14),
+                p.dim,
+                col(blurb, 34),
+                p.reset,
+                record,
+            ),
+        );
+    }
+
+    out.push_str(&footer(&p, "jky games 1  to open one"));
+    out
+}
+
 // --- writing the files ------------------------------------------------------
 
 /// Write every listing, and one file per record.
@@ -298,6 +361,21 @@ pub fn write_all(store: &Store, bin_dir: &Path, accent: Option<(u8, u8, u8)>) ->
     }
 
     Ok(())
+}
+
+/// Write just the games listing.
+///
+/// Separate from `write_all` because it is fed by the window rather than by
+/// the store, and on a different schedule: scores change when a game ends,
+/// not when a note is saved.
+pub fn write_games(
+    scores: &[GameScore],
+    bin_dir: &Path,
+    accent: Option<(u8, u8, u8)>,
+) -> std::io::Result<()> {
+    let dir = data_dir(bin_dir);
+    std::fs::create_dir_all(&dir)?;
+    write_one(&dir, "games", &render_games(scores, accent))
 }
 
 fn write_one(dir: &Path, name: &str, body: &str) -> std::io::Result<()> {

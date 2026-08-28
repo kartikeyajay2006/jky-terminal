@@ -1,8 +1,10 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Games, GAMES } from "./Games";
 import { submitScore, writeTally } from "./scores";
+import { useOpenGame } from "./openStore";
+import { __setPlatformForTests, createWebPlatform } from "../../platform";
 
 /**
  * The games are driven by `requestAnimationFrame`, which jsdom does provide
@@ -97,6 +99,104 @@ describe("the games section", () => {
   it("says where high scores are kept, rather than leaving it a mystery", () => {
     render(<Games />);
     expect(screen.getByText(/kept on this machine/i)).toBeInTheDocument();
+  });
+});
+
+describe("opening a game from the shell", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenGame.setState({ pending: null });
+  });
+
+  it("opens whichever game the command asked for", () => {
+    useOpenGame.getState().open("flappy");
+    render(<Games />);
+    expect(screen.getByRole("region", { name: "FLAPPY BIRD" })).toBeInTheDocument();
+  });
+
+  it("wins over whichever game was played last", () => {
+    localStorage.setItem("jky.games.last", "dino");
+    useOpenGame.getState().open("tictactoe");
+    render(<Games />);
+    expect(screen.getByRole("region", { name: "TIC TAC TOE" })).toBeInTheDocument();
+  });
+
+  it("takes the request, so it does not reopen on every render", () => {
+    useOpenGame.getState().open("snake");
+    render(<Games />);
+    expect(useOpenGame.getState().pending).toBeNull();
+  });
+
+  it("leaves the last-played game alone when nothing was asked for", () => {
+    localStorage.setItem("jky.games.last", "snake");
+    render(<Games />);
+    expect(screen.getByRole("region", { name: "SNAKE GAME" })).toBeInTheDocument();
+  });
+});
+
+describe("publishing scores to the shell", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useOpenGame.setState({ pending: null });
+  });
+  afterEach(() => __setPlatformForTests(null));
+
+  function withSpy() {
+    const calls: Array<Array<{ id: string; best: number }>> = [];
+    const base = createWebPlatform();
+    __setPlatformForTests({
+      ...base,
+      games: {
+        async publishScores(scores) {
+          calls.push(scores);
+        },
+      },
+    });
+    return calls;
+  }
+
+  it("hands the listing its numbers when the section opens", async () => {
+    submitScore("dino", 1256);
+    const calls = withSpy();
+    render(<Games />);
+
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+    expect(calls[0]).toContainEqual({ id: "dino", best: 1256 });
+  });
+
+  it("sends only the games that keep a score", async () => {
+    // Tic tac toe has a tally, not a high score, and a zero beside it would
+    // read as "never scored".
+    const calls = withSpy();
+    render(<Games />);
+
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+    expect(calls[0].map((s) => s.id)).not.toContain("tictactoe");
+  });
+
+  it("republishes when another game is opened, so a new record is not stale", async () => {
+    const calls = withSpy();
+    const user = userEvent.setup();
+    render(<Games />);
+    await waitFor(() => expect(calls.length).toBeGreaterThan(0));
+
+    const before = calls.length;
+    await user.click(within(nav()).getByRole("button", { name: /snake/i }));
+    await waitFor(() => expect(calls.length).toBeGreaterThan(before));
+  });
+
+  it("survives the backend refusing, rather than breaking the section", async () => {
+    const base = createWebPlatform();
+    __setPlatformForTests({
+      ...base,
+      games: {
+        async publishScores() {
+          throw new Error("no backend");
+        },
+      },
+    });
+    expect(() => render(<Games />)).not.toThrow();
+    expect(screen.getByRole("region", { name: "DINO RUN" })).toBeInTheDocument();
   });
 });
 

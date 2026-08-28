@@ -3,7 +3,9 @@ import { DinoRun } from "./dino/DinoRun";
 import { SnakeGame } from "./snake/SnakeGame";
 import { TicTacToe } from "./tictactoe/TicTacToe";
 import { FlappyBird } from "./flappy/FlappyBird";
+import { getPlatform } from "../../platform";
 import { highScore, padScore, type GameId } from "./scores";
+import { useOpenGame } from "./openStore";
 import "./Games.css";
 
 interface GameSpec {
@@ -78,6 +80,26 @@ export function Games() {
     } catch {
       // Preference lost, game fine.
     }
+  }, [active]);
+
+  // A game asked for from a shell wins over whichever was last played.
+  const pendingGame = useOpenGame((s) => s.pending);
+  useEffect(() => {
+    if (!pendingGame) return;
+    const taken = useOpenGame.getState().take();
+    if (taken) setActive(taken);
+  }, [pendingGame]);
+
+  // Hand the shell listing its numbers whenever this section is on screen.
+  // Scores live in browser storage, which `jky games` cannot see, so without
+  // this the listing would be written once and never again — and running it
+  // after beating your record would show the old one.
+  useEffect(() => {
+    const scores = GAMES.filter((g) => g.scored).map((g) => ({
+      id: g.id,
+      best: highScore(g.id),
+    }));
+    void getPlatform().games.publishScores(scores).catch(() => {});
   }, [active]);
 
   return (

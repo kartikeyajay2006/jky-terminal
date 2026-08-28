@@ -78,6 +78,31 @@ case "$1" in
   commands|command|help|--help|-h)
     cat "{commands}"
     ;;
+  games|game)
+    # No argument lists them with their records; a number opens that one in
+    # the app, which the window picks up from the escape sequence exactly as
+    # it does for `jky ask`.
+    shift
+    if [ $# -eq 0 ]; then
+      if [ -f "{data}/games.ansi" ]; then
+        cat "{data}/games.ansi"
+      else
+        echo "jky: open the Games section once so the listing is written." >&2
+        exit 1
+      fi
+    else
+      case "$1" in
+        1|2|3|4)
+          printf '\033]{osc};JKYGame=%s\007' "$1"
+          ;;
+        *)
+          echo "jky: no game $1. Choose 1, 2, 3 or 4." >&2
+          [ -f "{data}/games.ansi" ] && cat "{data}/games.ansi" >&2
+          exit 1
+          ;;
+      esac
+    fi
+    ;;
   notes|note|reminders|reminder|todos|todo)
     # The app rewrites these files whenever the dashboard changes, so the
     # shell needs no JSON parser and no way to reach back into the app.
@@ -140,6 +165,8 @@ fn write_ask_launcher(
          if /i \"%1\"==\"commands\" goto cmds\r\n\
          if /i \"%1\"==\"command\" goto cmds\r\n\
          if /i \"%1\"==\"help\" goto cmds\r\n\
+         if /i \"%1\"==\"games\" goto games\r\n\
+         if /i \"%1\"==\"game\" goto games\r\n\
          if /i \"%1\"==\"notes\" set KIND=notes&& goto data\r\n\
          if /i \"%1\"==\"note\" set KIND=notes&& goto data\r\n\
          if /i \"%1\"==\"reminders\" set KIND=reminders&& goto data\r\n\
@@ -157,6 +184,13 @@ fn write_ask_launcher(
          goto :eof\r\n\
          :cmds\r\n\
          type \"{commands}\"\r\n\
+         goto :eof\r\n\
+         :games\r\n\
+         if \"%2\"==\"\" (\r\n\
+         if exist \"{data}\\games.ansi\" (type \"{data}\\games.ansi\") else (echo jky: open the Games section once so the listing is written. 1>&2)\r\n\
+         ) else (\r\n\
+         powershell -NoProfile -Command \"if ('%2' -match '^[1-4]$') {{ [Console]::Write([char]27 + ']{osc};JKYGame=%2' + [char]7) }} else {{ [Console]::Error.WriteLine('jky: no game %2. Choose 1, 2, 3 or 4.'); exit 1 }}\"\r\n\
+         )\r\n\
          goto :eof\r\n\
          :ask\r\n\
          shift\r\n\
@@ -287,6 +321,76 @@ mod tests {
             "script does not parse: {}",
             String::from_utf8_lossy(&out.stderr)
         );
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_games_prints_the_listing() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        std::fs::create_dir_all(dir.path().join("data")).unwrap();
+        std::fs::write(dir.path().join("data/games.ansi"), "GAMES-LISTING").unwrap();
+
+        let (stdout, _, ok) = run_jky(dir.path(), &["games"]);
+        assert!(ok);
+        assert_eq!(stdout, "GAMES-LISTING");
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn both_spellings_of_games_work() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        std::fs::create_dir_all(dir.path().join("data")).unwrap();
+        std::fs::write(dir.path().join("data/games.ansi"), "GAMES-LISTING").unwrap();
+
+        for arg in ["games", "game"] {
+            let (stdout, stderr, ok) = run_jky(dir.path(), &[arg]);
+            assert!(ok, "`jky {arg}` failed: {stderr}");
+            assert_eq!(stdout, "GAMES-LISTING", "`jky {arg}`");
+        }
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_games_with_a_number_emits_the_open_sequence() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        for n in ["1", "2", "3", "4"] {
+            let (stdout, stderr, ok) = run_jky(dir.path(), &["games", n]);
+            assert!(ok, "`jky games {n}` failed: {stderr}");
+            assert!(stdout.contains(&format!("JKYGame={n}")), "{stdout:?}");
+        }
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_games_refuses_a_number_that_is_not_a_game() {
+        // Four games, so anything else is a typo rather than a request. It
+        // says so instead of emitting a sequence the window would ignore.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        for bad in ["0", "5", "9", "x"] {
+            let (stdout, stderr, ok) = run_jky(dir.path(), &["games", bad]);
+            assert!(!ok, "`jky games {bad}` should fail");
+            assert!(!stdout.contains("JKYGame="), "emitted a sequence for {bad}");
+            assert!(stderr.contains("no game"), "{stderr:?}");
+        }
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_games_says_what_to_do_when_no_listing_has_been_written() {
+        // The listing is written by the window, so before the Games section
+        // has ever been opened there is nothing to print.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        let (_, stderr, ok) = run_jky(dir.path(), &["games"]);
+        assert!(!ok);
+        assert!(stderr.contains("Games section"), "{stderr:?}");
     }
 
     #[test]

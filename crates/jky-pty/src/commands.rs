@@ -43,6 +43,15 @@ const COMMANDS: &[CommandSpec] = &[
                  Commands.",
     },
     CommandSpec {
+        names: &["jky games", "jky game"],
+        usage: "jky games [1-4]",
+        summary: "List the games and their records, or open one",
+        detail: "With no argument it prints all four games with the best \
+                 score each has been beaten with. Give it 1, 2, 3 or 4 and \
+                 that game opens in the window: 1 Dino Run, 2 Snake, 3 Tic \
+                 Tac Toe, 4 Flappy Bird.",
+    },
+    CommandSpec {
         names: &["jky notes", "jky note"],
         usage: "jky notes [number]",
         summary: "List your notes, or read one",
