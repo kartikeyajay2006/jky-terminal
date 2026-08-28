@@ -13,6 +13,7 @@ import type {
   ProviderStatus,
   PtyApi,
   Reminder,
+  ScrollbackApi,
   SettingsApi,
   StoreApi,
   Todo,
@@ -150,6 +151,13 @@ export function createTauriPlatform(): Platform {
       invoke<void>("games_publish_scores", { scores }),
   };
 
+  const scrollback: ScrollbackApi = {
+    load: (key) => invoke<string>("scrollback_load", { key }),
+    save: (key, text) => invoke<void>("scrollback_save", { key, text }),
+    forget: (key) => invoke<void>("scrollback_forget", { key }),
+    prune: (keys) => invoke<void>("scrollback_prune", { keys }),
+  };
+
   return {
     kind: "tauri",
     vault,
@@ -158,6 +166,7 @@ export function createTauriPlatform(): Platform {
     ai,
     store,
     games,
+    scrollback,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
     openExternal: (url) => invoke<void>("open_external", { url }),
   };

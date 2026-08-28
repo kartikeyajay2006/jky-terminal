@@ -11,7 +11,8 @@ interface TerminalProps {
 
 export function Terminal({ tabId }: TerminalProps) {
   const container = useRef<HTMLDivElement>(null);
-  const term = useXterm(container);
+  // The tab id is the key its scrollback is saved under.
+  const term = useXterm(container, tabId);
 
   const [searching, setSearching] = useState(false);
   const [menuAt, setMenuAt] = useState<MenuPoint | null>(null);

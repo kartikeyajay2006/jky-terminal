@@ -134,3 +134,38 @@ describe("buildBanner", () => {
     expect(out).not.toMatch(/[^\r]\n/);
   });
 });
+
+describe("the shortcut hints", () => {
+  const banner = () =>
+    strip(
+      buildBanner({
+        cols: 120,
+        version: "0.1.0",
+        palette: { accent: "#00e5ff", violet: "#7c3aed", magenta: "#ff3cf0" },
+      }),
+    );
+
+  it("names the palette, which is how the rest of the app is reached", () => {
+    expect(banner()).toContain("Ctrl+K");
+  });
+
+  it("still names the tab shortcuts", () => {
+    const text = banner();
+    expect(text).toContain("Ctrl+T");
+    expect(text).toContain("Ctrl+W");
+  });
+
+  it("names find, now that the terminal has it", () => {
+    expect(banner()).toContain("Ctrl+F");
+  });
+
+  it("does not promise a shortcut that is not bound", () => {
+    // Every shortcut named here is handled: the palette and tabs in App and
+    // useShortcuts, find and copy/paste in the Terminal component.
+    const named = banner().match(/Ctrl\+[A-Z0-9-]+/g) ?? [];
+    const bound = new Set(["Ctrl+K", "Ctrl+T", "Ctrl+W", "Ctrl+F", "Ctrl+1-9"]);
+    for (const shortcut of named) {
+      expect(bound, `${shortcut} is advertised but not bound`).toContain(shortcut);
+    }
+  });
+});

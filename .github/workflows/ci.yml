@@ -76,6 +76,39 @@ jobs:
         run: pnpm --filter @jky/desktop build && cargo build -p jky-terminal
         shell: bash
 
+  # Spec §7: the build fails on a high or critical advisory. Kept as its own
+  # job so an advisory published overnight is reported as exactly that, rather
+  # than looking like the frontend tests broke.
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+
+      # Moderate and below are reported without failing: a dev-server
+      # advisory should be visible without blocking a release that does not
+      # ship the dev server.
+      - name: Audit npm dependencies (report everything)
+        run: pnpm audit || true
+
+      - name: Audit npm dependencies (fail on high and critical)
+        run: pnpm audit --audit-level high
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      # --deny warnings turns unmaintained-crate notices into failures too.
+      # Left off deliberately: an unmaintained transitive dependency is worth
+      # knowing about and is not a reason to block a release.
+      - name: Audit Rust dependencies
+        run: cargo audit
+
   security:
     name: Security assertions
     runs-on: ubuntu-latest

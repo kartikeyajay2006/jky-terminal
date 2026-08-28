@@ -17,6 +17,7 @@ export type {
   ProviderStatus,
   PtyApi,
   Reminder,
+  ScrollbackApi,
   SettingsApi,
   StoreApi,
   Todo,

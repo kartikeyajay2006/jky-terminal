@@ -142,7 +142,15 @@ function fitToWidth(line: string, width: number): string {
 
 const GUTTER = 2;
 const TAGLINE = "AI Terminal. Infinite Possibilities.";
-const HINTS = "Ctrl+T  new terminal      Ctrl+W  close      Ctrl+1-9  switch";
+/**
+ * The shortcuts worth knowing on a fresh terminal.
+ *
+ * The palette leads, because it is the one that reaches everything else — a
+ * user who learns only this line should still be able to find the rest of the
+ * app from it.
+ */
+const HINTS =
+  "Ctrl+K  command palette    Ctrl+T  new terminal    Ctrl+W  close    Ctrl+F  find";
 
 export function buildBanner({ cols, version, palette }: BannerOptions): string {
   const stops = [palette.accent, palette.violet, palette.magenta]

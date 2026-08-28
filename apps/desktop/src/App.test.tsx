@@ -58,6 +58,15 @@ vi.mock("@xterm/addon-search", () => ({
     clearDecorations() {}
   },
 }));
+vi.mock("@xterm/addon-serialize", () => ({
+  SerializeAddon: class {
+    activate() {}
+    dispose() {}
+    serialize() {
+      return "";
+    }
+  },
+}));
 vi.mock("@xterm/addon-web-links", () => ({
   WebLinksAddon: class {
     activate() {}

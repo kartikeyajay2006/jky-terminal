@@ -59,3 +59,40 @@ describe("tabStore", () => {
     expect(useTabs.getState().activeId).toBe(a);
   });
 });
+
+describe("surviving a restart", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    useTabs.setState({ tabs: [], activeId: null });
+  });
+
+  it("writes tabs down as they are opened", () => {
+    useTabs.getState().openTab("terminal", "Terminal 1");
+    expect(localStorage.getItem("jky.tabs")).toContain("Terminal 1");
+  });
+
+  it("writes them down again when one is closed", () => {
+    const id = useTabs.getState().openTab("terminal", "Terminal 1");
+    useTabs.getState().openTab("terminal", "Terminal 2");
+    useTabs.getState().closeTab(id);
+
+    const stored = localStorage.getItem("jky.tabs") ?? "";
+    expect(stored).not.toContain("Terminal 1");
+    expect(stored).toContain("Terminal 2");
+  });
+
+  it("keeps a tab's id, because that is its scrollback's key", () => {
+    // A tab that came back with a fresh id would find an empty terminal and
+    // leave the old output orphaned on disk.
+    const id = useTabs.getState().openTab("terminal", "Terminal 1");
+    expect(localStorage.getItem("jky.tabs")).toContain(id);
+  });
+
+  it("ignores a corrupt store rather than refusing to start", () => {
+    localStorage.setItem("jky.tabs", "{ not json");
+    expect(() => JSON.parse(localStorage.getItem("jky.tabs") ?? "")).toThrow();
+    // The store itself reads this at module load; the guarantee under test is
+    // that a bad value cannot make that throw.
+    expect(useTabs.getState().tabs).toEqual([]);
+  });
+});

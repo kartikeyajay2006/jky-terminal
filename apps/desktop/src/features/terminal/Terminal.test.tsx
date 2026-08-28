@@ -73,6 +73,15 @@ vi.mock("@xterm/addon-search", () => ({
     clearDecorations() {}
   },
 }));
+vi.mock("@xterm/addon-serialize", () => ({
+  SerializeAddon: class {
+    activate() {}
+    dispose() {}
+    serialize() {
+      return "PREVIOUS-OUTPUT";
+    }
+  },
+}));
 vi.mock("@xterm/addon-web-links", () => ({
   WebLinksAddon: class {
     activate() {}
@@ -198,5 +207,66 @@ describe("Terminal", () => {
     await waitFor(() => expect(onDataHandlers.length).toBeGreaterThan(0));
     unmount();
     await waitFor(() => expect(disposed.count).toBe(1));
+  });
+});
+
+describe("scrollback across a restart", () => {
+  beforeEach(() => {
+    __setPlatformForTests(createWebPlatform());
+    writes.length = 0;
+  });
+  afterEach(() => __setPlatformForTests(null));
+
+  it("replays what the tab had last time, before this session's banner", async () => {
+    const platform = createWebPlatform();
+    await platform.scrollback.save("tab-7", "OLD SESSION OUTPUT");
+    __setPlatformForTests(platform);
+
+    render(<Terminal tabId="tab-7" />);
+
+    await waitFor(() => {
+      expect(writes.join("")).toContain("OLD SESSION OUTPUT");
+    });
+    // The history comes first, so the scrollback reads as a history rather
+    // than as a terminal that mysteriously already has text in it.
+    const all = writes.join("");
+    expect(all.indexOf("OLD SESSION OUTPUT")).toBeLessThan(all.indexOf("Infinite"));
+  });
+
+  it("starts clean when the tab has no history", async () => {
+    render(<Terminal tabId="tab-fresh" />);
+    await waitFor(() => expect(writes.join("")).toContain("Infinite"));
+    expect(writes.join("")).not.toContain("OLD SESSION");
+  });
+
+  it("saves what was on screen when the tab goes away", async () => {
+    const platform = createWebPlatform();
+    __setPlatformForTests(platform);
+
+    const { unmount } = render(<Terminal tabId="tab-8" />);
+    await waitFor(() => expect(writes.join("")).toContain("Infinite"));
+    unmount();
+
+    await waitFor(async () => {
+      expect(await platform.scrollback.load("tab-8")).toContain("PREVIOUS-OUTPUT");
+    });
+  });
+
+  it("still opens when the saved history cannot be read", async () => {
+    // A terminal that will not open because its history could not be read
+    // would be a poor trade for a convenience.
+    const base = createWebPlatform();
+    __setPlatformForTests({
+      ...base,
+      scrollback: {
+        ...base.scrollback,
+        load: async () => {
+          throw new Error("unreadable");
+        },
+      },
+    });
+
+    render(<Terminal tabId="tab-9" />);
+    await waitFor(() => expect(writes.join("")).toContain("Infinite"));
   });
 });

@@ -6,7 +6,7 @@ mod listing;
 mod turn;
 mod state;
 
-use commands::{ai, games, open, pty, settings, store, vault};
+use commands::{ai, games, open, pty, scrollback, settings, store, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -52,6 +52,10 @@ fn main() {
             store::store_delete_reminder,
             games::games_publish_scores,
             open::open_external,
+            scrollback::scrollback_load,
+            scrollback::scrollback_save,
+            scrollback::scrollback_forget,
+            scrollback::scrollback_prune,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");

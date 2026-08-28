@@ -4,6 +4,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import { SearchAddon } from "@xterm/addon-search";
 import { WebLinksAddon } from "@xterm/addon-web-links";
+import { SerializeAddon } from "@xterm/addon-serialize";
 import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
@@ -40,6 +41,13 @@ const NO_HITS: SearchHits = { current: 0, total: 0 };
  */
 export function useXterm(
   container: React.RefObject<HTMLDivElement | null>,
+  /**
+   * The key this terminal's scrollback is saved under — its tab id.
+   *
+   * Omitted, nothing is saved or restored, which is what the tests that do
+   * not care about persistence want.
+   */
+  scrollbackKey?: string,
 ): TerminalControls {
   const term = useRef<Xterm | null>(null);
   const searchAddon = useRef<SearchAddon | null>(null);
@@ -66,6 +74,9 @@ export function useXterm(
 
     const fit = new FitAddon();
     xterm.loadAddon(fit);
+
+    const serialize = new SerializeAddon();
+    xterm.loadAddon(serialize);
 
     const search = new SearchAddon();
     xterm.loadAddon(search);
@@ -115,9 +126,6 @@ export function useXterm(
       if (text) void copyText(text);
     });
 
-    // Greet before the shell speaks. Written into the pty stream rather than
-    // overlaid, so it lives in the scrollback like a real MOTD, and coloured
-    // from the live theme tokens so it follows whatever theme is active.
     const tokens = getComputedStyle(document.documentElement);
     const banner = buildBanner({
       cols: xterm.cols,
@@ -128,8 +136,6 @@ export function useXterm(
         magenta: tokens.getPropertyValue("--magenta"),
       },
     });
-    xterm.write(banner);
-
     // `jky ask <question>` in the shell emits OSC 1337 carrying a base64
     // question. Handling it here means the shell command needs no socket, no
     // port, and no knowledge of where the app is — the sequence simply rides
@@ -156,6 +162,28 @@ export function useXterm(
     const platform = getPlatform();
 
     void (async () => {
+      // Last session's output first, then a rule, then this session's banner.
+      // In that order the scrollback reads as a history rather than as a
+      // terminal that mysteriously already has text in it.
+      if (scrollbackKey) {
+        try {
+          const previous = await platform.scrollback.load(scrollbackKey);
+          if (previous && !cancelled) {
+            xterm.write(previous.endsWith("\n") ? previous : `${previous}\r\n`);
+            xterm.write(`\x1b[2m${"─".repeat(Math.max(8, xterm.cols - 2))}\x1b[0m\r\n`);
+          }
+        } catch {
+          // A terminal that will not open because its history could not be
+          // read would be a poor trade for a convenience.
+        }
+      }
+      if (cancelled) return;
+
+      // Greet before the shell speaks. Written into the pty stream rather
+      // than overlaid, so it lives in the scrollback like a real MOTD, and
+      // coloured from the live theme tokens so it follows the active theme.
+      xterm.write(banner);
+
       // The same banner goes to the backend, which stores it so the
       // `jky-terminal` shell command can reprint exactly what was shown.
       const id = await platform.pty.spawn(
@@ -212,13 +240,26 @@ export function useXterm(
       observer.disconnect();
       selectionSub.dispose();
       unlisten?.();
+
+      // Serialised before dispose, because dispose takes the buffer with it.
+      // Fire-and-forget: the write is bounded and capped in Rust, and holding
+      // teardown open for it would stall closing a tab.
+      if (scrollbackKey) {
+        try {
+          const text = serialize.serialize();
+          if (text.trim()) void platform.scrollback.save(scrollbackKey, text);
+        } catch {
+          /* a terminal that fails to save its history still closes */
+        }
+      }
+
       if (ptyId) void platform.pty.kill(ptyId);
       xterm.dispose();
       term.current = null;
       searchAddon.current = null;
       ptyRef.current = null;
     };
-  }, [container]);
+  }, [container, scrollbackKey]);
 
   // The query has to survive between typing in the box and pressing next;
   // the addon does not remember it for us.

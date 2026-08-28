@@ -122,6 +122,16 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "pty_resize".to_string(),
         "pty_spawn".to_string(),
         "pty_write".to_string(),
+        // What a terminal had on screen, kept across a restart. The renderer
+        // chooses a key, never a path: the key shape is narrow enough to be a
+        // single path component and is validated in jky-store, the directory
+        // is decided in Rust, and the store applies the size cap. The widest
+        // reach is saving a quarter-megabyte of the window's own output under
+        // a name like `tab-3`.
+        "scrollback_forget".to_string(),
+        "scrollback_load".to_string(),
+        "scrollback_prune".to_string(),
+        "scrollback_save".to_string(),
         "settings_set_active_provider".to_string(),
         "settings_set_selected_model".to_string(),
         "settings_set_terminal_start_dir".to_string(),

@@ -10,6 +10,7 @@ import type {
   ProviderStatus,
   PtyApi,
   Reminder,
+  ScrollbackApi,
   SettingsApi,
   StoreApi,
   Todo,
@@ -254,6 +255,27 @@ export function createWebPlatform(): Platform {
     async publishScores() {},
   };
 
+  // In memory for the session, like every other browser-build mock: the
+  // preview is for developing the UI, and a mock that quietly persisted would
+  // let a bug that never reaches the real store look like it works.
+  const buffers = new Map<string, string>();
+  const scrollback: ScrollbackApi = {
+    async load(key) {
+      return buffers.get(key) ?? "";
+    },
+    async save(key, text) {
+      buffers.set(key, text);
+    },
+    async forget(key) {
+      buffers.delete(key);
+    },
+    async prune(keys) {
+      for (const key of [...buffers.keys()]) {
+        if (!keys.includes(key)) buffers.delete(key);
+      }
+    },
+  };
+
   return {
     kind: "web",
     vault,
@@ -262,6 +284,7 @@ export function createWebPlatform(): Platform {
     ai,
     store,
     games,
+    scrollback,
     async listCommands() {
       return WEB_COMMANDS;
     },

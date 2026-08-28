@@ -38,6 +38,14 @@ export function App() {
     void useDashboard.getState().load();
   }, []);
 
+  // Saved output for tabs that no longer exist is dropped once, at startup.
+  // A tab closed while the app was not running would otherwise leave its
+  // scrollback on disk for ever.
+  useEffect(() => {
+    const keys = useTabs.getState().tabs.map((t) => t.id);
+    void getPlatform().scrollback.prune(keys).catch(() => {});
+  }, []);
+
   // Assistant events are subscribed here, not in the panel. A stream that
   // arrives while the terminal is showing must still land in the session —
   // when the panel owned these, switching away silently dropped the answer.

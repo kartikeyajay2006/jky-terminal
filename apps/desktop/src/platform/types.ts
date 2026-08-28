@@ -183,6 +183,21 @@ export interface GameScore {
   best: number;
 }
 
+/**
+ * What a terminal had on screen, kept across a restart.
+ *
+ * Capped and rolling, unlike the collections in `StoreApi` — terminal output
+ * is emitted rather than authored, and the reasoning for the difference lives
+ * in `crates/jky-store/src/scrollback.rs`.
+ */
+export interface ScrollbackApi {
+  load(key: string): Promise<string>;
+  save(key: string, text: string): Promise<void>;
+  forget(key: string): Promise<void>;
+  /** Drop every saved terminal that is not one of `keys`. */
+  prune(keys: string[]): Promise<void>;
+}
+
 export interface GamesApi {
   /**
    * Hand the shell listing its numbers.
@@ -203,6 +218,8 @@ export interface Platform {
   readonly store: StoreApi;
   /** What the games need from the backend. */
   readonly games: GamesApi;
+  /** What each terminal had on screen last time. */
+  readonly scrollback: ScrollbackApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
   /**
