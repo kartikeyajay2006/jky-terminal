@@ -1,0 +1,413 @@
+/*
+ * Notifications — the bell, the centre behind it, and the heads-up banners.
+ *
+ * Every colour is a token. The per-kind accent is resolved once, into
+ * --note-accent, so a row, its icon and its rail all tint together instead of
+ * each repeating the same six-way lookup.
+ */
+
+/* ---- the shared row ----------------------------------------------------- */
+
+.note-row {
+  --note-accent: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  border-radius: var(--radius);
+}
+
+.note-row[data-colour="rose"] { --note-accent: var(--danger); }
+.note-row[data-colour="azure"] { --note-accent: var(--accent-dim); }
+.note-row[data-colour="mint"] { --note-accent: var(--mint); }
+.note-row[data-colour="amber"] { --note-accent: var(--warn); }
+.note-row[data-colour="violet"] { --note-accent: var(--violet); }
+.note-row[data-colour="cyan"] { --note-accent: var(--accent); }
+
+.note-row__icon {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  /* A tint of the accent rather than the accent itself: a solid disc at this
+     size pulls the eye harder than the title it is labelling. */
+  background: color-mix(in srgb, var(--note-accent) 18%, transparent);
+  color: var(--note-accent);
+  font-size: 12px;
+  line-height: 1;
+}
+
+.note-row__body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.note-row__title {
+  font-size: 13px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-row__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 11px;
+  min-width: 0;
+}
+
+.note-row__detail {
+  color: var(--note-accent);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.note-row__ago {
+  flex-shrink: 0;
+  color: var(--text-dim);
+}
+
+/* Separated from the timestamp by a dot, the way a phone does it. */
+.note-row__ago::before {
+  content: "·";
+  margin-right: var(--s2);
+}
+
+.note-row__actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  /* Out of the way until the row is under the pointer — the text is the
+     content, the buttons are the afterthought. */
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+
+.note-row:hover .note-row__actions,
+.note-row:focus-within .note-row__actions {
+  opacity: 1;
+}
+
+/* Keyboard users never hover, so the buttons must not be reachable-but-
+   invisible. */
+@media (hover: none) {
+  .note-row__actions {
+    opacity: 1;
+  }
+}
+
+.note-row__act {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-size: 13px;
+  line-height: 1;
+  transition: all var(--fast) var(--ease);
+}
+
+.note-row__act--done:hover {
+  background: var(--mint);
+  color: var(--ground);
+}
+
+.note-row__act--close:hover {
+  background: var(--danger);
+  color: var(--ground);
+}
+
+/* ---- the bell ----------------------------------------------------------- */
+
+.tray {
+  position: fixed;
+  top: var(--s3);
+  right: var(--s3);
+  z-index: 40;
+}
+
+.tray__bell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-muted);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 30%);
+  transition: all var(--fast) var(--ease);
+}
+
+.tray__bell:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.tray__bell[data-alert] {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+}
+
+.tray__bell[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 18px var(--accent-glow);
+}
+
+.tray__badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ground);
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--ground);
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* ---- the centre --------------------------------------------------------- */
+
+.tray__pop {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 340px;
+  max-height: min(70vh, 560px);
+  overflow-y: auto;
+  padding: var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-raised) 90%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 20px 48px rgb(0 0 0 / 55%);
+  display: grid;
+  gap: var(--s3);
+  align-content: start;
+  animation: tray-in var(--normal) var(--ease);
+}
+
+@keyframes tray-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+}
+
+.tray__bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s2);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+
+.tray__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tray__count {
+  min-width: 18px;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 10px;
+  letter-spacing: 0;
+  text-align: center;
+}
+
+.tray__bar-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.tray__clear {
+  padding: 2px var(--s2);
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-size: 11px;
+  transition: all var(--fast) var(--ease);
+}
+
+.tray__clear:hover {
+  background: var(--surface);
+  color: var(--accent);
+}
+
+.tray__close {
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius);
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.tray__close:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.tray__groups {
+  display: grid;
+  gap: var(--s4);
+}
+
+.tray__group {
+  display: grid;
+  gap: var(--s1);
+}
+
+.tray__group-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0 0 var(--s1);
+  padding: 0 var(--s3);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.tray__group-count {
+  color: var(--text-muted);
+  letter-spacing: 0;
+}
+
+.tray__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.tray__list .note-row {
+  border: 1px solid transparent;
+  transition: all var(--fast) var(--ease);
+}
+
+.tray__list .note-row:hover {
+  border-color: var(--line);
+  background: var(--surface);
+}
+
+.tray__empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  padding: var(--s5) var(--s3);
+  text-align: center;
+}
+
+.tray__empty-glyph {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--mint) 16%, transparent);
+  color: var(--mint);
+  font-size: 15px;
+}
+
+.tray__empty-title {
+  margin: 0;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.tray__empty-hint {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+/* ---- the heads-up banners ----------------------------------------------- */
+
+.banners {
+  position: fixed;
+  /* Clear of the bell, which owns the very corner. */
+  top: calc(var(--s3) + 34px + var(--s2));
+  right: var(--s3);
+  z-index: 41;
+  width: 340px;
+  display: grid;
+  gap: var(--s2);
+  pointer-events: none;
+}
+
+.banners__card {
+  pointer-events: auto;
+  padding: var(--s1);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-raised) 92%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow: 0 14px 36px rgb(0 0 0 / 50%);
+  animation: banner-in var(--normal) var(--ease);
+}
+
+/* The kind's colour as a rail down the left edge, so a glance at the stack
+   says what sort of thing arrived before any of it is read. */
+.banners__card .note-row {
+  border-left: 2px solid var(--note-accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--note-accent) 6%, transparent);
+}
+
+.banners__card .note-row__actions {
+  opacity: 1;
+}
+
+@keyframes banner-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px) scale(0.96);
+  }
+}
+
+@media (max-width: 720px) {
+  .tray__pop,
+  .banners {
+    width: min(340px, calc(100vw - var(--s5)));
+  }
+}

@@ -10,7 +10,7 @@
 
 use std::path::{Path, PathBuf};
 
-use jky_store::{Event, Note, Reminder, Store, Todo};
+use jky_store::{Note, Reminder, Store, Todo};
 
 const ESC: char = '\u{1b}';
 
@@ -123,10 +123,6 @@ fn short_date(at: &str) -> String {
     }
 }
 
-fn clock(at: &str) -> String {
-    at.get(11..16).unwrap_or("--:--").to_string()
-}
-
 // --- the four listings ------------------------------------------------------
 
 pub fn render_notes(notes: &[Note], accent: Option<(u8, u8, u8)>) -> String {
@@ -176,74 +172,6 @@ pub fn render_note(note: &Note, short: &str, accent: Option<(u8, u8, u8)>) -> St
         for line in note.body.lines() {
             out.push_str(&format!("  {line}\r\n"));
         }
-    }
-    out.push_str("\r\n");
-    out
-}
-
-pub fn render_events(events: &[Event], accent: Option<(u8, u8, u8)>) -> String {
-    let p = Paint::new(accent);
-    let mut out = header(
-        &p,
-        "EVENTS",
-        events.len(),
-        if events.len() == 1 { "event" } else { "events" },
-    );
-
-    if events.is_empty() {
-        out.push_str(&empty(&p, "one"));
-    } else {
-        let mut sorted: Vec<&Event> = events.iter().collect();
-        sorted.sort_by(|a, b| a.starts_at.cmp(&b.starts_at));
-
-        for (event, short) in sorted.iter().zip(handles(sorted.len())) {
-            let alert = match event.alert_minutes_before {
-                Some(m) => format!("  {}✉ {}{}", p.dim, lead(m), p.reset),
-                None => String::new(),
-            };
-            line(
-                &mut out,
-                &format!(
-                    "  {}{:>3}{}  {}{}{}  {}{}{}  {}{}",
-                    p.tint,
-                    short,
-                    p.reset,
-                    p.dim,
-                    col(&short_date(&event.starts_at), 13),
-                    p.reset,
-                    p.dim,
-                    clock(&event.starts_at),
-                    p.reset,
-                    col(&event.title, 34),
-                    alert,
-                ),
-            );
-        }
-    }
-    out.push_str(&footer(&p, "jky events 1  for one · times are UTC as stored"));
-    out
-}
-
-pub fn render_event(event: &Event, short: &str, accent: Option<(u8, u8, u8)>) -> String {
-    let p = Paint::new(accent);
-    let mut out = format!("\r\n  {}{}{}{}\r\n", p.bold, p.tint, event.title, p.reset);
-    out.push_str(&format!(
-        "  {}{} · {} at {} UTC{}\r\n",
-        p.dim,
-        short,
-        short_date(&event.starts_at),
-        clock(&event.starts_at),
-        p.reset
-    ));
-    out.push_str(&format!("  {}colour: {:?}{}\r\n", p.dim, event.colour, p.reset));
-    match event.alert_minutes_before {
-        Some(m) => out.push_str(&format!(
-            "  {}email alert {} before{}\r\n",
-            p.dim,
-            lead(m),
-            p.reset
-        )),
-        None => out.push_str(&format!("  {}no email alert{}\r\n", p.dim, p.reset)),
     }
     out.push_str("\r\n");
     out
@@ -337,17 +265,6 @@ pub fn render_todo(t: &Todo, short: &str, accent: Option<(u8, u8, u8)>) -> Strin
     )
 }
 
-/// `30m`, `1h`, `1d`.
-fn lead(minutes: u32) -> String {
-    if minutes.is_multiple_of(1440) {
-        format!("{}d", minutes / 1440)
-    } else if minutes.is_multiple_of(60) {
-        format!("{}h", minutes / 60)
-    } else {
-        format!("{minutes}m")
-    }
-}
-
 // --- writing the files ------------------------------------------------------
 
 /// Write every listing, and one file per record.
@@ -364,14 +281,6 @@ pub fn write_all(store: &Store, bin_dir: &Path, accent: Option<(u8, u8, u8)>) ->
         write_one(&dir, "notes", &render_notes(&notes, accent))?;
         let hs = handles(notes.len());
         write_records(&dir, "notes", &hs, |i| render_note(&notes[i], &hs[i], accent))?;
-    }
-
-    if let Ok(events) = store.events().list() {
-        write_one(&dir, "events", &render_events(&events, accent))?;
-        let mut sorted: Vec<Event> = events.clone();
-        sorted.sort_by(|a, b| a.starts_at.cmp(&b.starts_at));
-        let hs = handles(sorted.len());
-        write_records(&dir, "events", &hs, |i| render_event(&sorted[i], &hs[i], accent))?;
     }
 
     if let Ok(reminders) = store.reminders().list() {
@@ -419,7 +328,6 @@ fn write_records(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jky_store::EventColour;
 
     fn note(id: &str, title: &str) -> Note {
         Note {
@@ -428,16 +336,6 @@ mod tests {
             body: "line one\nline two".into(),
             created_at: "2026-08-27T00:00:00Z".into(),
             updated_at: "2026-08-27T09:30:00Z".into(),
-        }
-    }
-
-    fn event(id: &str, title: &str, at: &str) -> Event {
-        Event {
-            id: id.into(),
-            title: title.into(),
-            starts_at: at.into(),
-            colour: EventColour::Rose,
-            alert_minutes_before: Some(30),
         }
     }
 
@@ -462,15 +360,17 @@ mod tests {
     #[test]
     fn handles_match_the_order_things_are_listed_in() {
         // The number beside a row has to be the number that fetches that row,
-        // and events are listed by when they happen rather than when they
+        // and reminders are listed by time of day rather than by when they
         // were added.
-        let events = [
-            event("e2", "Later", "2026-09-05T16:00:00Z"),
-            event("e1", "Sooner", "2026-08-27T10:00:00Z"),
-        ];
-        let listing = render_events(&events, None);
+        let r = |id: &str, at: &str, text: &str| Reminder {
+            id: id.into(),
+            at: at.into(),
+            text: text.into(),
+            done: false,
+        };
+        let listing = render_reminders(&[r("r2", "18:00", "Evening"), r("r1", "07:00", "Morning")], None);
 
-        let first_row = listing.lines().find(|l| l.contains("Sooner")).unwrap();
+        let first_row = listing.lines().find(|l| l.contains("Morning")).unwrap();
         assert!(first_row.trim_start().starts_with('1'), "{first_row}");
     }
 
@@ -529,39 +429,6 @@ mod tests {
         for line in out.lines() {
             assert!(line.chars().count() < 100, "line too long: {}", line.len());
         }
-    }
-
-    #[test]
-    fn events_are_listed_in_the_order_they_happen() {
-        let out = render_events(
-            &[
-                event("e2", "Later", "2026-09-05T16:00:00Z"),
-                event("e1", "Sooner", "2026-08-27T10:00:00Z"),
-            ],
-            None,
-        );
-        assert!(out.find("Sooner").unwrap() < out.find("Later").unwrap(), "{out}");
-    }
-
-    #[test]
-    fn an_events_alert_is_shown() {
-        assert!(render_events(&[event("e1", "Standup", "2026-08-27T10:00:00Z")], None)
-            .contains("30m"));
-    }
-
-    #[test]
-    fn an_event_without_an_alert_does_not_pretend_to_have_one() {
-        let mut e = event("e1", "Quiet", "2026-08-27T10:00:00Z");
-        e.alert_minutes_before = None;
-        assert!(!render_events(&[e], None).contains("✉"));
-    }
-
-    #[test]
-    fn the_events_listing_says_its_times_are_utc() {
-        // The dashboard shows local time. Saying nothing here would make the
-        // two look like they disagree.
-        assert!(render_events(&[event("e1", "a", "2026-08-27T10:00:00Z")], None)
-            .contains("UTC"));
     }
 
     #[test]
@@ -709,15 +576,18 @@ mod tests {
     }
 
     #[test]
-    fn writing_covers_all_four_collections() {
+    fn writing_covers_every_collection_the_shell_can_read() {
         let dir = tempfile::tempdir().unwrap();
         let store = Store::new(dir.path().join("store"));
         let bin = dir.path().join("bin");
         write_all(&store, &bin, None).unwrap();
 
-        for name in ["notes", "events", "reminders", "todos"] {
+        for name in ["notes", "reminders", "todos"] {
             assert!(data_dir(&bin).join(format!("{name}.ansi")).is_file(), "{name}");
         }
+        // Events are reached from the Calendar panel, not the shell, so no
+        // listing is written for them and `jky events` does not exist.
+        assert!(!data_dir(&bin).join("events.ansi").exists());
     }
 }
 

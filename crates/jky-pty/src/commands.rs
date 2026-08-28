@@ -51,14 +51,6 @@ const COMMANDS: &[CommandSpec] = &[
                  numbers follow the list, so deleting one renumbers the rest.",
     },
     CommandSpec {
-        names: &["jky events", "jky event"],
-        usage: "jky events [number]",
-        summary: "List your events, or read one",
-        detail: "Every event in the order it happens, numbered from one, with \
-                 its date, time and any email alert. Times are shown as \
-                 stored, in UTC; the Dashboard shows them on your own clock.",
-    },
-    CommandSpec {
         names: &["jky reminders", "jky reminder"],
         usage: "jky reminders [number]",
         summary: "List your reminders, or read one",

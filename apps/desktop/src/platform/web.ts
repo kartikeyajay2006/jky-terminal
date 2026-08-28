@@ -59,13 +59,6 @@ const WEB_COMMANDS: CommandSpec[] = [
       "With no argument it prints every saved note, numbered from one. Give it a number and it prints that note in full. The numbers follow the list, so deleting one renumbers the rest.",
   },
   {
-    names: ["jky events", "jky event"],
-    usage: "jky events [number]",
-    summary: "List your events, or read one",
-    detail:
-      "Every event in the order it happens, numbered from one, with its date, time and any email alert. Times are shown as stored, in UTC; the Dashboard shows them on your own clock.",
-  },
-  {
     names: ["jky reminders", "jky reminder"],
     usage: "jky reminders [number]",
     summary: "List your reminders, or read one",

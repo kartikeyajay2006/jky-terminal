@@ -78,12 +78,11 @@ case "$1" in
   commands|command|help|--help|-h)
     cat "{commands}"
     ;;
-  notes|note|events|event|reminders|reminder|todos|todo)
+  notes|note|reminders|reminder|todos|todo)
     # The app rewrites these files whenever the dashboard changes, so the
     # shell needs no JSON parser and no way to reach back into the app.
     case "$1" in
       note) kind=notes ;;
-      event) kind=events ;;
       reminder) kind=reminders ;;
       todo) kind=todos ;;
       *) kind="$1" ;;
@@ -143,8 +142,6 @@ fn write_ask_launcher(
          if /i \"%1\"==\"help\" goto cmds\r\n\
          if /i \"%1\"==\"notes\" set KIND=notes&& goto data\r\n\
          if /i \"%1\"==\"note\" set KIND=notes&& goto data\r\n\
-         if /i \"%1\"==\"events\" set KIND=events&& goto data\r\n\
-         if /i \"%1\"==\"event\" set KIND=events&& goto data\r\n\
          if /i \"%1\"==\"reminders\" set KIND=reminders&& goto data\r\n\
          if /i \"%1\"==\"reminder\" set KIND=reminders&& goto data\r\n\
          if /i \"%1\"==\"todos\" set KIND=todos&& goto data\r\n\
@@ -269,7 +266,6 @@ mod tests {
         std::fs::create_dir_all(data.join("notes")).unwrap();
         std::fs::write(data.join("notes.ansi"), "NOTES-LISTING").unwrap();
         std::fs::write(data.join("notes").join("a3f2.ansi"), "ONE-NOTE").unwrap();
-        std::fs::write(data.join("events.ansi"), "EVENTS-LISTING").unwrap();
         std::fs::write(data.join("reminders.ansi"), "REMINDERS-LISTING").unwrap();
         std::fs::write(data.join("todos.ansi"), "TODOS-LISTING").unwrap();
     }
@@ -316,8 +312,6 @@ mod tests {
         for (arg, expected) in [
             ("notes", "NOTES-LISTING"),
             ("note", "NOTES-LISTING"),
-            ("events", "EVENTS-LISTING"),
-            ("event", "EVENTS-LISTING"),
             ("reminders", "REMINDERS-LISTING"),
             ("reminder", "REMINDERS-LISTING"),
             ("todos", "TODOS-LISTING"),
