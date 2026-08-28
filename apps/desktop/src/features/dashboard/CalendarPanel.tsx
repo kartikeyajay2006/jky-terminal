@@ -4,7 +4,7 @@ import { useDashboard } from "./dashboardStore";
 import { EventForm } from "./EventForm";
 import { EventRow } from "./EventRow";
 import { GRID_ROWS, WEEKDAYS, localDay, monthGrid, monthLabel, nextMonth, prevMonth } from "./calendar";
-import { eventsOn } from "./upcoming";
+import { eventsOn, past, upcoming } from "./upcoming";
 import { describeDay } from "./DatePicker";
 
 export function CalendarPanel() {
@@ -19,6 +19,8 @@ export function CalendarPanel() {
 
   const grid = monthGrid(at.year, at.month, today);
   const onSelected = eventsOn(events, selected);
+  const ahead = upcoming(events);
+  const behind = past(events);
 
   return (
     <section className="panel" aria-labelledby="calendar-heading">
@@ -28,7 +30,7 @@ export function CalendarPanel() {
         status={
           events.length > 0 ? (
             <>
-              <b>{events.length}</b> events
+              <b>{ahead.length}</b> ahead
             </>
           ) : undefined
         }
@@ -129,6 +131,30 @@ export function CalendarPanel() {
           )}
         </div>
       </div>
+
+      <h3 className="dash__subhead">Ahead</h3>
+      {ahead.length === 0 ? (
+        <p className="hint">Nothing ahead. Everything below has been and gone.</p>
+      ) : (
+        <ul className="events" aria-label="Upcoming events">
+          {ahead.map((e) => (
+            <EventRow key={e.id} event={e} onDelete={() => void deleteEvent(e.id)} />
+          ))}
+        </ul>
+      )}
+
+      {behind.length > 0 && (
+        <>
+          {/* Past events stay. They are a record of what happened, and
+              removing them would be the app deciding for you. */}
+          <h3 className="dash__subhead">Been and gone</h3>
+          <ul className="events events--past" aria-label="Past events">
+            {behind.map((e) => (
+              <EventRow key={e.id} event={e} onDelete={() => void deleteEvent(e.id)} />
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   );
 }

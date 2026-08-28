@@ -169,28 +169,13 @@ describe("accessibility", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("the mail alerts panel with everything filled in has no violations", async () => {
-    // Its empty state is already covered by the loop over every section; this
-    // is the state with a stored password, a provider note and a switch in it.
-    const user = userEvent.setup();
-    const { container } = render(<Dashboard />);
-    const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
-    await user.click(within(nav).getByRole("button", { name: /mail alerts/i }));
-
-    await user.type(screen.getByLabelText(/your email/i), "someone@gmail.com");
-    await user.type(screen.getByLabelText(/app password/i), "pw");
-    await user.click(screen.getByRole("button", { name: /^store$/i }));
-
-    expect(await axe(container)).toHaveNoViolations();
-  });
-
   it("an open date picker has no violations", async () => {
     // A calendar popover is a grid of forty-two buttons; getting its roles
     // and labels wrong would be easy and invisible.
     const user = userEvent.setup();
     const { container } = render(<Dashboard />);
     const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
-    await user.click(within(nav).getByRole("button", { name: /upcoming events/i }));
+    await user.click(within(nav).getByRole("button", { name: /^calendar/i }));
     await user.click(screen.getByRole("button", { name: "Event date" }));
 
     expect(await axe(container)).toHaveNoViolations();
@@ -200,6 +185,30 @@ describe("accessibility", () => {
     const user = userEvent.setup();
     const { container, findByRole } = render(<Shell>{null}</Shell>);
     await user.click(await findByRole("combobox", { name: /theme/i }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the open notification tray, with something due, has no violations", async () => {
+    useDashboard.setState({
+      notes: [],
+      todos: [],
+      reminders: [],
+      events: [
+        {
+          id: "e1",
+          title: "Team meeting",
+          starts_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+          colour: "rose",
+          alert_minutes_before: 30,
+        },
+      ],
+      loaded: true,
+      errors: {},
+    });
+    const user = userEvent.setup();
+    const { container } = render(<Shell>{null}</Shell>);
+    await user.click(screen.getByRole("button", { name: "Notifications" }));
+
     expect(await axe(container)).toHaveNoViolations();
   });
 });

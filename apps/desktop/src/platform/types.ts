@@ -177,48 +177,6 @@ export interface StoreApi {
   readonly reminders: CollectionApi<Reminder>;
 }
 
-// --- email alerts -----------------------------------------------------------
-
-export interface MailConfig {
-  /** Alerts are sent from this address, to this address. */
-  address: string;
-  host: string;
-  port: number;
-  enabled: boolean;
-  /**
-   * The address a one-time code has proven belongs to whoever is here.
-   * `null` until verified, and it stops matching the moment `address` is
-   * edited — proving the old address said nothing about the new one.
-   */
-  verified_address: string | null;
-}
-
-/** A known provider, so nobody has to look up a port number. */
-export interface MailPreset {
-  id: string;
-  label: string;
-  host: string;
-  port: number;
-  /** What the user has to do before this will work. */
-  note: string;
-}
-
-export interface MailApi {
-  readConfig(): Promise<MailConfig>;
-  /** Saves, and registers or removes the background helper to match. */
-  saveConfig(config: MailConfig): Promise<void>;
-  /** The app password goes in and does not come back. */
-  setPassword(password: string): Promise<void>;
-  hasPassword(): Promise<boolean>;
-  deletePassword(): Promise<void>;
-  /** Sends one message now, using exactly what is on screen. */
-  sendTest(config: MailConfig): Promise<void>;
-  /** Emails a one-time code to the address in `config`. Requires a stored password. */
-  sendOtp(config: MailConfig): Promise<void>;
-  /** Checks a code against the one most recently sent. `false` means it did not match — not an error. */
-  verifyOtp(config: MailConfig, code: string): Promise<boolean>;
-}
-
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
@@ -227,8 +185,6 @@ export interface Platform {
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */
   readonly store: StoreApi;
-  /** Email alerts for events. */
-  readonly mail: MailApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
 }

@@ -29,14 +29,7 @@ describe("dashboard navigation", () => {
   it("offers every section the user asked for", () => {
     render(<Dashboard />);
     const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
-    for (const label of [
-      "Notes",
-      "Todos",
-      "Calendar",
-      "Upcoming Events",
-      "Reminders",
-      "Mail Alerts",
-    ]) {
+    for (const label of ["Notes", "Todos", "Calendar", "Reminders"]) {
       expect(within(nav).getByRole("button", { name: new RegExp(label, "i") })).toBeTruthy();
     }
   });
@@ -288,7 +281,7 @@ describe("events", () => {
   async function openEvents(user: ReturnType<typeof userEvent.setup>) {
     render(<Dashboard />);
     const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
-    await user.click(within(nav).getByRole("button", { name: /upcoming events/i }));
+    await user.click(within(nav).getByRole("button", { name: /^calendar/i }));
   }
 
   it("stores a new event as a UTC instant", async () => {
@@ -306,26 +299,9 @@ describe("events", () => {
     });
   });
 
-  it("carries the chosen alert lead time", async () => {
-    // The alert field is locked until email alerts are verified and on.
-    const platform = createWebPlatform();
-    __setPlatformForTests({
-      ...platform,
-      mail: {
-        ...platform.mail,
-        readConfig: async () => ({
-          address: "someone@gmail.com",
-          host: "smtp.gmail.com",
-          port: 465,
-          enabled: true,
-          verified_address: "someone@gmail.com",
-        }),
-      },
-    });
-
+  it("carries the chosen alert lead time, needing no setup", async () => {
     const user = userEvent.setup();
     await openEvents(user);
-    await waitFor(() => expect(screen.getByRole("combobox")).toBeEnabled());
     await user.type(screen.getByRole("textbox", { name: /event title/i }), "Standup");
     await user.selectOptions(screen.getByRole("combobox"), "60");
     await user.click(screen.getByRole("button", { name: /add event/i }));
@@ -344,28 +320,5 @@ describe("events", () => {
     await waitFor(() =>
       expect(useDashboard.getState().events[0].alert_minutes_before).toBeNull(),
     );
-  });
-});
-
-describe("mail alerts", () => {
-  beforeEach(reset);
-  afterEach(() => __setPlatformForTests(null));
-
-  it("says alerts arrive with the app closed", async () => {
-    const user = userEvent.setup();
-    render(<Dashboard />);
-    const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
-    await user.click(within(nav).getByRole("button", { name: /mail alerts/i }));
-
-    expect(screen.getByText(/even while JKY Terminal is/i)).toBeInTheDocument();
-  });
-
-  it("does not claim it works with the computer off", async () => {
-    const user = userEvent.setup();
-    render(<Dashboard />);
-    const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
-    await user.click(within(nav).getByRole("button", { name: /mail alerts/i }));
-
-    expect(screen.getByText(/while your computer is off/i)).toBeInTheDocument();
   });
 });

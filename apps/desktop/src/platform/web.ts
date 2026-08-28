@@ -4,8 +4,6 @@ import type {
   CollectionApi,
   CommandSpec,
   Event,
-  MailApi,
-  MailConfig,
   Note,
   Platform,
   ProviderStatus,
@@ -249,50 +247,6 @@ export function createWebPlatform(): Platform {
     reminders: collection<Reminder>(),
   };
 
-  /**
-   * The browser build keeps the settings in memory and sends nothing.
-   *
-   * A mock that pretended to send would make a broken configuration look
-   * like a working one, which is the opposite of what the test button is for.
-   */
-  let mailConfig: MailConfig = {
-    address: "",
-    host: "",
-    port: 465,
-    enabled: false,
-    verified_address: null,
-  };
-  let mailPassword = "";
-
-  const CANNOT_SEND = "The browser preview cannot send mail. Use the desktop app.";
-
-  const mail: MailApi = {
-    async readConfig() {
-      return { ...mailConfig };
-    },
-    async saveConfig(config) {
-      mailConfig = { ...config };
-    },
-    async setPassword(password) {
-      mailPassword = password;
-    },
-    async hasPassword() {
-      return mailPassword.length > 0;
-    },
-    async deletePassword() {
-      mailPassword = "";
-    },
-    async sendTest() {
-      throw new Error(CANNOT_SEND);
-    },
-    async sendOtp() {
-      throw new Error(CANNOT_SEND);
-    },
-    async verifyOtp() {
-      throw new Error(CANNOT_SEND);
-    },
-  };
-
   return {
     kind: "web",
     vault,
@@ -300,7 +254,6 @@ export function createWebPlatform(): Platform {
     pty,
     ai,
     store,
-    mail,
     async listCommands() {
       return WEB_COMMANDS;
     },

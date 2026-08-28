@@ -1,10 +1,9 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { EventForm } from "./EventForm";
 import { describeDay } from "./DatePicker";
 import { localDate, localTime } from "./eventTime";
-import { __setPlatformForTests, createWebPlatform, type Platform } from "../../platform";
 
 function dayOffset(days: number): string {
   const d = new Date();
@@ -12,28 +11,7 @@ function dayOffset(days: number): string {
   return localDate(d);
 }
 
-/** A web platform whose mail config is already verified and switched on. */
-function readyMailPlatform(): Platform {
-  const base = createWebPlatform();
-  return {
-    ...base,
-    mail: {
-      ...base.mail,
-      readConfig: async () => ({
-        address: "someone@gmail.com",
-        host: "smtp.gmail.com",
-        port: 465,
-        enabled: true,
-        verified_address: "someone@gmail.com",
-      }),
-    },
-  };
-}
-
 describe("the event form", () => {
-  afterEach(() => __setPlatformForTests(null));
-
-
   it("labels the date and time visibly, not only to a screen reader", async () => {
     // Two bare boxes side by side do not say which is which.
     render(<EventForm onAdd={() => {}} />);
@@ -191,30 +169,17 @@ describe("the event form", () => {
 
   it("says what the alert options mean rather than just a number", async () => {
     render(<EventForm onAdd={() => {}} />);
-    expect(screen.getByRole("option", { name: /email 30 min before/i })).toBeTruthy();
-    expect(screen.getByRole("option", { name: /no email alert/i })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /notify 30 min before/i })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /^no alert$/i })).toBeTruthy();
   });
 
-  it("keeps the alert field locked until email alerts are verified and on", async () => {
-    // The default web platform starts with no mail configured at all.
-    __setPlatformForTests(createWebPlatform());
-    render(<EventForm onAdd={() => {}} />);
-
-    await waitFor(() => expect(screen.getByLabelText(/email alert/i)).toBeDisabled());
-    expect(screen.getByText(/set up email alerts first/i)).toBeInTheDocument();
-  });
-
-  it("unlocks the alert field once email alerts are verified and on", async () => {
-    __setPlatformForTests(readyMailPlatform());
+  it("carries the chosen alert lead time straight through, needing no setup", async () => {
     const user = userEvent.setup();
     const onAdd = vi.fn();
     render(<EventForm day={dayOffset(2)} onAdd={onAdd} />);
 
-    await waitFor(() => expect(screen.getByLabelText(/email alert/i)).toBeEnabled());
-    expect(screen.queryByText(/set up email alerts first/i)).toBeNull();
-
     await user.type(screen.getByLabelText("Event title"), "Team meeting");
-    await user.selectOptions(screen.getByLabelText(/email alert/i), "30");
+    await user.selectOptions(screen.getByLabelText(/^alert$/i), "30");
     await user.click(screen.getByRole("button", { name: /add event/i }));
 
     expect(onAdd.mock.calls[0][0].alert_minutes_before).toBe(30);

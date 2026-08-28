@@ -105,7 +105,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
           )}
         </Card>
 
-        <Card title="Upcoming Events" glyph="★" tone="cyan" action={{ label: "View all", onClick: () => onOpen("events") }}>
+        <Card title="Upcoming Events" glyph="★" tone="cyan" action={{ label: "View all", onClick: () => onOpen("calendar") }}>
           {ahead.length === 0 ? (
             <p className="hint">Nothing scheduled.</p>
           ) : (
@@ -161,9 +161,6 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
             </button>
             <button type="button" className="quick__btn" onClick={() => onOpen("todos")}>
               <span aria-hidden="true">+</span> Add Todo
-            </button>
-            <button type="button" className="quick__btn" onClick={() => onOpen("mail")}>
-              <span aria-hidden="true">✉</span> Mail Alerts
             </button>
           </div>
         </Card>

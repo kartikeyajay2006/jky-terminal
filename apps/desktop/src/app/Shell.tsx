@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Rail } from "./Rail";
 import { StatusBar } from "./StatusBar";
 import { applyTheme, loadTheme, saveTheme, type ThemeId } from "./theme";
+import { NotificationTray } from "../features/notifications/NotificationTray";
 import "./Shell.css";
 
 interface ShellProps {
@@ -27,6 +28,7 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
       <Rail activeId={activeId} onSelect={onSelect ?? (() => {})} />
       <main className="shell__workspace">{children}</main>
       <StatusBar theme={theme} onThemeChange={changeTheme} shellName={shellLabel()} />
+      <NotificationTray />
     </div>
   );
 }

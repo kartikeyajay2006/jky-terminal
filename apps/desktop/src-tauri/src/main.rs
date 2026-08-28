@@ -1,26 +1,16 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
-mod alerts;
 mod audit_detail;
 mod listing;
 mod turn;
 mod state;
 
 use commands::{ai, pty, settings, store, vault};
-use alerts as mail;
 use state::AppState;
 use tauri::Manager;
 
 fn main() {
-    // Before anything else. The operating system runs this binary with
-    // --send-alerts every few minutes while the app is closed, and starting a
-    // window to send an email would be absurd — and on a headless session,
-    // impossible.
-    if std::env::args().any(|a| a == "--send-alerts") {
-        std::process::exit(alerts::run_headless());
-    }
-
     tauri::Builder::default()
         .setup(|app| {
             // Resolved by Tauri per platform: ~/.config/dev.jky.terminal on Linux,
@@ -60,14 +50,6 @@ fn main() {
             store::store_list_reminders,
             store::store_save_reminder,
             store::store_delete_reminder,
-            mail::mail_read_config,
-            mail::mail_save_config,
-            mail::mail_set_password,
-            mail::mail_has_password,
-            mail::mail_delete_password,
-            mail::mail_send_test,
-            mail::mail_send_otp,
-            mail::mail_verify_otp,
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");

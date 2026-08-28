@@ -7,6 +7,7 @@ import { useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
 import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
+import { useDashboard } from "./features/dashboard/dashboardStore";
 import { Settings } from "./features/settings/Settings";
 import { Terminal } from "./features/terminal/Terminal";
 import { getPlatform } from "./platform";
@@ -24,6 +25,12 @@ export function App() {
   // Bring back conversations from the last run before anything renders them.
   useEffect(() => {
     useChat.getState().restore();
+  }, []);
+
+  // Loaded here, not only inside the Dashboard, so the notification tray has
+  // events and reminders to check even if you never open the Dashboard tab.
+  useEffect(() => {
+    void useDashboard.getState().load();
   }, []);
 
   // Assistant events are subscribed here, not in the panel. A stream that

@@ -6,18 +6,9 @@ import { NotesPanel } from "./NotesPanel";
 import { TodosPanel } from "./TodosPanel";
 import { CalendarPanel } from "./CalendarPanel";
 import { RemindersPanel } from "./RemindersPanel";
-import { EventsPanel } from "./EventsPanel";
-import { MailAlertsPanel } from "./MailAlertsPanel";
 import "./Dashboard.css";
 
-export type DashPanel =
-  | "overview"
-  | "notes"
-  | "todos"
-  | "calendar"
-  | "events"
-  | "reminders"
-  | "mail";
+export type DashPanel = "overview" | "notes" | "todos" | "calendar" | "reminders";
 
 interface Section {
   id: DashPanel;
@@ -31,9 +22,7 @@ export const SECTIONS: Section[] = [
   { id: "notes", label: "Notes", glyph: "▤" },
   { id: "todos", label: "Todos", glyph: "☑" },
   { id: "calendar", label: "Calendar", glyph: "▦" },
-  { id: "events", label: "Upcoming Events", glyph: "★" },
   { id: "reminders", label: "Reminders", glyph: "◔" },
-  { id: "mail", label: "Mail Alerts", glyph: "✉" },
 ];
 
 export function Dashboard() {
@@ -81,9 +70,7 @@ export function Dashboard() {
         {panel === "notes" && <NotesPanel />}
         {panel === "todos" && <TodosPanel />}
         {panel === "calendar" && <CalendarPanel />}
-        {panel === "events" && <EventsPanel />}
         {panel === "reminders" && <RemindersPanel />}
-        {panel === "mail" && <MailAlertsPanel />}
       </div>
     </div>
   );
@@ -101,7 +88,7 @@ function Count({ id }: { id: DashPanel }) {
       ? notes
       : id === "todos"
         ? todos
-        : id === "events" || id === "calendar"
+        : id === "calendar"
           ? events
           : id === "reminders"
             ? reminders
