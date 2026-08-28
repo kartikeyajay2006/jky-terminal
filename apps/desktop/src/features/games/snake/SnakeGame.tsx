@@ -16,7 +16,7 @@ import {
   tick,
   turn,
   type SnakeState,
-} from "./snakeGame";
+} from "./rules";
 
 /** The board is drawn inside a border, so the grid is two cells bigger. */
 const PAD_X = 1;

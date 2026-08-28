@@ -11,7 +11,7 @@ import {
   statusLine,
   type Board,
   type Mark,
-} from "./ticTacToe";
+} from "./rules";
 
 /**
  * Tic tac toe, for two people at one keyboard.

@@ -17,7 +17,7 @@ import {
   start,
   step,
   type FlappyState,
-} from "./flappyGame";
+} from "./rules";
 
 /** Wing up and wing down, so the bird animates while it climbs. */
 const BIRD_UP = ["▄██▖", "▝██▘"];

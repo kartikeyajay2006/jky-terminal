@@ -15,7 +15,7 @@ import {
   tick,
   turn,
   type SnakeState,
-} from "./snakeGame";
+} from "./rules";
 
 const rand = makeRandom(13);
 

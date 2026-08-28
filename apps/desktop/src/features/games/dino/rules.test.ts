@@ -18,7 +18,7 @@ import {
   start,
   step,
   type DinoState,
-} from "./dinoGame";
+} from "./rules";
 
 const rand = () => makeRandom(42)();
 

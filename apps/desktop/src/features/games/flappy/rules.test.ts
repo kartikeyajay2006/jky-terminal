@@ -19,7 +19,7 @@ import {
   start,
   step,
   type FlappyState,
-} from "./flappyGame";
+} from "./rules";
 
 const rand = makeRandom(17);
 

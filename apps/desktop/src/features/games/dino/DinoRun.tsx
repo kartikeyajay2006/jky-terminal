@@ -19,7 +19,7 @@ import {
   start,
   step,
   type DinoState,
-} from "./dinoGame";
+} from "./rules";
 
 /** The dino, mid-stride. Two frames, so the legs move as it runs. */
 const DINO_A = [

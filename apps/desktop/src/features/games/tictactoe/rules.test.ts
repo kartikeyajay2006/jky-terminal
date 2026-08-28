@@ -9,7 +9,7 @@ import {
   statusLine,
   type Board,
   type Mark,
-} from "./ticTacToe";
+} from "./rules";
 
 /** Build a board from a nine-character sketch: X, O, or a dot for empty. */
 function board(sketch: string): Board {
