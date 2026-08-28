@@ -1,5 +1,6 @@
 import { describe as group, expect, it } from "vitest";
 import {
+  defaultTimeFor,
   defaultWhen,
   describe,
   localDate,
@@ -148,6 +149,53 @@ group("defaultWhen", () => {
       const now = new Date(2026, 7, 27, h, 45);
       const { date, time } = defaultWhen(now);
       expect(whyNot(date, time, now), `at ${h}:45`).toBeNull();
+    }
+  });
+});
+
+group("defaultTimeFor", () => {
+  it("opens on the next hour during the day", () => {
+    expect(defaultTimeFor("2026-08-27", new Date(2026, 7, 27, 14, 37))).toBe("15:00");
+  });
+
+  it("offers a plain morning slot for a future day", () => {
+    // A better guess for a day three weeks out than "an hour from now".
+    expect(defaultTimeFor("2026-09-20", new Date(2026, 7, 27, 14, 37))).toBe("09:00");
+  });
+
+  it("does not strand today's form on a time that has gone", () => {
+    // The bug this exists for: at ten to midnight the top of the next hour
+    // belongs to tomorrow, and the calendar owns the date. Pinning that time
+    // onto today opened the form on a moment already past, with the Add
+    // button dead before anything was typed.
+    const late = new Date(2026, 7, 27, 23, 50);
+    const time = defaultTimeFor("2026-08-27", late);
+    expect(whyNot("2026-08-27", time, late)).toBeNull();
+  });
+
+  it("offers the next minute when no whole hour is left in the day", () => {
+    expect(defaultTimeFor("2026-08-27", new Date(2026, 7, 27, 23, 12))).toBe("23:13");
+  });
+
+  it("never rolls past the end of the day it was asked about", () => {
+    expect(defaultTimeFor("2026-08-27", new Date(2026, 7, 27, 23, 59, 30))).toBe("23:59");
+  });
+
+  it("gives today a usable time at every minute of the last hour", () => {
+    // The property that actually matters, checked across the window where
+    // the old behaviour broke.
+    for (let m = 0; m < 60; m += 1) {
+      const now = new Date(2026, 7, 27, 23, m);
+      const time = defaultTimeFor("2026-08-27", now);
+      expect(whyNot("2026-08-27", time, now), `at 23:${m}`).toBeNull();
+    }
+  });
+
+  it("gives today a usable time at every hour of the clock", () => {
+    for (let h = 0; h < 24; h += 1) {
+      const now = new Date(2026, 7, 27, h, 45);
+      const time = defaultTimeFor("2026-08-27", now);
+      expect(whyNot("2026-08-27", time, now), `at ${h}:45`).toBeNull();
     }
   });
 });

@@ -2,7 +2,15 @@ import { useEffect, useState } from "react";
 import { EVENT_COLOURS, type Event, type EventColour } from "../../platform";
 import { newId } from "./dashboardStore";
 import { DatePicker } from "./DatePicker";
-import { defaultWhen, describe, localDate, relative, toInstant, whyNot } from "./eventTime";
+import {
+  defaultTimeFor,
+  defaultWhen,
+  describe,
+  localDate,
+  relative,
+  toInstant,
+  whyNot,
+} from "./eventTime";
 
 const LEADS = [
   { value: "", label: "No alert" },
@@ -33,7 +41,9 @@ export function EventForm({
 
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(day ?? opening.date);
-  const [time, setTime] = useState(opening.time);
+  // When a day is supplied the calendar owns the date, so the time has to be
+  // one that actually exists on that day — see `defaultTimeFor`.
+  const [time, setTime] = useState(day ? defaultTimeFor(day, now) : opening.time);
   const [colour, setColour] = useState<EventColour>("cyan");
   const [alert, setAlert] = useState<number | null>(null);
   const [tried, setTried] = useState(false);
@@ -42,7 +52,15 @@ export function EventForm({
   // render, so without this the form kept whichever day happened to be
   // selected when it mounted and every later click did nothing.
   useEffect(() => {
-    if (day) setDate(day);
+    if (!day) return;
+    setDate(day);
+    // Whatever time is in the box may not exist on the new day — picking
+    // today, late in the evening, can strand a morning time in the past.
+    // Only a time that has actually gone is replaced, so a deliberate one
+    // survives moving between days.
+    setTime((current) =>
+      whyNot(day, current) === null ? current : defaultTimeFor(day),
+    );
   }, [day]);
 
   const problem = whyNot(date, time);

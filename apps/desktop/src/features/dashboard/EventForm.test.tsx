@@ -103,16 +103,26 @@ describe("the event form", () => {
   });
 
   it("refuses a time earlier today, not just an earlier day", async () => {
-    const user = userEvent.setup();
-    const onAdd = vi.fn();
-    render(<EventForm day={localDate(new Date())} onAdd={onAdd} />);
+    // The clock is frozen at midday, so "this morning" is reliably in the
+    // past. Run for real and this test passes all day and then fails during
+    // the first minute after midnight, when 00:01 has not happened yet.
+    // Only Date is faked; the timers userEvent relies on stay real.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date(2026, 7, 27, 12, 0, 0));
+    try {
+      const user = userEvent.setup();
+      const onAdd = vi.fn();
+      render(<EventForm day="2026-08-27" onAdd={onAdd} />);
 
-    await user.type(screen.getByLabelText("Event title"), "This morning");
-    const time = screen.getByLabelText("Event time");
-    await user.clear(time);
-    await user.type(time, "00:01");
+      await user.type(screen.getByLabelText("Event title"), "This morning");
+      const time = screen.getByLabelText("Event time");
+      await user.clear(time);
+      await user.type(time, "00:01");
 
-    expect(screen.getByRole("button", { name: /add event/i })).toBeDisabled();
+      expect(screen.getByRole("button", { name: /add event/i })).toBeDisabled();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("adds an event that is still to come", async () => {

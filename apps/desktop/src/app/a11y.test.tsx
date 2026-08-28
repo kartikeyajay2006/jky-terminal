@@ -12,6 +12,7 @@ import { Settings } from "../features/settings/Settings";
 import { Assistant } from "../features/assistant/Assistant";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { SECTIONS } from "../features/dashboard/Dashboard";
+import { Games, GAMES } from "../features/games/Games";
 import { useDashboard } from "../features/dashboard/dashboardStore";
 import { ConversationHeader } from "../features/assistant/ConversationHeader";
 import { SessionList } from "../features/assistant/SessionList";
@@ -124,6 +125,20 @@ describe("accessibility", () => {
       const nav = screen.getByRole("navigation", { name: /dashboard sections/i });
       await user.click(
         within(nav).getByRole("button", { name: new RegExp(section.label, "i") }),
+      );
+      expect(await axe(container)).toHaveNoViolations();
+    });
+  }
+
+  // Every game, not just the one it opens on. Each is a different layout,
+  // and a playfield made of text needs its label to survive review.
+  for (const game of GAMES) {
+    it(`the ${game.label} game has no violations`, async () => {
+      const user = userEvent.setup();
+      const { container } = render(<Games />);
+      const nav = screen.getByRole("navigation", { name: "Games" });
+      await user.click(
+        within(nav).getByRole("button", { name: new RegExp(game.label, "i") }),
       );
       expect(await axe(container)).toHaveNoViolations();
     });

@@ -1,0 +1,586 @@
+/*
+ * The games suite.
+ *
+ * Every colour is a token, so all seven themes get the arcade for free. The
+ * paint classes at the bottom are the only place the grid renderer's names
+ * are turned into actual colours.
+ */
+
+.games {
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  height: 100%;
+  min-height: 0;
+  font-family: var(--font-mono);
+}
+
+/* ---- the sub-nav -------------------------------------------------------- */
+
+.games__nav {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s4) var(--s3);
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  overflow-y: auto;
+}
+
+.games__title {
+  margin: 0 0 var(--s3);
+  padding-left: var(--s2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.games__nav ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.games__link {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  width: 100%;
+  padding: var(--s2) var(--s2);
+  border: 1px solid transparent;
+  border-left: 2px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: left;
+  transition: all var(--fast) var(--ease);
+}
+
+.games__link:hover {
+  border-color: var(--line);
+  background: var(--surface-raised);
+  color: var(--text);
+}
+
+.games__link[aria-current="page"] {
+  border-left-color: var(--accent);
+  background: var(--surface-raised);
+  color: var(--accent);
+}
+
+.games__index {
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--text-dim);
+  font-size: 10px;
+  text-align: center;
+}
+
+.games__link[aria-current="page"] .games__index {
+  color: var(--accent);
+}
+
+.games__glyph {
+  flex-shrink: 0;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.games__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.games__score {
+  flex-shrink: 0;
+  padding: 1px 5px;
+  border-radius: 999px;
+  background: var(--accent-glow);
+  color: var(--accent);
+  font-size: 9px;
+  letter-spacing: 0.04em;
+}
+
+.games__note {
+  margin-top: auto;
+  padding: var(--s3) var(--s2) 0;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+  line-height: 1.6;
+  color: var(--text-dim);
+}
+
+.games__stage {
+  min-width: 0;
+  min-height: 0;
+  padding: var(--s4);
+  overflow: auto;
+}
+
+/* ---- the window each game sits in --------------------------------------- */
+
+.gw {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  min-width: 0;
+  padding: 0 0 var(--s4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--ground);
+  box-shadow: 0 18px 44px rgb(0 0 0 / 45%);
+  overflow: hidden;
+}
+
+.gw__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s4);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+
+.gw__lights {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.gw__light {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+}
+
+.gw__light--red { background: var(--danger); }
+.gw__light--amber { background: var(--warn); }
+.gw__light--green { background: var(--mint); }
+
+.gw__glyph {
+  flex-shrink: 0;
+  font-size: 15px;
+  line-height: 1;
+}
+
+.gw__title {
+  margin: 0;
+  flex-shrink: 0;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+  text-shadow: 0 0 14px var(--accent-glow);
+}
+
+.gw__hint {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--s3);
+  border-left: 1px solid var(--line-strong);
+  color: var(--text-dim);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gw__right {
+  flex-shrink: 0;
+}
+
+.gw__scores {
+  display: flex;
+  gap: var(--s2);
+  padding: var(--s1) var(--s2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--ground);
+}
+
+.gw__body {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: 0 var(--s4);
+  min-width: 0;
+}
+
+/* ---- readouts, panels, meters ------------------------------------------- */
+
+.readout {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 7ch;
+}
+
+.readout__label {
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--text-dim);
+}
+
+.readout__value {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--text);
+}
+
+.readout[data-tone="accent"] .readout__value { color: var(--accent); }
+.readout[data-tone="mint"] .readout__value { color: var(--mint); }
+.readout[data-tone="warn"] .readout__value { color: var(--warn); }
+.readout[data-tone="violet"] .readout__value { color: var(--violet); }
+
+.gpanel {
+  --panel-tone: var(--line-strong);
+  padding: var(--s2) var(--s3) var(--s3);
+  border: 1px solid var(--panel-tone);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+}
+
+.gpanel[data-tone="accent"] { --panel-tone: color-mix(in srgb, var(--accent) 45%, var(--line-strong)); }
+.gpanel[data-tone="mint"] { --panel-tone: color-mix(in srgb, var(--mint) 45%, var(--line-strong)); }
+.gpanel[data-tone="warn"] { --panel-tone: color-mix(in srgb, var(--warn) 45%, var(--line-strong)); }
+.gpanel[data-tone="violet"] { --panel-tone: color-mix(in srgb, var(--violet) 45%, var(--line-strong)); }
+.gpanel[data-tone="magenta"] { --panel-tone: color-mix(in srgb, var(--magenta) 45%, var(--line-strong)); }
+
+.gpanel__title {
+  margin: 0 0 var(--s2);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.gpanel__body {
+  display: grid;
+  gap: var(--s1);
+}
+
+.stat {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin: 0;
+  font-size: 11px;
+}
+
+.stat__key {
+  color: var(--text-dim);
+  letter-spacing: 0.08em;
+}
+
+.stat__value {
+  color: var(--text);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+.stat__lives {
+  display: flex;
+  gap: 3px;
+}
+
+.stat__heart {
+  color: var(--line-strong);
+  font-size: 13px;
+  transition: color var(--fast) var(--ease);
+}
+
+.stat__heart[data-on] {
+  color: var(--danger);
+}
+
+.meter {
+  display: flex;
+  gap: 2px;
+  margin-top: var(--s1);
+}
+
+.meter__cell {
+  width: 7px;
+  height: 12px;
+  border-radius: 1px;
+  background: var(--line);
+}
+
+.meter__cell[data-on] {
+  background: var(--mint);
+}
+
+.meter[data-tone="accent"] .meter__cell[data-on] { background: var(--accent); }
+.meter[data-tone="warn"] .meter__cell[data-on] { background: var(--warn); }
+
+.keys {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--s1);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.keys li {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.keys kbd {
+  min-width: 26px;
+  padding: 1px 4px;
+  border: 1px solid var(--line-strong);
+  border-radius: 3px;
+  background: var(--surface-raised);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-align: center;
+}
+
+/* ---- the playfield ------------------------------------------------------ */
+
+.gamescreen {
+  margin: 0;
+  padding: var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  /* Slightly darker than the window, so the playfield reads as a screen
+     inset into the cabinet rather than as more of the same surface. */
+  background: color-mix(in srgb, var(--ground) 92%, #000);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  /* clamp so the board fits a narrow window without a horizontal scrollbar,
+     and does not become comically large on an ultrawide one. */
+  font-size: clamp(7px, 0.95vw, 13px);
+  line-height: 1.08;
+  letter-spacing: 0;
+  white-space: pre;
+  overflow: hidden;
+  /* The board is drawn as text; selecting it mid-game does nothing useful
+     and the highlight obscures the picture. */
+  user-select: none;
+  box-shadow: inset 0 0 60px rgb(0 0 0 / 55%);
+}
+
+.gamescreen:focus {
+  outline: none;
+}
+
+.game-layout {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s3);
+  min-width: 0;
+}
+
+.game-layout--stacked {
+  flex-direction: column;
+}
+
+.game-layout .gamescreen {
+  flex: 1;
+  min-width: 0;
+}
+
+.game-side {
+  flex-shrink: 0;
+  width: 170px;
+  display: grid;
+  gap: var(--s3);
+  align-content: start;
+}
+
+.game-strip {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.game-strip .gpanel {
+  flex-shrink: 0;
+  min-width: 150px;
+}
+
+.game-tip {
+  flex: 1;
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  border: 1px dashed color-mix(in srgb, var(--mint) 40%, var(--line-strong));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--mint) 6%, transparent);
+  color: var(--mint);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-align: center;
+}
+
+/* ---- tic tac toe -------------------------------------------------------- */
+
+.ttt__tagline {
+  color: var(--text-dim);
+  font-size: 11px;
+  font-style: italic;
+}
+
+.ttt__middle {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  justify-items: center;
+  align-content: start;
+  gap: var(--s3);
+}
+
+.ttt__status {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+}
+
+.ttt__status[data-over] {
+  color: var(--accent);
+  text-shadow: 0 0 16px var(--accent-glow);
+}
+
+.ttt__board {
+  display: grid;
+  grid-template-columns: repeat(3, 74px);
+  grid-template-rows: repeat(3, 74px);
+  gap: 4px;
+  padding: var(--s2);
+  border: 1px solid color-mix(in srgb, var(--violet) 50%, var(--line-strong));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--ground) 92%, #000);
+}
+
+/* The rows exist for the grid's ARIA structure, not for layout — the board
+   above does the arranging, so the row contributes nothing but its children. */
+.ttt__row {
+  display: contents;
+}
+
+.ttt__cell {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  transition: all var(--fast) var(--ease);
+}
+
+.ttt__cell:not(:disabled):hover {
+  border-color: var(--accent);
+  background: var(--surface-raised);
+}
+
+.ttt__cell[data-mark="X"] {
+  color: var(--accent);
+  text-shadow: 0 0 18px var(--accent-glow);
+}
+
+.ttt__cell[data-mark="O"] {
+  color: var(--magenta);
+  text-shadow: 0 0 18px color-mix(in srgb, var(--magenta) 30%, transparent);
+}
+
+.ttt__cell[data-won] {
+  border-color: var(--mint);
+  background: color-mix(in srgb, var(--mint) 14%, var(--surface));
+}
+
+.ttt__cell:disabled {
+  cursor: default;
+}
+
+.ttt__actions {
+  display: flex;
+  gap: var(--s2);
+}
+
+.ttt__how {
+  margin: 0 0 var(--s2);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+.ttt__guide {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1px;
+  padding: var(--s1);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ground);
+}
+
+.ttt__guide-cell {
+  display: grid;
+  place-items: center;
+  padding: var(--s1) 0;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.ttt__trophy {
+  margin: var(--s3) 0 0;
+  color: var(--warn);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  line-height: 1.1;
+  text-align: center;
+  white-space: pre;
+}
+
+/* ---- the grid renderer's paint classes ---------------------------------- */
+
+.gp-bg { color: transparent; }
+.gp-dim { color: var(--text-dim); }
+.gp-muted { color: var(--text-muted); }
+.gp-text { color: var(--text); }
+.gp-accent { color: var(--accent); }
+.gp-accent-dim { color: var(--accent-dim); }
+.gp-mint { color: var(--mint); }
+.gp-warn { color: var(--warn); }
+.gp-violet { color: var(--violet); }
+.gp-magenta { color: var(--magenta); }
+.gp-danger { color: var(--danger); }
+
+@media (max-width: 1100px) {
+  .games {
+    grid-template-columns: 60px minmax(0, 1fr);
+  }
+  .games__title,
+  .games__label,
+  .games__score,
+  .games__note {
+    display: none;
+  }
+  .games__link {
+    justify-content: center;
+  }
+  .game-side {
+    width: 140px;
+  }
+}

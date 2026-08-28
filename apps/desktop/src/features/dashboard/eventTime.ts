@@ -109,3 +109,35 @@ export function defaultWhen(now: Date = new Date()): { date: string; time: strin
   d.setHours(d.getHours() + 1, 0, 0, 0);
   return { date: localDate(d), time: localTime(d) };
 }
+
+/** A sensible hour to suggest for a day that is not today. */
+const MORNING = "09:00";
+
+/**
+ * The time to open on for a given day.
+ *
+ * `defaultWhen` alone is not enough once a day is being chosen elsewhere —
+ * the calendar owns the date, and at ten to midnight the top of the next
+ * hour belongs to tomorrow. Pinning that time onto today produced a form
+ * pre-filled with a moment that had already passed and an Add button that
+ * was dead before the user typed anything.
+ *
+ * So: a future day opens on a plain morning slot, which is a better guess
+ * for a day three weeks out than "an hour from now" ever was, and today
+ * opens on the next hour only while one is still left.
+ */
+export function defaultTimeFor(day: string, now: Date = new Date()): string {
+  const today = localDate(now);
+  if (day > today) return MORNING;
+  if (day < today) return MORNING;
+
+  const nextHour = new Date(now);
+  nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0);
+  if (localDate(nextHour) === today) return localTime(nextHour);
+
+  // The last hour of the day: no whole hour is left, so offer the next
+  // minute instead of a time that has gone.
+  const nextMinute = new Date(now.getTime() + 60_000);
+  if (localDate(nextMinute) !== today) return "23:59";
+  return localTime(nextMinute);
+}

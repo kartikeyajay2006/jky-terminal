@@ -8,6 +8,7 @@ import { useShortcuts } from "./app/useShortcuts";
 import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
+import { Games } from "./features/games/Games";
 import { Settings } from "./features/settings/Settings";
 import { Terminal } from "./features/terminal/Terminal";
 import { getPlatform } from "./platform";
@@ -111,6 +112,10 @@ export function App() {
       {section === "settings" && <Settings />}
       {section === "dashboard" && <Dashboard />}
       {section === "assistant" && <Assistant />}
+      {/* Unmounted when you leave, which stops its frame loop dead: three of
+          the four games animate, and one left running in the background
+          would burn a core painting a board nobody is looking at. */}
+      {section === "games" && <Games />}
     </Shell>
   );
 }
