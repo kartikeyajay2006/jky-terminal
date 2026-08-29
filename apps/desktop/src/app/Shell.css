@@ -92,45 +92,118 @@
   font-style: italic;
 }
 
+/*
+ * The editor behind the mark.
+ *
+ * The rail is 180px and this is wider, so it necessarily reaches over the
+ * workspace. That is fine — it is a popover — but it has to *look* deliberate
+ * rather than like a box that has fallen out of the sidebar: hence the offset
+ * from the rail edge, the pointer tying it back to the mark, and enough
+ * elevation that it plainly sits above rather than beside.
+ */
 .ident__pop {
   position: absolute;
   z-index: 70;
-  top: calc(100% + var(--s2));
-  left: 0;
-  width: 240px;
-  padding: var(--s3);
+  top: calc(100% + var(--s3));
+  /* Off the rail's own left padding, so it lines up with the rail's contents
+     rather than butting against the window edge. */
+  left: calc(var(--s2) * -1);
+  width: 268px;
+  padding: var(--s4);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
-  background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
-  box-shadow: 0 18px 40px rgb(0 0 0 / 55%);
+  background: color-mix(in srgb, var(--surface-raised) 97%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 24px 56px rgb(0 0 0 / 62%),
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
   display: grid;
-  gap: var(--s2);
+  gap: var(--s3);
+  text-align: left;
+  animation: ident-in var(--normal) var(--ease);
+}
+
+/* A pointer up to the mark, so the panel reads as belonging to it. */
+.ident__pop::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: 24px;
+  width: 9px;
+  height: 9px;
+  transform: rotate(45deg);
+  border-top: 1px solid var(--line-strong);
+  border-left: 1px solid var(--line-strong);
+  background: var(--surface-raised);
+}
+
+@keyframes ident-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ident__pop {
+    animation: none;
+  }
+}
+
+.ident__head {
+  margin: 0;
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
 }
 
 .ident__field {
   display: grid;
-  gap: 3px;
+  gap: var(--s1);
 }
 
 .ident__field span {
+  font-family: var(--font-sans);
   font-size: 9px;
+  font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--text-dim);
 }
 
+/* The rail's inputs are narrower than the settings screen's, so they get
+   their own sizing rather than inheriting a form field built for a panel. */
+.ident__field .input {
+  width: 100%;
+  padding: var(--s2);
+  font-family: var(--font-sans);
+  font-size: 13px;
+}
+
 .ident__hint {
   margin: 0;
+  padding-top: var(--s1);
+  border-top: 1px solid var(--line);
+  font-family: var(--font-sans);
   font-size: 10px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: var(--text-dim);
 }
 
 .ident__actions {
   display: flex;
   gap: var(--s2);
+}
+
+.ident__actions .btn {
+  flex: 1;
+  justify-content: center;
 }
 
 .rail__list {

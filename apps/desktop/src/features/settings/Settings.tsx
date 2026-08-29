@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Select } from "../../components/Select";
 import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { getPlatform, type CommandSpec } from "../../platform";
@@ -10,6 +10,8 @@ import {
   announceTermFont,
   loadTermFont,
   saveTermFont,
+  isFontAvailable,
+  primaryFace,
   stackFor,
   type TermFont,
 } from "../terminal/termFont";
@@ -133,6 +135,16 @@ export function Settings() {
 function TerminalSettings() {
   const [font, setFont] = useState<TermFont>(loadTermFont);
 
+  // Measured once. Which faces a machine has does not change while a settings
+  // panel is open, and measuring is a canvas draw per candidate.
+  const installed = useMemo(() => {
+    const out = new Map<string, boolean | null>();
+    for (const f of TERM_FONTS) {
+      out.set(f.id, f.stack ? isFontAvailable(primaryFace(f.stack)) : null);
+    }
+    return out;
+  }, []);
+
   function change(next: TermFont) {
     const saved = saveTermFont(next);
     setFont(saved);
@@ -202,18 +214,43 @@ function TerminalSettings() {
         <Select
           label="Terminal typeface"
           value={font.family}
-          options={TERM_FONTS.map((f) => ({ value: f.id, label: f.label }))}
+          options={TERM_FONTS.map((f) => ({
+            value: f.id,
+            // A face the machine does not have is still offered — this is the
+            // same settings screen on three platforms — but saying so is what
+            // stops a silent fallback reading as a broken setting.
+            label:
+              installed.get(f.id) === false ? `${f.label}  (not installed)` : f.label,
+          }))}
           onChange={(id) => change({ ...font, family: id })}
         />
-        <p className="hint">
-          {choice.note}. A face this machine does not have falls back to
-          another monospace — never to a proportional one, which in a terminal
-          is not a cosmetic problem.
-        </p>
+
+        {installed.get(font.family) === false ? (
+          <p className="hint hint--warn">
+            <strong>{choice.label} is not on this machine</strong>, so the
+            terminal is falling back to another monospace and will look
+            unchanged. Install it, or pick one marked as available.
+          </p>
+        ) : (
+          <p className="hint">
+            {choice.note}. A face this machine does not have falls back to
+            another monospace — never to a proportional one, which in a
+            terminal is not a cosmetic problem.
+          </p>
+        )}
       </div>
 
       <div className="field">
-        <span className="field__label">Preview</span>
+        <span className="field__label">
+          Preview
+          <span className="field__note">
+            {font.family === "system"
+              ? `resolves to ${primaryFace(stackFor("system"))}`
+              : installed.get(font.family) === false
+                ? "falling back — this is not the face you chose"
+                : `showing ${choice.label}`}
+          </span>
+        </span>
         <pre
           className="fontpreview"
           style={{ fontFamily: stackFor(font.family), fontSize: `${font.size}px` }}

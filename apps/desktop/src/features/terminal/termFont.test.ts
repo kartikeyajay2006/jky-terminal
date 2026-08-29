@@ -8,8 +8,10 @@ import {
   TERM_FONT_EVENT,
   announceTermFont,
   clampSize,
+  isFontAvailable,
   isKnownFamily,
   loadTermFont,
+  primaryFace,
   saveTermFont,
   stackFor,
 } from "./termFont";
@@ -152,5 +154,80 @@ describe("telling open terminals", () => {
     expect(event.detail).toEqual({ size: 18, family: "fira" });
 
     window.removeEventListener(TERM_FONT_EVENT, heard);
+  });
+});
+
+describe("naming the face in a stack", () => {
+  it("takes the first, which is the one being asked for", () => {
+    expect(primaryFace('"Fira Code", ui-monospace, monospace')).toBe("Fira Code");
+  });
+
+  it("strips the quotes a CSS stack needs and a font name does not", () => {
+    expect(primaryFace('"JetBrains Mono", monospace')).toBe("JetBrains Mono");
+    expect(primaryFace("Consolas, monospace")).toBe("Consolas");
+  });
+
+  it("copes with an empty stack", () => {
+    expect(primaryFace("")).toBe("");
+  });
+});
+
+describe("detecting whether a face is installed", () => {
+  it("says it cannot tell when there is no canvas to measure with", () => {
+    // jsdom has no 2d context. "I do not know" and "it is missing" must not
+    // look the same to a caller — one of them would put a wrong warning on
+    // screen.
+    expect(isFontAvailable("Fira Code")).toBeNull();
+  });
+
+  it("says it cannot tell for an empty name", () => {
+    expect(isFontAvailable("")).toBeNull();
+    expect(isFontAvailable("   ")).toBeNull();
+  });
+
+  it("never throws, whatever it is handed", () => {
+    for (const name of ["a,b", " ", "x".repeat(500)]) {
+      expect(() => isFontAvailable(name)).not.toThrow();
+    }
+  });
+
+  it("reads a difference in width as the face being present", () => {
+    // The measurement itself, against a stub context: a candidate that
+    // resolves to something other than the generic measures differently, and
+    // one that is missing measures identically because it fell back.
+    const stub = {
+      font: "",
+      measureText(text: string) {
+        void text;
+        return { width: stub.font.includes("Installed") ? 200 : 100 };
+      },
+    };
+
+    const original = HTMLCanvasElement.prototype.getContext;
+    // @ts-expect-error a deliberately narrow stub
+    HTMLCanvasElement.prototype.getContext = () => stub;
+
+    expect(isFontAvailable("Installed")).toBe(true);
+    expect(isFontAvailable("Missing")).toBe(false);
+
+    HTMLCanvasElement.prototype.getContext = original;
+  });
+});
+
+describe("the faces offered", () => {
+  it("covers all three platforms, not only the one it was written on", () => {
+    const ids = TERM_FONTS.map((f) => f.id);
+    expect(ids).toContain("consolas");
+    expect(ids).toContain("menlo");
+    expect(ids).toContain("dejavu");
+  });
+
+  it("includes faces that are genuinely common, not only designer ones", () => {
+    // The first version offered four faces that are on almost no Linux box,
+    // so most of the menu silently fell back and read as a broken setting.
+    const ids = TERM_FONTS.map((f) => f.id);
+    for (const common of ["dejavu", "liberation", "noto", "courier"]) {
+      expect(ids, common).toContain(common);
+    }
   });
 });

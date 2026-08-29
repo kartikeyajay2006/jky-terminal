@@ -446,3 +446,22 @@
   user-select: none;
   box-shadow: inset 0 0 40px rgb(0 0 0 / 45%);
 }
+
+/* A hint that is a warning rather than an aside. */
+.hint--warn {
+  padding: var(--s2);
+  border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line-strong));
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--warn) 8%, transparent);
+  color: var(--warn);
+}
+
+/* The right-hand half of a field label: what the control is currently doing. */
+.field__note {
+  float: right;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}

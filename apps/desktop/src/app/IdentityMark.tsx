@@ -92,6 +92,8 @@ export function IdentityMark() {
 
       {open && (
         <div className="ident__pop" role="dialog" aria-label="Your name">
+          <p className="ident__head">Who this copy belongs to</p>
+
           <label className="ident__field">
             <span>Name</span>
             <input

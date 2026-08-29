@@ -47,7 +47,7 @@ export const TERM_FONTS: TermFontChoice[] = [
     label: "App default",
     // The token the rest of the app uses, resolved at apply time.
     stack: "",
-    note: "JetBrains Mono, then whatever this machine has",
+    note: "Whatever the app's own monospace resolves to on this machine",
   },
   {
     id: "jetbrains",
@@ -62,22 +62,64 @@ export const TERM_FONTS: TermFontChoice[] = [
     note: "Ligatures for arrows and comparisons",
   },
   {
+    id: "source",
+    label: "Source Code Pro",
+    stack: '"Source Code Pro", ui-monospace, monospace',
+    note: "Adobe's, and widely packaged on Linux",
+  },
+  {
+    id: "dejavu",
+    label: "DejaVu Sans Mono",
+    stack: '"DejaVu Sans Mono", ui-monospace, monospace',
+    note: "On practically every Linux install",
+  },
+  {
+    id: "liberation",
+    label: "Liberation Mono",
+    stack: '"Liberation Mono", ui-monospace, monospace',
+    note: "Metric-compatible with Courier New",
+  },
+  {
+    id: "noto",
+    label: "Noto Sans Mono",
+    stack: '"Noto Sans Mono", ui-monospace, monospace',
+    note: "Very broad character coverage",
+  },
+  {
+    id: "hack",
+    label: "Hack",
+    stack: '"Hack", ui-monospace, monospace',
+    note: "Drawn for source code at small sizes",
+  },
+  {
+    id: "inconsolata",
+    label: "Inconsolata",
+    stack: '"Inconsolata", ui-monospace, monospace',
+    note: "Narrow, so more fits across",
+  },
+  {
     id: "cascadia",
     label: "Cascadia Code",
     stack: '"Cascadia Code", "Cascadia Mono", ui-monospace, monospace',
     note: "Ships with Windows Terminal",
   },
   {
+    id: "consolas",
+    label: "Consolas",
+    stack: "Consolas, ui-monospace, monospace",
+    note: "The Windows standard",
+  },
+  {
+    id: "menlo",
+    label: "Menlo",
+    stack: "Menlo, ui-monospace, monospace",
+    note: "The macOS standard",
+  },
+  {
     id: "sf",
     label: "SF Mono",
     stack: '"SF Mono", ui-monospace, Menlo, monospace',
-    note: "The macOS terminal face",
-  },
-  {
-    id: "ubuntu",
-    label: "Ubuntu Mono",
-    stack: '"Ubuntu Mono", ui-monospace, monospace',
-    note: "Narrow, so more fits across",
+    note: "Apple's, if Xcode has put it there",
   },
   {
     id: "courier",
@@ -86,6 +128,65 @@ export const TERM_FONTS: TermFontChoice[] = [
     note: "On every machine ever made",
   },
 ];
+
+/**
+ * Is a face actually on this machine?
+ *
+ * Worth answering, because a stack that falls back looks like a setting that
+ * does nothing: pick a font the machine has never heard of and the terminal
+ * carries on in exactly the face it was already using, which reads as a bug
+ * rather than as an absent font.
+ *
+ * Measured rather than asked, since there is no API for it. A string is drawn
+ * in a known generic and then in the candidate backed by that same generic; if
+ * the candidate exists the widths differ, and if it does not they are
+ * identical because the candidate silently resolved to the generic.
+ *
+ * Returns null when it cannot tell — no canvas, as in jsdom — because "I do
+ * not know" and "it is missing" should not look the same to a caller.
+ */
+export function isFontAvailable(family: string): boolean | null {
+  const name = family.trim();
+  if (!name) return null;
+
+  let context: CanvasRenderingContext2D | null = null;
+  try {
+    context = document.createElement("canvas").getContext("2d");
+  } catch {
+    return null;
+  }
+  if (!context || typeof context.measureText !== "function") return null;
+
+  // Characters chosen to vary between faces: a wide letter, a narrow one, and
+  // digits, which is where monospace designs differ most from each other.
+  const sample = "mmmiiilll0123456789WW";
+
+  try {
+    for (const generic of ["monospace", "sans-serif", "serif"]) {
+      context.font = `72px ${generic}`;
+      const base = context.measureText(sample).width;
+      if (!base) return null;
+
+      context.font = `72px "${name}", ${generic}`;
+      if (context.measureText(sample).width !== base) return true;
+    }
+  } catch {
+    return null;
+  }
+
+  return false;
+}
+
+/**
+ * The first face named in a stack, which is the one being asked for.
+ *
+ * The rest of a stack is fallbacks, and whether *those* are present is not
+ * interesting — one of them always is.
+ */
+export function primaryFace(stack: string): string {
+  const first = stack.split(",")[0] ?? "";
+  return first.trim().replace(/^["']|["']$/g, "");
+}
 
 export const DEFAULT_FONT: TermFont = { size: DEFAULT_SIZE, family: "system" };
 
