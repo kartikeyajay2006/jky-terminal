@@ -1,12 +1,14 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Palette } from "./Palette";
 import { buildCommands, searchText } from "./commands";
 import { useNav } from "../../app/navStore";
 import { useTabs } from "../../app/tabStore";
 import { useOpenGame } from "../games/openStore";
 import { THEMES } from "../../app/theme";
+import { __setPlatformForTests, createWebPlatform } from "../../platform";
+import { useDashboard } from "../dashboard/dashboardStore";
 
 function rows() {
   return screen.getAllByRole("option");
@@ -227,5 +229,163 @@ describe("the palette", () => {
     render(<Palette onClose={() => {}} />);
     await user.type(screen.getByLabelText(/search commands/i), "new terminal");
     expect(within(rows()[0]).getByText("Ctrl+T")).toBeInTheDocument();
+  });
+});
+
+describe("commands that need a line of text", () => {
+  beforeEach(() => {
+    localStorage.clear();
+    __setPlatformForTests(createWebPlatform());
+    useDashboard.setState({
+      notes: [],
+      todos: [],
+      events: [],
+      reminders: [],
+      loaded: true,
+      errors: {},
+    });
+  });
+
+  afterEach(() => {
+    __setPlatformForTests(null);
+    localStorage.clear();
+  });
+
+  it("offers to create each kind of thing", () => {
+    const labels = buildCommands().map((c) => c.label);
+    expect(labels).toContain("New note…");
+    expect(labels).toContain("New todo…");
+    expect(labels).toContain("New reminder…");
+  });
+
+  it("asks for the text instead of running straight away", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Palette onClose={onClose} />);
+
+    await user.type(screen.getByLabelText("Search commands"), "new note");
+    await user.keyboard("{Enter}");
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Title of the note")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Search commands")).not.toBeInTheDocument();
+  });
+
+  it("writes what was typed, through the same verb the shell sends", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Palette onClose={onClose} />);
+
+    await user.type(screen.getByLabelText("Search commands"), "new note");
+    await user.keyboard("{Enter}");
+    await user.type(screen.getByLabelText("Title of the note"), "Shopping list");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => {
+      expect(useDashboard.getState().notes[0]?.title).toBe("Shopping list");
+    });
+    expect(onClose).toHaveBeenCalled();
+  });
+
+  it("stays open and says why when the answer is not usable", async () => {
+    // A mistyped reminder time is the one failure a person can reach from
+    // here. Closing would take the message with it and it would look as
+    // though nothing had happened.
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Palette onClose={onClose} />);
+
+    await user.type(screen.getByLabelText("Search commands"), "new reminder");
+    await user.keyboard("{Enter}");
+    await user.type(screen.getByLabelText("07:00 Go for a run"), "7pm Run");
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("HH:MM");
+    expect(onClose).not.toHaveBeenCalled();
+    expect(useDashboard.getState().reminders).toHaveLength(0);
+  });
+
+  it("clears the complaint as soon as the answer is edited", async () => {
+    const user = userEvent.setup();
+    render(<Palette onClose={vi.fn()} />);
+
+    await user.type(screen.getByLabelText("Search commands"), "new reminder");
+    await user.keyboard("{Enter}");
+    const box = screen.getByLabelText("07:00 Go for a run");
+    await user.type(box, "7pm Run");
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+
+    await user.type(box, "!");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+  });
+
+  it("does nothing on an empty answer", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Palette onClose={onClose} />);
+
+    await user.type(screen.getByLabelText("Search commands"), "new note");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Enter}");
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(useDashboard.getState().notes).toHaveLength(0);
+  });
+
+  it("goes back to the list on escape rather than closing", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+    render(<Palette onClose={onClose} />);
+
+    await user.type(screen.getByLabelText("Search commands"), "new note");
+    await user.keyboard("{Enter}");
+    await user.keyboard("{Escape}");
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Search commands")).toBeInTheDocument();
+  });
+
+  it("offers to tick each existing todo, and to untick a ticked one", async () => {
+    await useDashboard.getState().saveTodo({
+      id: "t1",
+      text: "Buy milk",
+      done: false,
+      created_at: "2026-08-28T09:00:00Z",
+    });
+    expect(buildCommands().map((c) => c.label)).toContain("Tick · Buy milk");
+
+    await useDashboard.getState().saveTodo({
+      id: "t1",
+      text: "Buy milk",
+      done: true,
+      created_at: "2026-08-28T09:00:00Z",
+    });
+    expect(buildCommands().map((c) => c.label)).toContain("Untick · Buy milk");
+  });
+
+  it("numbers reminders the way the listing does", async () => {
+    // The row binds a handle at build time. If it bound the array position
+    // instead of the listing position, ticking one row would tick another.
+    const store = useDashboard.getState();
+    await store.saveReminder({ id: "r1", at: "18:00", text: "Evening", done: false });
+    await store.saveReminder({ id: "r2", at: "07:00", text: "Morning", done: false });
+
+    const tick = buildCommands().find((c) => c.label.includes("Morning"));
+    tick?.run?.();
+
+    await waitFor(() => {
+      const after = useDashboard.getState().reminders;
+      expect(after.find((r) => r.id === "r2")?.done).toBe(true);
+      expect(after.find((r) => r.id === "r1")?.done).toBe(false);
+    });
+  });
+
+  it("does not offer to delete anything", () => {
+    // Deleting from a fuzzy list on one Enter is too close to an accident.
+    // It stays in the Dashboard, which asks first, and in the shell, where
+    // you type `rm` and a number.
+    const labels = buildCommands().map((c) => c.label.toLowerCase());
+    expect(labels.some((l) => l.startsWith("delete"))).toBe(false);
   });
 });

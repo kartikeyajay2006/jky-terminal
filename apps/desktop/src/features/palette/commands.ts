@@ -4,9 +4,30 @@ import { THEMES, applyTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { useOpenGame } from "../games/openStore";
 import { GAMES } from "../games/Games";
 import { SECTIONS } from "../dashboard/Dashboard";
+import { useDashboard } from "../dashboard/dashboardStore";
+import { runShellCommand } from "../terminal/runShellCommand";
+import { byReminderTime, type CommandResult } from "../terminal/shellCommand";
 import type { GameId } from "../games/scores";
 
-export type PaletteGroup = "Go to" | "Games" | "Terminal" | "Theme";
+export type PaletteGroup =
+  | "Go to"
+  | "Games"
+  | "Terminal"
+  | "Theme"
+  | "Notes"
+  | "Todos"
+  | "Reminders";
+
+/** A command that needs a line of text before it can run. */
+export interface PaletteAsk {
+  /** Shown in the input while it is empty. */
+  placeholder: string;
+  /**
+   * A returned failure keeps the palette open and shows the message, so a
+   * mistyped reminder time says so rather than appearing to do nothing.
+   */
+  run: (value: string) => CommandResult | void | Promise<CommandResult | void>;
+}
 
 export interface PaletteCommand {
   id: string;
@@ -15,7 +36,10 @@ export interface PaletteCommand {
   group: PaletteGroup;
   /** A keyboard shortcut to show on the right, when one exists. */
   hint?: string;
-  run: () => void;
+  /** Runs the moment it is chosen. */
+  run?: () => void;
+  /** Asks for a line first, then runs with it. Mutually exclusive with `run`. */
+  ask?: PaletteAsk;
 }
 
 /** The whole app, as a flat list of things you can do from one box. */
@@ -103,6 +127,108 @@ export function buildCommands(): PaletteCommand[] {
       const { activeId, closeTab } = useTabs.getState();
       if (activeId) closeTab(activeId);
     },
+  });
+
+  // --- writing, through the same verbs the shell sends ---
+  //
+  // Every row here calls `runShellCommand`, so there is one implementation of
+  // "add a todo" rather than two that drift. The handle is the row's position
+  // in the listing, which is what the verb resolves and what `jky todos`
+  // prints beside it.
+  //
+  // Deleting is deliberately absent. In the shell you type `rm` and a number;
+  // here a fuzzy match plus one Enter is close enough to an accident, and the
+  // store's rule is that nothing goes until the user says so. Deletion stays
+  // in the Dashboard, which asks first.
+  const dash = useDashboard.getState();
+
+  out.push({
+    id: "note:new",
+    label: "New note…",
+    group: "Notes",
+    ask: {
+      placeholder: "Title of the note",
+      run: (title) => runShellCommand({ verb: "note.new", args: [title] }),
+    },
+  });
+  out.push({
+    id: "todo:new",
+    label: "New todo…",
+    group: "Todos",
+    ask: {
+      placeholder: "What needs doing",
+      run: (text) => runShellCommand({ verb: "todo.add", args: [text] }),
+    },
+  });
+  out.push({
+    id: "reminder:new",
+    label: "New reminder…",
+    group: "Reminders",
+    ask: {
+      // One line rather than two boxes: the time is the first word, exactly
+      // as the shell takes it.
+      placeholder: "07:00 Go for a run",
+      run: (line) => {
+        const [at, ...rest] = line.trim().split(/\s+/);
+        return runShellCommand({
+          verb: "reminder.add",
+          args: [at ?? "", rest.join(" ")],
+        });
+      },
+    },
+  });
+
+  dash.notes.forEach((note, i) => {
+    const handle = String(i + 1);
+    out.push({
+      id: `note:write:${note.id}`,
+      label: `Append to · ${note.title}`,
+      group: "Notes",
+      ask: {
+        placeholder: `A line to add to “${note.title}”`,
+        run: (text) => runShellCommand({ verb: "note.write", args: [handle, text] }),
+      },
+    });
+    out.push({
+      id: `note:rename:${note.id}`,
+      label: `Rename · ${note.title}`,
+      group: "Notes",
+      ask: {
+        placeholder: "A new title",
+        run: (title) => runShellCommand({ verb: "note.rename", args: [handle, title] }),
+      },
+    });
+  });
+
+  dash.todos.forEach((todo, i) => {
+    const handle = String(i + 1);
+    out.push({
+      id: `todo:toggle:${todo.id}`,
+      label: `${todo.done ? "Untick" : "Tick"} · ${todo.text}`,
+      group: "Todos",
+      run: () => {
+        void runShellCommand({
+          verb: todo.done ? "todo.undone" : "todo.done",
+          args: [handle],
+        });
+      },
+    });
+  });
+
+  // Sorted the way the listing is, so the handle means the same thing here.
+  [...dash.reminders].sort(byReminderTime).forEach((reminder, i) => {
+    const handle = String(i + 1);
+    out.push({
+      id: `reminder:toggle:${reminder.id}`,
+      label: `${reminder.done ? "Untick" : "Tick"} · ${reminder.at} ${reminder.text}`,
+      group: "Reminders",
+      run: () => {
+        void runShellCommand({
+          verb: reminder.done ? "reminder.undone" : "reminder.done",
+          args: [handle],
+        });
+      },
+    });
   });
 
   // --- themes ---

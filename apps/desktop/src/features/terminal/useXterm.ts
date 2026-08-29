@@ -12,6 +12,8 @@ import { buildBanner } from "./banner";
 import { isAppShortcut } from "../../app/shortcuts";
 import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFont";
 import { copyText, readText } from "./clipboard";
+import { decodeCommand, renderResult } from "./shellCommand";
+import { runShellCommand } from "./runShellCommand";
 import type { SearchHits } from "./TerminalSearch";
 
 /** What a mounted terminal lets the surrounding UI do to it. */
@@ -163,6 +165,28 @@ export function useXterm(
       const game = decodeGamePayload(payload);
       if (game) {
         useOpenGame.getState().open(game);
+        return true;
+      }
+
+      // The write commands — `jky note new`, `jky todo add` and the rest.
+      // Their result is printed straight back onto this terminal, because an
+      // escape sequence is one-way and the shell cannot see what happened.
+      const command = decodeCommand(payload);
+      if (command) {
+        void runShellCommand(command)
+          .then((result) =>
+            xterm.write(
+              renderResult(result, tokens.getPropertyValue("--accent")),
+            ),
+          )
+          .catch(() =>
+            xterm.write(
+              renderResult(
+                { ok: false, message: "that could not be done" },
+                tokens.getPropertyValue("--accent"),
+              ),
+            ),
+          );
         return true;
       }
 

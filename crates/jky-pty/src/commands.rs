@@ -74,6 +74,103 @@ const COMMANDS: &[CommandSpec] = &[
                  Nothing is removed for being finished.",
     },
     CommandSpec {
+        names: &["jky note new", "jky note add"],
+        usage: "jky note new <title>",
+        summary: "Create a note without leaving the shell",
+        detail: "Everything after new is the title, so quotes are not needed. \
+                 It appears in the Notes panel at once — there is no second way \
+                 to write a note, this goes through the same store the panel \
+                 does.",
+    },
+    CommandSpec {
+        names: &["jky note write", "jky note append"],
+        usage: "jky note write <n> <text>",
+        summary: "Add a line to a note",
+        detail: "Appended, never replaced: a command that silently discarded a \
+                 note's body the moment you added a line to it would be a trap. \
+                 The number is the one jky notes prints beside it.",
+    },
+    CommandSpec {
+        names: &["jky note rename"],
+        usage: "jky note rename <n> <title>",
+        summary: "Give a note a new title",
+        detail: "The body is untouched. Numbers follow the listing, so run jky \
+                 notes first if anything has been deleted since.",
+    },
+    CommandSpec {
+        names: &["jky note rm", "jky note delete"],
+        usage: "jky note rm <n>",
+        summary: "Delete a note",
+        detail: "Immediate and not recoverable, unlike the Dashboard, which \
+                 asks first. A shell is a place where people expect rm to mean \
+                 rm.",
+    },
+    CommandSpec {
+        names: &["jky todo add", "jky todo new"],
+        usage: "jky todo add <text>",
+        summary: "Add something to the list",
+        detail: "Everything after add is the text. It arrives not done, and \
+                 shows up in the notification tray like any other open todo.",
+    },
+    CommandSpec {
+        names: &["jky todo done", "jky todo tick"],
+        usage: "jky todo done <n>",
+        summary: "Tick a todo off",
+        detail: "Nothing is removed for being finished — a ticked todo stays on \
+                 the list. jky todo undone puts it back.",
+    },
+    CommandSpec {
+        names: &["jky todo undone", "jky todo untick"],
+        usage: "jky todo undone <n>",
+        summary: "Put a todo back on the list",
+        detail: "The other half of done, for when something turns out not to \
+                 have been finished after all.",
+    },
+    CommandSpec {
+        names: &["jky todo rm", "jky todo delete"],
+        usage: "jky todo rm <n>",
+        summary: "Delete a todo",
+        detail: "Immediate. Ticking one off with done is what you want if you \
+                 only meant to finish it.",
+    },
+    CommandSpec {
+        names: &["jky reminder add", "jky reminder new"],
+        usage: "jky reminder add <HH:MM> <text>",
+        summary: "Set a daily reminder",
+        detail: "The time is a wall clock, because a reminder is a daily \
+                 checklist rather than a date: 07:00 means seven in the morning \
+                 wherever you are. Everything after it is the text.",
+    },
+    CommandSpec {
+        names: &["jky reminder done", "jky reminder tick"],
+        usage: "jky reminder done <n>",
+        summary: "Tick a reminder off for today",
+        detail: "Numbers follow the listing, which is in order of the day \
+                 rather than the order they were added.",
+    },
+    CommandSpec {
+        names: &["jky reminder rm", "jky reminder delete"],
+        usage: "jky reminder rm <n>",
+        summary: "Delete a reminder",
+        detail: "Immediate, and it stops appearing tomorrow too.",
+    },
+    CommandSpec {
+        names: &["jky theme"],
+        usage: "jky theme <name>",
+        summary: "Change the theme from the shell",
+        detail: "One of cyberpunk, dracula, nord, solarized, light, gold or \
+                 contrast. Applied at once and remembered, exactly as choosing \
+                 it in Settings would be.",
+    },
+    CommandSpec {
+        names: &["jky open", "jky go"],
+        usage: "jky open <section>",
+        summary: "Jump to a section",
+        detail: "One of dashboard, terminal, assistant, games or settings. A \
+                 second word opens a panel inside it, so jky open dashboard \
+                 calendar goes straight there.",
+    },
+    CommandSpec {
         names: &["jky banner"],
         usage: "jky banner",
         summary: "Print the banner",
@@ -184,12 +281,20 @@ pub fn render_commands(accent: Option<(u8, u8, u8)>, width: usize) -> String {
             let indent = format!("{pad}  ");
             let body_width = width.saturating_sub(indent.len());
 
-            out.push_str(&format!(
-                "{pad}{}{}{}\r\n",
-                tint,
-                spec.usage,
-                if plain { "" } else { &reset }
-            ));
+            // The usage itself can outrun a narrow pane once a command takes
+            // two arguments. Continuations are indented so a usage split over
+            // two lines still reads as one command rather than as two.
+            for (n, line) in wrap(spec.usage, width.saturating_sub(pad.len() + 2))
+                .into_iter()
+                .enumerate()
+            {
+                out.push_str(&format!(
+                    "{pad}{}{}{line}{}\r\n",
+                    if n == 0 { "" } else { "  " },
+                    tint,
+                    if plain { "" } else { &reset }
+                ));
+            }
             for line in wrap(spec.summary, body_width) {
                 out.push_str(&format!(
                     "{indent}{}{line}{}\r\n",

@@ -62,6 +62,58 @@ fn write_ask_launcher(
     let script = bin_dir.join("jky");
     let body = format!(
         r#"#!/bin/sh
+# Print a whole listing.
+jky_show() {{
+  if [ -f "{data}/$1.ansi" ]; then
+    cat "{data}/$1.ansi"
+  else
+    echo "jky: nothing saved yet. Add one with jky $1 add, or from the Dashboard." >&2
+    exit 1
+  fi
+}}
+
+# Print one record by its handle.
+jky_read() {{
+  one="{data}/$1/$2.ansi"
+  if [ -f "$one" ]; then
+    cat "$one"
+  else
+    echo "jky: no $1 entry '$2'" >&2
+    [ -f "{data}/$1.ansi" ] && cat "{data}/$1.ansi" >&2
+    exit 1
+  fi
+}}
+
+# Send a verb and its arguments to the app.
+#
+# Built as JSON so an argument containing a quote, a newline, or the sequence
+# terminator itself stays one argument — splitting on a separator would fail
+# the first time anyone wrote one into a note. Then base64, so none of those
+# characters reach the escape sequence at all.
+#
+# The JSON is assembled with printf rather than a here-doc because a here-doc
+# would need the arguments interpolated, which is exactly the escaping problem
+# being avoided.
+jky_send() {{
+  verb="$1"
+  shift
+  json='{{"verb":"'"$verb"'","args":['
+  first=1
+  for arg in "$@"; do
+    # Backslashes first, or the escaping of quotes would itself be escaped.
+    esc=$(printf '%s' "$arg" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g')
+    if [ $first -eq 1 ]; then
+      first=0
+    else
+      json="$json,"
+    fi
+    json="$json\"$esc\""
+  done
+  json="$json]}}"
+  payload=$(printf '%s' "$json" | base64 | tr -d '\n')
+  printf '\033]{osc};JKYCmd=%s\007' "$payload"
+}}
+
 case "$1" in
   ask|asks)
     shift
@@ -103,32 +155,65 @@ case "$1" in
       esac
     fi
     ;;
-  notes|note|reminders|reminder|todos|todo)
+  note)
+    # Writes ride the same escape sequence `jky ask` uses. Nothing here parses
+    # or formats — the app owns every rule about what a note may be — so this
+    # only has to package the arguments without letting one break out.
+    shift
+    verb="$1"
+    [ $# -gt 0 ] && shift
+    case "$verb" in
+      new|add) jky_send "note.new" "$@" ;;
+      write|append) jky_send "note.write" "$@" ;;
+      rename) jky_send "note.rename" "$@" ;;
+      rm|delete|del) jky_send "note.rm" "$@" ;;
+      "") jky_show notes ;;
+      *) jky_read notes "$verb" ;;
+    esac
+    ;;
+  todo)
+    shift
+    verb="$1"
+    [ $# -gt 0 ] && shift
+    case "$verb" in
+      add|new) jky_send "todo.add" "$@" ;;
+      done|tick) jky_send "todo.done" "$@" ;;
+      undone|untick) jky_send "todo.undone" "$@" ;;
+      rm|delete|del) jky_send "todo.rm" "$@" ;;
+      "") jky_show todos ;;
+      *) jky_read todos "$verb" ;;
+    esac
+    ;;
+  reminder)
+    shift
+    verb="$1"
+    [ $# -gt 0 ] && shift
+    case "$verb" in
+      add|new) jky_send "reminder.add" "$@" ;;
+      done|tick) jky_send "reminder.done" "$@" ;;
+      undone|untick) jky_send "reminder.undone" "$@" ;;
+      rm|delete|del) jky_send "reminder.rm" "$@" ;;
+      "") jky_show reminders ;;
+      *) jky_read reminders "$verb" ;;
+    esac
+    ;;
+  theme)
+    shift
+    jky_send "theme" "$@"
+    ;;
+  open|go)
+    shift
+    jky_send "open" "$@"
+    ;;
+  notes|reminders|todos)
     # The app rewrites these files whenever the dashboard changes, so the
     # shell needs no JSON parser and no way to reach back into the app.
-    case "$1" in
-      note) kind=notes ;;
-      reminder) kind=reminders ;;
-      todo) kind=todos ;;
-      *) kind="$1" ;;
-    esac
+    kind="$1"
     shift
     if [ $# -eq 0 ]; then
-      if [ -f "{data}/$kind.ansi" ]; then
-        cat "{data}/$kind.ansi"
-      else
-        echo "jky: nothing saved yet. Add something from the Dashboard." >&2
-        exit 1
-      fi
+      jky_show "$kind"
     else
-      one="{data}/$kind/$1.ansi"
-      if [ -f "$one" ]; then
-        cat "$one"
-      else
-        echo "jky: no $kind entry '$1'" >&2
-        [ -f "{data}/$kind.ansi" ] && cat "{data}/$kind.ansi" >&2
-        exit 1
-      fi
+      jky_read "$kind" "$1"
     fi
     ;;
   ""|banner)
@@ -167,6 +252,12 @@ fn write_ask_launcher(
          if /i \"%1\"==\"help\" goto cmds\r\n\
          if /i \"%1\"==\"games\" goto games\r\n\
          if /i \"%1\"==\"game\" goto games\r\n\
+         if /i \"%1\"==\"theme\" goto send\r\n\
+         if /i \"%1\"==\"open\" goto send\r\n\
+         if /i \"%1\"==\"go\" goto send\r\n\
+         if /i \"%1\"==\"note\" if not \"%2\"==\"\" goto send\r\n\
+         if /i \"%1\"==\"todo\" if not \"%2\"==\"\" goto send\r\n\
+         if /i \"%1\"==\"reminder\" if not \"%2\"==\"\" goto send\r\n\
          if /i \"%1\"==\"notes\" set KIND=notes&& goto data\r\n\
          if /i \"%1\"==\"note\" set KIND=notes&& goto data\r\n\
          if /i \"%1\"==\"reminders\" set KIND=reminders&& goto data\r\n\
@@ -191,6 +282,9 @@ fn write_ask_launcher(
          ) else (\r\n\
          powershell -NoProfile -Command \"if ('%2' -match '^[1-4]$') {{ [Console]::Write([char]27 + ']{osc};JKYGame=%2' + [char]7) }} else {{ [Console]::Error.WriteLine('jky: no game %2. Choose 1, 2, 3 or 4.'); exit 1 }}\"\r\n\
          )\r\n\
+         goto :eof\r\n\
+         :send\r\n\
+         powershell -NoProfile -Command \"$a = $args; $noun = $a[0].ToLower();          $verb = if ($a.Count -gt 1) {{ $a[1].ToLower() }} else {{ '' }};          $rest = if ($a.Count -gt 2) {{ @($a[2..($a.Count-1)]) }} else {{ @() }};          $map = @{{ 'new'='new'; 'add'='new'; 'write'='write'; 'append'='write';          'rename'='rename'; 'rm'='rm'; 'delete'='rm'; 'del'='rm';          'done'='done'; 'tick'='done'; 'undone'='undone'; 'untick'='undone' }};          if ($noun -eq 'theme' -or $noun -eq 'open' -or $noun -eq 'go') {{          $full = $(if ($noun -eq 'go') {{ 'open' }} else {{ $noun }});          $rest = @($a[1..($a.Count-1)]) }}          else {{ $tail = $map[$verb];          if (-not $tail) {{ [Console]::Error.WriteLine('jky: unknown command'); exit 1 }};          if ($noun -eq 'todo' -and $tail -eq 'new') {{ $tail = 'add' }};          if ($noun -eq 'reminder' -and $tail -eq 'new') {{ $tail = 'add' }};          $full = \"$noun.$tail\" }};          $json = (@{{ verb = $full; args = @($rest) }} | ConvertTo-Json -Compress);          $b = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json));          [Console]::Write([char]27 + ']{osc};JKYCmd=' + $b + [char]7)\" %*\r\n\
          goto :eof\r\n\
          :ask\r\n\
          shift\r\n\
@@ -391,6 +485,142 @@ mod tests {
         let (_, stderr, ok) = run_jky(dir.path(), &["games"]);
         assert!(!ok);
         assert!(stderr.contains("Games section"), "{stderr:?}");
+    }
+
+    /// Decode the base64 JSON a write command emits.
+    #[cfg(not(windows))]
+    fn sent(stdout: &str) -> String {
+        let after = stdout.rsplit("JKYCmd=").next().expect("a command marker");
+        let encoded: String = after.chars().take_while(|c| *c != '\u{7}').collect();
+
+        // Minimal base64 decode, so the test does not need a dependency.
+        const ALPHABET: &[u8] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+        let mut bits = Vec::new();
+        for c in encoded.bytes() {
+            if c == b'=' {
+                break;
+            }
+            let Some(v) = ALPHABET.iter().position(|a| *a == c) else { continue };
+            for shift in (0..6).rev() {
+                bits.push((v >> shift) & 1);
+            }
+        }
+        let bytes: Vec<u8> = bits
+            .chunks(8)
+            .filter(|c| c.len() == 8)
+            .map(|c| c.iter().fold(0u8, |acc, b| (acc << 1) | *b as u8))
+            .collect();
+        String::from_utf8_lossy(&bytes).to_string()
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn a_write_command_sends_its_verb_and_arguments() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        let (stdout, stderr, ok) = run_jky(dir.path(), &["note", "new", "Shopping list"]);
+        assert!(ok, "failed: {stderr}");
+        assert_eq!(sent(&stdout), r#"{"verb":"note.new","args":["Shopping list"]}"#);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn every_write_verb_reaches_the_app() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        for (args, verb) in [
+            (vec!["note", "new", "x"], "note.new"),
+            (vec!["note", "write", "1", "x"], "note.write"),
+            (vec!["note", "rename", "1", "x"], "note.rename"),
+            (vec!["note", "rm", "1"], "note.rm"),
+            (vec!["todo", "add", "x"], "todo.add"),
+            (vec!["todo", "done", "1"], "todo.done"),
+            (vec!["todo", "undone", "1"], "todo.undone"),
+            (vec!["todo", "rm", "1"], "todo.rm"),
+            (vec!["reminder", "add", "07:00", "x"], "reminder.add"),
+            (vec!["reminder", "done", "1"], "reminder.done"),
+            (vec!["reminder", "rm", "1"], "reminder.rm"),
+            (vec!["theme", "nord"], "theme"),
+            (vec!["open", "games"], "open"),
+        ] {
+            let (stdout, stderr, ok) = run_jky(dir.path(), &args);
+            assert!(ok, "`jky {}` failed: {stderr}", args.join(" "));
+            assert!(
+                sent(&stdout).contains(&format!(r#""verb":"{verb}""#)),
+                "`jky {}` sent {}",
+                args.join(" "),
+                sent(&stdout)
+            );
+        }
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn an_argument_containing_a_quote_stays_one_argument() {
+        // The whole reason the payload is JSON inside base64: splitting on a
+        // separator would fail the first time anyone wrote one into a note.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        let (stdout, _, ok) = run_jky(dir.path(), &["note", "new", r#"say "hello" now"#]);
+        assert!(ok);
+        assert_eq!(
+            sent(&stdout),
+            r#"{"verb":"note.new","args":["say \"hello\" now"]}"#
+        );
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn an_argument_containing_a_backslash_survives() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        let (stdout, _, ok) = run_jky(dir.path(), &["note", "new", r"C:\path"]);
+        assert!(ok);
+        assert_eq!(sent(&stdout), r#"{"verb":"note.new","args":["C:\\path"]}"#);
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn several_words_stay_several_arguments() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+
+        let (stdout, _, ok) = run_jky(dir.path(), &["reminder", "add", "07:00", "Go for a run"]);
+        assert!(ok);
+        assert_eq!(
+            sent(&stdout),
+            r#"{"verb":"reminder.add","args":["07:00","Go for a run"]}"#
+        );
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn a_bare_singular_still_lists() {
+        // `jky note` with no verb should print the listing, the way it always
+        // did, rather than becoming an error now that verbs exist.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        with_listings(dir.path());
+
+        let (stdout, stderr, ok) = run_jky(dir.path(), &["note"]);
+        assert!(ok, "failed: {stderr}");
+        assert_eq!(stdout, "NOTES-LISTING");
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn a_singular_with_a_number_still_reads_one() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS").unwrap();
+        with_listings(dir.path());
+
+        let (stdout, stderr, ok) = run_jky(dir.path(), &["note", "a3f2"]);
+        assert!(ok, "failed: {stderr}");
+        assert_eq!(stdout, "ONE-NOTE");
     }
 
     #[test]

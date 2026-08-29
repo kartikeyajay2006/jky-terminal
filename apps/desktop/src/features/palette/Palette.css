@@ -179,3 +179,26 @@
   font-family: var(--font-mono);
   font-size: 10px;
 }
+
+/* The label of the command being answered, sitting where the ❯ prompt was. */
+.pal__asked {
+  flex: 0 0 auto;
+  padding: 0.15rem 0.5rem;
+  border-radius: 0.35rem;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 600;
+  white-space: nowrap;
+  max-width: 45%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pal__error {
+  margin: 0;
+  padding: 0.6rem 0.85rem;
+  border-top: 1px solid var(--line);
+  color: var(--danger, #ff4d6a);
+  font-size: 0.82rem;
+}
