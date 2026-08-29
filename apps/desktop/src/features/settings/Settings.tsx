@@ -145,6 +145,24 @@ function TerminalSettings() {
     return out;
   }, []);
 
+  /**
+   * Only the faces this machine actually has.
+   *
+   * Offering one it does not have is offering a setting that does nothing:
+   * choosing it falls back to whatever was already on screen, which reads as
+   * a bug rather than as a missing font. The current choice stays in the list
+   * even if it is missing — a saved setting from another machine should not
+   * leave the control showing a blank — and anything we could not measure is
+   * kept, because "unknown" is not "absent".
+   */
+  const offered = useMemo(
+    () =>
+      TERM_FONTS.filter(
+        (f) => installed.get(f.id) !== false || f.id === font.family,
+      ),
+    [installed, font.family],
+  );
+
   function change(next: TermFont) {
     const saved = saveTermFont(next);
     setFont(saved);
@@ -161,7 +179,7 @@ function TerminalSettings() {
         headingId="terminal-heading"
         status={
           <>
-            <b>{font.size}</b> pt
+            <b>{font.size}</b> pt · <b>{offered.length}</b> faces
           </>
         }
       />
@@ -214,11 +232,10 @@ function TerminalSettings() {
         <Select
           label="Terminal typeface"
           value={font.family}
-          options={TERM_FONTS.map((f) => ({
+          options={offered.map((f) => ({
             value: f.id,
-            // A face the machine does not have is still offered — this is the
-            // same settings screen on three platforms — but saying so is what
-            // stops a silent fallback reading as a broken setting.
+            // Only reachable for a choice carried over from another machine,
+            // which is kept listed so the control is not left blank.
             label:
               installed.get(f.id) === false ? `${f.label}  (not installed)` : f.label,
           }))}
@@ -233,9 +250,9 @@ function TerminalSettings() {
           </p>
         ) : (
           <p className="hint">
-            {choice.note}. A face this machine does not have falls back to
-            another monospace — never to a proportional one, which in a
-            terminal is not a cosmetic problem.
+            {choice.note}. Only faces this machine actually has are listed —
+            choosing one it does not have would fall back to another monospace
+            and look like a setting that does nothing.
           </p>
         )}
       </div>

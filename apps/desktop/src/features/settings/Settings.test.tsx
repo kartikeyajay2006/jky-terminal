@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { THEMES } from "../../app/theme";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import { Settings } from "./Settings";
-import { TERM_FONT_EVENT, loadTermFont } from "../terminal/termFont";
+import { TERM_FONT_EVENT, loadTermFont, saveTermFont } from "../terminal/termFont";
 
 describe("Settings", () => {
   beforeEach(() => {
@@ -262,5 +262,80 @@ describe("terminal font settings", () => {
 
     expect(heard).toHaveBeenCalled();
     window.removeEventListener(TERM_FONT_EVENT, heard);
+  });
+});
+
+describe("only offering faces this machine has", () => {
+  beforeEach(() => localStorage.clear());
+
+  /** Pretend only the named faces are installed. */
+  function withFonts(present: string[]) {
+    const stub = {
+      font: "",
+      measureText(text: string) {
+        void text;
+        const asked = /^\d+px "([^"]+)"/.exec(stub.font)?.[1];
+        return { width: asked && present.includes(asked) ? 200 : 100 };
+      },
+    };
+    const original = HTMLCanvasElement.prototype.getContext;
+    // @ts-expect-error a deliberately narrow stub
+    HTMLCanvasElement.prototype.getContext = () => stub;
+    return () => {
+      HTMLCanvasElement.prototype.getContext = original;
+    };
+  }
+
+  async function openTypeface() {
+    const user = userEvent.setup();
+    render(<Settings />);
+    const nav = screen.getByRole("navigation", { name: /settings sections/i });
+    await user.click(within(nav).getByRole("button", { name: /^Terminal/ }));
+    await user.click(screen.getByRole("combobox", { name: /terminal typeface/i }));
+    return user;
+  }
+
+  it("leaves a missing face out of the list entirely", async () => {
+    // Offering one the machine does not have is offering a setting that does
+    // nothing: it falls back to whatever was already on screen.
+    const restore = withFonts(["Fira Code"]);
+    try {
+      await openTypeface();
+      expect(screen.queryByRole("option", { name: /cascadia/i })).toBeNull();
+      expect(screen.getByRole("option", { name: /fira code/i })).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("always keeps the app default, which needs no face of its own", async () => {
+    const restore = withFonts([]);
+    try {
+      await openTypeface();
+      expect(screen.getByRole("option", { name: /app default/i })).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("keeps a saved choice listed even when this machine lacks it", async () => {
+    // A setting carried over from another machine should not leave the
+    // control showing a blank.
+    saveTermFont({ size: 13, family: "cascadia" });
+    const restore = withFonts([]);
+    try {
+      await openTypeface();
+      expect(
+        screen.getByRole("option", { name: /cascadia code.*not installed/i }),
+      ).toBeInTheDocument();
+    } finally {
+      restore();
+    }
+  });
+
+  it("keeps everything when it cannot measure, since unknown is not absent", async () => {
+    // jsdom has no canvas, so nothing can be ruled out.
+    await openTypeface();
+    expect(screen.getByRole("option", { name: /courier new/i })).toBeInTheDocument();
   });
 });

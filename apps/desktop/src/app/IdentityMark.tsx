@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { clampToViewport } from "../features/terminal/TerminalMenu";
 import {
   MAX_MESSAGE,
   MAX_NAME,
@@ -23,6 +24,18 @@ export function IdentityMark() {
   const root = useRef<HTMLDivElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
   const firstField = useRef<HTMLInputElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+
+  /**
+   * Where the panel sits, in viewport coordinates.
+   *
+   * It has to be `position: fixed` rather than absolute, because the rail sets
+   * `overflow-y: auto` — which makes `overflow-x` compute to `auto` as well,
+   * so the rail clips anything wider than itself. Absolutely positioned, the
+   * panel was sliced down the middle: the heading, the inputs and the Cancel
+   * button all cut off at the rail's edge. Fixed escapes that clip entirely.
+   */
+  const [at, setAt] = useState({ x: 0, y: 0 });
 
   const close = useCallback(
     (restoreFocus = true) => {
@@ -31,6 +44,23 @@ export function IdentityMark() {
     },
     [],
   );
+
+  // Measured after mount, because the panel's height depends on its content
+  // and there is no way to know it before it exists.
+  useEffect(() => {
+    if (!open) return;
+    const mark = trigger.current?.getBoundingClientRect();
+    const box = pop.current?.getBoundingClientRect();
+    if (!mark || !box) return;
+
+    setAt(
+      clampToViewport(
+        { x: mark.left, y: mark.bottom + 10 },
+        { width: box.width, height: box.height },
+        { width: window.innerWidth, height: window.innerHeight },
+      ),
+    );
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -91,7 +121,13 @@ export function IdentityMark() {
       {identity.message && <span className="ident__message">{identity.message}</span>}
 
       {open && (
-        <div className="ident__pop" role="dialog" aria-label="Your name">
+        <div
+          className="ident__pop"
+          ref={pop}
+          role="dialog"
+          aria-label="Your name"
+          style={{ left: at.x, top: at.y }}
+        >
           <p className="ident__head">Who this copy belongs to</p>
 
           <label className="ident__field">

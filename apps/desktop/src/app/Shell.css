@@ -102,12 +102,12 @@
  * elevation that it plainly sits above rather than beside.
  */
 .ident__pop {
-  position: absolute;
+  /* Fixed, not absolute. The rail sets overflow-y, which makes overflow-x
+     compute to auto too — so an absolutely positioned panel wider than the
+     rail was sliced down the middle. Coordinates come from the component,
+     measured off the mark. */
+  position: fixed;
   z-index: 70;
-  top: calc(100% + var(--s3));
-  /* Off the rail's own left padding, so it lines up with the rail's contents
-     rather than butting against the window edge. */
-  left: calc(var(--s2) * -1);
   width: 268px;
   padding: var(--s4);
   border: 1px solid var(--line-strong);
@@ -129,7 +129,7 @@
   content: "";
   position: absolute;
   top: -5px;
-  left: 24px;
+  left: 12px;
   width: 9px;
   height: 9px;
   transform: rotate(45deg);

@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { IdentityMark } from "./IdentityMark";
@@ -195,5 +195,48 @@ describe("the mark", () => {
 
     render(<IdentityMark />);
     expect(screen.getByText("Ada")).toBeInTheDocument();
+  });
+});
+
+describe("escaping the rail", () => {
+  beforeEach(() => localStorage.clear());
+
+  it("places the panel by measured coordinates rather than by the rail", async () => {
+    // The rail sets overflow-y, which makes overflow-x compute to auto as
+    // well, so a panel wider than the rail was sliced down the middle —
+    // heading, inputs and Cancel all cut off at its edge. The stylesheet
+    // makes it `position: fixed`; the component's own contribution is
+    // computing where that fixed box goes, which is what this checks.
+    const user = userEvent.setup();
+    render(<IdentityMark />);
+    await user.click(screen.getByRole("button", { name: /set your name/i }));
+
+    const panel = screen.getByRole("dialog", { name: /your name/i });
+    expect(panel.style.left).not.toBe("");
+    expect(panel.style.top).not.toBe("");
+  });
+
+  it("keeps the whole panel on screen", async () => {
+    const user = userEvent.setup();
+    render(<IdentityMark />);
+    await user.click(screen.getByRole("button", { name: /set your name/i }));
+
+    const panel = screen.getByRole("dialog", { name: /your name/i });
+    const left = Number.parseFloat(panel.style.left);
+    const top = Number.parseFloat(panel.style.top);
+    expect(left).toBeGreaterThanOrEqual(0);
+    expect(top).toBeGreaterThanOrEqual(0);
+  });
+
+  it("shows every control, including the one that was being cut off", async () => {
+    const user = userEvent.setup();
+    render(<IdentityMark />);
+    await user.click(screen.getByRole("button", { name: /set your name/i }));
+
+    const panel = screen.getByRole("dialog", { name: /your name/i });
+    expect(within(panel).getByLabelText("Name")).toBeInTheDocument();
+    expect(within(panel).getByLabelText("Message")).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: /^save$/i })).toBeInTheDocument();
+    expect(within(panel).getByRole("button", { name: /cancel/i })).toBeInTheDocument();
   });
 });
