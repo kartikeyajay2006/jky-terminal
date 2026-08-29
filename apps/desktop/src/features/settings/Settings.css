@@ -378,3 +378,71 @@
     grid-column: 3;
   }
 }
+
+/* ---- terminal font ------------------------------------------------------ */
+
+.fontsize {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+}
+
+.fontsize__step {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 15px;
+  line-height: 1;
+  transition: all var(--fast) var(--ease);
+}
+
+.fontsize__step:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.fontsize__step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.fontsize__range {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.fontsize__value {
+  min-width: 5ch;
+  flex-shrink: 0;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  font-weight: 700;
+  text-align: right;
+}
+
+/*
+ * The preview is the point of this panel: a font size is something you judge
+ * by looking at it. Sized and faced inline from the live choice, so it is the
+ * actual thing rather than a description of it.
+ */
+.fontpreview {
+  margin: 0;
+  padding: var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--ground) 92%, #000);
+  color: var(--text-muted);
+  line-height: 1.25;
+  white-space: pre;
+  overflow-x: auto;
+  user-select: none;
+  box-shadow: inset 0 0 40px rgb(0 0 0 / 45%);
+}

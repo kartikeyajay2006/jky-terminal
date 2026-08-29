@@ -1,3 +1,5 @@
+import { IdentityMark } from "./IdentityMark";
+
 export interface RailItem {
   id: string;
   label: string;
@@ -27,9 +29,7 @@ interface RailProps {
 export function Rail({ activeId, onSelect }: RailProps) {
   return (
     <nav className="rail" aria-label="Workspace">
-      <div className="rail__mark" aria-hidden="true">
-        J
-      </div>
+      <IdentityMark />
       <ul className="rail__list">
         {RAIL_ITEMS.map((item) => (
           <li key={item.id}>

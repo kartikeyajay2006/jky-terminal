@@ -1,9 +1,10 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { THEMES } from "../../app/theme";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import { Settings } from "./Settings";
+import { TERM_FONT_EVENT, loadTermFont } from "../terminal/termFont";
 
 describe("Settings", () => {
   beforeEach(() => {
@@ -189,4 +190,77 @@ describe("settings panels", () => {
       ).toBeTruthy();
     });
   }
+});
+
+describe("terminal font settings", () => {
+  beforeEach(() => localStorage.clear());
+
+  async function openTerminalPanel() {
+    const user = userEvent.setup();
+    render(<Settings />);
+    const nav = screen.getByRole("navigation", { name: /settings sections/i });
+    await user.click(within(nav).getByRole("button", { name: /^Terminal/ }));
+    return user;
+  }
+
+  it("is reachable from the settings nav", async () => {
+    await openTerminalPanel();
+    expect(screen.getByRole("heading", { name: "Terminal" })).toBeInTheDocument();
+  });
+
+  it("shows the current size", async () => {
+    await openTerminalPanel();
+    expect(screen.getByLabelText(/terminal font size/i)).toHaveValue("13");
+  });
+
+  it("makes the text bigger", async () => {
+    const user = await openTerminalPanel();
+    await user.click(screen.getByRole("button", { name: /larger/i }));
+    expect(screen.getByLabelText(/terminal font size/i)).toHaveValue("14");
+  });
+
+  it("makes the text smaller", async () => {
+    const user = await openTerminalPanel();
+    await user.click(screen.getByRole("button", { name: /smaller/i }));
+    expect(screen.getByLabelText(/terminal font size/i)).toHaveValue("12");
+  });
+
+  it("remembers the size across a restart", async () => {
+    const user = await openTerminalPanel();
+    await user.click(screen.getByRole("button", { name: /larger/i }));
+    expect(loadTermFont().size).toBe(14);
+  });
+
+  it("offers a choice of typeface", async () => {
+    await openTerminalPanel();
+    expect(screen.getByRole("combobox", { name: /terminal typeface/i })).toBeTruthy();
+  });
+
+  it("changes the typeface and remembers it", async () => {
+    const user = await openTerminalPanel();
+    await user.click(screen.getByRole("combobox", { name: /terminal typeface/i }));
+    await user.click(await screen.findByRole("option", { name: /fira code/i }));
+
+    await waitFor(() => expect(loadTermFont().family).toBe("fira"));
+  });
+
+  it("previews the actual face and size, not a description of them", async () => {
+    // A font size is something you judge by looking at it.
+    const user = await openTerminalPanel();
+    await user.click(screen.getByRole("button", { name: /larger/i }));
+
+    const preview = screen.getByLabelText(/font preview/i);
+    expect(preview).toHaveStyle({ fontSize: "14px" });
+  });
+
+  it("tells open terminals, so a change needs no new tab", async () => {
+    const heard = vi.fn();
+    window.addEventListener(TERM_FONT_EVENT, heard);
+
+    const user = await openTerminalPanel();
+    await user.click(screen.getByRole("button", { name: /larger/i }));
+
+    expect(heard).toHaveBeenCalled();
+    window.removeEventListener(TERM_FONT_EVENT, heard);
+  });
 });

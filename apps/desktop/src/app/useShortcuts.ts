@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useTabs } from "./tabStore";
+import { isAppShortcut } from "./shortcuts";
 
 /**
  * Window-level shortcuts.
@@ -10,8 +11,11 @@ import { useTabs } from "./tabStore";
 export function useShortcuts(): void {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      const mod = e.ctrlKey || e.metaKey;
-      if (!mod) return;
+      // One definition of what the app claims, shared with the terminal's
+      // custom key handler so the two cannot disagree about which keys get
+      // through.
+      if (!isAppShortcut(e)) return;
+      if (e.shiftKey) return;
 
       const { openTab, closeTab, nextTab, focusTab, tabs, activeId } = useTabs.getState();
 

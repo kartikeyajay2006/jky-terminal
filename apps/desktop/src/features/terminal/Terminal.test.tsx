@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const writes: string[] = [];
 const onDataHandlers: Array<(d: string) => void> = [];
 const oscHandlers = new Map<number, (payload: string) => boolean>();
+const customKeyHandlers: Array<(e: KeyboardEvent) => boolean> = [];
 const disposed = { count: 0 };
 
 vi.mock("@xterm/xterm", () => ({
@@ -30,6 +31,9 @@ vi.mock("@xterm/xterm", () => ({
     }
     clear() {}
     focus() {}
+    attachCustomKeyEventHandler(cb: (e: KeyboardEvent) => boolean) {
+      customKeyHandlers.push(cb);
+    }
     loadAddon() {}
     // The real Terminal exposes a parser for escape-sequence handlers; the
     // app registers an OSC handler for `jky ask`.
@@ -268,5 +272,59 @@ describe("scrollback across a restart", () => {
 
     render(<Terminal tabId="tab-9" />);
     await waitFor(() => expect(writes.join("")).toContain("Infinite"));
+  });
+});
+
+describe("letting the app's shortcuts through", () => {
+  beforeEach(() => {
+    __setPlatformForTests(createWebPlatform());
+    customKeyHandlers.length = 0;
+  });
+  afterEach(() => __setPlatformForTests(null));
+
+  function handler() {
+    render(<Terminal tabId="tab-keys" />);
+    expect(customKeyHandlers.length).toBeGreaterThan(0);
+    return customKeyHandlers[customKeyHandlers.length - 1];
+  }
+
+  it("hands the app's shortcuts back rather than swallowing them", () => {
+    // The bug this fixes: xterm handles a key by calling stopPropagation, so
+    // Ctrl+T pressed in a terminal never reached the window listener and every
+    // app shortcut was dead in the one place people spend most of their time.
+    const handle = handler();
+    for (const key of ["k", "t", "w", "f"]) {
+      const e = new KeyboardEvent("keydown", { key, ctrlKey: true });
+      expect(handle(e), `Ctrl+${key}`).toBe(false);
+    }
+  });
+
+  it("hands back the tab numbers too", () => {
+    const handle = handler();
+    const e = new KeyboardEvent("keydown", { key: "3", ctrlKey: true });
+    expect(handle(e)).toBe(false);
+  });
+
+  it("keeps every ordinary keystroke for the shell", () => {
+    const handle = handler();
+    for (const key of ["a", "Enter", "ArrowUp", " "]) {
+      const e = new KeyboardEvent("keydown", { key });
+      expect(handle(e), key).toBe(true);
+    }
+  });
+
+  it("keeps the shell's own control keys", () => {
+    // Ctrl+C must interrupt, not be eaten by the app.
+    const handle = handler();
+    for (const key of ["c", "d", "z", "l", "r"]) {
+      const e = new KeyboardEvent("keydown", { key, ctrlKey: true });
+      expect(handle(e), `Ctrl+${key}`).toBe(true);
+    }
+  });
+
+  it("leaves keyup alone, so only the press is intercepted", () => {
+    const handle = handler();
+    const e = new KeyboardEvent("keyup", { key: "t", ctrlKey: true });
+    expect(handle(e)).toBe(true);
   });
 });

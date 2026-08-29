@@ -9,6 +9,8 @@ import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
 import { buildBanner } from "./banner";
+import { isAppShortcut } from "../../app/shortcuts";
+import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFont";
 import { copyText, readText } from "./clipboard";
 import type { SearchHits } from "./TerminalSearch";
 
@@ -62,11 +64,10 @@ export function useXterm(
     let unlisten: (() => void) | null = null;
     let ptyId: string | null = null;
 
+    const font = loadTermFont();
     const xterm = new Xterm({
-      fontFamily:
-        getComputedStyle(document.documentElement).getPropertyValue("--font-mono") ||
-        "monospace",
-      fontSize: 13,
+      fontFamily: stackFor(font.family),
+      fontSize: font.size,
       cursorBlink: true,
       allowProposedApi: true,
     });
@@ -74,6 +75,15 @@ export function useXterm(
 
     const fit = new FitAddon();
     xterm.loadAddon(fit);
+
+    // The app's own shortcuts must reach the window rather than the shell.
+    // Without this, xterm handles Ctrl+T itself and calls stopPropagation, so
+    // every app shortcut was dead while a terminal had focus — which is most
+    // of the time. Returning false makes xterm leave the event alone entirely.
+    xterm.attachCustomKeyEventHandler((event) => {
+      if (event.type === "keydown" && isAppShortcut(event)) return false;
+      return true;
+    });
 
     const serialize = new SerializeAddon();
     xterm.loadAddon(serialize);
@@ -225,6 +235,23 @@ export function useXterm(
       await platform.pty.resize(id, xterm.cols, xterm.rows);
     })();
 
+    // Applied live, so changing it in Settings does not need a new tab. The
+    // refit is what actually matters: a bigger glyph means fewer columns, and
+    // a shell told the wrong size draws over its own output.
+    function onFontChange(e: Event) {
+      const next = (e as CustomEvent<TermFont>).detail;
+      if (!next) return;
+      xterm.options.fontSize = next.size;
+      xterm.options.fontFamily = stackFor(next.family);
+      try {
+        fit.fit();
+      } catch {
+        return;
+      }
+      if (ptyId) void platform.pty.resize(ptyId, xterm.cols, xterm.rows);
+    }
+    window.addEventListener(TERM_FONT_EVENT, onFontChange);
+
     const observer = new ResizeObserver(() => {
       try {
         fit.fit();
@@ -237,6 +264,7 @@ export function useXterm(
 
     return () => {
       cancelled = true;
+      window.removeEventListener(TERM_FONT_EVENT, onFontChange);
       observer.disconnect();
       selectionSub.dispose();
       unlisten?.();

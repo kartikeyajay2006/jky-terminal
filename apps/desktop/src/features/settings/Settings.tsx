@@ -3,14 +3,25 @@ import { Select } from "../../components/Select";
 import { THEMES, applyTheme, loadTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { getPlatform, type CommandSpec } from "../../platform";
 import { useNav } from "../../app/navStore";
+import {
+  MAX_SIZE,
+  MIN_SIZE,
+  TERM_FONTS,
+  announceTermFont,
+  loadTermFont,
+  saveTermFont,
+  stackFor,
+  type TermFont,
+} from "../terminal/termFont";
 import { PanelHead } from "./PanelHead";
 import { ProviderVault } from "./ProviderVault";
 import "./Settings.css";
 
-type Panel = "appearance" | "providers" | "commands";
+type Panel = "appearance" | "terminal" | "providers" | "commands";
 
 const PANELS: Array<{ id: Panel; label: string; blurb: string }> = [
   { id: "appearance", label: "Appearance", blurb: "Theme and how the app looks" },
+  { id: "terminal", label: "Terminal", blurb: "Font size and typeface" },
   { id: "providers", label: "Providers", blurb: "API keys and model selection" },
   { id: "commands", label: "Commands", blurb: "What you can type in a terminal" },
 ];
@@ -100,6 +111,8 @@ export function Settings() {
               ))}
             </div>
           </section>
+        ) : panel === "terminal" ? (
+          <TerminalSettings />
         ) : panel === "commands" ? (
           <CommandList />
         ) : (
@@ -107,6 +120,115 @@ export function Settings() {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * How the terminal is set.
+ *
+ * Applied the instant it changes rather than behind a Save: a font size is
+ * something you judge by looking at it, and a preview you have to commit to
+ * before seeing is not a preview.
+ */
+function TerminalSettings() {
+  const [font, setFont] = useState<TermFont>(loadTermFont);
+
+  function change(next: TermFont) {
+    const saved = saveTermFont(next);
+    setFont(saved);
+    // Every open terminal hears this and refits itself.
+    announceTermFont(saved);
+  }
+
+  const choice = TERM_FONTS.find((f) => f.id === font.family) ?? TERM_FONTS[0];
+
+  return (
+    <section className="panel" aria-labelledby="terminal-heading">
+      <PanelHead
+        where="Terminal"
+        headingId="terminal-heading"
+        status={
+          <>
+            <b>{font.size}</b> pt
+          </>
+        }
+      />
+
+      <div className="field">
+        <span className="field__label">Font size</span>
+        <div className="fontsize">
+          <button
+            type="button"
+            className="fontsize__step"
+            aria-label="Smaller"
+            disabled={font.size <= MIN_SIZE}
+            onClick={() => change({ ...font, size: font.size - 1 })}
+          >
+            −
+          </button>
+
+          <input
+            className="fontsize__range"
+            type="range"
+            min={MIN_SIZE}
+            max={MAX_SIZE}
+            step={1}
+            value={font.size}
+            aria-label="Terminal font size"
+            onChange={(e) => change({ ...font, size: Number(e.target.value) })}
+          />
+
+          <button
+            type="button"
+            className="fontsize__step"
+            aria-label="Larger"
+            disabled={font.size >= MAX_SIZE}
+            onClick={() => change({ ...font, size: font.size + 1 })}
+          >
+            +
+          </button>
+
+          <output className="fontsize__value">{font.size}pt</output>
+        </div>
+        <p className="hint">
+          Below {MIN_SIZE}pt box-drawing characters stop lining up and something
+          like <code>htop</code> becomes unreadable. Above {MAX_SIZE}pt an
+          eighty-column program no longer fits the pane.
+        </p>
+      </div>
+
+      <div className="field">
+        <span className="field__label">Typeface</span>
+        <Select
+          label="Terminal typeface"
+          value={font.family}
+          options={TERM_FONTS.map((f) => ({ value: f.id, label: f.label }))}
+          onChange={(id) => change({ ...font, family: id })}
+        />
+        <p className="hint">
+          {choice.note}. A face this machine does not have falls back to
+          another monospace — never to a proportional one, which in a terminal
+          is not a cosmetic problem.
+        </p>
+      </div>
+
+      <div className="field">
+        <span className="field__label">Preview</span>
+        <pre
+          className="fontpreview"
+          style={{ fontFamily: stackFor(font.family), fontSize: `${font.size}px` }}
+          aria-label="Font preview"
+        >
+{`[you@machine]~% ls -la
+drwxr-xr-x  1 you  staff   4096 Aug 30 12:04 .
+-rw-r--r--  1 you  staff  12480 Aug 30 11:58 README.md
+┌────────────┬───────────┐
+│ 0123456789 │ Il1 O0 rn │
+└────────────┴───────────┘
+if (x >= 1 && y !== 2) { /* -> */ }`}
+        </pre>
+      </div>
+    </section>
   );
 }
 

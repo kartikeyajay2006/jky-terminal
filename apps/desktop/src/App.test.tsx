@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // being checked here is whether the component survives a section change, not
 // what it renders.
 const disposed = { count: 0 };
+const customKeyHandlers: Array<(e: KeyboardEvent) => boolean> = [];
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
@@ -28,6 +29,9 @@ vi.mock("@xterm/xterm", () => ({
     }
     clear() {}
     focus() {}
+    attachCustomKeyEventHandler(cb: (e: KeyboardEvent) => boolean) {
+      customKeyHandlers.push(cb);
+    }
     loadAddon() {}
     parser = { registerOscHandler: () => ({ dispose() {} }) };
     dispose() {
