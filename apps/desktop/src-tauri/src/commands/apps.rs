@@ -66,7 +66,7 @@ pub async fn apps_weather(
 }
 
 #[tauri::command]
-pub async fn apps_weather_search(
+pub async fn apps_place_search(
     state: State<'_, AppState>,
     query: String,
 ) -> Result<Vec<Place>, String> {

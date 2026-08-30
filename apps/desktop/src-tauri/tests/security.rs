@@ -105,22 +105,25 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "ai_cancel".to_string(),
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),
-        // The Apps section's two outbound fetches. They exist because the
-        // window cannot make them: `connect-src 'self'` means the webview can
-        // reach no host, so Rust fetches and hands back the result. Neither
-        // touches the keychain, because Open-Meteo needs no key and no
-        // account — there is nothing secret on this path. The renderer
-        // supplies a coordinate and a search term, both bounds-checked here
-        // before they reach a URL, and the URL itself is built in jky-apps
-        // against a fixed host. The widest either can do is ask a public
-        // weather service about a place.
-        // Headlines from Hacker News. Public API, no key, no account. The
-        // limit is clamped in Rust rather than trusted, because each headline
-        // is a separate request and an unbounded number would make the app a
-        // load generator pointed at someone else's service.
+        // The Apps section's outbound fetches. They exist because the window
+        // cannot make them: `connect-src 'self'` means the webview can reach
+        // no host, so Rust fetches and hands back the result. None touches the
+        // keychain — every service behind them is public and needs no key, so
+        // there is nothing secret on this path. Each URL is built in jky-apps
+        // against a fixed host from arguments bounds-checked at this boundary,
+        // so the renderer chooses parameters, never a destination.
+        //
+        // apps_news: headlines. The count is clamped rather than trusted,
+        // because each headline is a separate request and an unbounded number
+        // would make the app a load generator pointed at a free service.
         "apps_news".to_string(),
+        // apps_place_search: the geocoder, shared by Weather and Map. Takes a
+        // length-bounded search term, percent-encoded before it reaches a URL.
+        "apps_place_search".to_string(),
+        // apps_weather: a forecast for one coordinate, range-checked here —
+        // NaN included, since it would otherwise reach the query string as
+        // the literal text "NaN".
         "apps_weather".to_string(),
-        "apps_weather_search".to_string(),
         "commands_list".to_string(),
         // Takes four numbers the window already has and renders the listing
         // `jky games` prints. The path, the format and the set of valid game
@@ -319,5 +322,52 @@ fn the_renderer_is_granted_no_filesystem_shell_or_network_capability() {
                  Every privileged action must go through an explicit command. See spec §4.2.4."
             );
         }
+    }
+}
+
+/// `frame-src` is pinned the same way `connect-src` is, and for a related
+/// reason — but the two are not the same permission and the difference is the
+/// whole argument for allowing this at all.
+///
+/// `frame-src` lets the window *display* a document from another origin. It
+/// does not let the app's own JavaScript read into that frame or make requests
+/// to that host: same-origin policy still separates them, and `connect-src`
+/// stays `'self'`. So the property that a compromised frontend has nowhere to
+/// send anything is untouched by every host named here.
+///
+/// Each entry is a provider's own embed endpoint, measured to send no
+/// `X-Frame-Options` and no `frame-ancestors` — which is what makes framing it
+/// possible at all. Adding a host here is a deliberate widening: it is one
+/// more origin whose content renders inside the app's window.
+#[test]
+fn the_csp_frames_only_the_embed_endpoints_the_spec_allows() {
+    let config: serde_json::Value = serde_json::from_str(
+        &fs::read_to_string(crate_root().join("tauri.conf.json")).expect("readable tauri.conf.json"),
+    )
+    .expect("parseable tauri.conf.json");
+
+    let csp = config["app"]["security"]["csp"]
+        .as_str()
+        .expect("SECURITY: no CSP is configured. An absent CSP is an open door.");
+
+    let frame_src = csp
+        .split(';')
+        .map(str::trim)
+        .find(|d| d.starts_with("frame-src"))
+        .expect(
+            "SECURITY: CSP defines no frame-src. Without one it falls back to default-src, \
+             and the Map app's embed would be blocked — or, worse, a later widening of \
+             default-src would silently allow framing anything.",
+        );
+
+    const ALLOWED: &[&str] = &["frame-src", "https://www.openstreetmap.org"];
+
+    for token in frame_src.split_whitespace() {
+        assert!(
+            ALLOWED.contains(&token),
+            "SECURITY: CSP frame-src allows '{token}', which is not one of the embed \
+             endpoints this app is allowed to render. Every host here is another origin \
+             whose content runs inside the app window. See the Apps design spec §9."
+        );
     }
 }

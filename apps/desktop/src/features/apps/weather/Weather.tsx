@@ -1,41 +1,15 @@
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
+import {
+  PlacePicker,
+  forgetPlace,
+  loadStoredPlace,
+  storePlace,
+  whereabouts,
+} from "../PlacePicker";
 import { getPlatform } from "../../../platform";
 import type { WeatherPlace, WeatherReport } from "../../../platform/types";
 
 const PLACE_KEY = "jky.apps.weather.place";
-
-/**
- * The place last chosen, or null.
- *
- * Storage holds whatever was last written there — including something an
- * older build wrote, or a person editing the file by hand — so the shape is
- * checked rather than trusted. A bad value asks for a place again, which is
- * the same state a first-time user is in and needs no special handling.
- */
-function loadPlace(): WeatherPlace | null {
-  try {
-    const raw = localStorage.getItem(PLACE_KEY);
-    if (!raw) return null;
-    const parsed: unknown = JSON.parse(raw);
-    if (
-      typeof parsed === "object" &&
-      parsed !== null &&
-      typeof (parsed as WeatherPlace).name === "string" &&
-      Number.isFinite((parsed as WeatherPlace).latitude) &&
-      Number.isFinite((parsed as WeatherPlace).longitude)
-    ) {
-      return parsed as WeatherPlace;
-    }
-  } catch {
-    // Unreadable or unparseable: ask again.
-  }
-  return null;
-}
-
-/** Where a place sits, for telling two of one name apart. */
-function whereabouts(place: WeatherPlace): string {
-  return [place.region, place.country].filter(Boolean).join(", ");
-}
 
 /** "2026-01-02" as a weekday, in the reader's own locale. */
 function weekday(date: string): string {
@@ -61,14 +35,10 @@ function degrees(value: number): string {
  * renders what comes back.
  */
 export function Weather() {
-  const [place, setPlace] = useState<WeatherPlace | null>(loadPlace);
+  const [place, setPlace] = useState<WeatherPlace | null>(() => loadStoredPlace(PLACE_KEY));
   const [report, setReport] = useState<WeatherReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<WeatherPlace[] | null>(null);
-  const [searching, setSearching] = useState(false);
 
   const load = useCallback(async (target: WeatherPlace) => {
     setLoading(true);
@@ -90,38 +60,13 @@ export function Weather() {
     if (place) void load(place);
   }, [place, load]);
 
-  async function runSearch(e: FormEvent) {
-    e.preventDefault();
-    if (query.trim() === "") return;
-    setSearching(true);
-    setError(null);
-    setResults(null);
-    try {
-      setResults(await getPlatform().apps.searchPlaces(query));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-    } finally {
-      setSearching(false);
-    }
-  }
-
   function choose(chosen: WeatherPlace) {
-    try {
-      localStorage.setItem(PLACE_KEY, JSON.stringify(chosen));
-    } catch {
-      // Preference lost; the weather still loads for this session.
-    }
-    setResults(null);
-    setQuery("");
     setPlace(chosen);
+    storePlace(PLACE_KEY, chosen);
   }
 
   function changePlace() {
-    try {
-      localStorage.removeItem(PLACE_KEY);
-    } catch {
-      // Nothing to clear.
-    }
+    forgetPlace(PLACE_KEY);
     setPlace(null);
     setReport(null);
     setError(null);
@@ -130,44 +75,7 @@ export function Weather() {
   if (!place) {
     return (
       <div className="wx wx--picking">
-        <h2 className="wx__ask">Where are you?</h2>
-        <form className="wx__search" onSubmit={runSearch}>
-          <input
-            className="wx__input"
-            aria-label="Place"
-            value={query}
-            spellCheck={false}
-            autoComplete="off"
-            placeholder="A town or city"
-            onChange={(e) => setQuery(e.target.value)}
-          />
-          <button type="submit" className="wx__go" disabled={searching}>
-            {searching ? "Searching…" : "Search"}
-          </button>
-        </form>
-
-        {error && (
-          <p className="wx__error" role="alert">
-            {error}
-          </p>
-        )}
-
-        {results !== null && results.length === 0 && !error && (
-          <p className="wx__empty">No&nbsp;place by that name. Try spelling it differently.</p>
-        )}
-
-        {results !== null && results.length > 0 && (
-          <ul className="wx__results" aria-label="Places found">
-            {results.map((found) => (
-              <li key={`${found.latitude},${found.longitude}`}>
-                <button type="button" className="wx__result" onClick={() => choose(found)}>
-                  <span className="wx__result-name">{found.name}</span>
-                  <span className="wx__result-where">{whereabouts(found)}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <PlacePicker prompt="Where are you?" onChoose={choose} />
       </div>
     );
   }

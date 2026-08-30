@@ -69,6 +69,14 @@ export const APPS: AppDef[] = [
     auth: "none",
     blurb: "The Hacker News front page, with the site each link goes to.",
   },
+  {
+    id: "map",
+    name: "Map",
+    glyph: "🗺",
+    mode: "frame",
+    auth: "none",
+    blurb: "Look anywhere up, drawn by OpenStreetMap inside this window.",
+  },
 ];
 
 export function findApp(id: string): AppDef | undefined {

@@ -659,109 +659,6 @@
   padding-top: var(--s7);
 }
 
-.wx__ask {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.wx__search {
-  display: flex;
-  gap: var(--s2);
-}
-
-.wx__input {
-  flex: 1;
-  min-width: 0;
-  padding: var(--s3);
-  background: var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  color: var(--text);
-  font: inherit;
-  font-size: 14px;
-}
-
-.wx__input::placeholder {
-  color: var(--text-dim);
-}
-
-.wx__input:focus-visible,
-.wx__go:focus-visible,
-.wx__result:focus-visible,
-.wx__change:focus-visible,
-.wx__retry:focus-visible {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-glow);
-}
-
-.wx__go {
-  padding: var(--s3) var(--s5);
-  cursor: pointer;
-  background: var(--accent-glow);
-  border: 1px solid var(--accent-dim);
-  border-radius: var(--radius);
-  color: var(--accent);
-  font: inherit;
-  font-size: 14px;
-  font-weight: 600;
-}
-
-.wx__go:disabled {
-  cursor: default;
-  color: var(--text-dim);
-  border-color: var(--line);
-  background: transparent;
-}
-
-.wx__results {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.wx__result {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s3);
-  width: 100%;
-  padding: var(--s3);
-  cursor: pointer;
-  background: transparent;
-  border: 1px solid transparent;
-  border-radius: var(--radius);
-  color: var(--text);
-  font: inherit;
-  text-align: left;
-}
-
-.wx__result:hover {
-  background: var(--surface);
-}
-
-.wx__result-name {
-  font-weight: 600;
-  font-size: 14px;
-}
-
-.wx__result-where {
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
-.wx__empty,
-.wx__loading {
-  margin: 0;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
 .wx__head {
   display: flex;
   align-items: flex-start;
@@ -1078,4 +975,218 @@
 
 .news__comments:hover {
   color: var(--accent);
+}
+
+/* ---- the shared place picker ---- */
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.picker__ask {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.picker__form {
+  display: flex;
+  gap: var(--s2);
+}
+
+.picker__input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  font-size: 14px;
+}
+
+.picker__input::placeholder {
+  color: var(--text-dim);
+}
+
+.picker__input:focus-visible,
+.picker__go:focus-visible,
+.picker__result:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.picker__go {
+  padding: var(--s3) var(--s5);
+  cursor: pointer;
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-dim);
+  border-radius: var(--radius);
+  color: var(--accent);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.picker__go:disabled {
+  cursor: default;
+  background: transparent;
+  border-color: var(--line);
+  color: var(--text-dim);
+}
+
+.picker__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.picker__empty {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.picker__results {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.picker__result {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+}
+
+.picker__result:hover {
+  background: var(--surface);
+}
+
+.picker__result-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.picker__result-where {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+/* ---- Map ---- */
+
+.map {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  height: 100%;
+  min-height: 0;
+  padding: var(--s4);
+}
+
+.map--picking {
+  max-width: 520px;
+  margin: 0 auto;
+  padding-top: var(--s7);
+}
+
+.map__bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s4);
+  flex: none;
+}
+
+.map__place {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.map__where {
+  margin: 2px 0 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
+.map__controls {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.map__zoom,
+.map__change {
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font: inherit;
+}
+
+.map__zoom {
+  width: 30px;
+  height: 30px;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  line-height: 1;
+}
+
+.map__change {
+  padding: var(--s2) var(--s3);
+  font-size: 12px;
+}
+
+.map__zoom:hover,
+.map__change:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.map__zoom:focus-visible,
+.map__change:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* The frame is another origin's document; the border makes where it starts
+   and ends visible rather than letting it pass as part of the app. */
+.map__frame {
+  flex: 1;
+  min-height: 320px;
+  width: 100%;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.map__credit {
+  flex: none;
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  text-align: right;
 }

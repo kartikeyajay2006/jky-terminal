@@ -158,7 +158,7 @@ export function createTauriPlatform(): Platform {
   const apps: AppsApi = {
     weather: (latitude, longitude) =>
       invoke<WeatherReport>("apps_weather", { latitude, longitude }),
-    searchPlaces: (query) => invoke<WeatherPlace[]>("apps_weather_search", { query }),
+    searchPlaces: (query) => invoke<WeatherPlace[]>("apps_place_search", { query }),
     news: (limit) => invoke<NewsStory[]>("apps_news", { limit }),
   };
 

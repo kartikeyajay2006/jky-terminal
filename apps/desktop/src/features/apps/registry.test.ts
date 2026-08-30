@@ -46,6 +46,12 @@ describe("the app registry", () => {
     expect(findApp("nope")).toBeUndefined();
   });
 
+  // Map is the one app that renders another origin inside the window, which
+  // is what `frame` means and why the CSP names its host.
+  it("includes the map as a frame app needing no account", () => {
+    expect(findApp("map")).toMatchObject({ id: "map", mode: "frame", auth: "none" });
+  });
+
   it("includes news as a data app needing no account", () => {
     expect(findApp("news")).toMatchObject({ id: "news", mode: "data", auth: "none" });
   });

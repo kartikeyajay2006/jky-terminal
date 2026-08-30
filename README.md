@@ -8,7 +8,7 @@ in one fast desktop app. Built by
 
 [![CI](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
 ![Linux · macOS · Windows](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff)
-![Tests](https://img.shields.io/badge/tests-932%20frontend%20%2B%20~330%20Rust-3ddc97)
+![Tests](https://img.shields.io/badge/tests-1240%20frontend%20%2B%20405%20Rust-3ddc97)
 ![License](https://img.shields.io/badge/license-MIT-7c3aed)
 
 ---
@@ -35,7 +35,7 @@ in one fast desktop app. Built by
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-Five places to be, reachable from the rail or from `Ctrl+K`:
+Six places to be, reachable from the rail or from `Ctrl+K`:
 
 | | Section | What it holds |
 |---|---|---|
@@ -43,6 +43,7 @@ Five places to be, reachable from the rail or from `Ctrl+K`:
 | ❯ | **Terminal** | Real PTY shells in tabs, with find, links and history |
 | ✦ | **Assistant** | Streaming chat that can read your project and run commands |
 | ◈ | **Games** | An arcade: Dino Run, Snake, Tic Tac Toe, Flappy Bird |
+| ⊞ | **Apps** | Calculator, Timer, Weather, News, Map — each opening in this window |
 | ⚙ | **Settings** | Themes, API keys, and the shell commands it installs |
 
 ---
@@ -56,7 +57,7 @@ flowchart TB
     subgraph WINDOW["🪟  Webview — React 18 + TypeScript"]
         direction TB
         UI["Shell · Rail · Tabs · Palette"]
-        FEAT["Dashboard · Terminal · Assistant · Games · Settings"]
+        FEAT["Dashboard · Terminal · Assistant · Games · Apps · Settings"]
         ADAPTER["platform/ — the only door out"]
         UI --> FEAT --> ADAPTER
     end
@@ -73,6 +74,7 @@ flowchart TB
         PTY["jky-pty<br/>portable-pty · shell launchers"]
         AI["jky-ai<br/>Anthropic · tool sandbox"]
         STORE["jky-store<br/>notes · todos · events · reminders"]
+        APPS["jky-apps<br/>weather · news · no keys"]
         SETTINGS["jky-settings"]
         AUDIT["jky-audit"]
     end
@@ -82,15 +84,17 @@ flowchart TB
         SHELL[("Your shell")]
         DISK[("~/.config/dev.jky.terminal")]
         NET[("api.anthropic.com")]
+        PUB[("open-meteo · hacker-news")]
     end
 
     ADAPTER -->|invoke| CSP
     CSP --> CMDS
-    CMDS --> SECRETS & PTY & AI & STORE & SETTINGS & AUDIT
+    CMDS --> SECRETS & PTY & AI & STORE & SETTINGS & AUDIT & APPS
 
     SECRETS --> KEYCHAIN
     PTY --> SHELL
     AI -->|"outbound traffic<br/>starts here, not there"| NET
+    APPS --> PUB
     STORE --> DISK
     SETTINGS --> DISK
     AUDIT --> DISK
@@ -130,9 +134,13 @@ sequenceDiagram
     W-->>U: the answer, token by token
 ```
 
-Three tests fail the build if that ever stops being true: no command may be
-shaped like a secret getter, the exposed command list is pinned by name, and
-the CSP's `connect-src` may name no host but `'self'`.
+Four tests fail the build if that ever stops being true: no command may be
+shaped like a secret getter, the exposed command list is pinned by name, the
+CSP's `connect-src` may name no host but `'self'`, and its `frame-src` may name
+only the embed endpoints the Apps section is allowed to render. The last two
+are different permissions: `frame-src` lets the window *display* another
+origin's document, while same-origin policy still stops this app's JavaScript
+from reading into it or reaching that host.
 
 ---
 
@@ -217,6 +225,31 @@ screen shake, and a CRT screen with scanlines and phosphor bloom. Every ramp
 has a cap — past it the gap between seeing an obstacle and needing to have
 already reacted is shorter than human reaction time.
 
+### ⊞ Apps
+
+Five apps, each opening in this window rather than handing you to a browser.
+`Ctrl+Shift+A` switches between them without going back to the grid.
+
+| | App | What it is |
+|---|---|---|
+| 🖩 | **Calculator** | A real parser — not `eval` — with history you can click back into |
+| ⏱ | **Timer** | Counts by the clock, so a backgrounded window does not lose time |
+| ☀ | **Weather** | Now and three days ahead, anywhere. No key, no account |
+| 📰 | **News** | The Hacker News front page, with the site each link goes to |
+| 🗺 | **Map** | OpenStreetMap, drawn inside the window |
+
+Weather and News fetch through Rust like everything else — the window can
+reach no host — so neither needed a CSP change. Map did: it renders another
+origin's document, and `frame-src` names exactly one host for it.
+
+**Why only five.** Most of the web refuses to be embedded. Measured directly:
+GitHub and Jira send `X-Frame-Options: deny`; Gmail and Grafana `DENY`; Slack,
+Notion, Figma, YouTube, Reddit and OpenStreetMap's main site all `SAMEORIGIN`.
+Purpose-built embed endpoints are the exception, which is what Map uses. The
+apps that need an account — GitHub, Reddit, YouTube — are next, and each needs
+its own OAuth app registered; a Google login cannot authenticate GitHub or
+Reddit, because those run their own authorization servers.
+
 ### 🎨 Seven themes
 
 Cyberpunk, Dracula, Nord, Solarized, Light, Gold, High Contrast. Themes are
@@ -274,6 +307,7 @@ jky-terminal/
 │  │  │  ├─ dashboard/        notes, todos, calendar, reminders
 │  │  │  ├─ notifications/    banners and the notification centre
 │  │  │  ├─ games/            grid engine + four games
+│  │  │  ├─ apps/             registry, switcher, and the five apps
 │  │  │  ├─ palette/          Ctrl+K
 │  │  │  └─ settings/         themes, keys, command catalogue
 │  │  ├─ platform/            the adapter — tauri.ts and web.ts
@@ -284,6 +318,7 @@ jky-terminal/
    ├─ jky-pty/                portable-pty, launchers, command catalogue
    ├─ jky-ai/                 AIProvider, Anthropic, tool sandbox
    ├─ jky-store/              collections + capped scrollback
+   ├─ jky-apps/               weather + news: fetch, parse, no keys
    ├─ jky-settings/           preferences
    └─ jky-audit/              local-only audit log
 ```
@@ -301,7 +336,7 @@ Every push runs, on **Linux, macOS and Windows** with `fail-fast: false`:
 
 | Job | What it proves |
 |---|---|
-| Frontend | typecheck, lint, 932 tests |
+| Frontend | typecheck, lint, 1240 tests |
 | Native ×3 | `cargo test`, `clippy -D warnings`, and the shippable binary **links** |
 | Dependency audit | `pnpm audit` and `cargo audit`, failing on high or critical |
 | Security assertions | the command surface, the CSP, and no key in the bundle |
@@ -317,8 +352,14 @@ Stated plainly, because a README that only lists what works is a sales page.
 
 - **Signing and auto-update.** The release pipeline works; certificates and an
   updater keypair do not exist yet. See [`docs/RELEASING.md`](docs/RELEASING.md).
-- **Integrations** — GitHub, Google, Slack, Docker, Kubernetes. Deferred to
-  v0.2, along with the OAuth device flow they need.
+- **The signed-in apps.** The Apps section ships the five that need no
+  account. GitHub, Reddit and YouTube need their own OAuth apps registered
+  first — a Google login cannot authenticate GitHub or Reddit, which run their
+  own authorization servers.
+- **A Browser app.** Arbitrary pages cannot be framed: GitHub and Jira send
+  `X-Frame-Options: deny`, and Slack, Notion, Figma, YouTube and Reddit all
+  send `SAMEORIGIN`. A real browser needs a native webview docked in the
+  window, which is behind Tauri's `unstable` flag today.
 - **Editor tab.** Monaco is a multi-megabyte dependency and the bundle is
   already at its budget; the notes editor covers the common case for now.
 - **Browser and Database tabs.** v0.2.

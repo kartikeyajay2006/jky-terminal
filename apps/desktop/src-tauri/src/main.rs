@@ -53,7 +53,7 @@ fn main() {
             games::games_publish_scores,
             apps::apps_news,
             apps::apps_weather,
-            apps::apps_weather_search,
+            apps::apps_place_search,
             open::open_external,
             scrollback::scrollback_load,
             scrollback::scrollback_save,
