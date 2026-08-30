@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AppsApi,
+  NewsStory,
   WeatherPlace,
   WeatherReport,
   AiApi,
@@ -158,6 +159,7 @@ export function createTauriPlatform(): Platform {
     weather: (latitude, longitude) =>
       invoke<WeatherReport>("apps_weather", { latitude, longitude }),
     searchPlaces: (query) => invoke<WeatherPlace[]>("apps_weather_search", { query }),
+    news: (limit) => invoke<NewsStory[]>("apps_news", { limit }),
   };
 
   const scrollback: ScrollbackApi = {

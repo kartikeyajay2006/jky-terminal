@@ -16,9 +16,11 @@ import { createWebPlatform } from "./web";
  */
 
 const RUST_WEATHER = join(__dirname, "../../../../crates/jky-apps/src/weather.rs");
+const RUST_NEWS = join(__dirname, "../../../../crates/jky-apps/src/news.rs");
 
+/** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
-  return readFileSync(RUST_WEATHER, "utf8");
+  return readFileSync(RUST_WEATHER, "utf8") + readFileSync(RUST_NEWS, "utf8");
 }
 
 /** The fields declared on one `pub struct` in the Rust source. */
@@ -90,6 +92,32 @@ describe("apps adapter parity", () => {
       "longitude",
       "timezone",
     ]);
+  });
+
+  it("the mock returns stories shaped like the real ones", async () => {
+    const stories = await web.apps.news(3);
+    expect(stories.length).toBeGreaterThan(0);
+    for (const field of fieldsOf("Story")) {
+      expect(stories[0], `Story.${field} is missing from the mock`).toHaveProperty(field);
+    }
+  });
+
+  it("names every news field the same way in TypeScript", () => {
+    expect(fieldsOf("Story")).toEqual([
+      "id",
+      "title",
+      "url",
+      "host",
+      "score",
+      "author",
+      "comments",
+      "posted_at",
+      "discussion_url",
+    ]);
+  });
+
+  it("refuses a headline count the backend would refuse", async () => {
+    await expect(web.apps.news(0)).rejects.toThrow();
   });
 
   it("refuses a search the backend would refuse", async () => {

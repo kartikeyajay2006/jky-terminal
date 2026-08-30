@@ -174,7 +174,7 @@ export function Weather() {
 
   return (
     <div className="wx">
-      <header className="wx__head">
+      <div className="wx__head">
         <div>
           <h2 className="wx__place">{place.name}</h2>
           <p className="wx__where">{whereabouts(place)}</p>
@@ -182,7 +182,7 @@ export function Weather() {
         <button type="button" className="wx__change" onClick={changePlace}>
           Change place
         </button>
-      </header>
+      </div>
 
       {error && (
         <div className="wx__failure">

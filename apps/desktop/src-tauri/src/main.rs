@@ -51,6 +51,7 @@ fn main() {
             store::store_save_reminder,
             store::store_delete_reminder,
             games::games_publish_scores,
+            apps::apps_news,
             apps::apps_weather,
             apps::apps_weather_search,
             open::open_external,

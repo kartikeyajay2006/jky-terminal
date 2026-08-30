@@ -61,6 +61,14 @@ export const APPS: AppDef[] = [
     auth: "none",
     blurb: "Now and the days ahead, anywhere. No account needed.",
   },
+  {
+    id: "news",
+    name: "News",
+    glyph: "📰",
+    mode: "data",
+    auth: "none",
+    blurb: "The Hacker News front page, with the site each link goes to.",
+  },
 ];
 
 export function findApp(id: string): AppDef | undefined {

@@ -11,6 +11,7 @@
 //! account, so there is nothing secret in this path; the boundary is about
 //! where network access lives, not about protecting a credential.
 
+use jky_apps::news::{self, Story};
 use jky_apps::weather::{self, Place, Report};
 use tauri::State;
 
@@ -75,6 +76,22 @@ pub async fn apps_weather_search(
         .map_err(|e| e.to_string())
 }
 
+/// How many headlines the panel may ask for at once.
+///
+/// Each one is a separate request to the news service, so this is a bound on
+/// what a single IPC call can make the app do — not a display preference.
+const MAX_HEADLINES: usize = 30;
+
+#[tauri::command]
+pub async fn apps_news(state: State<'_, AppState>, limit: usize) -> Result<Vec<Story>, String> {
+    if limit == 0 {
+        return Err("ask for at least one headline".into());
+    }
+    news::fetch_top(&state.http, limit.min(MAX_HEADLINES))
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -120,5 +137,13 @@ mod tests {
     #[test]
     fn measures_the_bound_in_characters_not_bytes() {
         assert!(check_query(&"é".repeat(MAX_QUERY)).is_ok());
+    }
+
+    // The clamp is the point: a window asking for ten thousand headlines
+    // would otherwise make ten thousand requests to someone else's service.
+    #[test]
+    fn the_headline_bound_is_a_clamp_not_a_refusal() {
+        assert_eq!(9999_usize.min(MAX_HEADLINES), MAX_HEADLINES);
+        assert_eq!(10_usize.min(MAX_HEADLINES), 10);
     }
 }

@@ -114,6 +114,11 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // before they reach a URL, and the URL itself is built in jky-apps
         // against a fixed host. The widest either can do is ask a public
         // weather service about a place.
+        // Headlines from Hacker News. Public API, no key, no account. The
+        // limit is clamped in Rust rather than trusted, because each headline
+        // is a separate request and an unbounded number would make the app a
+        // load generator pointed at someone else's service.
+        "apps_news".to_string(),
         "apps_weather".to_string(),
         "apps_weather_search".to_string(),
         "commands_list".to_string(),

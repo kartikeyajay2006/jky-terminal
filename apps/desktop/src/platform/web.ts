@@ -380,6 +380,22 @@ export function createWebPlatform(): Platform {
         timezone: "UTC",
       };
     },
+    async news(limit) {
+      if (limit <= 0) throw new Error("ask for at least one headline");
+      return Array.from({ length: Math.min(limit, 3) }, (_, i) => ({
+        id: i + 1,
+        title: `Preview headline ${i + 1}`,
+        // The second one has no link, so the panel's Ask-HN branch is
+        // exercised by the browser build rather than only on the desktop.
+        url: i === 1 ? null : `https://example.com/${i + 1}`,
+        host: i === 1 ? null : "example.com",
+        score: 100 - i,
+        author: "preview",
+        comments: 10 + i,
+        posted_at: 1_700_000_000,
+        discussion_url: `https://news.ycombinator.com/item?id=${i + 1}`,
+      }));
+    },
     async searchPlaces(query) {
       // The same refusal the backend makes, so a UI that mishandles it fails
       // here rather than only on the desktop build.

@@ -75,6 +75,28 @@ describe("accessibility", () => {
     });
   }
 
+  // The apps that keep a choice start in a different state than the sweep
+  // above reaches: Weather asks for a place first, so its loaded view — the
+  // one with a second heading row in it — was never being checked.
+  it("the Weather app has no violations once a place is chosen", async () => {
+    localStorage.setItem(
+      "jky.apps.weather.place",
+      JSON.stringify({
+        name: "Sample City",
+        country: "Preview",
+        region: null,
+        latitude: 0,
+        longitude: 0,
+        timezone: "UTC",
+      }),
+    );
+    const user = userEvent.setup();
+    const { container } = render(<Apps />);
+    await user.click(screen.getByRole("button", { name: /weather/i }));
+    await screen.findByRole("region", { name: /current conditions/i });
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
   it("the app switcher has no violations", async () => {
     const user = userEvent.setup();
     const { container } = render(<Apps />);

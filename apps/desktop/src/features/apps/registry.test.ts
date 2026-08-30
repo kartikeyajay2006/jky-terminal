@@ -46,6 +46,10 @@ describe("the app registry", () => {
     expect(findApp("nope")).toBeUndefined();
   });
 
+  it("includes news as a data app needing no account", () => {
+    expect(findApp("news")).toMatchObject({ id: "news", mode: "data", auth: "none" });
+  });
+
   // Weather fetches, but through Rust and from a service that needs no key —
   // so it is a `data` app that still asks the user for nothing.
   it("includes weather as a data app needing no account", () => {

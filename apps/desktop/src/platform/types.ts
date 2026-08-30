@@ -252,6 +252,23 @@ export interface WeatherPlace {
   timezone: string | null;
 }
 
+/** One headline, as `jky-apps` serialises it. */
+export interface NewsStory {
+  id: number;
+  title: string;
+  /** Absent for an Ask HN post, where the discussion is the article. */
+  url: string | null;
+  /** The site the link points at, so you can see where it goes. */
+  host: string | null;
+  score: number;
+  author: string;
+  comments: number;
+  /** Unix seconds. */
+  posted_at: number;
+  /** Built in Rust from the id, so a response cannot redirect it. */
+  discussion_url: string;
+}
+
 /**
  * What the Apps section needs fetched.
  *
@@ -263,6 +280,7 @@ export interface WeatherPlace {
 export interface AppsApi {
   weather(latitude: number, longitude: number): Promise<WeatherReport>;
   searchPlaces(query: string): Promise<WeatherPlace[]>;
+  news(limit: number): Promise<NewsStory[]>;
 }
 
 export interface Platform {

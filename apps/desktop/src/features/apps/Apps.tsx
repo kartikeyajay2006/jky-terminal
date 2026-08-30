@@ -3,6 +3,7 @@ import { AppSwitcher } from "./AppSwitcher";
 import { APPS, findApp, type AppDef } from "./registry";
 import { Calculator } from "./calculator/Calculator";
 import { Timer } from "./timer/Timer";
+import { News } from "./news/News";
 import { Weather } from "./weather/Weather";
 import { useNav } from "../../app/navStore";
 import "./Apps.css";
@@ -38,6 +39,8 @@ function appBody(id: string): ReactNode {
       return <Timer />;
     case "weather":
       return <Weather />;
+    case "news":
+      return <News />;
     default:
       return null;
   }
