@@ -46,6 +46,10 @@ describe("the app registry", () => {
     expect(findApp("nope")).toBeUndefined();
   });
 
+  it("includes the timer as a local app needing no account", () => {
+    expect(findApp("timer")).toMatchObject({ id: "timer", mode: "local", auth: "none" });
+  });
+
   it("includes the calculator as a local app needing no account", () => {
     const calc = findApp("calculator");
     expect(calc).toMatchObject({ id: "calculator", mode: "local", auth: "none" });

@@ -458,3 +458,188 @@
   color: var(--text);
   font-weight: 600;
 }
+
+/* ---- Timer ---- */
+
+.timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s4);
+  max-width: 420px;
+  margin: 0 auto;
+  padding: var(--s6) var(--s4);
+}
+
+.timer__face {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s5) var(--s4);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+}
+
+.timer__face[data-finished] {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.timer__display {
+  font-family: var(--font-mono);
+  font-size: 56px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.timer__face[data-finished] .timer__display {
+  color: var(--accent);
+}
+
+.timer__track {
+  width: 100%;
+  height: 4px;
+  overflow: hidden;
+  background: var(--line);
+  border-radius: 999px;
+}
+
+.timer__fill {
+  height: 100%;
+  background: var(--accent);
+  transition: width var(--fast) linear;
+}
+
+.timer__done {
+  margin: 0;
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.timer__controls {
+  display: flex;
+  gap: var(--s3);
+  width: 100%;
+}
+
+.timer__primary,
+.timer__secondary {
+  flex: 1;
+  padding: var(--s3);
+  cursor: pointer;
+  border-radius: var(--radius);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  transition:
+    background var(--fast) var(--ease),
+    border-color var(--fast) var(--ease);
+}
+
+.timer__primary {
+  background: var(--accent-glow);
+  border: 1px solid var(--accent-dim);
+  color: var(--accent);
+}
+
+.timer__primary:hover {
+  border-color: var(--accent);
+}
+
+.timer__secondary {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+}
+
+.timer__secondary:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.timer__primary:focus-visible,
+.timer__secondary:focus-visible,
+.timer__preset:focus-visible,
+.timer__set:focus-visible,
+.timer__input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.timer__presets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--s2);
+  width: 100%;
+}
+
+.timer__preset {
+  padding: var(--s2) var(--s1);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.timer__preset:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.timer__entry {
+  display: flex;
+  gap: var(--s2);
+  width: 100%;
+}
+
+.timer__input {
+  flex: 1;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+
+.timer__input::placeholder {
+  color: var(--text-dim);
+}
+
+.timer__set {
+  padding: var(--s2) var(--s4);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 13px;
+}
+
+.timer__set:hover {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.timer__hint {
+  margin: 0;
+  align-self: flex-start;
+  color: var(--danger);
+  font-size: 12px;
+}

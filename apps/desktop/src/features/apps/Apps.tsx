@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { AppSwitcher } from "./AppSwitcher";
 import { APPS, findApp, type AppDef } from "./registry";
 import { Calculator } from "./calculator/Calculator";
+import { Timer } from "./timer/Timer";
 import { useNav } from "../../app/navStore";
 import "./Apps.css";
 
@@ -32,6 +33,8 @@ function appBody(id: string): ReactNode {
   switch (id) {
     case "calculator":
       return <Calculator />;
+    case "timer":
+      return <Timer />;
     default:
       return null;
   }

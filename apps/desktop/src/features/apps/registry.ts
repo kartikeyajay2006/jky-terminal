@@ -45,6 +45,14 @@ export const APPS: AppDef[] = [
     auth: "none",
     blurb: "Arithmetic, with the keyboard and the history kept.",
   },
+  {
+    id: "timer",
+    name: "Timer",
+    glyph: "⏱",
+    mode: "local",
+    auth: "none",
+    blurb: "A countdown that keeps time by the clock, not by the frame.",
+  },
 ];
 
 export function findApp(id: string): AppDef | undefined {

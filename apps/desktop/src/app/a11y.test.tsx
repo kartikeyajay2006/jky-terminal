@@ -64,12 +64,16 @@ describe("accessibility", () => {
     expect(await axe(container)).toHaveNoViolations();
   });
 
-  it("an open app has no violations", async () => {
-    const user = userEvent.setup();
-    const { container } = render(<Apps />);
-    await user.click(screen.getByRole("button", { name: new RegExp(APPS[0].name, "i") }));
-    expect(await axe(container)).toHaveNoViolations();
-  });
+  // Every app, not just the first: each one draws its own controls, and the
+  // grid passing says nothing about what is inside any of them.
+  for (const app of APPS) {
+    it(`the ${app.name} app has no violations`, async () => {
+      const user = userEvent.setup();
+      const { container } = render(<Apps />);
+      await user.click(screen.getByRole("button", { name: new RegExp(app.name, "i") }));
+      expect(await axe(container)).toHaveNoViolations();
+    });
+  }
 
   it("the app switcher has no violations", async () => {
     const user = userEvent.setup();
