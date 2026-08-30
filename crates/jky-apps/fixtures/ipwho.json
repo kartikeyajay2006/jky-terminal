@@ -1,0 +1,38 @@
+{
+ "ip": "203.0.113.9",
+ "success": true,
+ "type": "IPv4",
+ "continent": "Asia",
+ "continent_code": "AS",
+ "country": "India",
+ "country_code": "IN",
+ "region": "Karnataka",
+ "region_code": "KA",
+ "city": "Bengaluru",
+ "latitude": 12.9715893,
+ "longitude": 77.5945856,
+ "is_eu": false,
+ "postal": "560001",
+ "calling_code": "91",
+ "capital": "New Delhi",
+ "borders": "BD,BT,CN,MM,NP,PK",
+ "flag": {
+  "img": "https://cdn.ipwhois.io/flags/in.svg",
+  "emoji": "\ud83c\uddee\ud83c\uddf3",
+  "emoji_unicode": "U+1F1EE U+1F1F3"
+ },
+ "connection": {
+  "asn": 45769,
+  "org": "D-VoiS Communications Private Limited DCPL",
+  "isp": "D-Vois Broadband Pvt Ltd",
+  "domain": "i-on.in"
+ },
+ "timezone": {
+  "id": "Asia/Kolkata",
+  "abbr": "IST",
+  "is_dst": false,
+  "offset": 19800,
+  "utc": "+05:30"
+ },
+ "readme": "https://ipwhois.io/docs"
+}

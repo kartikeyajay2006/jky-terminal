@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { MapApp, embedUrl } from "./Map";
@@ -10,9 +10,12 @@ function frame() {
   return screen.getByTitle(/map of/i) as HTMLIFrameElement;
 }
 
+/** Instant typing, so the picker's debounce is the only wait here. */
+const typist = () => userEvent.setup({ delay: null });
+
+// The picker searches as you type; there is no button to press.
 async function pick(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByRole("textbox", { name: /place/i }), "Delhi");
-  await user.click(screen.getByRole("button", { name: /^search$/i }));
   await user.click(await screen.findByRole("button", { name: /sample city/i }));
 }
 
@@ -75,7 +78,7 @@ describe("Map", () => {
   });
 
   it("shows the map once a place is chosen", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<MapApp />);
     await pick(user);
     expect(frame().src).toContain("openstreetmap.org/export/embed.html");
@@ -84,7 +87,7 @@ describe("Map", () => {
   // The frame is a whole other origin rendering inside the app window, so it
   // gets the narrowest sandbox that still lets a map work, and no referrer.
   it("sandboxes the frame and sends no referrer", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<MapApp />);
     await pick(user);
     expect(frame()).toHaveAttribute("sandbox", "allow-scripts");
@@ -92,14 +95,14 @@ describe("Map", () => {
   });
 
   it("names the frame so it is not an unlabelled box", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<MapApp />);
     await pick(user);
     expect(frame().title).toMatch(/sample city/i);
   });
 
   it("zooms in and out", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<MapApp />);
     await pick(user);
 
@@ -116,7 +119,7 @@ describe("Map", () => {
   });
 
   it("remembers the place across a remount", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     const first = render(<MapApp />);
     await pick(user);
     first.unmount();
@@ -126,11 +129,35 @@ describe("Map", () => {
   });
 
   it("lets the place be changed again", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<MapApp />);
     await pick(user);
     await user.click(screen.getByRole("button", { name: /change place/i }));
     expect(screen.getByRole("textbox", { name: /place/i })).toBeInTheDocument();
+  });
+
+  // The user asked for two ways in: where you are, and where you have been.
+  it("offers a place you looked at before, without searching again", async () => {
+    const user = typist();
+    render(<MapApp />);
+    await pick(user);
+    await user.click(screen.getByRole("button", { name: /change place/i }));
+
+    const recents = screen.getByRole("list", { name: /recent places/i });
+    expect(within(recents).getByText(/sample city/i)).toBeInTheDocument();
+  });
+
+  it("keeps the recent list even after the current place is cleared", async () => {
+    const user = typist();
+    render(<MapApp />);
+    await pick(user);
+    await user.click(screen.getByRole("button", { name: /change place/i }));
+    expect(localStorage.getItem("jky.apps.map.recents")).toContain("Sample City");
+  });
+
+  it("offers to work out where you are", () => {
+    render(<MapApp />);
+    expect(screen.getByRole("button", { name: /use my location/i })).toBeInTheDocument();
   });
 
   it("falls back to asking when the stored place is nonsense", () => {
@@ -150,10 +177,9 @@ describe("Map", () => {
         },
       },
     });
-    const user = userEvent.setup();
+    const user = typist();
     render(<MapApp />);
     await user.type(screen.getByRole("textbox", { name: /place/i }), "Delhi");
-    await user.click(screen.getByRole("button", { name: /^search$/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/could not reach/i);
   });
 });

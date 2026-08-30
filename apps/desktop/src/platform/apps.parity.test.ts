@@ -17,10 +17,11 @@ import { createWebPlatform } from "./web";
 
 const RUST_WEATHER = join(__dirname, "../../../../crates/jky-apps/src/weather.rs");
 const RUST_NEWS = join(__dirname, "../../../../crates/jky-apps/src/feeds.rs");
+const RUST_PLACES = join(__dirname, "../../../../crates/jky-apps/src/places.rs");
 
 /** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
-  return readFileSync(RUST_WEATHER, "utf8") + readFileSync(RUST_NEWS, "utf8");
+  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES].map((f) => readFileSync(f, "utf8")).join("\n");
 }
 
 /** The fields declared on one `pub struct` in the Rust source. */
@@ -130,6 +131,13 @@ describe("apps adapter parity", () => {
 
   it("refuses a paper the backend does not have", async () => {
     await expect(web.apps.news("not-a-paper", 3)).rejects.toThrow();
+  });
+
+  it("the mock locates a place shaped like the real one", async () => {
+    const here = await web.apps.locate();
+    for (const field of fieldsOf("Place")) {
+      expect(here, `Place.${field} is missing from the mock`).toHaveProperty(field);
+    }
   });
 
   it("refuses a search the backend would refuse", async () => {

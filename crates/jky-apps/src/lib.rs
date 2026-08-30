@@ -11,4 +11,5 @@
 //! the network happens to return today.
 
 pub mod feeds;
+pub mod places;
 pub mod weather;

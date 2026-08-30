@@ -242,7 +242,13 @@ export interface WeatherReport {
   timezone: string;
 }
 
-export interface WeatherPlace {
+/**
+ * A point on the map with a name.
+ *
+ * Shared by Weather and Map: both need a coordinate, and only one of them is
+ * about the weather. Mirrors `Place` in `crates/jky-apps/src/places.rs`.
+ */
+export interface Place {
   name: string;
   country: string;
   /** State or province: two places share a name often enough to need it. */
@@ -285,10 +291,17 @@ export interface NewsArticle {
  */
 export interface AppsApi {
   weather(latitude: number, longitude: number): Promise<WeatherReport>;
-  searchPlaces(query: string): Promise<WeatherPlace[]>;
+  searchPlaces(query: string): Promise<Place[]>;
   /** Headlines from one paper by id, or from every paper when null. */
   news(source: string | null, limit: number): Promise<NewsArticle[]>;
   newsSources(): Promise<NewsSource[]>;
+  /**
+   * Roughly where this machine is, from its public address.
+   *
+   * City level at best and wrong behind a VPN, so it is offered as a shortcut
+   * beside the search box rather than used as the truth.
+   */
+  locate(): Promise<Place>;
 }
 
 export interface Platform {

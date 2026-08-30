@@ -2,20 +2,46 @@ import { useCallback, useEffect, useState } from "react";
 import {
   PlacePicker,
   forgetPlace,
+  loadRecents,
   loadStoredPlace,
+  rememberPlace,
   storePlace,
   whereabouts,
 } from "../PlacePicker";
 import { getPlatform } from "../../../platform";
-import type { WeatherPlace, WeatherReport } from "../../../platform/types";
+import type { Place, WeatherReport } from "../../../platform/types";
 
 const PLACE_KEY = "jky.apps.weather.place";
+/// Kept apart from the current place, so changing where you are does not also
+/// forget the places you check regularly.
+const RECENTS_KEY = "jky.apps.weather.recents";
 
 /** "2026-01-02" as a weekday, in the reader's own locale. */
 function weekday(date: string): string {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return date;
   return parsed.toLocaleDateString(undefined, { weekday: "short" });
+}
+
+/**
+ * A mark for the sky, beside the words Rust already sent.
+ *
+ * Ranges rather than a second WMO table: the descriptions come from one place
+ * in Rust, and this only has to say roughly what is happening at a glance.
+ * Anything unrecognised still gets a mark, because a blank where the weather
+ * should be reads as a broken panel rather than an unknown code.
+ */
+export function conditionGlyph(code: number, isDay: boolean): string {
+  if (code === 0) return isDay ? "☀" : "☾";
+  if (code <= 2) return isDay ? "⛅" : "☁";
+  if (code === 3) return "☁";
+  if (code <= 48) return "🌫";
+  if (code <= 67) return "🌧";
+  if (code <= 77) return "❄";
+  if (code <= 82) return "🌦";
+  if (code <= 86) return "🌨";
+  if (code <= 99) return "⛈";
+  return "•";
 }
 
 /** Whole degrees: a tenth of a degree is below what anyone feels. */
@@ -35,12 +61,13 @@ function degrees(value: number): string {
  * renders what comes back.
  */
 export function Weather() {
-  const [place, setPlace] = useState<WeatherPlace | null>(() => loadStoredPlace(PLACE_KEY));
+  const [place, setPlace] = useState<Place | null>(() => loadStoredPlace(PLACE_KEY));
+  const [recents, setRecents] = useState<Place[]>(() => loadRecents(RECENTS_KEY));
   const [report, setReport] = useState<WeatherReport | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (target: WeatherPlace) => {
+  const load = useCallback(async (target: Place) => {
     setLoading(true);
     setError(null);
     try {
@@ -60,9 +87,10 @@ export function Weather() {
     if (place) void load(place);
   }, [place, load]);
 
-  function choose(chosen: WeatherPlace) {
+  function choose(chosen: Place) {
     setPlace(chosen);
     storePlace(PLACE_KEY, chosen);
+    setRecents(rememberPlace(RECENTS_KEY, chosen));
   }
 
   function changePlace() {
@@ -75,7 +103,7 @@ export function Weather() {
   if (!place) {
     return (
       <div className="wx wx--picking">
-        <PlacePicker prompt="Where are you?" onChoose={choose} />
+        <PlacePicker prompt="Where are you?" recents={recents} onChoose={choose} />
       </div>
     );
   }
@@ -112,7 +140,12 @@ export function Weather() {
             aria-label="Current conditions"
             data-night={report.now.is_day ? undefined : ""}
           >
-            <p className="wx__temp">{degrees(report.now.temperature_c)}</p>
+            <div className="wx__reading">
+              <span className="wx__glyph" aria-hidden="true">
+                {conditionGlyph(report.now.code, report.now.is_day)}
+              </span>
+              <p className="wx__temp">{degrees(report.now.temperature_c)}</p>
+            </div>
             <p className="wx__desc">{report.now.description}</p>
             <dl className="wx__facts">
               <div>
@@ -134,6 +167,9 @@ export function Weather() {
             {report.days.map((day) => (
               <li key={day.date} className="wx__day">
                 <span className="wx__day-name">{weekday(day.date)}</span>
+                <span className="wx__day-glyph" aria-hidden="true">
+                  {conditionGlyph(day.code, true)}
+                </span>
                 <span className="wx__day-desc">{day.description}</span>
                 <span className="wx__day-range">
                   <b>{degrees(day.high_c)}</b> {degrees(day.low_c)}

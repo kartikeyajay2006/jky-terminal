@@ -407,6 +407,16 @@ export function createWebPlatform(): Platform {
         host: "example.com",
       }));
     },
+    async locate() {
+      return {
+        name: "Sample City",
+        country: "Preview",
+        region: null,
+        latitude: 0,
+        longitude: 0,
+        timezone: "UTC",
+      };
+    },
     async searchPlaces(query) {
       // The same refusal the backend makes, so a UI that mishandles it fails
       // here rather than only on the desktop build.

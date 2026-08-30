@@ -2,13 +2,18 @@ import { useState } from "react";
 import {
   PlacePicker,
   forgetPlace,
+  loadRecents,
   loadStoredPlace,
+  rememberPlace,
   storePlace,
   whereabouts,
 } from "../PlacePicker";
-import type { WeatherPlace } from "../../../platform/types";
+import type { Place } from "../../../platform/types";
 
 const PLACE_KEY = "jky.apps.map.place";
+/// Kept apart from the current place, so clearing where you are looking does
+/// not also forget everywhere you have looked.
+const RECENTS_KEY = "jky.apps.map.recents";
 
 /**
  * OpenStreetMap's own embed endpoint.
@@ -74,11 +79,13 @@ export function embedUrl(latitude: number, longitude: number, span: number): str
  * that a compromised frontend has nowhere to send anything is untouched.
  */
 export function MapApp() {
-  const [place, setPlace] = useState<WeatherPlace | null>(() => loadStoredPlace(PLACE_KEY));
+  const [place, setPlace] = useState<Place | null>(() => loadStoredPlace(PLACE_KEY));
+  const [recents, setRecents] = useState<Place[]>(() => loadRecents(RECENTS_KEY));
   const [span, setSpan] = useState(DEFAULT_SPAN);
 
-  function choose(chosen: WeatherPlace) {
+  function choose(chosen: Place) {
     storePlace(PLACE_KEY, chosen);
+    setRecents(rememberPlace(RECENTS_KEY, chosen));
     setSpan(DEFAULT_SPAN);
     setPlace(chosen);
   }
@@ -86,7 +93,11 @@ export function MapApp() {
   if (!place) {
     return (
       <div className="map map--picking">
-        <PlacePicker prompt="Where do you want to look?" onChoose={choose} />
+        <PlacePicker
+          prompt="Where do you want to look?"
+          recents={recents}
+          onChoose={choose}
+        />
       </div>
     );
   }

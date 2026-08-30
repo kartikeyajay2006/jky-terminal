@@ -113,6 +113,13 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // against a fixed host from arguments bounds-checked at this boundary,
         // so the renderer chooses parameters, never a destination.
         //
+        // apps_locate: roughly where this machine is, from its public
+        // address. Takes nothing from the window, so there is no input to
+        // validate; it is a request Rust makes on its own to a fixed host.
+        // City level at best, offered as a shortcut rather than used as
+        // truth, and it touches no OS location service and no permission
+        // prompt.
+        "apps_locate".to_string(),
         // apps_news: headlines from one of a fixed list of papers, or all of
         // them. The window names a source by id and never by URL — a command
         // that took a feed address would be an open fetcher pointed wherever

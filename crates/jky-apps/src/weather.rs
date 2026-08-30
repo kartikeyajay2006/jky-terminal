@@ -15,7 +15,6 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 const FORECAST_HOST: &str = "https://api.open-meteo.com/v1/forecast";
-const GEOCODE_HOST: &str = "https://geocoding-api.open-meteo.com/v1/search";
 
 /// How many days of outlook to ask for, today included.
 const FORECAST_DAYS: u8 = 4;
@@ -63,18 +62,6 @@ pub struct Report {
     pub timezone: String,
 }
 
-#[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct Place {
-    pub name: String,
-    pub country: String,
-    /// State or province. Two places share a name often enough that leaving
-    /// this out would make the search results impossible to choose between.
-    pub region: Option<String>,
-    pub latitude: f64,
-    pub longitude: f64,
-    pub timezone: Option<String>,
-}
-
 // ---- the wire ----
 
 #[derive(Deserialize)]
@@ -101,24 +88,6 @@ struct WireDaily {
     weather_code: Vec<u8>,
     temperature_2m_max: Vec<f64>,
     temperature_2m_min: Vec<f64>,
-}
-
-#[derive(Deserialize)]
-struct WireGeocode {
-    // Open-Meteo omits this key entirely when nothing matched, rather than
-    // sending an empty array, so it cannot be a required field.
-    #[serde(default)]
-    results: Vec<WirePlace>,
-}
-
-#[derive(Deserialize)]
-struct WirePlace {
-    name: String,
-    country: Option<String>,
-    admin1: Option<String>,
-    latitude: f64,
-    longitude: f64,
-    timezone: Option<String>,
 }
 
 // ---- parsing ----
@@ -174,24 +143,6 @@ pub fn parse_report(json: &str) -> Result<Report, WeatherError> {
     })
 }
 
-pub fn parse_places(json: &str) -> Result<Vec<Place>, WeatherError> {
-    let wire: WireGeocode =
-        serde_json::from_str(json).map_err(|e| WeatherError::Malformed(e.to_string()))?;
-
-    Ok(wire
-        .results
-        .into_iter()
-        .map(|p| Place {
-            name: p.name,
-            country: p.country.unwrap_or_default(),
-            region: p.admin1,
-            latitude: p.latitude,
-            longitude: p.longitude,
-            timezone: p.timezone,
-        })
-        .collect())
-}
-
 /// A WMO weather code in words.
 ///
 /// The table is the published WMO 4677 set that Open-Meteo documents. It has
@@ -233,26 +184,6 @@ pub fn describe(code: u8) -> &'static str {
 
 // ---- urls ----
 
-/// Percent-encode one query-string value.
-///
-/// Hand-written rather than pulled in as a dependency: it is a dozen lines,
-/// the project audits everything it ships, and the alternative is another
-/// crate in the tree to justify. Everything outside the unreserved set of
-/// RFC 3986 is escaped, so a name containing `&`, `?`, a space or any
-/// non-ASCII character cannot end the value early or start a new parameter.
-fn encode(value: &str) -> String {
-    let mut out = String::with_capacity(value.len());
-    for byte in value.as_bytes() {
-        match byte {
-            b'A'..=b'Z' | b'a'..=b'z' | b'0'..=b'9' | b'-' | b'_' | b'.' | b'~' => {
-                out.push(*byte as char)
-            }
-            _ => out.push_str(&format!("%{byte:02X}")),
-        }
-    }
-    out
-}
-
 pub fn forecast_url(latitude: f64, longitude: f64) -> String {
     format!(
         "{FORECAST_HOST}?latitude={latitude}&longitude={longitude}\
@@ -260,10 +191,6 @@ pub fn forecast_url(latitude: f64, longitude: f64) -> String {
          &daily=weather_code,temperature_2m_max,temperature_2m_min\
          &timezone=auto&forecast_days={FORECAST_DAYS}"
     )
-}
-
-pub fn search_url(query: &str) -> String {
-    format!("{GEOCODE_HOST}?name={}&count=8&language=en&format=json", encode(query))
 }
 
 // ---- fetching ----
@@ -295,20 +222,11 @@ pub async fn fetch_report(
     parse_report(&body)
 }
 
-pub async fn search_places(
-    client: &reqwest::Client,
-    query: &str,
-) -> Result<Vec<Place>, WeatherError> {
-    let body = get_text(client, &search_url(query)).await?;
-    parse_places(&body)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     const FORECAST: &str = include_str!("../fixtures/forecast-delhi.json");
-    const GEOCODE: &str = include_str!("../fixtures/geocode-delhi.json");
 
     #[test]
     fn reads_the_current_conditions() {
@@ -372,30 +290,8 @@ mod tests {
         assert!(matches!(parse_report(json), Err(WeatherError::Malformed(_))));
     }
 
-    #[test]
-    fn reads_places_from_a_search() {
-        let places = parse_places(GEOCODE).expect("fixture parses");
-        assert!(places.len() >= 2);
-        assert_eq!(places[0].name, "Delhi");
-        assert_eq!(places[0].country, "India");
-        assert_eq!(places[0].latitude, 28.65195);
-        assert_eq!(places[0].longitude, 77.23149);
-    }
 
-    #[test]
-    fn keeps_the_region_so_two_places_of_one_name_can_be_told_apart() {
-        let places = parse_places(GEOCODE).expect("fixture parses");
-        let delhis: Vec<_> = places.iter().filter(|p| p.name == "Delhi").collect();
-        assert!(delhis.len() >= 2, "the fixture has more than one Delhi");
-        assert_ne!(delhis[0].country, delhis[1].country);
-    }
 
-    // Open-Meteo omits `results` entirely rather than sending an empty array,
-    // which serde would otherwise treat as a missing required field.
-    #[test]
-    fn reads_no_matches_as_an_empty_list_rather_than_an_error() {
-        assert_eq!(parse_places(r#"{"generationtime_ms":0.1}"#).unwrap().len(), 0);
-    }
 
     #[test]
     fn describes_the_standard_weather_codes() {
@@ -420,26 +316,4 @@ mod tests {
         assert!(url.contains("timezone=auto"));
     }
 
-    // A place name reaches a URL, so anything that could end the query string
-    // early or start a new parameter has to be encoded rather than passed on.
-    // The assertion looks at the `name` value alone: checking the whole URL
-    // would trip over `&count=8`, which legitimately contains "&co".
-    #[test]
-    fn escapes_a_search_term_before_it_reaches_a_url() {
-        let url = search_url("São Paulo & co?x=1");
-        let name = url
-            .split("name=")
-            .nth(1)
-            .expect("the url has a name parameter")
-            .split('&')
-            .next()
-            .expect("the value ends at the next parameter");
-
-        assert!(!name.contains(' '), "a space would end the value");
-        assert!(!name.contains('?'), "a question mark would start a new query");
-        assert!(!name.contains('='), "an equals would look like another parameter");
-        assert!(name.contains("%20"), "the space survives, encoded");
-        assert!(name.contains("%26"), "the ampersand survives, encoded");
-        assert!(name.contains("%C3%A3"), "non-ASCII is encoded as its UTF-8 bytes");
-    }
 }

@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Weather } from "./Weather";
+import { Weather, conditionGlyph } from "./Weather";
 import { createWebPlatform, __setPlatformForTests } from "../../../platform";
 import type { Platform } from "../../../platform/types";
 
@@ -13,9 +13,18 @@ function platformWith(overrides: Partial<Platform["apps"]>): Platform {
   return { ...base, apps: { ...base.apps, ...overrides } };
 }
 
+// The picker searches as you type; there is no button to press.
 async function search(user: ReturnType<typeof userEvent.setup>, term: string) {
   await user.type(screen.getByRole("textbox", { name: /place/i }), term);
-  await user.click(screen.getByRole("button", { name: /^search$/i }));
+}
+
+/** Instant typing, so the debounce is the only wait in these tests. */
+const typist = () => userEvent.setup({ delay: null });
+
+/** Type a name and take the first match. */
+async function pick(user: ReturnType<typeof userEvent.setup>) {
+  await search(user, "Delhi");
+  await user.click(await screen.findByRole("button", { name: /sample city/i }));
 }
 
 describe("Weather", () => {
@@ -35,14 +44,14 @@ describe("Weather", () => {
   });
 
   it("lists what a search found", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<Weather />);
     await search(user, "Delhi");
     expect(await screen.findByRole("button", { name: /sample city/i })).toBeInTheDocument();
   });
 
   it("shows the weather once a place is chosen", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<Weather />);
     await search(user, "Delhi");
     await user.click(await screen.findByRole("button", { name: /sample city/i }));
@@ -53,7 +62,7 @@ describe("Weather", () => {
   });
 
   it("shows the days ahead", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<Weather />);
     await search(user, "Delhi");
     await user.click(await screen.findByRole("button", { name: /sample city/i }));
@@ -62,7 +71,7 @@ describe("Weather", () => {
   });
 
   it("remembers the place across a remount", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     const first = render(<Weather />);
     await search(user, "Delhi");
     await user.click(await screen.findByRole("button", { name: /sample city/i }));
@@ -75,7 +84,7 @@ describe("Weather", () => {
   });
 
   it("lets the place be changed again", async () => {
-    const user = userEvent.setup();
+    const user = typist();
     render(<Weather />);
     await search(user, "Delhi");
     await user.click(await screen.findByRole("button", { name: /sample city/i }));
@@ -87,10 +96,10 @@ describe("Weather", () => {
 
   it("says when a search found nowhere", async () => {
     __setPlatformForTests(platformWith({ searchPlaces: async () => [] }));
-    const user = userEvent.setup();
+    const user = typist();
     render(<Weather />);
     await search(user, "Nowhere");
-    expect(await screen.findByText(/no.*place.*by that name/i)).toBeInTheDocument();
+    expect(await screen.findByText(/no.*place by that name/i)).toBeInTheDocument();
   });
 
   it("says so when the search itself fails", async () => {
@@ -101,7 +110,7 @@ describe("Weather", () => {
         },
       }),
     );
-    const user = userEvent.setup();
+    const user = typist();
     render(<Weather />);
     await search(user, "Delhi");
     expect(await screen.findByRole("alert")).toHaveTextContent(/offline/i);
@@ -122,7 +131,7 @@ describe("Weather", () => {
       }),
     );
 
-    const user = userEvent.setup();
+    const user = typist();
     render(<Weather />);
     await search(user, "Delhi");
     await user.click(await screen.findByRole("button", { name: /sample city/i }));
@@ -155,9 +164,58 @@ describe("Weather", () => {
 
   // Storage holds whatever was last written there, including something an
   // older version wrote or a person edited by hand.
+  // The user asked for two ways in: where you are, and where you have been.
+  it("offers a place you looked at before, without searching again", async () => {
+    const user = typist();
+    render(<Weather />);
+    await pick(user);
+    await user.click(screen.getByRole("button", { name: /change place/i }));
+
+    const recents = screen.getByRole("list", { name: /recent places/i });
+    expect(within(recents).getByText(/sample city/i)).toBeInTheDocument();
+  });
+
+  it("keeps the recent list even after the current place is cleared", async () => {
+    const user = typist();
+    render(<Weather />);
+    await pick(user);
+    await user.click(screen.getByRole("button", { name: /change place/i }));
+    expect(localStorage.getItem("jky.apps.weather.recents")).toContain("Sample City");
+  });
+
+  it("offers to work out where you are", () => {
+    render(<Weather />);
+    expect(screen.getByRole("button", { name: /use my location/i })).toBeInTheDocument();
+  });
+
   it("falls back to asking when the stored place is nonsense", async () => {
     localStorage.setItem(PLACE_KEY, "{{{not json");
     render(<Weather />);
     expect(screen.getByRole("textbox", { name: /place/i })).toBeInTheDocument();
+  });
+});
+
+describe("conditionGlyph", () => {
+  // The words come from Rust so there is one WMO table; this is only a mark
+  // beside them, so it maps ranges rather than restating that table.
+  it("marks clear sky differently by day and by night", () => {
+    expect(conditionGlyph(0, true)).not.toBe(conditionGlyph(0, false));
+  });
+
+  it("gives rain, snow and storms their own marks", () => {
+    const rain = conditionGlyph(63, true);
+    const snow = conditionGlyph(73, true);
+    const storm = conditionGlyph(95, true);
+    expect(new Set([rain, snow, storm]).size).toBe(3);
+  });
+
+  it("groups drizzle with rain rather than inventing a mark for it", () => {
+    expect(conditionGlyph(53, true)).toBe(conditionGlyph(63, true));
+  });
+
+  // The WMO table has gaps, and a blank where the weather should be reads as
+  // a broken panel rather than an unknown code.
+  it("always returns something, even for a code it does not know", () => {
+    expect(conditionGlyph(200, true).trim()).not.toBe("");
   });
 });

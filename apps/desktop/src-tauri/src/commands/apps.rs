@@ -12,7 +12,8 @@
 //! where network access lives, not about protecting a credential.
 
 use jky_apps::feeds::{self, Article, Source};
-use jky_apps::weather::{self, Place, Report};
+use jky_apps::places::{self, Place};
+use jky_apps::weather::{self, Report};
 use tauri::State;
 
 use crate::state::AppState;
@@ -71,9 +72,25 @@ pub async fn apps_place_search(
     query: String,
 ) -> Result<Vec<Place>, String> {
     let query = check_query(&query)?;
-    weather::search_places(&state.http, &query)
+    places::search_places(&state.http, &query)
         .await
         .map_err(|e| e.to_string())
+}
+
+/// Where this machine appears to be, from its public address.
+///
+/// Takes nothing from the window, so there is no input to validate: it is a
+/// request Rust makes on its own to a fixed host. It reaches the network and
+/// nothing else — no OS location service, no permission prompt, and no
+/// browser geolocation API, none of which behaves the same on all three
+/// platforms this ships on.
+///
+/// The answer is city level at best and wrong behind a VPN, which is why both
+/// apps offer it as a shortcut beside the search box rather than using it
+/// silently as the truth.
+#[tauri::command]
+pub async fn apps_locate(state: State<'_, AppState>) -> Result<Place, String> {
+    places::locate(&state.http).await.map_err(|e| e.to_string())
 }
 
 /// How many headlines the panel may ask for from one paper.
