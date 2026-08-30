@@ -919,24 +919,81 @@
   display: flex;
   flex-direction: column;
   gap: var(--s4);
-  max-width: 760px;
+  max-width: 720px;
   margin: 0 auto;
-  padding: var(--s5) var(--s4);
+  padding: var(--s5) var(--s4) var(--s6);
 }
 
 .news__head {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
   gap: var(--s4);
+}
+
+.news__eyebrow {
+  margin: 0 0 2px;
+  color: var(--app-accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
 }
 
 .news__title {
   margin: 0;
   font-family: var(--font-sans);
-  font-size: 20px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
   color: var(--text);
+}
+
+/* The papers, as a row of tabs rather than a dropdown: five names fit, and a
+   menu would hide which paper you are reading behind a click. */
+.news__papers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  padding-bottom: var(--s3);
+  border-bottom: 1px solid var(--line);
+}
+
+.news__paper {
+  padding: var(--s2) var(--s3);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  white-space: nowrap;
+  transition:
+    color var(--fast) var(--ease),
+    border-color var(--fast) var(--ease),
+    background var(--fast) var(--ease);
+}
+
+.news__paper:hover {
+  color: var(--text);
+  border-color: var(--line-strong);
+}
+
+.news__paper[aria-selected="true"] {
+  background: color-mix(in srgb, var(--app-accent) 16%, transparent);
+  border-color: color-mix(in srgb, var(--app-accent) 55%, transparent);
+  color: var(--app-accent);
+  font-weight: 600;
+}
+
+.news__paper:focus-visible,
+.news__refresh:focus-visible,
+.news__retry:focus-visible,
+.news__headline:focus-visible {
+  outline: none;
+  border-radius: var(--radius);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
 
 .news__refresh,
@@ -961,15 +1018,6 @@
 .news__refresh:disabled {
   cursor: default;
   color: var(--text-dim);
-}
-
-.news__refresh:focus-visible,
-.news__retry:focus-visible,
-.news__headline:focus-visible,
-.news__comments:focus-visible {
-  outline: none;
-  border-radius: var(--radius);
-  box-shadow: 0 0 0 3px var(--accent-glow);
 }
 
 .news__failure {
@@ -1004,24 +1052,26 @@
 }
 
 .news__item {
-  display: grid;
-  grid-template-columns: 28px 1fr;
-  gap: var(--s3);
-  padding: var(--s3) 0;
+  padding: var(--s4) 0;
   border-bottom: 1px solid var(--line);
 }
 
-.news__rank {
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
-  padding-top: 2px;
+.news__item:first-child {
+  padding-top: 0;
 }
 
-.news__body {
-  min-width: 0;
+.news__section {
+  display: inline-block;
+  margin: 0 0 var(--s2);
+  padding: 2px var(--s2);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 35%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--app-accent) 10%, transparent);
+  color: var(--app-accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
 }
 
 .news__headline {
@@ -1032,46 +1082,56 @@
   background: transparent;
   border: none;
   color: var(--text);
-  font: inherit;
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.35;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
   text-align: left;
+  transition: color var(--fast) var(--ease);
+}
+
+/* The lead runs larger, the way a front page sets its top story. The feed's
+   own order is the paper's judgement about what leads, so this is reporting
+   something true rather than decorating the first row. */
+.news__item[data-lead] .news__headline {
+  font-size: 24px;
+  line-height: 1.2;
 }
 
 .news__headline:hover {
-  color: var(--accent);
+  color: var(--app-accent);
 }
 
-.news__meta {
+.news__summary {
+  margin: var(--s2) 0 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.55;
+}
+
+.news__item[data-lead] .news__summary {
+  font-size: 15px;
+}
+
+.news__byline {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s3);
-  margin: var(--s1) 0 0;
+  margin: var(--s3) 0 0;
   color: var(--text-dim);
   font-size: 12px;
+}
+
+.news__paper-name {
+  color: var(--text-muted);
+  font-weight: 600;
 }
 
 .news__host {
-  color: var(--text-muted);
   font-family: var(--font-mono);
-}
-
-.news__comments {
-  padding: 0;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  color: var(--text-dim);
-  font: inherit;
-  font-size: 12px;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-
-.news__comments:hover {
-  color: var(--accent);
+  font-size: 11px;
 }
 
 /* ---- the shared place picker ---- */

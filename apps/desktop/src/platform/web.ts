@@ -380,20 +380,31 @@ export function createWebPlatform(): Platform {
         timezone: "UTC",
       };
     },
-    async news(limit) {
+    async newsSources() {
+      return [
+        { id: "thehindu", name: "The Hindu", region: "India", url: "https://example.invalid/1" },
+        { id: "bbc", name: "BBC World", region: "World", url: "https://example.invalid/2" },
+      ];
+    },
+    async news(source, limit) {
       if (limit <= 0) throw new Error("ask for at least one headline");
+      // The same refusal the backend makes for an id it does not know.
+      if (source !== null && !["thehindu", "bbc"].includes(source)) {
+        throw new Error(`there is no paper called "${source}"`);
+      }
+      const name = source === "bbc" ? "BBC World" : "The Hindu";
+      const id = source ?? "thehindu";
       return Array.from({ length: Math.min(limit, 3) }, (_, i) => ({
-        id: i + 1,
         title: `Preview headline ${i + 1}`,
-        // The second one has no link, so the panel's Ask-HN branch is
-        // exercised by the browser build rather than only on the desktop.
-        url: i === 1 ? null : `https://example.com/${i + 1}`,
-        host: i === 1 ? null : "example.com",
-        score: 100 - i,
-        author: "preview",
-        comments: 10 + i,
-        posted_at: 1_700_000_000,
-        discussion_url: `https://news.ycombinator.com/item?id=${i + 1}`,
+        link: `https://example.com/${i + 1}`,
+        // The middle one carries no summary and no section, so the panel's
+        // sparse branch is exercised by the browser build too.
+        summary: i === 1 ? null : `A short line about story ${i + 1}.`,
+        category: i === 1 ? null : "National",
+        published: "Sun, 30 Aug 2026 12:00:00 +0000",
+        source_id: source === "bbc" ? "bbc" : id,
+        source_name: name,
+        host: "example.com",
       }));
     },
     async searchPlaces(query) {

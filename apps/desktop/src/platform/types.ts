@@ -252,21 +252,27 @@ export interface WeatherPlace {
   timezone: string | null;
 }
 
-/** One headline, as `jky-apps` serialises it. */
-export interface NewsStory {
-  id: number;
+/** A newspaper the News app can read. */
+export interface NewsSource {
+  id: string;
+  name: string;
+  /** Where this paper reports from; groups the picker. */
+  region: string;
+  url: string;
+}
+
+/** One story, as `jky-apps` serialises it. */
+export interface NewsArticle {
   title: string;
-  /** Absent for an Ask HN post, where the discussion is the article. */
-  url: string | null;
-  /** The site the link points at, so you can see where it goes. */
+  link: string;
+  /** A line or two, markup already removed in Rust. */
+  summary: string | null;
+  category: string | null;
+  /** RFC 822 as the feed wrote it; the panel turns it into words. */
+  published: string | null;
+  source_id: string;
+  source_name: string;
   host: string | null;
-  score: number;
-  author: string;
-  comments: number;
-  /** Unix seconds. */
-  posted_at: number;
-  /** Built in Rust from the id, so a response cannot redirect it. */
-  discussion_url: string;
 }
 
 /**
@@ -280,7 +286,9 @@ export interface NewsStory {
 export interface AppsApi {
   weather(latitude: number, longitude: number): Promise<WeatherReport>;
   searchPlaces(query: string): Promise<WeatherPlace[]>;
-  news(limit: number): Promise<NewsStory[]>;
+  /** Headlines from one paper by id, or from every paper when null. */
+  news(source: string | null, limit: number): Promise<NewsArticle[]>;
+  newsSources(): Promise<NewsSource[]>;
 }
 
 export interface Platform {

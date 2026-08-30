@@ -113,10 +113,17 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // against a fixed host from arguments bounds-checked at this boundary,
         // so the renderer chooses parameters, never a destination.
         //
-        // apps_news: headlines. The count is clamped rather than trusted,
-        // because each headline is a separate request and an unbounded number
-        // would make the app a load generator pointed at a free service.
+        // apps_news: headlines from one of a fixed list of papers, or all of
+        // them. The window names a source by id and never by URL — a command
+        // that took a feed address would be an open fetcher pointed wherever
+        // the renderer asked, which is a different and much larger question
+        // than reading a named newspaper. An unknown id is refused rather
+        // than falling back. The count is clamped rather than trusted.
         "apps_news".to_string(),
+        // apps_news_sources: the names and ids of those papers, so the picker
+        // is built from the same list the fetcher reads. Takes nothing,
+        // returns constants.
+        "apps_news_sources".to_string(),
         // apps_place_search: the geocoder, shared by Weather and Map. Takes a
         // length-bounded search term, percent-encoded before it reaches a URL.
         "apps_place_search".to_string(),

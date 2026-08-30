@@ -10,5 +10,5 @@
 //! response is tested against a recorded fixture rather than against whatever
 //! the network happens to return today.
 
-pub mod news;
+pub mod feeds;
 pub mod weather;

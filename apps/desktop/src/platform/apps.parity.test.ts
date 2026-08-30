@@ -16,7 +16,7 @@ import { createWebPlatform } from "./web";
  */
 
 const RUST_WEATHER = join(__dirname, "../../../../crates/jky-apps/src/weather.rs");
-const RUST_NEWS = join(__dirname, "../../../../crates/jky-apps/src/news.rs");
+const RUST_NEWS = join(__dirname, "../../../../crates/jky-apps/src/feeds.rs");
 
 /** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
@@ -94,30 +94,42 @@ describe("apps adapter parity", () => {
     ]);
   });
 
-  it("the mock returns stories shaped like the real ones", async () => {
-    const stories = await web.apps.news(3);
-    expect(stories.length).toBeGreaterThan(0);
-    for (const field of fieldsOf("Story")) {
-      expect(stories[0], `Story.${field} is missing from the mock`).toHaveProperty(field);
+  it("the mock returns articles shaped like the real ones", async () => {
+    const articles = await web.apps.news(null, 3);
+    expect(articles.length).toBeGreaterThan(0);
+    for (const field of fieldsOf("Article")) {
+      expect(articles[0], `Article.${field} is missing from the mock`).toHaveProperty(field);
+    }
+  });
+
+  it("the mock returns sources shaped like the real ones", async () => {
+    const sources = await web.apps.newsSources();
+    expect(sources.length).toBeGreaterThan(0);
+    for (const field of fieldsOf("Source")) {
+      expect(sources[0], `Source.${field} is missing from the mock`).toHaveProperty(field);
     }
   });
 
   it("names every news field the same way in TypeScript", () => {
-    expect(fieldsOf("Story")).toEqual([
-      "id",
+    expect(fieldsOf("Article")).toEqual([
       "title",
-      "url",
+      "link",
+      "summary",
+      "category",
+      "published",
+      "source_id",
+      "source_name",
       "host",
-      "score",
-      "author",
-      "comments",
-      "posted_at",
-      "discussion_url",
     ]);
+    expect(fieldsOf("Source")).toEqual(["id", "name", "region", "url"]);
   });
 
   it("refuses a headline count the backend would refuse", async () => {
-    await expect(web.apps.news(0)).rejects.toThrow();
+    await expect(web.apps.news(null, 0)).rejects.toThrow();
+  });
+
+  it("refuses a paper the backend does not have", async () => {
+    await expect(web.apps.news("not-a-paper", 3)).rejects.toThrow();
   });
 
   it("refuses a search the backend would refuse", async () => {

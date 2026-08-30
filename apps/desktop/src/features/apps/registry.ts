@@ -90,7 +90,7 @@ export const APPS: AppDef[] = [
     mode: "data",
     auth: "none",
     accent: "magenta",
-    blurb: "The Hacker News front page, with the site each link goes to.",
+    blurb: "Front pages from real papers — The Hindu, TOI, BBC and more.",
   },
   {
     id: "map",

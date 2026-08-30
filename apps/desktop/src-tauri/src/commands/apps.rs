@@ -11,7 +11,7 @@
 //! account, so there is nothing secret in this path; the boundary is about
 //! where network access lives, not about protecting a credential.
 
-use jky_apps::news::{self, Story};
+use jky_apps::feeds::{self, Article, Source};
 use jky_apps::weather::{self, Place, Report};
 use tauri::State;
 
@@ -76,20 +76,43 @@ pub async fn apps_place_search(
         .map_err(|e| e.to_string())
 }
 
-/// How many headlines the panel may ask for at once.
+/// How many headlines the panel may ask for from one paper.
 ///
-/// Each one is a separate request to the news service, so this is a bound on
-/// what a single IPC call can make the app do — not a display preference.
-const MAX_HEADLINES: usize = 30;
+/// A bound on what a single IPC call can make the app do, not a display
+/// preference: "All" multiplies this by the number of sources.
+const MAX_HEADLINES: usize = 40;
 
+/// The papers on offer, so the picker is built from the same list the fetcher
+/// reads. Names and ids only — nothing here is user input.
 #[tauri::command]
-pub async fn apps_news(state: State<'_, AppState>, limit: usize) -> Result<Vec<Story>, String> {
+pub fn apps_news_sources() -> Vec<Source> {
+    feeds::SOURCES.to_vec()
+}
+
+/// Headlines from one paper, or from all of them when `source` is absent.
+///
+/// An unknown id is refused rather than silently falling back to everything:
+/// quietly showing different news than was asked for is worse than saying no.
+#[tauri::command]
+pub async fn apps_news(
+    state: State<'_, AppState>,
+    source: Option<String>,
+    limit: usize,
+) -> Result<Vec<Article>, String> {
     if limit == 0 {
         return Err("ask for at least one headline".into());
     }
-    news::fetch_top(&state.http, limit.min(MAX_HEADLINES))
-        .await
-        .map_err(|e| e.to_string())
+    let limit = limit.min(MAX_HEADLINES);
+
+    match source {
+        None => feeds::fetch_all(&state.http, limit).await,
+        Some(id) => {
+            let source = feeds::find_source(&id)
+                .ok_or_else(|| format!("there is no paper called \"{id}\""))?;
+            feeds::fetch_source(&state.http, source, limit).await
+        }
+    }
+    .map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -145,5 +168,16 @@ mod tests {
     fn the_headline_bound_is_a_clamp_not_a_refusal() {
         assert_eq!(9999_usize.min(MAX_HEADLINES), MAX_HEADLINES);
         assert_eq!(10_usize.min(MAX_HEADLINES), 10);
+    }
+
+    #[test]
+    fn every_offered_paper_can_be_looked_up_again() {
+        for source in apps_news_sources() {
+            assert!(
+                jky_apps::feeds::find_source(source.id).is_some(),
+                "{} is offered but cannot be resolved",
+                source.name
+            );
+        }
     }
 }
