@@ -36,6 +36,20 @@ pub struct TurnState {
     pub round: usize,
 }
 
+/// A device-flow sign-in waiting for the person to approve it.
+///
+/// The device code lives here rather than in the window, because it is the
+/// credential that redeems the token: a compromised frontend holding it could
+/// complete the exchange on its own. The window gets the short user code and
+/// the address to type it at, which are useless without this.
+#[derive(Debug, Clone)]
+pub struct PendingDevice {
+    pub client_id: String,
+    pub device_code: String,
+    /// How often GitHub permits polling; it may raise this mid-flow.
+    pub interval_s: u64,
+}
+
 pub struct AppState {
     pub secrets: Arc<dyn SecretStore>,
     pub settings: Arc<SettingsStore>,
@@ -55,6 +69,9 @@ pub struct AppState {
     /// Its timeouts are set in `jky_apps::net`, beside the retry policy, so
     /// there is one place that decides how long anything waits.
     pub http: reqwest::Client,
+    /// The GitHub sign-in in flight, if any. One at a time: starting another
+    /// abandons the first rather than leaving two waiting.
+    pub github_flow: Arc<Mutex<Option<PendingDevice>>>,
 }
 
 impl AppState {
@@ -72,6 +89,7 @@ impl AppState {
             turn: Arc::new(Mutex::new(None)),
             cancelled: Arc::new(AtomicBool::new(false)),
             http: jky_apps::net::client(),
+            github_flow: Arc::new(Mutex::new(None)),
         }
     }
 }

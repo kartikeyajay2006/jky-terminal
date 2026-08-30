@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AppSwitcher } from "./AppSwitcher";
 import { APPS, findApp, type AppDef } from "./registry";
 import { Calculator } from "./calculator/Calculator";
+import { GitHub } from "./github/GitHub";
 import { MapApp } from "./map/Map";
 import { News } from "./news/News";
 import { Timer } from "./timer/Timer";
@@ -56,6 +57,8 @@ function appBody(id: string): ReactNode {
       return <News />;
     case "map":
       return <MapApp />;
+    case "github":
+      return <GitHub />;
     default:
       return null;
   }

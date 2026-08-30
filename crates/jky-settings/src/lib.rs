@@ -34,6 +34,15 @@ pub struct Settings {
     /// May contain a leading `~`, which is expanded when the pty is spawned.
     #[serde(default)]
     pub terminal_start_dir: Option<String>,
+
+    /// The GitHub OAuth app the device flow runs against.
+    ///
+    /// A client id, not a secret: the device flow has no client secret, and
+    /// this one is public by design. It lives in settings rather than the
+    /// keychain for exactly that reason — putting a public identifier behind
+    /// the keychain would say it was confidential when it is not.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub github_client_id: Option<String>,
 }
 
 pub struct SettingsStore {
@@ -98,6 +107,26 @@ impl SettingsStore {
             Some(trimmed.to_string())
         };
         self.save(&s)
+    }
+
+    /// Store the GitHub OAuth client id, or clear it when given nothing.
+    ///
+    /// Trimmed, because pasting from a browser brings whitespace with it and
+    /// a trailing newline would make every device-flow request fail with a
+    /// message that named the wrong problem.
+    pub fn set_github_client_id(&self, id: &str) -> Result<(), SettingsError> {
+        let mut settings = self.load()?;
+        let trimmed = id.trim();
+        settings.github_client_id = if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        };
+        self.save(&settings)
+    }
+
+    pub fn github_client_id(&self) -> Result<Option<String>, SettingsError> {
+        Ok(self.load()?.github_client_id)
     }
 
     pub fn terminal_start_dir(&self) -> Result<Option<String>, SettingsError> {
@@ -239,5 +268,54 @@ mod tests {
         let (_d, s) = store();
         s.set_active_provider("openai").unwrap();
         assert_eq!(s.load().unwrap().active_provider.as_deref(), Some("openai"));
+    }
+}
+
+#[cfg(test)]
+mod github_client_id_tests {
+    use super::*;
+
+    fn store() -> (tempfile::TempDir, SettingsStore) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = SettingsStore::new(dir.path().join("settings.json"));
+        (dir, store)
+    }
+
+    #[test]
+    fn nothing_is_stored_to_begin_with() {
+        let (_dir, store) = store();
+        assert_eq!(store.github_client_id().unwrap(), None);
+    }
+
+    #[test]
+    fn keeps_the_id_it_was_given() {
+        let (_dir, store) = store();
+        store.set_github_client_id("Iv23liABCDEF").unwrap();
+        assert_eq!(store.github_client_id().unwrap().as_deref(), Some("Iv23liABCDEF"));
+    }
+
+    // Pasting from a browser brings whitespace along, and a trailing newline
+    // would fail every request with a message naming the wrong problem.
+    #[test]
+    fn trims_what_was_pasted() {
+        let (_dir, store) = store();
+        store.set_github_client_id("  Iv23liABCDEF\n").unwrap();
+        assert_eq!(store.github_client_id().unwrap().as_deref(), Some("Iv23liABCDEF"));
+    }
+
+    #[test]
+    fn clearing_it_removes_it_rather_than_storing_an_empty_string() {
+        let (_dir, store) = store();
+        store.set_github_client_id("Iv23liABCDEF").unwrap();
+        store.set_github_client_id("   ").unwrap();
+        assert_eq!(store.github_client_id().unwrap(), None);
+    }
+
+    #[test]
+    fn setting_it_leaves_the_other_preferences_alone() {
+        let (_dir, store) = store();
+        store.set_terminal_start_dir("/tmp").unwrap();
+        store.set_github_client_id("Iv23liABCDEF").unwrap();
+        assert_eq!(store.terminal_start_dir().unwrap().as_deref(), Some("/tmp"));
     }
 }

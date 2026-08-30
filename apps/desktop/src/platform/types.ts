@@ -295,6 +295,86 @@ export interface Route {
   duration_s: number | null;
 }
 
+/** Whether GitHub can be signed into, and whether it has been. */
+export interface GitHubStatus {
+  /** An OAuth client id has been set. Without one there is nothing to sign into. */
+  configured: boolean;
+  /** A token is in the keychain. Never the token itself. */
+  connected: boolean;
+}
+
+/**
+ * What to show while the person approves the sign-in.
+ *
+ * No device code: that is the credential which redeems the token and it stays
+ * in Rust. The window gets the short code to type and where to type it.
+ */
+export interface GitHubDeviceStart {
+  user_code: string;
+  verification_uri: string;
+  interval_s: number;
+  expires_in_s: number;
+}
+
+/** How far the sign-in has got. Tagged, so states cannot be confused by spelling. */
+export type GitHubConnectState =
+  | { state: "pending"; interval_s: number }
+  | { state: "connected"; login: string }
+  | { state: "denied" }
+  | { state: "expired" };
+
+export interface GitHubUser {
+  login: string;
+  name: string | null;
+  avatar_url: string | null;
+  html_url: string;
+}
+
+export interface GitHubRepo {
+  name: string;
+  full_name: string;
+  private: boolean;
+  html_url: string;
+  description: string | null;
+  language: string | null;
+  stars: number;
+  open_issues: number;
+  updated_at: string;
+}
+
+/** An issue or a pull request; GitHub's search returns both in one list. */
+export interface GitHubItem {
+  number: number;
+  title: string;
+  html_url: string;
+  state: string;
+  repo: string | null;
+  is_pull_request: boolean;
+  draft: boolean;
+}
+
+export interface GitHubSummary {
+  user: GitHubUser;
+  repos: GitHubRepo[];
+  issues: GitHubItem[];
+  pulls: GitHubItem[];
+}
+
+/**
+ * The GitHub account, over IPC.
+ *
+ * Note what is absent: nothing here returns a token, and nothing takes a
+ * device code. Both stay in Rust for the whole flow.
+ */
+export interface GitHubApi {
+  status(): Promise<GitHubStatus>;
+  setClientId(id: string): Promise<void>;
+  connectStart(): Promise<GitHubDeviceStart>;
+  connectPoll(): Promise<GitHubConnectState>;
+  disconnect(): Promise<void>;
+  summary(): Promise<GitHubSummary>;
+}
+
 /**
  * What the Apps section needs fetched.
  *
@@ -317,6 +397,7 @@ export interface AppsApi {
    */
   locate(): Promise<Place>;
   route(from: Place, to: Place): Promise<Route>;
+  readonly github: GitHubApi;
 }
 
 export interface Platform {

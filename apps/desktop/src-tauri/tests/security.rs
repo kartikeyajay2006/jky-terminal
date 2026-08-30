@@ -113,6 +113,29 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // against a fixed host from arguments bounds-checked at this boundary,
         // so the renderer chooses parameters, never a destination.
         //
+        // GitHub, over the device authorization grant. Two things never cross
+        // this boundary, and both are load-bearing.
+        //
+        // The device code — the credential that redeems the token — stays in
+        // AppState for the length of the flow. `connect_start` hands the
+        // window only the short code a person types and the address to type
+        // it at, which are useless on their own, and `connect_poll` takes no
+        // arguments because the window has nothing the exchange needs.
+        //
+        // The access token is written straight to the keychain by Rust and no
+        // command returns it. `status` reports two booleans; `summary`
+        // returns repositories and issues. That is stricter than the AI keys,
+        // which the window at least has to accept from a paste.
+        //
+        // `set_client_id` stores a public identifier, not a secret: the device
+        // flow has no client secret. It is validated here so a pasted document
+        // becomes a refusal rather than a settings file with an essay in it.
+        "apps_github_connect_poll".to_string(),
+        "apps_github_connect_start".to_string(),
+        "apps_github_disconnect".to_string(),
+        "apps_github_set_client_id".to_string(),
+        "apps_github_status".to_string(),
+        "apps_github_summary".to_string(),
         // apps_locate: roughly where this machine is, from its public
         // address. Takes nothing from the window, so there is no input to
         // validate; it is a request Rust makes on its own to a fixed host.

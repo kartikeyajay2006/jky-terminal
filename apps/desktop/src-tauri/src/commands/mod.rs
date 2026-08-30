@@ -1,6 +1,7 @@
 pub mod apps;
 pub mod ai;
 pub mod games;
+pub mod github;
 pub mod open;
 pub mod pty;
 pub mod scrollback;

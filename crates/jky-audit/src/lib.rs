@@ -30,6 +30,14 @@ pub enum AuditKind {
     CommandRejected,
     /// A request was sent to a provider.
     ProviderRequest,
+    /// An account was linked — GitHub, or another service the user connects.
+    ///
+    /// Worth a line of its own: it is the moment this machine gained standing
+    /// access to something outside it, and the owner should be able to see
+    /// when that happened without asking the app.
+    AccountConnected,
+    /// An account was unlinked and its token deleted.
+    AccountDisconnected,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -214,5 +222,41 @@ mod tests {
 
         let events = l.read_all().unwrap();
         assert_eq!(events.len(), 1, "a newline in a detail forged an entry");
+    }
+}
+
+#[cfg(test)]
+mod account_event_tests {
+    use super::*;
+
+    // The log is read back with `cat` by the machine's owner, so the names
+    // in it are an interface: they have to say what happened without the
+    // reader knowing the code.
+    #[test]
+    fn account_events_serialise_under_readable_names() {
+        let connected = serde_json::to_string(&AuditEvent::new(
+            AuditKind::AccountConnected,
+            "github as octocat",
+        ))
+        .expect("serialises");
+        assert!(connected.contains("AccountConnected"), "got {connected}");
+        assert!(connected.contains("github as octocat"));
+
+        let gone = serde_json::to_string(&AuditEvent::new(AuditKind::AccountDisconnected, "github"))
+            .expect("serialises");
+        assert!(gone.contains("AccountDisconnected"), "got {gone}");
+    }
+
+    #[test]
+    fn an_account_event_reads_back_the_way_it_was_written() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let log = AuditLog::new(dir.path().join("audit.jsonl"));
+        log.append(AuditEvent::new(AuditKind::AccountConnected, "github as octocat"))
+            .unwrap();
+
+        let read = log.read_all().unwrap();
+        assert_eq!(read.len(), 1);
+        assert!(matches!(read[0].kind, AuditKind::AccountConnected));
+        assert_eq!(read[0].detail, "github as octocat");
     }
 }

@@ -355,6 +355,11 @@ export function createWebPlatform(): Platform {
    * it is deliberately obvious rather than plausible — a mock that looked
    * like real weather would be mistaken for it.
    */
+  // In memory for the session, like every other browser-build mock.
+  let githubClientId = "";
+  let githubToken = false;
+  let githubPolls = 0;
+
   const apps: AppsApi = {
     async weather(latitude, longitude) {
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -422,6 +427,98 @@ export function createWebPlatform(): Platform {
         throw new Error("that is not a real coordinate");
       }
       return { straight_m: 1_553_000, road_m: 1_988_772, duration_s: 86_168 };
+    },
+    /*
+     * The browser build has no keychain and no device flow, so this walks the
+     * same states the real one does: not configured, then configured, then
+     * pending for a couple of polls, then connected. That is what lets the
+     * panel's waiting screen be developed and tested without a GitHub app.
+     */
+    github: {
+      async status() {
+        return { configured: githubClientId !== "", connected: githubToken };
+      },
+      async setClientId(id) {
+        githubClientId = id.trim();
+      },
+      async connectStart() {
+        if (githubClientId === "") {
+          throw new Error("add your GitHub OAuth client id in Settings first");
+        }
+        githubPolls = 0;
+        return {
+          user_code: "WDJB-MJHT",
+          verification_uri: "https://github.com/login/device",
+          interval_s: 1,
+          expires_in_s: 900,
+        };
+      },
+      async connectPoll() {
+        githubPolls += 1;
+        if (githubPolls < 2) return { state: "pending" as const, interval_s: 1 };
+        githubToken = true;
+        return { state: "connected" as const, login: "preview-user" };
+      },
+      async disconnect() {
+        githubToken = false;
+      },
+      async summary() {
+        if (!githubToken) throw new Error("not connected to GitHub");
+        return {
+          user: {
+            login: "preview-user",
+            name: "Preview User",
+            avatar_url: null,
+            html_url: "https://github.com/preview-user",
+          },
+          repos: [
+            {
+              name: "jky-terminal",
+              full_name: "preview-user/jky-terminal",
+              private: false,
+              html_url: "https://github.com/preview-user/jky-terminal",
+              description: "A preview repository.",
+              language: "Rust",
+              stars: 12,
+              open_issues: 3,
+              updated_at: "2026-08-30T12:00:00Z",
+            },
+            {
+              name: "secret-notes",
+              full_name: "preview-user/secret-notes",
+              private: true,
+              html_url: "https://github.com/preview-user/secret-notes",
+              description: null,
+              language: null,
+              stars: 0,
+              open_issues: 0,
+              updated_at: "2026-08-29T09:00:00Z",
+            },
+          ],
+          issues: [
+            {
+              number: 7,
+              title: "Preview issue",
+              html_url: "https://github.com/preview-user/jky-terminal/issues/7",
+              state: "open",
+              repo: "preview-user/jky-terminal",
+              is_pull_request: false,
+              draft: false,
+            },
+          ],
+          pulls: [
+            {
+              number: 8,
+              title: "Preview pull request",
+              html_url: "https://github.com/preview-user/jky-terminal/pull/8",
+              state: "open",
+              repo: "preview-user/jky-terminal",
+              is_pull_request: true,
+              draft: true,
+            },
+          ],
+        };
+      },
     },
     async searchPlaces(query) {
       // The same refusal the backend makes, so a UI that mishandles it fails

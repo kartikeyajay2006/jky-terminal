@@ -3,6 +3,10 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   AppsApi,
   NewsArticle,
+  GitHubConnectState,
+  GitHubDeviceStart,
+  GitHubStatus,
+  GitHubSummary,
   NewsSource,
   Route,
   Place,
@@ -164,6 +168,14 @@ export function createTauriPlatform(): Platform {
     news: (source, limit) => invoke<NewsArticle[]>("apps_news", { source, limit }),
     newsSources: () => invoke<NewsSource[]>("apps_news_sources"),
     locate: () => invoke<Place>("apps_locate"),
+    github: {
+      status: () => invoke<GitHubStatus>("apps_github_status"),
+      setClientId: (id) => invoke<void>("apps_github_set_client_id", { id }),
+      connectStart: () => invoke<GitHubDeviceStart>("apps_github_connect_start"),
+      connectPoll: () => invoke<GitHubConnectState>("apps_github_connect_poll"),
+      disconnect: () => invoke<void>("apps_github_disconnect"),
+      summary: () => invoke<GitHubSummary>("apps_github_summary"),
+    },
     route: (from, to) =>
       invoke<Route>("apps_route", {
         fromLatitude: from.latitude,

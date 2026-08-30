@@ -42,7 +42,10 @@ describe("the app registry", () => {
   // panel all identify it the same way. The value is a theme token name, never
   // a literal: a hex value here would be wrong in six of the seven themes.
   it("gives every app an accent from the theme's own palette", () => {
-    const PALETTE = ["accent", "violet", "magenta", "mint", "warn"];
+    // `accent-dim` is a real accent, not a shade: the dashboard already uses
+    // it as a distinct event colour and the contrast test verifies it in all
+    // seven themes.
+    const PALETTE = ["accent", "accent-dim", "violet", "magenta", "mint", "warn"];
     for (const app of APPS) {
       expect(PALETTE, `${app.name} has an unknown accent`).toContain(app.accent);
     }
@@ -59,6 +62,14 @@ describe("the app registry", () => {
   it("gives each app a distinct accent, so colour identifies it", () => {
     const used = APPS.map((a) => a.accent);
     expect(new Set(used).size).toBe(used.length);
+  });
+
+  it("includes github as a data app that needs an account", () => {
+    expect(findApp("github")).toMatchObject({
+      id: "github",
+      mode: "data",
+      auth: "github",
+    });
   });
 
   it("finds an app by id", () => {

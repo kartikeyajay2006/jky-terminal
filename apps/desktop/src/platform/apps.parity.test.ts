@@ -19,10 +19,11 @@ const RUST_WEATHER = join(__dirname, "../../../../crates/jky-apps/src/weather.rs
 const RUST_NEWS = join(__dirname, "../../../../crates/jky-apps/src/feeds.rs");
 const RUST_PLACES = join(__dirname, "../../../../crates/jky-apps/src/places.rs");
 const RUST_ROUTES = join(__dirname, "../../../../crates/jky-apps/src/routes.rs");
+const RUST_GITHUB = join(__dirname, "../../../../crates/jky-apps/src/github.rs");
 
 /** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
-  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES]
+  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES, RUST_GITHUB]
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
 }
@@ -153,6 +154,86 @@ describe("apps adapter parity", () => {
 
   it("names every route field the same way in TypeScript", () => {
     expect(fieldsOf("Route")).toEqual(["straight_m", "road_m", "duration_s"]);
+  });
+
+  describe("github", () => {
+    it("the mock offers the whole github surface", () => {
+      for (const call of [
+        "status",
+        "setClientId",
+        "connectStart",
+        "connectPoll",
+        "disconnect",
+        "summary",
+      ] as const) {
+        expect(typeof web.apps.github[call], `github.${call} is missing`).toBe("function");
+      }
+    });
+
+    it("names every github field the same way in TypeScript", () => {
+      expect(fieldsOf("DeviceStart")).toEqual([
+        "user_code",
+        "verification_uri",
+        "interval_s",
+        "expires_in_s",
+      ]);
+      expect(fieldsOf("User")).toEqual(["login", "name", "avatar_url", "html_url"]);
+      expect(fieldsOf("Repo")).toEqual([
+        "name",
+        "full_name",
+        "private",
+        "html_url",
+        "description",
+        "language",
+        "stars",
+        "open_issues",
+        "updated_at",
+      ]);
+      expect(fieldsOf("Item")).toEqual([
+        "number",
+        "title",
+        "html_url",
+        "state",
+        "repo",
+        "is_pull_request",
+        "draft",
+      ]);
+      expect(fieldsOf("Summary")).toEqual(["user", "repos", "issues", "pulls"]);
+    });
+
+    // The one field that must never exist on the way out. The device code
+    // redeems the token, and a rename that added it here would be the bug
+    // this whole split exists to prevent.
+    it("never puts a device code in what the window receives", async () => {
+      await web.apps.github.setClientId("Iv23liPREVIEW");
+      const start = await web.apps.github.connectStart();
+      expect(Object.keys(start)).not.toContain("device_code");
+      expect(JSON.stringify(start)).not.toMatch(/device_code/i);
+      expect(fieldsOf("DeviceStart")).not.toContain("device_code");
+    });
+
+    it("the mock returns a summary shaped like the real one", async () => {
+      await web.apps.github.setClientId("Iv23liPREVIEW");
+      await web.apps.github.connectStart();
+      await web.apps.github.connectPoll();
+      await web.apps.github.connectPoll();
+
+      const summary = await web.apps.github.summary();
+      for (const field of fieldsOf("Summary")) {
+        expect(summary, `Summary.${field} is missing`).toHaveProperty(field);
+      }
+      for (const field of fieldsOf("Repo")) {
+        expect(summary.repos[0], `Repo.${field} is missing`).toHaveProperty(field);
+      }
+      for (const field of fieldsOf("Item")) {
+        expect(summary.pulls[0], `Item.${field} is missing`).toHaveProperty(field);
+      }
+      await web.apps.github.disconnect();
+    });
+
+    it("refuses a summary when nothing is connected", async () => {
+      await expect(web.apps.github.summary()).rejects.toThrow();
+    });
   });
 
   it("refuses a search the backend would refuse", async () => {

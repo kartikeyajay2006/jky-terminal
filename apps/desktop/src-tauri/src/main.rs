@@ -6,7 +6,7 @@ mod listing;
 mod turn;
 mod state;
 
-use commands::{ai, apps, games, open, pty, scrollback, settings, store, vault};
+use commands::{ai, apps, games, github, open, pty, scrollback, settings, store, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -57,6 +57,12 @@ fn main() {
             apps::apps_weather,
             apps::apps_place_search,
             apps::apps_route,
+            github::apps_github_set_client_id,
+            github::apps_github_status,
+            github::apps_github_connect_start,
+            github::apps_github_connect_poll,
+            github::apps_github_disconnect,
+            github::apps_github_summary,
             open::open_external,
             scrollback::scrollback_load,
             scrollback::scrollback_save,

@@ -35,7 +35,16 @@ export type AuthKind = "none" | "google" | "github" | "reddit";
  * gone wrong, and a panel permanently dressed in it would make a real error
  * invisible.
  */
-export type AppAccent = "accent" | "violet" | "magenta" | "mint" | "warn";
+export type AppAccent =
+  | "accent"
+  /// Not a shade of `accent` but a colour in its own right: the dashboard uses
+  /// it as a distinct event colour and the contrast test verifies it in every
+  /// theme.
+  | "accent-dim"
+  | "violet"
+  | "magenta"
+  | "mint"
+  | "warn";
 
 export interface AppDef {
   /** Stable slug. Reaches the palette, the switcher and iframe URLs. */
@@ -100,6 +109,15 @@ export const APPS: AppDef[] = [
     auth: "none",
     accent: "mint",
     blurb: "Look anywhere up, drawn by OpenStreetMap inside this window.",
+  },
+  {
+    id: "github",
+    name: "GitHub",
+    glyph: "◐",
+    mode: "data",
+    auth: "github",
+    accent: "accent-dim",
+    blurb: "Your repositories, issues and pull requests. Approved on your phone.",
   },
 ];
 
