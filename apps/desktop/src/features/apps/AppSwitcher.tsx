@@ -76,6 +76,7 @@ function SwitcherItem({
     <button
       type="button"
       className="apps__switcher-item"
+      style={{ ["--app-accent" as string]: `var(--${app.accent})` }}
       // `true` rather than `page`: these are apps within one section, not
       // separate destinations, and "page" would overstate what changed.
       aria-current={current ? "true" : undefined}

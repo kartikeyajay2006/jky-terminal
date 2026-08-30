@@ -107,7 +107,10 @@ export function Apps() {
   if (!open) return <AppGrid onOpen={choose} />;
 
   return (
-    <div className="apps apps--open">
+    <div
+      className="apps apps--open"
+      style={{ ["--app-accent" as string]: `var(--${open.accent})` }}
+    >
       <header className="apps__bar">
         <button type="button" className="apps__back" onClick={() => setView("grid")}>
           <span aria-hidden="true">←</span> All apps
@@ -142,9 +145,13 @@ function AppGrid({ onOpen }: { onOpen: (id: string) => void }) {
   return (
     <div className="apps">
       <header className="apps__head">
+        <p className="apps__eyebrow">
+          {APPS.length} apps · no account needed
+        </p>
         <h1 className="apps__title">Apps</h1>
         <p className="apps__lede">
-          Everything here opens in this window. Nothing hands you to a browser.
+          Each one opens here, in this window. Pick one to start, then press{" "}
+          <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> to move between them.
         </p>
       </header>
 
@@ -161,9 +168,16 @@ function AppGrid({ onOpen }: { onOpen: (id: string) => void }) {
 
 function Tile({ app, onOpen }: { app: AppDef; onOpen: (id: string) => void }) {
   return (
-    <button type="button" className="apps__tile" onClick={() => onOpen(app.id)}>
-      <span className="apps__tile-glyph" aria-hidden="true">
-        {app.glyph}
+    <button
+      type="button"
+      className="apps__tile"
+      // Set as a variable rather than a class per app, so adding an app is a
+      // registry entry and never a new stylesheet rule.
+      style={{ ["--app-accent" as string]: `var(--${app.accent})` }}
+      onClick={() => onOpen(app.id)}
+    >
+      <span className="apps__tile-well" aria-hidden="true">
+        <span className="apps__tile-glyph">{app.glyph}</span>
       </span>
       <span className="apps__tile-name">{app.name}</span>
       <span className="apps__tile-blurb">{app.blurb}</span>

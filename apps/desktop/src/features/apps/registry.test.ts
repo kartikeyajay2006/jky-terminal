@@ -38,6 +38,29 @@ describe("the app registry", () => {
     }
   });
 
+  // Each app carries its own colour, so the grid, the switcher and the open
+  // panel all identify it the same way. The value is a theme token name, never
+  // a literal: a hex value here would be wrong in six of the seven themes.
+  it("gives every app an accent from the theme's own palette", () => {
+    const PALETTE = ["accent", "violet", "magenta", "mint", "warn"];
+    for (const app of APPS) {
+      expect(PALETTE, `${app.name} has an unknown accent`).toContain(app.accent);
+    }
+  });
+
+  // `danger` is reserved for things that went wrong. An app permanently
+  // wearing the error colour would make a real error unreadable.
+  it("never dresses an app in the error colour", () => {
+    for (const app of APPS) {
+      expect(app.accent).not.toBe("danger");
+    }
+  });
+
+  it("gives each app a distinct accent, so colour identifies it", () => {
+    const used = APPS.map((a) => a.accent);
+    expect(new Set(used).size).toBe(used.length);
+  });
+
   it("finds an app by id", () => {
     expect(findApp("calculator")?.name).toBe("Calculator");
   });

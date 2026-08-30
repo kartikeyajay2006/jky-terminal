@@ -24,6 +24,19 @@ export type RenderMode =
 /** Whose account an app needs, if any. */
 export type AuthKind = "none" | "google" | "github" | "reddit";
 
+/**
+ * An app's colour, named as a theme token rather than given as a value.
+ *
+ * Every one of these is defined by all seven themes, so an app looks
+ * deliberate in Light and High Contrast without a second palette to maintain.
+ * A literal hex here would be right in one theme and wrong in six.
+ *
+ * `danger` is deliberately absent: it is what the app wears when something has
+ * gone wrong, and a panel permanently dressed in it would make a real error
+ * invisible.
+ */
+export type AppAccent = "accent" | "violet" | "magenta" | "mint" | "warn";
+
 export interface AppDef {
   /** Stable slug. Reaches the palette, the switcher and iframe URLs. */
   id: string;
@@ -32,6 +45,12 @@ export interface AppDef {
   glyph: string;
   mode: RenderMode;
   auth: AuthKind;
+  /**
+   * The app's own colour. Colour is wayfinding here, not decoration: the same
+   * hue marks the tile, the switcher row and the open panel, so you can learn
+   * where you are without reading.
+   */
+  accent: AppAccent;
   /** One line, shown on the grid tile. */
   blurb: string;
 }
@@ -43,6 +62,7 @@ export const APPS: AppDef[] = [
     glyph: "🖩",
     mode: "local",
     auth: "none",
+    accent: "violet",
     blurb: "Arithmetic, with the keyboard and the history kept.",
   },
   {
@@ -51,6 +71,7 @@ export const APPS: AppDef[] = [
     glyph: "⏱",
     mode: "local",
     auth: "none",
+    accent: "warn",
     blurb: "A countdown that keeps time by the clock, not by the frame.",
   },
   {
@@ -59,6 +80,7 @@ export const APPS: AppDef[] = [
     glyph: "☀",
     mode: "data",
     auth: "none",
+    accent: "accent",
     blurb: "Now and the days ahead, anywhere. No account needed.",
   },
   {
@@ -67,6 +89,7 @@ export const APPS: AppDef[] = [
     glyph: "📰",
     mode: "data",
     auth: "none",
+    accent: "magenta",
     blurb: "The Hacker News front page, with the site each link goes to.",
   },
   {
@@ -75,6 +98,7 @@ export const APPS: AppDef[] = [
     glyph: "🗺",
     mode: "frame",
     auth: "none",
+    accent: "mint",
     blurb: "Look anywhere up, drawn by OpenStreetMap inside this window.",
   },
 ];
