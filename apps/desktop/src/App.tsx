@@ -8,6 +8,7 @@ import { useShortcuts } from "./app/useShortcuts";
 import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
+import { Apps } from "./features/apps/Apps";
 import { Games } from "./features/games/Games";
 import { useOpenGame } from "./features/games/openStore";
 import { useNav } from "./app/navStore";
@@ -157,6 +158,10 @@ export function App() {
           the four games animate, and one left running in the background
           would burn a core painting a board nobody is looking at. */}
       {section === "games" && <Games />}
+      {/* Unmounted on leaving for the same reason: the apps that fetch would
+          keep polling behind a section nobody is looking at, and a timer would
+          keep counting where it cannot be seen. */}
+      {section === "apps" && <Apps />}
 
       {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
     </Shell>

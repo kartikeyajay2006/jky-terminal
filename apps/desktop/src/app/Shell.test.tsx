@@ -32,6 +32,12 @@ describe("Shell", () => {
     expect(nav).toHaveTextContent(/settings/i);
   });
 
+  it("offers Apps as a workspace destination", () => {
+    render(<Shell>{null}</Shell>);
+    const nav = screen.getByRole("navigation", { name: /workspace/i });
+    expect(nav).toHaveTextContent(/apps/i);
+  });
+
   it("switches theme from the status bar", async () => {
     const user = userEvent.setup();
     render(<Shell>{null}</Shell>);

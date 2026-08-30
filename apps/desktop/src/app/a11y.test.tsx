@@ -13,6 +13,8 @@ import { Assistant } from "../features/assistant/Assistant";
 import { Dashboard } from "../features/dashboard/Dashboard";
 import { SECTIONS } from "../features/dashboard/Dashboard";
 import { Games, GAMES } from "../features/games/Games";
+import { Apps } from "../features/apps/Apps";
+import { APPS } from "../features/apps/registry";
 import { useDashboard } from "../features/dashboard/dashboardStore";
 import { ConversationHeader } from "../features/assistant/ConversationHeader";
 import { SessionList } from "../features/assistant/SessionList";
@@ -23,6 +25,9 @@ import { ToolCard } from "../features/assistant/ToolCard";
 describe("accessibility", () => {
   beforeEach(() => {
     __setPlatformForTests(createWebPlatform());
+    // Apps reopens whichever app was last used, so a neighbouring test that
+    // opened one would leave this suite starting past the grid it wants.
+    localStorage.removeItem("jky.apps.last");
     useTabs.setState({ tabs: [], activeId: null });
     useChat.setState({ sessions: [], activeId: null, busy: false, tools: [], error: null });
     useDashboard.setState({
@@ -53,6 +58,26 @@ describe("accessibility", () => {
       expect(await axe(container)).toHaveNoViolations();
     });
   }
+
+  it("the apps grid has no violations", async () => {
+    const { container } = render(<Apps />);
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("an open app has no violations", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Apps />);
+    await user.click(screen.getByRole("button", { name: new RegExp(APPS[0].name, "i") }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
+
+  it("the app switcher has no violations", async () => {
+    const user = userEvent.setup();
+    const { container } = render(<Apps />);
+    await user.click(screen.getByRole("button", { name: new RegExp(APPS[0].name, "i") }));
+    await user.click(screen.getByRole("button", { name: /switch app/i }));
+    expect(await axe(container)).toHaveNoViolations();
+  });
 
   it("the provider vault has no violations", async () => {
     const { container } = render(<ProviderVault />);
