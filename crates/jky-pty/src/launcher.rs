@@ -778,9 +778,11 @@ mod tests {
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "JKY-BANNER-MARKER", "COMMAND-LIST").unwrap();
 
-        let out = std::process::Command::new(dir.path().join("jky-terminal"))
-            .output()
-            .expect("launcher runs");
+        // Through `run_script`, which retries on ETXTBSY. Executing the file
+        // directly is the point of this test, and doing that from a process
+        // that is forking shells on other threads loses a race often enough
+        // to fail CI — which is exactly what it did.
+        let out = run_script(&dir.path().join("jky-terminal"), &[]);
         assert_eq!(String::from_utf8_lossy(&out.stdout), "JKY-BANNER-MARKER");
     }
 
