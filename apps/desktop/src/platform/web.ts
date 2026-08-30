@@ -1,5 +1,6 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
+  AppsApi,
   AiApi,
   CollectionApi,
   CommandSpec,
@@ -346,6 +347,56 @@ export function createWebPlatform(): Platform {
     async publishScores() {},
   };
 
+  /*
+   * The browser build has no Rust, so it has no way to fetch: `connect-src
+   * 'self'` blocks the window from reaching Open-Meteo directly, which is the
+   * whole reason the real path goes through Rust. This returns one fixed
+   * reading so the panel can be developed and tested without a network, and
+   * it is deliberately obvious rather than plausible — a mock that looked
+   * like real weather would be mistaken for it.
+   */
+  const apps: AppsApi = {
+    async weather(latitude, longitude) {
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+        throw new Error("that location is not a real coordinate");
+      }
+      return {
+        now: {
+          temperature_c: 21,
+          feels_like_c: 19,
+          humidity_pct: 50,
+          wind_kph: 10,
+          code: 3,
+          description: "Overcast",
+          is_day: true,
+          observed_at: "2026-01-01T12:00",
+        },
+        days: [
+          { date: "2026-01-01", code: 3, description: "Overcast", high_c: 22, low_c: 14 },
+          { date: "2026-01-02", code: 61, description: "Light rain", high_c: 20, low_c: 13 },
+          { date: "2026-01-03", code: 0, description: "Clear", high_c: 23, low_c: 15 },
+          { date: "2026-01-04", code: 95, description: "Thunderstorm", high_c: 19, low_c: 12 },
+        ],
+        timezone: "UTC",
+      };
+    },
+    async searchPlaces(query) {
+      // The same refusal the backend makes, so a UI that mishandles it fails
+      // here rather than only on the desktop build.
+      if (query.trim() === "") throw new Error("type somewhere to look for");
+      return [
+        {
+          name: "Sample City",
+          country: "Preview",
+          region: null,
+          latitude: 0,
+          longitude: 0,
+          timezone: "UTC",
+        },
+      ];
+    },
+  };
+
   // In memory for the session, like every other browser-build mock: the
   // preview is for developing the UI, and a mock that quietly persisted would
   // let a bug that never reaches the real store look like it works.
@@ -375,6 +426,7 @@ export function createWebPlatform(): Platform {
     ai,
     store,
     games,
+    apps,
     scrollback,
     async listCommands() {
       return WEB_COMMANDS;

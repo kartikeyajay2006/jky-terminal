@@ -208,6 +208,63 @@ export interface GamesApi {
   publishScores(scores: GameScore[]): Promise<void>;
 }
 
+/**
+ * Weather, as `jky-apps` serialises it.
+ *
+ * The field names are snake_case because serde writes Rust field names as
+ * they are declared, and `apps.parity.test.ts` checks these against the Rust
+ * source so a rename on either side fails rather than rendering `undefined`.
+ */
+export interface WeatherConditions {
+  temperature_c: number;
+  feels_like_c: number;
+  humidity_pct: number;
+  wind_kph: number;
+  /** WMO weather code, kept so the panel can choose an icon. */
+  code: number;
+  /** The same code in words, sent by Rust so there is one WMO table. */
+  description: string;
+  is_day: boolean;
+  observed_at: string;
+}
+
+export interface WeatherDay {
+  date: string;
+  code: number;
+  description: string;
+  high_c: number;
+  low_c: number;
+}
+
+export interface WeatherReport {
+  now: WeatherConditions;
+  days: WeatherDay[];
+  timezone: string;
+}
+
+export interface WeatherPlace {
+  name: string;
+  country: string;
+  /** State or province: two places share a name often enough to need it. */
+  region: string | null;
+  latitude: number;
+  longitude: number;
+  timezone: string | null;
+}
+
+/**
+ * What the Apps section needs fetched.
+ *
+ * Every call here crosses to Rust because the window cannot reach the
+ * network: `connect-src 'self'` names no host. Nothing on this path is
+ * secret — the weather service needs no key — so the boundary is about where
+ * network access lives, not about protecting a credential.
+ */
+export interface AppsApi {
+  weather(latitude: number, longitude: number): Promise<WeatherReport>;
+  searchPlaces(query: string): Promise<WeatherPlace[]>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
@@ -218,6 +275,8 @@ export interface Platform {
   readonly store: StoreApi;
   /** What the games need from the backend. */
   readonly games: GamesApi;
+  /** What the Apps section needs fetched, since the window cannot fetch. */
+  readonly apps: AppsApi;
   /** What each terminal had on screen last time. */
   readonly scrollback: ScrollbackApi;
   /** The shell commands JKY Terminal installs. */

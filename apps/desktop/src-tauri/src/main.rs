@@ -6,7 +6,7 @@ mod listing;
 mod turn;
 mod state;
 
-use commands::{ai, games, open, pty, scrollback, settings, store, vault};
+use commands::{ai, apps, games, open, pty, scrollback, settings, store, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -51,6 +51,8 @@ fn main() {
             store::store_save_reminder,
             store::store_delete_reminder,
             games::games_publish_scores,
+            apps::apps_weather,
+            apps::apps_weather_search,
             open::open_external,
             scrollback::scrollback_load,
             scrollback::scrollback_save,

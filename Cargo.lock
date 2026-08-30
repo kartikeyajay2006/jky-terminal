@@ -1986,6 +1986,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "jky-apps"
+version = "0.1.0"
+dependencies = [
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "jky-audit"
 version = "0.1.0"
 dependencies = [
@@ -2040,11 +2050,13 @@ name = "jky-terminal"
 version = "0.1.0"
 dependencies = [
  "jky-ai",
+ "jky-apps",
  "jky-audit",
  "jky-pty",
  "jky-secrets",
  "jky-settings",
  "jky-store",
+ "reqwest 0.12.28",
  "serde",
  "serde_json",
  "tauri",

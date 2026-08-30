@@ -105,6 +105,17 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "ai_cancel".to_string(),
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),
+        // The Apps section's two outbound fetches. They exist because the
+        // window cannot make them: `connect-src 'self'` means the webview can
+        // reach no host, so Rust fetches and hands back the result. Neither
+        // touches the keychain, because Open-Meteo needs no key and no
+        // account — there is nothing secret on this path. The renderer
+        // supplies a coordinate and a search term, both bounds-checked here
+        // before they reach a URL, and the URL itself is built in jky-apps
+        // against a fixed host. The widest either can do is ask a public
+        // weather service about a place.
+        "apps_weather".to_string(),
+        "apps_weather_search".to_string(),
         "commands_list".to_string(),
         // Takes four numbers the window already has and renders the listing
         // `jky games` prints. The path, the format and the set of valid game

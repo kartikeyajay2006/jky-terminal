@@ -53,6 +53,14 @@ export const APPS: AppDef[] = [
     auth: "none",
     blurb: "A countdown that keeps time by the clock, not by the frame.",
   },
+  {
+    id: "weather",
+    name: "Weather",
+    glyph: "☀",
+    mode: "data",
+    auth: "none",
+    blurb: "Now and the days ahead, anywhere. No account needed.",
+  },
 ];
 
 export function findApp(id: string): AppDef | undefined {

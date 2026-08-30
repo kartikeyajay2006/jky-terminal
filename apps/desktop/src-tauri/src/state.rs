@@ -50,6 +50,9 @@ pub struct AppState {
     /// Set when the user asks to stop. Checked between stream chunks and
     /// between rounds, so a long answer stops rather than being hidden.
     pub cancelled: Arc<AtomicBool>,
+    /// One client for every app that fetches, so connections are pooled
+    /// rather than a fresh TLS handshake being paid on each panel refresh.
+    pub http: reqwest::Client,
 }
 
 impl AppState {
@@ -66,6 +69,7 @@ impl AppState {
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
             turn: Arc::new(Mutex::new(None)),
             cancelled: Arc::new(AtomicBool::new(false)),
+            http: reqwest::Client::new(),
         }
     }
 }

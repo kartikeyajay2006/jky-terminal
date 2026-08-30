@@ -46,6 +46,12 @@ describe("the app registry", () => {
     expect(findApp("nope")).toBeUndefined();
   });
 
+  // Weather fetches, but through Rust and from a service that needs no key —
+  // so it is a `data` app that still asks the user for nothing.
+  it("includes weather as a data app needing no account", () => {
+    expect(findApp("weather")).toMatchObject({ id: "weather", mode: "data", auth: "none" });
+  });
+
   it("includes the timer as a local app needing no account", () => {
     expect(findApp("timer")).toMatchObject({ id: "timer", mode: "local", auth: "none" });
   });

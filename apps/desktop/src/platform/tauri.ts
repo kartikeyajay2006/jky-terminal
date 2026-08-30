@@ -1,6 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
+  AppsApi,
+  WeatherPlace,
+  WeatherReport,
   AiApi,
   CollectionApi,
   CommandSpec,
@@ -151,6 +154,12 @@ export function createTauriPlatform(): Platform {
       invoke<void>("games_publish_scores", { scores }),
   };
 
+  const apps: AppsApi = {
+    weather: (latitude, longitude) =>
+      invoke<WeatherReport>("apps_weather", { latitude, longitude }),
+    searchPlaces: (query) => invoke<WeatherPlace[]>("apps_weather_search", { query }),
+  };
+
   const scrollback: ScrollbackApi = {
     load: (key) => invoke<string>("scrollback_load", { key }),
     save: (key, text) => invoke<void>("scrollback_save", { key, text }),
@@ -166,6 +175,7 @@ export function createTauriPlatform(): Platform {
     ai,
     store,
     games,
+    apps,
     scrollback,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
     openExternal: (url) => invoke<void>("open_external", { url }),
