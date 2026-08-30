@@ -1,5 +1,5 @@
 {
- "access_token": "gho_TESTTOKENnotarealcredential000000000",
+ "access_token": "gho_EXAMPLE_NOT_A_REAL_TOKEN",
  "token_type": "bearer",
  "scope": "repo,read:org"
 }
