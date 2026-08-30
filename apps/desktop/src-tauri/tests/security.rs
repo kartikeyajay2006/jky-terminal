@@ -134,6 +134,10 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // apps_place_search: the geocoder, shared by Weather and Map. Takes a
         // length-bounded search term, percent-encoded before it reaches a URL.
         "apps_place_search".to_string(),
+        // apps_route: how far apart two coordinates are. Both are
+        // range-checked before either reaches a URL, and the URL is built
+        // against a fixed routing host. Returns two numbers and reads nothing.
+        "apps_route".to_string(),
         // apps_weather: a forecast for one coordinate, range-checked here —
         // NaN included, since it would otherwise reach the query string as
         // the literal text "NaN".

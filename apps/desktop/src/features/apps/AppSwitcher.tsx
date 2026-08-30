@@ -3,6 +3,8 @@ import { APPS, type AppDef } from "./registry";
 
 interface AppSwitcherProps {
   currentId: string;
+  /** Apps already open, so the list can say which are a switch and which a new tab. */
+  openIds: string[];
   onChoose: (id: string) => void;
   onClose: () => void;
 }
@@ -16,7 +18,7 @@ interface AppSwitcherProps {
  * position every time — which is exactly the thing that stops a switcher from
  * becoming muscle memory.
  */
-export function AppSwitcher({ currentId, onChoose, onClose }: AppSwitcherProps) {
+export function AppSwitcher({ currentId, openIds, onChoose, onClose }: AppSwitcherProps) {
   const panel = useRef<HTMLDivElement>(null);
 
   // Focus moves into the overlay so the keyboard is already where the eye is,
@@ -51,7 +53,12 @@ export function AppSwitcher({ currentId, onChoose, onClose }: AppSwitcherProps) 
         <ul className="apps__switcher-list">
           {APPS.map((app) => (
             <li key={app.id}>
-              <SwitcherItem app={app} current={app.id === currentId} onChoose={onChoose} />
+              <SwitcherItem
+                app={app}
+                current={app.id === currentId}
+                open={openIds.includes(app.id)}
+                onChoose={onChoose}
+              />
             </li>
           ))}
         </ul>
@@ -66,10 +73,12 @@ export function AppSwitcher({ currentId, onChoose, onClose }: AppSwitcherProps) 
 function SwitcherItem({
   app,
   current,
+  open,
   onChoose,
 }: {
   app: AppDef;
   current: boolean;
+  open: boolean;
   onChoose: (id: string) => void;
 }) {
   return (
@@ -86,7 +95,13 @@ function SwitcherItem({
         {app.glyph}
       </span>
       <span className="apps__switcher-name">{app.name}</span>
-      {current && <span className="apps__switcher-open">open</span>}
+      {/* "showing" is where you are; "open" is a tab you would switch to.
+          Marking both the same would make the list say less than it knows. */}
+      {current ? (
+        <span className="apps__switcher-open">showing</span>
+      ) : open ? (
+        <span className="apps__switcher-open apps__switcher-open--idle">open</span>
+      ) : null}
     </button>
   );
 }

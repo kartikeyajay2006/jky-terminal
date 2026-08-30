@@ -1,0 +1,40 @@
+{
+ "code": "Ok",
+ "routes": [
+  {
+   "legs": [
+    {
+     "steps": [],
+     "weight": 86168.3,
+     "summary": "",
+     "duration": 86168.3,
+     "distance": 1988771.7
+    }
+   ],
+   "weight_name": "routability",
+   "weight": 86168.3,
+   "duration": 86168.3,
+   "distance": 1988771.7
+  }
+ ],
+ "waypoints": [
+  {
+   "hint": "Vqvrkf___38kAAAAJAAAAAAAAAAPAAAAAG4gQgAAAAAAAAAA-oqFQSQAAAAkAAAAAAAAAA8AAAAKJgEASQCgBEjvxQDo_58EUO7FAAAALxIAAAAA",
+   "location": [
+    77.594697,
+    12.971848
+   ],
+   "name": "Vittal Mallya Road",
+   "distance": 29.38549159
+  },
+  {
+   "hint": "SZL2gP___38AAAAAAwAAABMAAAAAAAAAleCRP6iOskC_2jFCAAAAAAAAAAADAAAAEwAAAAAAAAAKJgEAEU-mBMyungEkT6YE_K6eAQgA3wYAAAAA",
+   "location": [
+    78.008081,
+    27.176652
+   ],
+   "name": "Mahatma Gandhi Road",
+   "distance": 5.642158566
+  }
+ ]
+}

@@ -13,8 +13,15 @@ const DEBOUNCE_MS = 250;
 /**
  * The shortest term worth sending.
  *
- * One letter matches most of the world, so searching on it spends a request
- * to return a list nobody wanted.
+ * Two, which is measured rather than chosen: Open-Meteo's geocoder returns
+ * nothing at all for a single character, and starts answering at two — "ag"
+ * finds Ág and Āg, "agr" finds Agra. Searching on one letter would spend a
+ * request guaranteed to come back empty and then tell the person "no place by
+ * that name", which is not true. It is the geocoder declining to answer, not
+ * the world lacking places beginning with A.
+ *
+ * From two on it behaves as expected: each letter narrows the list, and the
+ * debounce keeps that from being a request per keystroke.
  */
 const MIN_QUERY = 2;
 

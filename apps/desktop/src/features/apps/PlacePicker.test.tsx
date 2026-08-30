@@ -59,9 +59,28 @@ describe("PlacePicker", () => {
     expect(calls).toBe(1);
   });
 
-  // One letter matches most of the world. Searching on it spends a request to
-  // return nothing anyone wanted.
-  it("waits for more than a single letter", async () => {
+  // Suggestions start at two letters and narrow from there — "ag", then
+  // "agr", then "agra". Two rather than one is measured: the geocoder returns
+  // nothing for a single character, so asking would spend a request to be told
+  // nothing and then show "no place by that name", which would be untrue.
+  it("suggests as soon as there are two letters", async () => {
+    const asked: string[] = [];
+    __setPlatformForTests(
+      platformWith({
+        searchPlaces: async (q) => {
+          asked.push(q);
+          return [place(`match for ${q}`)];
+        },
+      }),
+    );
+    const user = typist();
+    render(<PlacePicker prompt="Where?" onChoose={() => {}} />);
+    await user.type(box(), "ag");
+    expect(await screen.findByRole("button", { name: /match for ag/i })).toBeInTheDocument();
+    expect(asked).toEqual(["ag"]);
+  });
+
+  it("does not ask on a single letter, which the geocoder never answers", async () => {
     let calls = 0;
     __setPlatformForTests(
       platformWith({
@@ -73,10 +92,34 @@ describe("PlacePicker", () => {
     );
     const user = typist();
     render(<PlacePicker prompt="Where?" onChoose={() => {}} />);
-    await user.type(box(), "D");
+    await user.type(box(), "a");
 
     await new Promise((r) => setTimeout(r, 400));
     expect(calls).toBe(0);
+    expect(screen.queryByText(/no.*place by that name/i)).not.toBeInTheDocument();
+  });
+
+  it("narrows the suggestions as more letters arrive", async () => {
+    const asked: string[] = [];
+    __setPlatformForTests(
+      platformWith({
+        searchPlaces: async (q) => {
+          asked.push(q);
+          return [place(`match for ${q}`)];
+        },
+      }),
+    );
+    const user = typist();
+    render(<PlacePicker prompt="Where?" onChoose={() => {}} />);
+
+    // The accessible name carries the region too, so these match the phrase
+    // rather than anchoring to the end of the string.
+    await user.type(box(), "ag");
+    await screen.findByRole("button", { name: /match for ag Testland/i });
+    await user.type(box(), "ra");
+    await screen.findByRole("button", { name: /match for agra Testland/i });
+
+    expect(asked).toEqual(["ag", "agra"]);
   });
 
   // Replies can arrive out of order. Showing whichever landed last would put

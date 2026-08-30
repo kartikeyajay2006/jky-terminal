@@ -8,6 +8,32 @@ function expression() {
 }
 
 describe("Calculator", () => {
+  // Opening the app and typing should just work. Without focus, the first
+  // keystrokes go nowhere and the calculator reads as accepting mouse only.
+  it("puts the cursor in the field so you can type straight away", () => {
+    render(<Calculator />);
+    expect(expression()).toHaveFocus();
+  });
+
+  // Mixing the two is normal: a couple of taps, then the rest typed. Focus
+  // has to come back or the typing is lost.
+  it("returns the cursor to the field after a keypad press", async () => {
+    const user = userEvent.setup();
+    render(<Calculator />);
+    await user.click(screen.getByRole("button", { name: "7" }));
+    expect(expression()).toHaveFocus();
+
+    await user.keyboard("+3");
+    expect(expression()).toHaveValue("7+3");
+  });
+
+  it("keeps the cursor in the field after a calculation is committed", async () => {
+    const user = userEvent.setup();
+    render(<Calculator />);
+    await user.click(screen.getByRole("button", { name: /equals/i }));
+    expect(expression()).toHaveFocus();
+  });
+
   it("starts with an empty expression and no answer", () => {
     render(<Calculator />);
     expect(expression()).toHaveValue("");

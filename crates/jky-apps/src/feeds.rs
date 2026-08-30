@@ -45,6 +45,22 @@ pub fn host_of(url: &str) -> Option<String> {
     Some(host.strip_prefix("www.").unwrap_or(host).to_string())
 }
 
+impl NewsError {
+    /// Whether trying again is worth doing.
+    ///
+    /// A refused or dropped connection is a blip. An answer is not: the server
+    /// spoke, and asking again gets the same sentence back. The exception is a
+    /// 5xx, which says the far side broke rather than that the request was
+    /// wrong, and a second attempt often lands somewhere healthy.
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Self::Network(_) => true,
+            Self::Upstream(status) => *status >= 500,
+            _ => false,
+        }
+    }
+}
+
 /// A publication this app can read.
 #[derive(Debug, Clone, Serialize)]
 pub struct Source {
@@ -342,7 +358,10 @@ pub async fn fetch_source(
     source: &Source,
     limit: usize,
 ) -> Result<Vec<Article>, NewsError> {
-    let body = get_text(client, source.url).await?;
+    let body = crate::net::retrying(crate::net::ATTEMPTS, NewsError::is_transient, || {
+        get_text(client, source.url)
+    })
+    .await?;
     let mut articles = parse_feed(&body, source)?;
     articles.truncate(limit);
     Ok(articles)
@@ -386,6 +405,14 @@ mod tests {
         find_source("thehindu").expect("the fixture's source is registered")
     }
 
+
+    #[test]
+    fn only_connection_failures_and_server_faults_are_worth_retrying() {
+        assert!(NewsError::Network("refused".into()).is_transient());
+        assert!(NewsError::Upstream(502).is_transient());
+        assert!(!NewsError::Upstream(404).is_transient());
+        assert!(!NewsError::Malformed("not xml".into()).is_transient());
+    }
 
     #[test]
     fn names_the_site_a_link_points_at() {

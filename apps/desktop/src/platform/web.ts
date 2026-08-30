@@ -417,6 +417,12 @@ export function createWebPlatform(): Platform {
         timezone: "UTC",
       };
     },
+    async route(from, to) {
+      if (![from.latitude, from.longitude, to.latitude, to.longitude].every(Number.isFinite)) {
+        throw new Error("that is not a real coordinate");
+      }
+      return { straight_m: 1_553_000, road_m: 1_988_772, duration_s: 86_168 };
+    },
     async searchPlaces(query) {
       // The same refusal the backend makes, so a UI that mishandles it fails
       // here rather than only on the desktop build.

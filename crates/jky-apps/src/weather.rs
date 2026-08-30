@@ -29,6 +29,22 @@ pub enum WeatherError {
     Upstream(u16),
 }
 
+impl WeatherError {
+    /// Whether trying again is worth doing.
+    ///
+    /// A refused or dropped connection is a blip. An answer is not: the server
+    /// spoke, and asking again gets the same sentence back. The exception is a
+    /// 5xx, which says the far side broke rather than that the request was
+    /// wrong, and a second attempt often lands somewhere healthy.
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Self::Network(_) => true,
+            Self::Upstream(status) => *status >= 500,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Conditions {
     pub temperature_c: f64,
@@ -218,7 +234,11 @@ pub async fn fetch_report(
     latitude: f64,
     longitude: f64,
 ) -> Result<Report, WeatherError> {
-    let body = get_text(client, &forecast_url(latitude, longitude)).await?;
+    let url = forecast_url(latitude, longitude);
+    let body = crate::net::retrying(crate::net::ATTEMPTS, WeatherError::is_transient, || {
+        get_text(client, &url)
+    })
+    .await?;
     parse_report(&body)
 }
 
@@ -227,6 +247,14 @@ mod tests {
     use super::*;
 
     const FORECAST: &str = include_str!("../fixtures/forecast-delhi.json");
+
+    #[test]
+    fn only_connection_failures_and_server_faults_are_worth_retrying() {
+        assert!(WeatherError::Network("refused".into()).is_transient());
+        assert!(WeatherError::Upstream(503).is_transient());
+        assert!(!WeatherError::Upstream(404).is_transient());
+        assert!(!WeatherError::Malformed("bad".into()).is_transient());
+    }
 
     #[test]
     fn reads_the_current_conditions() {

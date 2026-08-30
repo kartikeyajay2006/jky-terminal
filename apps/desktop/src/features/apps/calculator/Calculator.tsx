@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 import { calculate, formatResult } from "./calculate";
 
 /**
@@ -70,6 +70,19 @@ export function Calculator() {
   const [history, setHistory] = useState<Entry[]>([]);
   const [nextId, setNextId] = useState(1);
 
+  /**
+   * The field, kept so the keyboard is always where the typing goes.
+   *
+   * A calculator you have to click before it accepts a digit is a calculator
+   * that looks like it takes the mouse only. The pad is the alternative, not
+   * the interface.
+   */
+  const field = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    field.current?.focus();
+  }, []);
+
   const result = calculate(source);
   const answer = result.ok && result.value !== null ? formatResult(result.value) : "";
   // An error is worth showing only once there is something to be wrong about:
@@ -91,6 +104,9 @@ export function Calculator() {
   }
 
   function press(key: Key) {
+    // Focus goes back to the field after every tap, so a couple of buttons
+    // followed by typing does not lose the typing.
+    field.current?.focus();
     if (key.action === "clear") return setSource("");
     if (key.action === "backspace") return setSource((s) => s.slice(0, -1));
     if (key.action === "equals") return commit();
@@ -107,6 +123,7 @@ export function Calculator() {
     <div className="calc">
       <div className="calc__display">
         <input
+          ref={field}
           className="calc__input"
           aria-label="Expression"
           value={source}
@@ -146,7 +163,10 @@ export function Calculator() {
               <button
                 type="button"
                 className="calc__entry"
-                onClick={() => setSource(formatResult(entry.value))}
+                onClick={() => {
+                  setSource(formatResult(entry.value));
+                  field.current?.focus();
+                }}
               >
                 <span className="calc__entry-source">{entry.source}</span>
                 <span className="calc__entry-value">{formatResult(entry.value)}</span>

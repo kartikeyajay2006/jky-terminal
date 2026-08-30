@@ -56,6 +56,7 @@ fn main() {
             apps::apps_news_sources,
             apps::apps_weather,
             apps::apps_place_search,
+            apps::apps_route,
             open::open_external,
             scrollback::scrollback_load,
             scrollback::scrollback_save,

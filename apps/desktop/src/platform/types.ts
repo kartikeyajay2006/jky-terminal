@@ -282,6 +282,20 @@ export interface NewsArticle {
 }
 
 /**
+ * How far apart two places are.
+ *
+ * `straight_m` is always present because it is arithmetic on two coordinates.
+ * The road figures are absent when no road connects the two, or when the
+ * routing service could not be reached — the straight line is still true, and
+ * losing it because a third party was busy would be worse.
+ */
+export interface Route {
+  straight_m: number;
+  road_m: number | null;
+  duration_s: number | null;
+}
+
+/**
  * What the Apps section needs fetched.
  *
  * Every call here crosses to Rust because the window cannot reach the
@@ -302,6 +316,7 @@ export interface AppsApi {
    * beside the search box rather than used as the truth.
    */
   locate(): Promise<Place>;
+  route(from: Place, to: Place): Promise<Route>;
 }
 
 export interface Platform {

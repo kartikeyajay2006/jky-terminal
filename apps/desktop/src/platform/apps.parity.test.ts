@@ -18,10 +18,13 @@ import { createWebPlatform } from "./web";
 const RUST_WEATHER = join(__dirname, "../../../../crates/jky-apps/src/weather.rs");
 const RUST_NEWS = join(__dirname, "../../../../crates/jky-apps/src/feeds.rs");
 const RUST_PLACES = join(__dirname, "../../../../crates/jky-apps/src/places.rs");
+const RUST_ROUTES = join(__dirname, "../../../../crates/jky-apps/src/routes.rs");
 
 /** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
-  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES].map((f) => readFileSync(f, "utf8")).join("\n");
+  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES]
+    .map((f) => readFileSync(f, "utf8"))
+    .join("\n");
 }
 
 /** The fields declared on one `pub struct` in the Rust source. */
@@ -138,6 +141,18 @@ describe("apps adapter parity", () => {
     for (const field of fieldsOf("Place")) {
       expect(here, `Place.${field} is missing from the mock`).toHaveProperty(field);
     }
+  });
+
+  it("the mock returns a route shaped like the real one", async () => {
+    const here = await web.apps.locate();
+    const route = await web.apps.route(here, here);
+    for (const field of fieldsOf("Route")) {
+      expect(route, `Route.${field} is missing from the mock`).toHaveProperty(field);
+    }
+  });
+
+  it("names every route field the same way in TypeScript", () => {
+    expect(fieldsOf("Route")).toEqual(["straight_m", "road_m", "duration_s"]);
   });
 
   it("refuses a search the backend would refuse", async () => {

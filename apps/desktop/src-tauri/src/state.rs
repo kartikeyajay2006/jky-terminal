@@ -52,6 +52,8 @@ pub struct AppState {
     pub cancelled: Arc<AtomicBool>,
     /// One client for every app that fetches, so connections are pooled
     /// rather than a fresh TLS handshake being paid on each panel refresh.
+    /// Its timeouts are set in `jky_apps::net`, beside the retry policy, so
+    /// there is one place that decides how long anything waits.
     pub http: reqwest::Client,
 }
 
@@ -69,7 +71,7 @@ impl AppState {
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
             turn: Arc::new(Mutex::new(None)),
             cancelled: Arc::new(AtomicBool::new(false)),
-            http: reqwest::Client::new(),
+            http: jky_apps::net::client(),
         }
     }
 }

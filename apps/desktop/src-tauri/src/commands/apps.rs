@@ -13,6 +13,7 @@
 
 use jky_apps::feeds::{self, Article, Source};
 use jky_apps::places::{self, Place};
+use jky_apps::routes::{self, Route};
 use jky_apps::weather::{self, Report};
 use tauri::State;
 
@@ -91,6 +92,36 @@ pub async fn apps_place_search(
 #[tauri::command]
 pub async fn apps_locate(state: State<'_, AppState>) -> Result<Place, String> {
     places::locate(&state.http).await.map_err(|e| e.to_string())
+}
+
+/// How far apart two places are, by air and — where there is one — by road.
+///
+/// Both coordinates are range-checked in `jky-apps` before either reaches a
+/// URL, NaN included: it would otherwise format as the literal text "NaN" in
+/// the path and produce a malformed request rather than a refused one.
+///
+/// A routing failure is not an error: the straight-line distance is still a
+/// true answer, and losing it because a third-party server was busy would be
+/// worse than showing it alone.
+// Tauri maps camelCase keys from the window onto snake_case arguments here,
+// so the renderer sends `fromLatitude` and this reads `from_latitude`.
+#[tauri::command]
+pub async fn apps_route(
+    state: State<'_, AppState>,
+    from_latitude: f64,
+    from_longitude: f64,
+    to_latitude: f64,
+    to_longitude: f64,
+) -> Result<Route, String> {
+    routes::between(
+        &state.http,
+        from_latitude,
+        from_longitude,
+        to_latitude,
+        to_longitude,
+    )
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// How many headlines the panel may ask for from one paper.

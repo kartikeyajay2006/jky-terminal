@@ -26,6 +26,22 @@ pub enum PlaceError {
     Unavailable(String),
 }
 
+impl PlaceError {
+    /// Whether trying again is worth doing.
+    ///
+    /// A refused or dropped connection is a blip. An answer is not: the server
+    /// spoke, and asking again gets the same sentence back. The exception is a
+    /// 5xx, which says the far side broke rather than that the request was
+    /// wrong, and a second attempt often lands somewhere healthy.
+    pub fn is_transient(&self) -> bool {
+        match self {
+            Self::Network(_) => true,
+            Self::Upstream(status) => *status >= 500,
+            _ => false,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Place {
     pub name: String,
@@ -187,12 +203,22 @@ pub async fn search_places(
     client: &reqwest::Client,
     query: &str,
 ) -> Result<Vec<Place>, PlaceError> {
-    let body = get_text(client, &search_url(query)).await?;
+    let url = search_url(query);
+    // Retried because this is the request that failed for a user: the geocoder
+    // publishes an AAAA record the forecast host does not, so on a network with
+    // broken IPv6 it is the one that has to fall back.
+    let body = crate::net::retrying(crate::net::ATTEMPTS, PlaceError::is_transient, || {
+        get_text(client, &url)
+    })
+    .await?;
     parse_places(&body)
 }
 
 pub async fn locate(client: &reqwest::Client) -> Result<Place, PlaceError> {
-    let body = get_text(client, LOCATE_HOST).await?;
+    let body = crate::net::retrying(crate::net::ATTEMPTS, PlaceError::is_transient, || {
+        get_text(client, LOCATE_HOST)
+    })
+    .await?;
     parse_located(&body)
 }
 
@@ -249,6 +275,25 @@ mod tests {
         assert!(name.contains("%20"), "the space survives, encoded");
         assert!(name.contains("%26"), "the ampersand survives, encoded");
         assert!(name.contains("%C3%A3"), "non-ASCII is encoded as its UTF-8 bytes");
+    }
+
+    // A refused connection is worth another go. An answer is not: the server
+    // spoke, and asking again gets the same sentence back.
+    #[test]
+    fn only_connection_failures_are_worth_retrying() {
+        assert!(PlaceError::Network("refused".into()).is_transient());
+        assert!(!PlaceError::Malformed("bad json".into()).is_transient());
+        assert!(!PlaceError::Unavailable("declined".into()).is_transient());
+        assert!(!PlaceError::Upstream(404).is_transient());
+    }
+
+    // A 5xx says the far side broke, not that the request was wrong, and a
+    // second attempt often lands on a healthy instance.
+    #[test]
+    fn a_server_side_status_is_worth_retrying() {
+        assert!(PlaceError::Upstream(503).is_transient());
+        assert!(PlaceError::Upstream(500).is_transient());
+        assert!(!PlaceError::Upstream(400).is_transient());
     }
 
     #[test]

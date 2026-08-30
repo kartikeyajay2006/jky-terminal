@@ -1,36 +1,48 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AppSwitcher } from "./AppSwitcher";
 import { APPS, findApp, type AppDef } from "./registry";
 import { Calculator } from "./calculator/Calculator";
-import { Timer } from "./timer/Timer";
 import { MapApp } from "./map/Map";
 import { News } from "./news/News";
+import { Timer } from "./timer/Timer";
 import { Weather } from "./weather/Weather";
 import { useNav } from "../../app/navStore";
 import "./Apps.css";
 
-/** Where the section is: the grid, or one app's id. */
-type View = "grid" | string;
+/** Which apps are open, and which one is on screen. */
+interface Session {
+  open: string[];
+  /** Null means the grid is showing; the open apps stay open behind it. */
+  active: string | null;
+}
 
-const LAST_VIEW_KEY = "jky.apps.last";
+const SESSION_KEY = "jky.apps.session";
 
-function loadLastView(): View {
+function loadSession(): Session {
   try {
-    const stored = localStorage.getItem(LAST_VIEW_KEY);
-    if (stored && (stored === "grid" || findApp(stored))) return stored;
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (raw) {
+      const parsed: unknown = JSON.parse(raw);
+      if (typeof parsed === "object" && parsed !== null) {
+        // Filtered against the registry, so an app removed in a later version
+        // does not leave a tab that opens nothing.
+        const open = ((parsed as Session).open ?? []).filter((id) => findApp(id));
+        const active = (parsed as Session).active;
+        return { open, active: active && open.includes(active) ? active : null };
+      }
+    }
   } catch {
-    // Storage throws in a private window; the grid is a fine default.
+    // Storage throws in a private window; an empty session is a fine default.
   }
-  return "grid";
+  return { open: [], active: null };
 }
 
 /**
  * The body of one app.
  *
  * A switch rather than a component stored on the registry record, because the
- * registry is plain data read by tests and, later, by the Rust side — putting
- * React components in it would make it un-shareable for the sake of saving
- * this function.
+ * registry is plain data read by tests and by the Rust side — putting React
+ * components in it would make it un-shareable for the sake of saving this.
  */
 function appBody(id: string): ReactNode {
   switch (id) {
@@ -52,28 +64,44 @@ function appBody(id: string): ReactNode {
 /**
  * The Apps section.
  *
- * Opening an app replaces the grid rather than opening a window: the rule this
- * was built to satisfy is that an app opens *here*, not in the system browser.
- * Moving between apps goes through the switcher, so you never have to climb
- * back out to the grid to get somewhere else.
+ * Several apps can be open at once, the way terminal tabs are. Every open app
+ * stays mounted and the inactive ones are hidden rather than unmounted, which
+ * is the whole point of having two open: a timer keeps counting while you look
+ * at the weather, and a half-typed sum is still there when you come back.
  *
- * Only the open app is mounted. Apps that fetch would otherwise keep polling
- * in the background, and the timer would keep counting where nobody could see
- * it — the same reason the games unmount when you leave them.
+ * That is a deliberate reversal. This section used to unmount the app you left
+ * so nothing ran unseen — right when only one could be open, wrong once
+ * keeping one running in the background is the feature being asked for. The
+ * section as a whole is still unmounted when you leave it for the terminal, so
+ * nothing runs while Apps is not the place you are.
  */
 export function Apps() {
-  const [view, setView] = useState<View>(loadLastView);
+  const [session, setSession] = useState<Session>(loadSession);
   const [switching, setSwitching] = useState(false);
 
-  const open = view === "grid" ? undefined : findApp(view);
+  const { open, active } = session;
+  const current = active ? findApp(active) : undefined;
 
   useEffect(() => {
     try {
-      localStorage.setItem(LAST_VIEW_KEY, view);
+      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     } catch {
-      // Preference lost, app fine.
+      // Preference lost; the apps still work.
     }
-  }, [view]);
+  }, [session]);
+
+  /** Open an app, or bring it forward when it already is. */
+  const openApp = useCallback((id: string) => {
+    setSession((s) => ({
+      open: s.open.includes(id) ? s.open : [...s.open, id],
+      active: id,
+    }));
+    setSwitching(false);
+  }, []);
+
+  const showGrid = useCallback(() => {
+    setSession((s) => ({ ...s, active: null }));
+  }, []);
 
   // The palette can ask for a named app; the request is left in the store for
   // this section to take, so which app was wanted survives the section switch.
@@ -81,14 +109,15 @@ export function Apps() {
   useEffect(() => {
     const wanted = useNav.getState().takePanel("apps");
     if (!wanted) return;
-    if (wanted === "grid" || findApp(wanted)) setView(wanted);
-  }, [pendingNav]);
+    if (wanted === "grid") showGrid();
+    else if (findApp(wanted)) openApp(wanted);
+  }, [pendingNav, openApp, showGrid]);
 
   // Bound here rather than in `useShortcuts` because it means nothing outside
   // this section, and a global binding for it would be one more chord to think
   // about while typing into a terminal.
   useEffect(() => {
-    if (!open) return;
+    if (!current) return;
     function onKeyDown(e: KeyboardEvent) {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "a") {
         e.preventDefault();
@@ -97,60 +126,140 @@ export function Apps() {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [open]);
+  }, [current]);
 
-  function choose(id: string) {
-    setView(id);
-    setSwitching(false);
+  function closeApp(id: string) {
+    setSession((s) => {
+      const open = s.open.filter((x) => x !== id);
+      if (s.active !== id) return { open, active: s.active };
+      // Closing what you are looking at moves to a neighbour rather than
+      // dropping you back to the grid with other apps still open.
+      const wasAt = s.open.indexOf(id);
+      const next = open[Math.min(wasAt, open.length - 1)] ?? null;
+      return { open, active: next };
+    });
   }
 
-  if (!open) return <AppGrid onOpen={choose} />;
-
   return (
-    <div
-      className="apps apps--open"
-      style={{ ["--app-accent" as string]: `var(--${open.accent})` }}
-    >
-      <header className="apps__bar">
-        <button type="button" className="apps__back" onClick={() => setView("grid")}>
-          <span aria-hidden="true">←</span> All apps
-        </button>
-        <h1 className="apps__open-title">
-          <span className="apps__open-glyph" aria-hidden="true">
-            {open.glyph}
-          </span>
-          {open.name}
-        </h1>
-        <button
-          type="button"
-          className="apps__switch"
-          aria-haspopup="dialog"
-          onClick={() => setSwitching(true)}
-        >
-          Switch app
-          <kbd className="apps__chord">Ctrl+Shift+A</kbd>
-        </button>
-      </header>
+    <div className="apps-shell">
+      {open.length > 0 && (
+        <div className="apps__tabstrip">
+          <div className="apps__tabs" role="tablist" aria-label="Open apps">
+            {open.map((id) => {
+              const app = findApp(id);
+              if (!app) return null;
+              return (
+                // A tablist may contain only role=tab elements — not a wrapper
+                // with a second button in it. So the close affordance lives
+                // inside the tab, the same deletable-tabs pattern the terminal
+                // tabs already follow: a decorative glyph for the mouse, and
+                // Delete/Backspace for the keyboard, which aria-keyshortcuts
+                // advertises to assistive technology.
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={active === id}
+                  aria-keyshortcuts="Delete"
+                  className="apps__tab"
+                  style={{ ["--app-accent" as string]: `var(--${app.accent})` }}
+                  onClick={(e) => {
+                    if ((e.target as HTMLElement).dataset.close === "true") closeApp(id);
+                    else setSession((s) => ({ ...s, active: id }));
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Delete" || e.key === "Backspace") {
+                      e.preventDefault();
+                      closeApp(id);
+                    }
+                  }}
+                >
+                  <span className="apps__tab-glyph" aria-hidden="true">
+                    {app.glyph}
+                  </span>
+                  <span className="apps__tab-name">{app.name}</span>
+                  <span className="apps__tab-close" data-close="true" aria-hidden="true">
+                    ×
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            className="apps__tab-add"
+            // Not "All apps": the header already has one of those, and two
+            // controls with the same name is ambiguous to a screen reader as
+            // well as to a test.
+            aria-label="Open another app"
+            onClick={showGrid}
+          >
+            +
+          </button>
+        </div>
+      )}
 
-      <div className="apps__stage">{appBody(open.id)}</div>
+      {!current && <AppGrid onOpen={openApp} openIds={open} />}
 
-      {switching && (
-        <AppSwitcher currentId={open.id} onChoose={choose} onClose={() => setSwitching(false)} />
+      {/* Every open app stays mounted; only the active one is shown. Hiding
+          rather than unmounting is what lets a timer keep counting and a
+          half-typed sum survive a trip to the weather. */}
+      {open.map((id) => {
+        const app = findApp(id);
+        if (!app) return null;
+        return (
+          <div
+            key={id}
+            className="apps apps--open"
+            hidden={active !== id}
+            style={{ ["--app-accent" as string]: `var(--${app.accent})` }}
+          >
+            <header className="apps__bar">
+              <button type="button" className="apps__back" onClick={showGrid}>
+                <span aria-hidden="true">←</span> All apps
+              </button>
+              <h1 className="apps__open-title">
+                <span className="apps__open-glyph" aria-hidden="true">
+                  {app.glyph}
+                </span>
+                {app.name}
+              </h1>
+              <button
+                type="button"
+                className="apps__switch"
+                aria-haspopup="dialog"
+                onClick={() => setSwitching(true)}
+              >
+                Switch app
+                <kbd className="apps__chord">Ctrl+Shift+A</kbd>
+              </button>
+            </header>
+
+            <div className="apps__stage">{appBody(app.id)}</div>
+          </div>
+        );
+      })}
+
+      {switching && current && (
+        <AppSwitcher
+          currentId={current.id}
+          openIds={open}
+          onChoose={openApp}
+          onClose={() => setSwitching(false)}
+        />
       )}
     </div>
   );
 }
 
-function AppGrid({ onOpen }: { onOpen: (id: string) => void }) {
+function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: string[] }) {
   return (
     <div className="apps">
       <header className="apps__head">
-        <p className="apps__eyebrow">
-          {APPS.length} apps · no account needed
-        </p>
+        <p className="apps__eyebrow">{APPS.length} apps · no account needed</p>
         <h1 className="apps__title">Apps</h1>
         <p className="apps__lede">
-          Each one opens here, in this window. Pick one to start, then press{" "}
+          Open as many as you like — they stay open in tabs above. Press{" "}
           <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> to move between them.
         </p>
       </header>
@@ -158,7 +267,7 @@ function AppGrid({ onOpen }: { onOpen: (id: string) => void }) {
       <ul className="apps__grid" aria-label="Apps">
         {APPS.map((app) => (
           <li key={app.id}>
-            <Tile app={app} onOpen={onOpen} />
+            <Tile app={app} open={openIds.includes(app.id)} onOpen={onOpen} />
           </li>
         ))}
       </ul>
@@ -166,7 +275,15 @@ function AppGrid({ onOpen }: { onOpen: (id: string) => void }) {
   );
 }
 
-function Tile({ app, onOpen }: { app: AppDef; onOpen: (id: string) => void }) {
+function Tile({
+  app,
+  open,
+  onOpen,
+}: {
+  app: AppDef;
+  open: boolean;
+  onOpen: (id: string) => void;
+}) {
   return (
     <button
       type="button"
@@ -181,6 +298,7 @@ function Tile({ app, onOpen }: { app: AppDef; onOpen: (id: string) => void }) {
       </span>
       <span className="apps__tile-name">{app.name}</span>
       <span className="apps__tile-blurb">{app.blurb}</span>
+      {open && <span className="apps__tile-open">open</span>}
       {app.auth !== "none" && <span className="apps__tile-auth">needs {app.auth}</span>}
     </button>
   );

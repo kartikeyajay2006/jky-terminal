@@ -12,3 +12,7 @@ thiserror.workspace = true
 reqwest.workspace = true
 futures-util.workspace = true
 quick-xml = "0.41"
+tokio.workspace = true
+
+[dev-dependencies]
+tokio = { workspace = true }

@@ -4,6 +4,7 @@ import type {
   AppsApi,
   NewsArticle,
   NewsSource,
+  Route,
   Place,
   WeatherReport,
   AiApi,
@@ -163,6 +164,13 @@ export function createTauriPlatform(): Platform {
     news: (source, limit) => invoke<NewsArticle[]>("apps_news", { source, limit }),
     newsSources: () => invoke<NewsSource[]>("apps_news_sources"),
     locate: () => invoke<Place>("apps_locate"),
+    route: (from, to) =>
+      invoke<Route>("apps_route", {
+        fromLatitude: from.latitude,
+        fromLongitude: from.longitude,
+        toLatitude: to.latitude,
+        toLongitude: to.longitude,
+      }),
   };
 
   const scrollback: ScrollbackApi = {

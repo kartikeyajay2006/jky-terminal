@@ -25,9 +25,9 @@ import { ToolCard } from "../features/assistant/ToolCard";
 describe("accessibility", () => {
   beforeEach(() => {
     __setPlatformForTests(createWebPlatform());
-    // Apps reopens whichever app was last used, so a neighbouring test that
-    // opened one would leave this suite starting past the grid it wants.
-    localStorage.removeItem("jky.apps.last");
+    // Apps reopens whatever was left open, so a neighbouring test that opened
+    // one would leave this suite starting past the grid it wants.
+    localStorage.removeItem("jky.apps.session");
     useTabs.setState({ tabs: [], activeId: null });
     useChat.setState({ sessions: [], activeId: null, busy: false, tools: [], error: null });
     useDashboard.setState({
