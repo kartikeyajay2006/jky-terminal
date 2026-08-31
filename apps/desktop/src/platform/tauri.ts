@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type {
   AppsApi,
+  BrowserApi,
   NewsArticle,
   GitHubBranch,
   GitHubCommit,
@@ -195,6 +196,14 @@ export function createTauriPlatform(): Platform {
       }),
   };
 
+  const browser: BrowserApi = {
+    available: true,
+    open: (url, rect) => invoke<string>("browser_open", { url, rect }),
+    place: (rect) => invoke<void>("browser_place", { rect }),
+    close: () => invoke<void>("browser_close"),
+    history: (step) => invoke<void>("browser_history", { step }),
+  };
+
   const scrollback: ScrollbackApi = {
     load: (key) => invoke<string>("scrollback_load", { key }),
     save: (key, text) => invoke<void>("scrollback_save", { key, text }),
@@ -211,6 +220,7 @@ export function createTauriPlatform(): Platform {
     store,
     games,
     apps,
+    browser,
     scrollback,
     listCommands: () => invoke<CommandSpec[]>("commands_list"),
     openExternal: (url) => invoke<void>("open_external", { url }),

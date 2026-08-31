@@ -10,6 +10,7 @@
 //! response is tested against a recorded fixture rather than against whatever
 //! the network happens to return today.
 
+pub mod browser;
 pub mod feeds;
 pub mod github;
 pub mod net;

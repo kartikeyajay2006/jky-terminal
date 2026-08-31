@@ -180,6 +180,22 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // NaN included, since it would otherwise reach the query string as
         // the literal text "NaN".
         "apps_weather".to_string(),
+        // The Browser app's webview. It renders pages from the open internet,
+        // so what matters is what it *cannot* do: the webview is labelled
+        // `browser`, no capability names that label, and a test below pins it.
+        // A page it loads can call no Tauri command at all.
+        //
+        // Every address goes through `jky_apps::browser::normalise`, which
+        // permits http and https and refuses everything else — `file://` above
+        // all, since that would make the address bar a reader for the disk.
+        // The rectangle is bounds-checked so the pane cannot be sized to
+        // nothing or pushed off the window where it could not be closed.
+        // `browser_history` takes a number this app chooses, never a string
+        // from the window, so there is no script to inject.
+        "browser_close".to_string(),
+        "browser_history".to_string(),
+        "browser_open".to_string(),
+        "browser_place".to_string(),
         "commands_list".to_string(),
         // Takes four numbers the window already has and renders the listing
         // `jky games` prints. The path, the format and the set of valid game
@@ -487,4 +503,54 @@ fn capability_files() -> Vec<(PathBuf, serde_json::Value)> {
     }
     assert!(!out.is_empty(), "SECURITY: no capability files found to check");
     out
+}
+
+/// The Browser app renders pages nobody has reviewed, so the one thing that
+/// must stay true is that they cannot call into Rust.
+///
+/// Its webview is labelled `browser`, and no capability may name that label —
+/// by pattern or by glob. Together with the check above (no capability may be
+/// scoped by window, which would grant it to every webview in that window)
+/// this is what keeps a page from the internet outside the IPC boundary.
+#[test]
+fn the_browser_webview_is_granted_no_capability_at_all() {
+    const BROWSER_LABEL: &str = "browser";
+
+    for (path, capability) in capability_files() {
+        let name = path.file_name().unwrap().to_string_lossy();
+        let labels = capability
+            .get("webviews")
+            .and_then(|w| w.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        for label in labels {
+            let label = label.as_str().unwrap_or_default();
+            assert_ne!(
+                label, BROWSER_LABEL,
+                "SECURITY: {name} grants capabilities to the browser webview. Pages loaded \
+                 from the internet would be able to call Tauri commands."
+            );
+        }
+    }
+}
+
+/// The label the browser uses must not be the one the capabilities name.
+///
+/// Read out of the source rather than duplicated here, so renaming the
+/// constant cannot quietly move the browser inside the capability.
+#[test]
+fn the_browser_label_in_the_source_is_not_the_privileged_one() {
+    let source = fs::read_to_string(crate_root().join("src/commands/browser.rs"))
+        .expect("browser.rs is readable");
+    let line = source
+        .lines()
+        .find(|l| l.contains("pub const BROWSER_LABEL"))
+        .expect("SECURITY: browser.rs no longer declares BROWSER_LABEL");
+
+    assert!(
+        !line.contains("\"main\""),
+        "SECURITY: the browser webview is labelled `main`, which is the label every \
+         capability grants. A page from the internet would inherit them all."
+    );
 }

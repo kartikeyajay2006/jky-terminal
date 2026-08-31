@@ -6,7 +6,7 @@ mod listing;
 mod turn;
 mod state;
 
-use commands::{ai, apps, games, github, open, pty, scrollback, settings, store, vault};
+use commands::{ai, apps, browser, games, github, open, pty, scrollback, settings, store, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -51,6 +51,10 @@ fn main() {
             store::store_save_reminder,
             store::store_delete_reminder,
             games::games_publish_scores,
+            browser::browser_open,
+            browser::browser_place,
+            browser::browser_close,
+            browser::browser_history,
             apps::apps_locate,
             apps::apps_news,
             apps::apps_news_sources,

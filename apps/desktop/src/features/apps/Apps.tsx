@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AppSwitcher } from "./AppSwitcher";
 import { APPS, findApp, type AppDef } from "./registry";
 import { Calculator } from "./calculator/Calculator";
+import { Browser } from "./browser/Browser";
 import { GitHub } from "./github/GitHub";
 import { MapApp } from "./map/Map";
 import { News } from "./news/News";
@@ -59,6 +60,8 @@ function appBody(id: string): ReactNode {
       return <MapApp />;
     case "github":
       return <GitHub />;
+    case "browser":
+      return <Browser />;
     default:
       return null;
   }

@@ -1,6 +1,7 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
   AppsApi,
+  BrowserApi,
   AiApi,
   CollectionApi,
   CommandSpec,
@@ -664,6 +665,21 @@ export function createWebPlatform(): Platform {
     },
   };
 
+  /*
+   * The browser build has no window to dock a webview into, so this says so
+   * rather than pretending. `available` is what the panel reads to decide
+   * between a browser and an explanation.
+   */
+  const browser: BrowserApi = {
+    available: false,
+    async open() {
+      throw new Error("the browser needs the desktop app");
+    },
+    async place() {},
+    async close() {},
+    async history() {},
+  };
+
   return {
     kind: "web",
     vault,
@@ -673,6 +689,7 @@ export function createWebPlatform(): Platform {
     store,
     games,
     apps,
+    browser,
     scrollback,
     async listCommands() {
       return WEB_COMMANDS;

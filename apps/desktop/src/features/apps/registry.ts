@@ -44,7 +44,10 @@ export type AppAccent =
   | "violet"
   | "magenta"
   | "mint"
-  | "warn";
+  | "warn"
+  /// The neutral of the set. A browser shows other people's colours, so it
+  /// brings none of its own to fight with them.
+  | "text-muted";
 
 export interface AppDef {
   /** Stable slug. Reaches the palette, the switcher and iframe URLs. */
@@ -118,6 +121,15 @@ export const APPS: AppDef[] = [
     auth: "github",
     accent: "accent-dim",
     blurb: "Your repositories, issues and pull requests. Approved on your phone.",
+  },
+  {
+    id: "browser",
+    name: "Browser",
+    glyph: "🌐",
+    mode: "frame",
+    auth: "none",
+    accent: "text-muted",
+    blurb: "Private browsing in this window. Nothing is kept when you leave.",
   },
 ];
 

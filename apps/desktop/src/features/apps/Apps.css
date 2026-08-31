@@ -2667,3 +2667,176 @@
   color: var(--text);
   font-weight: 600;
 }
+
+/* ---- Browser ---- */
+
+.br {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  height: 100%;
+  min-height: 0;
+  padding: var(--s3);
+}
+
+.br--unavailable {
+  gap: var(--s3);
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: var(--s7) var(--s4);
+}
+
+.br__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 20px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.br__body {
+  margin: 0;
+  max-width: 62ch;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.br__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+}
+
+.br__nav {
+  display: flex;
+  gap: 2px;
+}
+
+.br__step,
+.br__go {
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font: inherit;
+}
+
+.br__step {
+  width: 30px;
+  height: 30px;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.br__go {
+  padding: 0 var(--s4);
+  height: 30px;
+  font-size: 13px;
+}
+
+.br__step:hover,
+.br__go:hover:not(:disabled) {
+  border-color: var(--line-strong);
+  color: var(--text);
+}
+
+.br__go:disabled {
+  cursor: default;
+  color: var(--text-dim);
+}
+
+.br__field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.br__input {
+  width: 100%;
+  height: 30px;
+  padding: 0 var(--s3);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.br__input::placeholder {
+  color: var(--text-dim);
+}
+
+.br__input:focus-visible,
+.br__step:focus-visible,
+.br__go:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+/* The host, not the query string: what a person checks before trusting a page
+   is where it came from. */
+.br__site {
+  position: absolute;
+  right: var(--s2);
+  max-width: 40%;
+  overflow: hidden;
+  padding: 1px var(--s2);
+  border-radius: 4px;
+  background: var(--ground);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.br__error {
+  flex: none;
+  margin: 0;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  color: var(--danger);
+  font-size: 12px;
+}
+
+/*
+ * The hole the webview is drawn into.
+ *
+ * Empty by design — the page is not in this document, which is exactly why it
+ * cannot reach it. The border marks where another origin begins, the same way
+ * the map's frame does.
+ */
+.br__pane {
+  flex: 1;
+  min-height: 240px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--ground);
+  overflow: hidden;
+}
+
+.br__empty {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s6);
+  max-width: 52ch;
+}
+
+.br__empty-title {
+  margin: 0;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}

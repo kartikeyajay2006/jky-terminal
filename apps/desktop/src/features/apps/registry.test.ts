@@ -45,7 +45,7 @@ describe("the app registry", () => {
     // `accent-dim` is a real accent, not a shade: the dashboard already uses
     // it as a distinct event colour and the contrast test verifies it in all
     // seven themes.
-    const PALETTE = ["accent", "accent-dim", "violet", "magenta", "mint", "warn"];
+    const PALETTE = ["accent", "accent-dim", "violet", "magenta", "mint", "warn", "text-muted"];
     for (const app of APPS) {
       expect(PALETTE, `${app.name} has an unknown accent`).toContain(app.accent);
     }
@@ -69,6 +69,16 @@ describe("the app registry", () => {
       id: "github",
       mode: "data",
       auth: "github",
+    });
+  });
+
+  // A browser is a frame app in the literal sense: it hosts a page from
+  // somewhere else. It needs no account of its own.
+  it("includes the browser as a frame app needing no account", () => {
+    expect(findApp("browser")).toMatchObject({
+      id: "browser",
+      mode: "frame",
+      auth: "none",
     });
   });
 

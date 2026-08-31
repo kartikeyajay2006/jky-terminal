@@ -1,5 +1,6 @@
 pub mod apps;
 pub mod ai;
+pub mod browser;
 pub mod games;
 pub mod github;
 pub mod open;

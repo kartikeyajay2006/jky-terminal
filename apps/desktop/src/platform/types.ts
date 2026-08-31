@@ -462,6 +462,33 @@ export interface GitHubApi {
   notifications(): Promise<GitHubNotification[]>;
 }
 
+/** Where the browser pane sits, in logical pixels. */
+export interface BrowserRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * The Browser app's native webview.
+ *
+ * Not an iframe: most of the web refuses to be framed. This is a child webview
+ * the operating system draws, docked into the window — which is also why it
+ * cannot be drawn by the browser build, where there is no window to dock into.
+ */
+export interface BrowserApi {
+  /** Open or navigate. Returns the address it actually went to. */
+  open(url: string, rect: BrowserRect): Promise<string>;
+  /** Move and resize the pane as the layout changes. */
+  place(rect: BrowserRect): Promise<void>;
+  close(): Promise<void>;
+  /** -1 back, 1 forward, 0 reload. */
+  history(step: number): Promise<void>;
+  /** Whether this build can host a webview at all. */
+  readonly available: boolean;
+}
+
 /**
  * What the Apps section needs fetched.
  *
@@ -497,6 +524,8 @@ export interface Platform {
   readonly store: StoreApi;
   /** What the games need from the backend. */
   readonly games: GamesApi;
+  /** The Browser app's native webview. Absent in the browser build. */
+  readonly browser: BrowserApi;
   /** What the Apps section needs fetched, since the window cannot fetch. */
   readonly apps: AppsApi;
   /** What each terminal had on screen last time. */

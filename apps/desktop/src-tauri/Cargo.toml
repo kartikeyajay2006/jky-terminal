@@ -9,7 +9,7 @@ authors.workspace = true
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["unstable"] }
 jky-secrets = { path = "../../../crates/jky-secrets" }
 jky-settings = { path = "../../../crates/jky-settings" }
 jky-store = { path = "../../../crates/jky-store" }
