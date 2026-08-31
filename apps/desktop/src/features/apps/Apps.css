@@ -1992,3 +1992,8 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
+
+.gh__setup-links {
+  display: flex;
+  gap: var(--s4);
+}

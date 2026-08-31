@@ -35,33 +35,44 @@ describe("GitHub", () => {
     __setPlatformForTests(null);
   });
 
-  describe("before it is configured", () => {
-    it("asks for a client id rather than failing", async () => {
+  describe("out of the box", () => {
+    // An OAuth app ships with the build, so someone who has just installed
+    // this can sign in without registering anything first.
+    it("goes straight to signing in, with nothing to set up", async () => {
       render(<GitHub />);
       expect(
-        await screen.findByRole("textbox", { name: /client id/i }),
+        await screen.findByRole("button", { name: /sign in to github/i }),
       ).toBeInTheDocument();
+      expect(screen.queryByRole("textbox", { name: /client id/i })).not.toBeInTheDocument();
     });
 
-    // A person cannot guess what to register. The panel has to say — and say
-    // that there is no secret to copy, which is the surprising part.
-    it("says what to create on GitHub and where", async () => {
+    // Still reachable for anyone who would rather run against their own app.
+    it("lets someone use their own OAuth app instead", async () => {
+      const user = typist();
       render(<GitHub />);
-      await screen.findByRole("textbox", { name: /client id/i });
+      await user.click(await screen.findByRole("button", { name: /use your own oauth app/i }));
+
       const setup = screen.getByRole("region", { name: /set up github/i });
-      expect(setup).toHaveTextContent(/oauth app/i);
+      expect(within(setup).getByRole("textbox", { name: /client id/i })).toBeInTheDocument();
       expect(setup).toHaveTextContent(/enable device flow/i);
       expect(setup).toHaveTextContent(/no client secret/i);
     });
 
-    it("saves the client id and moves on to signing in", async () => {
+    it("saves a client id of your own and returns to signing in", async () => {
       const user = typist();
       render(<GitHub />);
-      await user.type(
-        await screen.findByRole("textbox", { name: /client id/i }),
-        "Iv23liEXAMPLE",
-      );
+      await user.click(await screen.findByRole("button", { name: /use your own oauth app/i }));
+      await user.type(screen.getByRole("textbox", { name: /client id/i }), "Ov23liMINE");
       await user.click(screen.getByRole("button", { name: /save/i }));
+
+      expect(await screen.findByRole("button", { name: /sign in to github/i })).toBeInTheDocument();
+    });
+
+    it("comes back from the setup screen without changing anything", async () => {
+      const user = typist();
+      render(<GitHub />);
+      await user.click(await screen.findByRole("button", { name: /use your own oauth app/i }));
+      await user.click(screen.getByRole("button", { name: /^cancel$/i }));
 
       expect(await screen.findByRole("button", { name: /sign in to github/i })).toBeInTheDocument();
     });
@@ -70,7 +81,6 @@ describe("GitHub", () => {
   describe("signing in", () => {
     async function configured() {
       const base = createWebPlatform();
-      await base.apps.github.setClientId("Iv23liEXAMPLE");
       __setPlatformForTests(base);
       return base;
     }
@@ -89,7 +99,6 @@ describe("GitHub", () => {
     // is the one step this app cannot do for the person.
     it("opens the approval page in the real browser", async () => {
       const base = createWebPlatform();
-      await base.apps.github.setClientId("Iv23liEXAMPLE");
       const opened: string[] = [];
       __setPlatformForTests({
         ...base,
@@ -176,7 +185,6 @@ describe("GitHub", () => {
   describe("once connected", () => {
     async function connected() {
       const base = createWebPlatform();
-      await base.apps.github.setClientId("Iv23liEXAMPLE");
       await base.apps.github.connectStart();
       await base.apps.github.connectPoll();
       await base.apps.github.connectPoll();
@@ -216,7 +224,6 @@ describe("GitHub", () => {
 
     it("opens a repository in the real browser", async () => {
       const base = createWebPlatform();
-      await base.apps.github.setClientId("Iv23liEXAMPLE");
       await base.apps.github.connectStart();
       await base.apps.github.connectPoll();
       await base.apps.github.connectPoll();
@@ -249,7 +256,6 @@ describe("GitHub", () => {
     it("says so and offers a retry when the account cannot be loaded", async () => {
       let attempts = 0;
       const base = createWebPlatform();
-      await base.apps.github.setClientId("Iv23liEXAMPLE");
       await base.apps.github.connectStart();
       await base.apps.github.connectPoll();
       await base.apps.github.connectPoll();

@@ -36,6 +36,22 @@ pub const SCOPES: &str = "repo read:org notifications";
 /// The key the token is stored under in the OS keychain.
 pub const TOKEN_KEY: &str = "github-token";
 
+/// The OAuth app this build signs in against.
+///
+/// Committed on purpose. A device-flow client id is public by design — it
+/// identifies the application, not a person, and there is no client secret
+/// beside it to protect. GitHub's own documentation treats it as public, and
+/// every installed app that uses this grant ships one the same way.
+///
+/// Shipping it is what makes the app usable by someone who has just
+/// downloaded it: without a default they would have to register an OAuth app
+/// of their own before they could sign in, which is a barrier no one should
+/// have to clear to look at their own repositories.
+///
+/// A stored id still wins over this one, so anyone who prefers to run against
+/// their own OAuth app can.
+pub const DEFAULT_CLIENT_ID: &str = "Ov23limHyY7cMtiFBf9c";
+
 #[derive(Debug, Error)]
 pub enum GitHubError {
     #[error("GitHub sent a reply this could not read: {0}")]
@@ -666,5 +682,27 @@ mod tests {
         assert!(!SCOPES.contains("admin"));
         assert!(!SCOPES.contains("delete"));
         assert!(!SCOPES.contains("write:org"));
+    }
+}
+
+#[cfg(test)]
+mod default_client_tests {
+    use super::*;
+
+    // A new install has to be able to sign in without registering anything.
+    #[test]
+    fn a_client_id_ships_with_the_app() {
+        assert!(!DEFAULT_CLIENT_ID.is_empty());
+    }
+
+    // The id is public; a secret is not. Nothing that looks like one belongs
+    // in this file, and the shape check is the cheap way to keep it that way.
+    #[test]
+    fn what_ships_is_an_id_and_not_a_secret() {
+        assert!(DEFAULT_CLIENT_ID.starts_with("Ov23li") || DEFAULT_CLIENT_ID.len() == 20);
+        assert!(DEFAULT_CLIENT_ID.chars().all(|c| c.is_ascii_alphanumeric()));
+        // GitHub client secrets are 40 hex characters. Nothing that long and
+        // hex-shaped should ever appear here.
+        assert!(DEFAULT_CLIENT_ID.len() < 40);
     }
 }

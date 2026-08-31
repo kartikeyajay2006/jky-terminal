@@ -356,7 +356,9 @@ export function createWebPlatform(): Platform {
    * like real weather would be mistaken for it.
    */
   // In memory for the session, like every other browser-build mock.
-  let githubClientId = "";
+  // A client id ships with the real build, so the preview starts configured
+  // too — otherwise the panel's first screen would differ from the desktop's.
+  let githubClientId = "Ov23liPREVIEW";
   let githubToken = false;
   let githubPolls = 0;
 

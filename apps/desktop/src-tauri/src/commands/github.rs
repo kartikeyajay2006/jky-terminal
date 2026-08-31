@@ -71,15 +71,28 @@ pub fn apps_github_set_client_id(state: State<'_, AppState>, id: String) -> Resu
         .map_err(|e| format!("could not save that: {e}"))
 }
 
+/// The OAuth app to sign in against: whatever was stored, or the one that
+/// ships with the build.
+///
+/// The default is what lets someone sign in the moment they install this,
+/// rather than having to register an OAuth app of their own first. A stored
+/// value still wins, so running against your own app stays possible.
+fn client_id(state: &AppState) -> String {
+    state
+        .settings
+        .github_client_id()
+        .ok()
+        .flatten()
+        .filter(|id| !id.trim().is_empty())
+        .unwrap_or_else(|| github::DEFAULT_CLIENT_ID.to_string())
+}
+
 #[tauri::command]
 pub fn apps_github_status(state: State<'_, AppState>) -> GitHubStatus {
     GitHubStatus {
-        configured: state
-            .settings
-            .github_client_id()
-            .ok()
-            .flatten()
-            .is_some_and(|id| !id.is_empty()),
+        // Always true now that a client id ships with the app; kept in the
+        // reply because the window should not have to know that.
+        configured: !client_id(&state).is_empty(),
         connected: state.secrets.has(github::TOKEN_KEY).unwrap_or(false),
     }
 }
@@ -88,13 +101,7 @@ pub fn apps_github_status(state: State<'_, AppState>) -> GitHubStatus {
 pub async fn apps_github_connect_start(
     state: State<'_, AppState>,
 ) -> Result<DeviceStart, String> {
-    let client_id = state
-        .settings
-        .github_client_id()
-        .ok()
-        .flatten()
-        .filter(|id| !id.is_empty())
-        .ok_or("add your GitHub OAuth client id in Settings first")?;
+    let client_id = client_id(&state);
 
     let (start, device_code) = github::start_device(&state.http, &client_id)
         .await

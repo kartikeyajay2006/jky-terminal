@@ -87,6 +87,8 @@ export function GitHub() {
     void (async () => {
       try {
         const status = await getPlatform().apps.github.status();
+        // A client id ships with the build, so this is only reachable if a
+        // stored one was somehow emptied. The setup screen is the way out.
         if (!status.configured) return setPhase({ at: "needs-client-id" });
         if (!status.connected) return setPhase({ at: "signed-out" });
         await loadSummary();
@@ -198,11 +200,13 @@ export function GitHub() {
 
       {phase.at === "needs-client-id" && (
         <section className="gh__setup" aria-label="Set up GitHub">
-          <h2 className="gh__setup-title">Connect GitHub</h2>
+          <h2 className="gh__setup-title">Use your own OAuth app</h2>
           <p className="gh__setup-body">
             This needs an <b>OAuth App</b> of your own. On GitHub, go to Settings → Developer
-            settings → OAuth Apps → New OAuth App, tick <b>Enable Device Flow</b>, and paste the
-            Client ID here. There is no client secret to copy: the device flow does not use one.
+            JKY Terminal already has one, so you do not need this. If you would rather sign in
+            against an OAuth app of your own: on GitHub, go to Settings → Developer settings →
+            OAuth Apps → New OAuth App, tick <b>Enable Device Flow</b>, and paste the Client ID
+            here. There is no client secret to copy: the device flow does not use one.
           </p>
           <div className="gh__setup-row">
             <input
@@ -211,7 +215,7 @@ export function GitHub() {
               value={clientId}
               spellCheck={false}
               autoComplete="off"
-              placeholder="Iv23li…"
+              placeholder="Ov23li…"
               onChange={(e) => setClientId(e.target.value)}
             />
             <button
@@ -223,13 +227,18 @@ export function GitHub() {
               {saving ? "Saving…" : "Save"}
             </button>
           </div>
-          <button
-            type="button"
-            className="gh__link"
-            onClick={() => open("https://github.com/settings/developers")}
-          >
-            Open GitHub developer settings
-          </button>
+          <div className="gh__setup-links">
+            <button
+              type="button"
+              className="gh__link"
+              onClick={() => open("https://github.com/settings/developers")}
+            >
+              Open GitHub developer settings
+            </button>
+            <button type="button" className="gh__link" onClick={() => setPhase({ at: "signed-out" })}>
+              Cancel
+            </button>
+          </div>
         </section>
       )}
 
@@ -244,8 +253,12 @@ export function GitHub() {
           <button type="button" className="gh__primary" onClick={() => void signIn()}>
             Sign in to GitHub
           </button>
-          <button type="button" className="gh__link" onClick={() => setPhase({ at: "needs-client-id" })}>
-            Change the client ID
+          <button
+            type="button"
+            className="gh__link"
+            onClick={() => setPhase({ at: "needs-client-id" })}
+          >
+            Use your own OAuth app instead
           </button>
         </section>
       )}
