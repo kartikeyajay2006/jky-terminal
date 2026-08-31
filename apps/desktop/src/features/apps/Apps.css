@@ -1997,3 +1997,167 @@
   display: flex;
   gap: var(--s4);
 }
+
+/* ---- GitHub: browsing a repository ---- */
+
+.gh__tabs {
+  display: flex;
+  gap: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+
+.gh__tab {
+  padding: var(--s2) var(--s3);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  text-transform: capitalize;
+}
+
+.gh__tab[aria-selected="true"] {
+  border-bottom-color: var(--app-accent);
+  color: var(--text);
+  font-weight: 600;
+}
+
+.gh__tab:hover {
+  color: var(--text);
+}
+
+.gh__tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
+}
+
+/* Every ancestor is clickable, not just the one above: a browser you can only
+   reverse out of is one you leave and re-enter. */
+.gh__crumbs {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s1);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.gh__crumb {
+  padding: 2px var(--s2);
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font: inherit;
+}
+
+.gh__crumb:hover {
+  background: var(--surface);
+  color: var(--app-accent);
+}
+
+.gh__crumb + .gh__crumb::before {
+  content: "/";
+  margin-right: var(--s2);
+  color: var(--line-strong);
+}
+
+.gh__row--file {
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.gh__file-glyph {
+  width: 12px;
+  color: var(--app-accent);
+  text-align: center;
+}
+
+.gh__file-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh__file-size {
+  flex: none;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+
+.gh__file {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.gh__file-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.gh__file-bar .gh__file-name {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Scrolls in its own box rather than stretching the panel: a long file must
+   not make the whole page scroll sideways. */
+.gh__code-block {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  tab-size: 2;
+  white-space: pre;
+}
+
+.gh__sha,
+.gh__reason {
+  font-family: var(--font-mono);
+}
+
+.gh__reason {
+  color: var(--app-accent);
+}
+
+/* Unread carries a mark rather than only a shade, so it survives a theme with
+   little contrast between surface colours. */
+.gh__row[data-unread] {
+  position: relative;
+  padding-left: var(--s4);
+}
+
+.gh__row[data-unread]::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: var(--s2);
+  width: 6px;
+  height: 6px;
+  margin-top: -3px;
+  border-radius: 50%;
+  background: var(--app-accent);
+}

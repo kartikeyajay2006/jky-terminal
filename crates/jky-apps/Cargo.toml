@@ -11,6 +11,7 @@ serde_json.workspace = true
 thiserror.workspace = true
 reqwest.workspace = true
 futures-util.workspace = true
+base64 = "0.21"
 quick-xml = "0.41"
 tokio.workspace = true
 

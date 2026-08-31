@@ -3,9 +3,11 @@ import { getPlatform } from "../../../platform";
 import type {
   GitHubDeviceStart,
   GitHubItem,
+  GitHubNotification,
   GitHubRepo,
   GitHubSummary,
 } from "../../../platform/types";
+import { RepoView } from "./RepoView";
 
 /** Where the panel is. */
 type Phase =
@@ -56,6 +58,9 @@ export function GitHub() {
   const [phase, setPhase] = useState<Phase>({ at: "loading" });
   const [clientId, setClientId] = useState("");
   const [summary, setSummary] = useState<GitHubSummary | null>(null);
+  const [notifications, setNotifications] = useState<GitHubNotification[]>([]);
+  /** Which repository is open, or null for the account view. */
+  const [repo, setRepo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const now = Date.now();
@@ -76,6 +81,13 @@ export function GitHub() {
     try {
       setSummary(await getPlatform().apps.github.summary());
       setPhase({ at: "connected" });
+      // The notification list is a section, not the panel: losing it should
+      // not cost the account view, so it is fetched apart and failure is
+      // simply an empty list.
+      getPlatform()
+        .apps.github.notifications()
+        .then(setNotifications)
+        .catch(() => setNotifications([]));
     } catch (e) {
       setSummary(null);
       setPhase({ at: "connected" });
@@ -179,6 +191,10 @@ export function GitHub() {
 
   function open(url: string) {
     void getPlatform().openExternal(url);
+  }
+
+  if (phase.at === "connected" && repo) {
+    return <RepoView repo={repo} onBack={() => setRepo(null)} />;
   }
 
   return (
@@ -308,6 +324,38 @@ export function GitHub() {
             </div>
           </header>
 
+          {notifications.length > 0 && (
+            <section className="gh__section">
+              <h3 className="gh__section-title">
+                Notifications
+                <span className="gh__count">{notifications.filter((n) => n.unread).length}</span>
+              </h3>
+              <ul className="gh__list" aria-label="Notifications">
+                {notifications.map((note) => (
+                  <li key={note.id}>
+                    <button
+                      type="button"
+                      className="gh__row"
+                      data-unread={note.unread ? "" : undefined}
+                      onClick={() => open(note.html_url)}
+                    >
+                      <span className="gh__row-main">
+                        <span className="gh__row-title">{note.title}</span>
+                        <span className="gh__row-sub">
+                          <span className="gh__reason">{note.reason}</span>
+                          <span className="gh__repo">{note.repo}</span>
+                          {relativeDay(note.updated_at, now) && (
+                            <span>{relativeDay(note.updated_at, now)}</span>
+                          )}
+                        </span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
           <Items
             label="Pull requests"
             items={summary.pulls}
@@ -327,9 +375,13 @@ export function GitHub() {
               <p className="gh__quiet">No repositories yet.</p>
             ) : (
               <ul className="gh__list" aria-label="Repositories">
-                {summary.repos.map((repo) => (
-                  <li key={repo.full_name}>
-                    <RepoRow repo={repo} now={now} onOpen={open} />
+                {summary.repos.map((entry) => (
+                  <li key={entry.full_name}>
+                    <RepoRow
+                      repo={entry}
+                      now={now}
+                      onOpen={() => setRepo(entry.full_name)}
+                    />
                   </li>
                 ))}
               </ul>
@@ -389,11 +441,13 @@ function RepoRow({
 }: {
   repo: GitHubRepo;
   now: number;
-  onOpen: (url: string) => void;
+  /// Opens the repository inside the panel rather than in a browser: the
+  /// files are the reason someone clicks a repository here.
+  onOpen: () => void;
 }) {
   const updated = relativeDay(repo.updated_at, now);
   return (
-    <button type="button" className="gh__row" onClick={() => onOpen(repo.html_url)}>
+    <button type="button" className="gh__row" onClick={onOpen}>
       <span className="gh__row-main">
         <span className="gh__row-title">
           {repo.name}

@@ -521,6 +521,65 @@ export function createWebPlatform(): Platform {
           ],
         };
       },
+      async contents(_repo, path) {
+        if (!githubToken) throw new Error("not connected to GitHub");
+        if (path === "") {
+          return [
+            { name: "src", path: "src", is_dir: true, size: 0, html_url: "h" },
+            { name: "README.md", path: "README.md", is_dir: false, size: 128, html_url: "h" },
+          ];
+        }
+        return [
+          { name: "main.rs", path: `${path}/main.rs`, is_dir: false, size: 42, html_url: "h" },
+        ];
+      },
+      async file(_repo, path) {
+        if (!githubToken) throw new Error("not connected to GitHub");
+        return {
+          name: path.split("/").pop() ?? path,
+          path,
+          size: 128,
+          html_url: "h",
+          text: "# Preview file\n\nContents shown by the browser build.\n",
+          is_binary: false,
+          too_large: false,
+        };
+      },
+      async commits() {
+        if (!githubToken) throw new Error("not connected to GitHub");
+        return [
+          {
+            sha: "9f6aaa2b1c3d",
+            short_sha: "9f6aaa2",
+            subject: "feat(apps): a preview commit",
+            author: "preview-user",
+            date: "2026-08-30T18:33:15Z",
+            html_url: "https://github.com/preview-user/jky-terminal/commit/9f6aaa2",
+          },
+        ];
+      },
+      async branches() {
+        if (!githubToken) throw new Error("not connected to GitHub");
+        return [
+          { name: "main", protected: true },
+          { name: "feat/apps", protected: false },
+        ];
+      },
+      async notifications() {
+        if (!githubToken) throw new Error("not connected to GitHub");
+        return [
+          {
+            id: "1",
+            title: "Something needs your eyes",
+            reason: "mention",
+            kind: "Issue",
+            repo: "preview-user/jky-terminal",
+            unread: true,
+            updated_at: "2026-08-31T08:00:00Z",
+            html_url: "https://github.com/preview-user/jky-terminal/issues/12",
+          },
+        ];
+      },
     },
     async searchPlaces(query) {
       // The same refusal the backend makes, so a UI that mishandles it fails

@@ -222,7 +222,9 @@ describe("GitHub", () => {
       expect(within(pulls).getByText(/draft/i)).toBeInTheDocument();
     });
 
-    it("opens a repository in the real browser", async () => {
+    // Clicking a repository now opens it here — the files are the reason
+    // someone clicks one. Leaving for the browser is a deliberate second step.
+    it("opens the repository in the panel rather than the browser", async () => {
       const base = createWebPlatform();
       await base.apps.github.connectStart();
       await base.apps.github.connectPoll();
@@ -240,7 +242,126 @@ describe("GitHub", () => {
       const repos = await screen.findByRole("list", { name: /repositories/i });
       await user.click(within(repos).getByRole("button", { name: /jky-terminal/i }));
 
+      await screen.findByRole("heading", { name: /preview-user\/jky-terminal/i });
+      expect(opened).toEqual([]);
+    });
+
+    it("leaves for GitHub only when asked to", async () => {
+      const base = createWebPlatform();
+      await base.apps.github.connectStart();
+      await base.apps.github.connectPoll();
+      await base.apps.github.connectPoll();
+      const opened: string[] = [];
+      __setPlatformForTests({
+        ...base,
+        openExternal: async (url: string) => {
+          opened.push(url);
+        },
+      });
+
+      const user = typist();
+      render(<GitHub />);
+      const repos = await screen.findByRole("list", { name: /repositories/i });
+      await user.click(within(repos).getByRole("button", { name: /jky-terminal/i }));
+      await user.click(await screen.findByRole("button", { name: /open on github/i }));
+
       expect(opened).toEqual(["https://github.com/preview-user/jky-terminal"]);
+    });
+
+    describe("browsing a repository", () => {
+      async function openRepo(user: ReturnType<typeof userEvent.setup>) {
+        const repos = await screen.findByRole("list", { name: /repositories/i });
+        await user.click(within(repos).getByRole("button", { name: /jky-terminal/i }));
+      }
+
+      it("opens the repository when its row is chosen", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        await openRepo(user);
+
+        expect(
+          await screen.findByRole("heading", { name: /preview-user\/jky-terminal/i }),
+        ).toBeInTheDocument();
+      });
+
+      it("lists the files at the root", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        await openRepo(user);
+
+        const files = await screen.findByRole("list", { name: /files/i });
+        expect(within(files).getByText("src")).toBeInTheDocument();
+        expect(within(files).getByText("README.md")).toBeInTheDocument();
+      });
+
+      it("walks into a folder and back out again", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        await openRepo(user);
+
+        const files = await screen.findByRole("list", { name: /files/i });
+        await user.click(within(files).getByRole("button", { name: /src/i }));
+        expect(
+          await within(await screen.findByRole("list", { name: /files/i })).findByText("main.rs"),
+        ).toBeInTheDocument();
+
+        // The breadcrumb is how you get back; a browser with no way up is a
+        // browser you have to leave and re-enter.
+        await user.click(screen.getByRole("button", { name: /^root$/i }));
+        expect(
+          await within(await screen.findByRole("list", { name: /files/i })).findByText("README.md"),
+        ).toBeInTheDocument();
+      });
+
+      it("shows a file's contents when it is chosen", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        await openRepo(user);
+
+        const files = await screen.findByRole("list", { name: /files/i });
+        await user.click(within(files).getByRole("button", { name: /README\.md/i }));
+
+        expect(await screen.findByText(/contents shown by the browser build/i)).toBeInTheDocument();
+      });
+
+      it("shows the commits", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        await openRepo(user);
+        await user.click(await screen.findByRole("tab", { name: /commits/i }));
+
+        const commits = await screen.findByRole("list", { name: /commits/i });
+        expect(within(commits).getByText(/a preview commit/i)).toBeInTheDocument();
+        expect(within(commits).getByText("9f6aaa2")).toBeInTheDocument();
+      });
+
+      it("shows the branches, and marks the protected one", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        await openRepo(user);
+        await user.click(await screen.findByRole("tab", { name: /branches/i }));
+
+        const branches = await screen.findByRole("list", { name: /branches/i });
+        expect(within(branches).getByText("main")).toBeInTheDocument();
+        expect(within(branches).getByText(/protected/i)).toBeInTheDocument();
+      });
+
+      it("comes back to the account from a repository", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        await openRepo(user);
+        await screen.findByRole("heading", { name: /preview-user\/jky-terminal/i });
+
+        await user.click(screen.getByRole("button", { name: /back to your account/i }));
+        expect(await screen.findByRole("list", { name: /repositories/i })).toBeInTheDocument();
+      });
     });
 
     it("signs out and comes back to the sign-in screen", async () => {

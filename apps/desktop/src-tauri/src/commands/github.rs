@@ -12,7 +12,9 @@
 //! and never what it is. That is one step stricter than the Anthropic key,
 //! which the window at least has to accept from a paste.
 
-use jky_apps::github::{self, DeviceStart, PollOutcome, Summary};
+use jky_apps::github::{
+    self, Branch, Commit, DeviceStart, Entry, FileContent, Notification, PollOutcome, Summary,
+};
 use jky_audit::{AuditEvent, AuditKind};
 use jky_secrets::Secret;
 use serde::Serialize;
@@ -215,6 +217,119 @@ pub async fn apps_github_summary(state: State<'_, AppState>) -> Result<Summary, 
         .map_err(|e| e.to_string())
 }
 
+/// A repository name, checked before it reaches a URL.
+///
+/// "owner/name" and nothing else: no traversal, no absolute paths, no query
+/// string. The window picks a repository from a list this app fetched, so
+/// this is belt and braces — but it is the only thing standing between a
+/// renderer and an arbitrary API path.
+fn check_repo(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim();
+    let mut parts = trimmed.split('/');
+    let (Some(owner), Some(name), None) = (parts.next(), parts.next(), parts.next()) else {
+        return Err("that is not an owner/name".into());
+    };
+    let ok = |s: &str| {
+        !s.is_empty()
+            && s.len() <= 100
+            && s.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_' || c == '.')
+            && s != "."
+            && s != ".."
+    };
+    if !ok(owner) || !ok(name) {
+        return Err("that is not an owner/name".into());
+    }
+    Ok(trimmed.to_string())
+}
+
+/// A path inside a repository, checked before it reaches a URL.
+///
+/// `..` is refused outright. The contents API would resolve it server-side
+/// and there is no reason a file browser needs to ask for one.
+fn check_path(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim_matches('/');
+    if trimmed.len() > 512 {
+        return Err("that path is too long".into());
+    }
+    if trimmed.split('/').any(|seg| seg == "..") {
+        return Err("that path is not allowed".into());
+    }
+    Ok(trimmed.to_string())
+}
+
+/// The stored token, or the reason there is none.
+fn token(state: &AppState) -> Result<jky_secrets::Secret<String>, String> {
+    state
+        .secrets
+        .get(github::TOKEN_KEY)
+        .map_err(|_| "not connected to GitHub".to_string())
+}
+
+#[tauri::command]
+pub async fn apps_github_contents(
+    state: State<'_, AppState>,
+    repo: String,
+    path: String,
+) -> Result<Vec<Entry>, String> {
+    let repo = check_repo(&repo)?;
+    let path = check_path(&path)?;
+    let token = token(&state)?;
+    github::fetch_entries(&state.http, token.expose(), &repo, &path)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn apps_github_file(
+    state: State<'_, AppState>,
+    repo: String,
+    path: String,
+) -> Result<FileContent, String> {
+    let repo = check_repo(&repo)?;
+    let path = check_path(&path)?;
+    if path.is_empty() {
+        return Err("no file was named".into());
+    }
+    let token = token(&state)?;
+    github::fetch_file(&state.http, token.expose(), &repo, &path)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn apps_github_commits(
+    state: State<'_, AppState>,
+    repo: String,
+) -> Result<Vec<Commit>, String> {
+    let repo = check_repo(&repo)?;
+    let token = token(&state)?;
+    github::fetch_commits(&state.http, token.expose(), &repo)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn apps_github_branches(
+    state: State<'_, AppState>,
+    repo: String,
+) -> Result<Vec<Branch>, String> {
+    let repo = check_repo(&repo)?;
+    let token = token(&state)?;
+    github::fetch_branches(&state.http, token.expose(), &repo)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+pub async fn apps_github_notifications(
+    state: State<'_, AppState>,
+) -> Result<Vec<Notification>, String> {
+    let token = token(&state)?;
+    github::fetch_notifications(&state.http, token.expose())
+        .await
+        .map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -263,6 +378,40 @@ mod tests {
         assert!(serde_json::to_string(&ConnectState::Expired)
             .unwrap()
             .contains(r#""state":"expired""#));
+    }
+
+    #[test]
+    fn accepts_a_repository_named_the_way_github_names_them() {
+        assert_eq!(check_repo("octocat/Hello-World").unwrap(), "octocat/Hello-World");
+        assert_eq!(check_repo("  a_b.c/d-e  ").unwrap(), "a_b.c/d-e");
+    }
+
+    // The only thing between the renderer and an arbitrary API path.
+    #[test]
+    fn refuses_anything_that_is_not_an_owner_and_a_name() {
+        assert!(check_repo("octocat").is_err());
+        assert!(check_repo("a/b/c").is_err());
+        assert!(check_repo("../../etc").is_err());
+        assert!(check_repo("a/..").is_err());
+        assert!(check_repo("/absolute").is_err());
+        assert!(check_repo("a b/c").is_err());
+        assert!(check_repo("a/c?x=1").is_err());
+        assert!(check_repo("").is_err());
+    }
+
+    #[test]
+    fn accepts_a_path_inside_a_repository() {
+        assert_eq!(check_path("src/main.rs").unwrap(), "src/main.rs");
+        assert_eq!(check_path("/src/").unwrap(), "src");
+        assert_eq!(check_path("").unwrap(), "");
+    }
+
+    // Traversal is refused here rather than left to the API to resolve.
+    #[test]
+    fn refuses_a_path_that_climbs_out_of_the_repository() {
+        assert!(check_path("../secrets").is_err());
+        assert!(check_path("src/../../etc/passwd").is_err());
+        assert!(check_path(&"a/".repeat(300)).is_err());
     }
 
     // Status says whether a token exists, never what it is.

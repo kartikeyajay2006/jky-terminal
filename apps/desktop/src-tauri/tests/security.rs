@@ -130,9 +130,24 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // `set_client_id` stores a public identifier, not a secret: the device
         // flow has no client secret. It is validated here so a pasted document
         // becomes a refusal rather than a settings file with an essay in it.
+        // Reading a repository: its tree, one file, its commits, its
+        // branches, and the notification list. All read-only — the scopes
+        // asked for contain nothing that writes.
+        //
+        // The repository and path arguments are the only strings the window
+        // contributes to an API url, so both are validated here: "owner/name"
+        // and nothing else, and a path containing `..` is refused outright
+        // rather than left for the API to resolve. The window picks from a
+        // list this app fetched, so that is belt and braces — but it is what
+        // stands between a renderer and an arbitrary API path.
+        "apps_github_branches".to_string(),
+        "apps_github_commits".to_string(),
         "apps_github_connect_poll".to_string(),
         "apps_github_connect_start".to_string(),
+        "apps_github_contents".to_string(),
         "apps_github_disconnect".to_string(),
+        "apps_github_file".to_string(),
+        "apps_github_notifications".to_string(),
         "apps_github_set_client_id".to_string(),
         "apps_github_status".to_string(),
         "apps_github_summary".to_string(),

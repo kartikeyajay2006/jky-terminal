@@ -1,0 +1,18 @@
+[
+ {
+  "name": "main",
+  "commit": {
+   "sha": "9f6aaa2",
+   "url": "https://api.github.com/repos/o/r/commits/9f6aaa2"
+  },
+  "protected": true
+ },
+ {
+  "name": "feat/apps",
+  "commit": {
+   "sha": "1122334",
+   "url": "https://api.github.com/repos/o/r/commits/1122334"
+  },
+  "protected": false
+ }
+]

@@ -1,0 +1,35 @@
+[
+ {
+  "name": "src",
+  "path": "src",
+  "sha": "a1",
+  "size": 0,
+  "url": "https://api.github.com/repos/o/r/contents/src",
+  "html_url": "https://github.com/o/r/tree/main/src",
+  "git_url": "https://api.github.com/repos/o/r/git/trees/a1",
+  "download_url": null,
+  "type": "dir"
+ },
+ {
+  "name": "README.md",
+  "path": "README.md",
+  "sha": "b2",
+  "size": 1284,
+  "url": "https://api.github.com/repos/o/r/contents/README.md",
+  "html_url": "https://github.com/o/r/blob/main/README.md",
+  "git_url": "https://api.github.com/repos/o/r/git/blobs/b2",
+  "download_url": "https://raw.githubusercontent.com/o/r/main/README.md",
+  "type": "file"
+ },
+ {
+  "name": "Cargo.toml",
+  "path": "Cargo.toml",
+  "sha": "c3",
+  "size": 412,
+  "url": "https://api.github.com/repos/o/r/contents/Cargo.toml",
+  "html_url": "https://github.com/o/r/blob/main/Cargo.toml",
+  "git_url": "https://api.github.com/repos/o/r/git/blobs/c3",
+  "download_url": "https://raw.githubusercontent.com/o/r/main/Cargo.toml",
+  "type": "file"
+ }
+]

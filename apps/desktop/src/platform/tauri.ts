@@ -3,7 +3,12 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   AppsApi,
   NewsArticle,
+  GitHubBranch,
+  GitHubCommit,
   GitHubConnectState,
+  GitHubEntry,
+  GitHubFile,
+  GitHubNotification,
   GitHubDeviceStart,
   GitHubStatus,
   GitHubSummary,
@@ -175,6 +180,11 @@ export function createTauriPlatform(): Platform {
       connectPoll: () => invoke<GitHubConnectState>("apps_github_connect_poll"),
       disconnect: () => invoke<void>("apps_github_disconnect"),
       summary: () => invoke<GitHubSummary>("apps_github_summary"),
+      contents: (repo, path) => invoke<GitHubEntry[]>("apps_github_contents", { repo, path }),
+      file: (repo, path) => invoke<GitHubFile>("apps_github_file", { repo, path }),
+      commits: (repo) => invoke<GitHubCommit[]>("apps_github_commits", { repo }),
+      branches: (repo) => invoke<GitHubBranch[]>("apps_github_branches", { repo }),
+      notifications: () => invoke<GitHubNotification[]>("apps_github_notifications"),
     },
     route: (from, to) =>
       invoke<Route>("apps_route", {

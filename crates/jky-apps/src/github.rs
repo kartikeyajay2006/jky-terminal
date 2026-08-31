@@ -332,6 +332,350 @@ pub fn repos_url() -> String {
     format!("{API}/user/repos?per_page=20&sort=updated&affiliation=owner,collaborator")
 }
 
+// ---- browsing a repository ----
+
+/// One row in a directory listing.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Entry {
+    pub name: String,
+    pub path: String,
+    pub is_dir: bool,
+    pub size: u64,
+    pub html_url: String,
+}
+
+/// A file's contents, or the reason there are none to show.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct FileContent {
+    pub name: String,
+    pub path: String,
+    pub size: u64,
+    pub html_url: String,
+    /// The text, when it is text and small enough to have been sent.
+    pub text: Option<String>,
+    /// Not text. Rendering it would be a screenful of replacement characters.
+    pub is_binary: bool,
+    /// Past a megabyte the contents API sends no content at all.
+    pub too_large: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Commit {
+    pub sha: String,
+    pub short_sha: String,
+    /// The first line of the message. The body belongs on the commit page.
+    pub subject: String,
+    pub author: String,
+    pub date: String,
+    pub html_url: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Branch {
+    pub name: String,
+    pub protected: bool,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Notification {
+    pub id: String,
+    pub title: String,
+    /// Why this is in front of you: "mention", "review requested", …
+    pub reason: String,
+    /// "Issue", "PullRequest", "Release", …
+    pub kind: String,
+    pub repo: String,
+    pub unread: bool,
+    pub updated_at: String,
+    /// Somewhere a browser can actually open, built from the repo and number.
+    pub html_url: String,
+}
+
+#[derive(Deserialize)]
+struct WireEntry {
+    name: String,
+    path: String,
+    #[serde(rename = "type")]
+    kind: String,
+    #[serde(default)]
+    size: u64,
+    #[serde(default)]
+    html_url: String,
+}
+
+#[derive(Deserialize)]
+struct WireFile {
+    name: String,
+    path: String,
+    #[serde(default)]
+    size: u64,
+    #[serde(default)]
+    html_url: String,
+    #[serde(default)]
+    content: String,
+    #[serde(default)]
+    encoding: String,
+}
+
+#[derive(Deserialize)]
+struct WireCommit {
+    sha: String,
+    #[serde(default)]
+    html_url: String,
+    commit: WireCommitBody,
+    author: Option<WireLogin>,
+}
+
+#[derive(Deserialize)]
+struct WireCommitBody {
+    #[serde(default)]
+    message: String,
+    author: Option<WireGitAuthor>,
+}
+
+#[derive(Deserialize)]
+struct WireGitAuthor {
+    #[serde(default)]
+    name: String,
+    #[serde(default)]
+    date: String,
+}
+
+#[derive(Deserialize)]
+struct WireLogin {
+    login: String,
+}
+
+#[derive(Deserialize)]
+struct WireBranch {
+    name: String,
+    #[serde(default)]
+    protected: bool,
+}
+
+#[derive(Deserialize)]
+struct WireNotification {
+    id: String,
+    #[serde(default)]
+    unread: bool,
+    #[serde(default)]
+    reason: String,
+    #[serde(default)]
+    updated_at: String,
+    subject: WireSubject,
+    repository: WireNotificationRepo,
+}
+
+#[derive(Deserialize)]
+struct WireSubject {
+    #[serde(default)]
+    title: String,
+    url: Option<String>,
+    #[serde(rename = "type", default)]
+    kind: String,
+}
+
+#[derive(Deserialize)]
+struct WireNotificationRepo {
+    #[serde(default)]
+    full_name: String,
+}
+
+/// A directory listing, folders first and then by name.
+///
+/// The API returns its own order, which puts directories among the files.
+/// Every file browser a person has used groups them, so this does too, and
+/// the comparison ignores case because "Apple" sorting after "banana" reads
+/// as a bug rather than as ASCII.
+pub fn parse_entries(json: &str) -> Result<Vec<Entry>, GitHubError> {
+    let wire: Vec<WireEntry> =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+
+    let mut entries: Vec<Entry> = wire
+        .into_iter()
+        .map(|e| Entry {
+            is_dir: e.kind == "dir",
+            name: e.name,
+            path: e.path,
+            size: e.size,
+            html_url: e.html_url,
+        })
+        .collect();
+
+    entries.sort_by(|a, b| {
+        b.is_dir
+            .cmp(&a.is_dir)
+            .then_with(|| a.name.to_lowercase().cmp(&b.name.to_lowercase()))
+    });
+    Ok(entries)
+}
+
+/// One file, decoded when there is anything to decode.
+///
+/// Three outcomes rather than one: text, binary, and too large. They look the
+/// same on the wire — no usable content — and mean different things to whoever
+/// is looking at the panel.
+pub fn parse_file(json: &str) -> Result<FileContent, GitHubError> {
+    let wire: WireFile =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+
+    // Past a megabyte the contents API sends no content and says so by
+    // setting the encoding to "none".
+    let too_large = wire.encoding == "none" || (wire.content.trim().is_empty() && wire.size > 0);
+
+    let decoded = if too_large || wire.encoding != "base64" {
+        None
+    } else {
+        // GitHub wraps its base64 at sixty columns; the decoder is given the
+        // payload with the newlines taken out.
+        let joined: String = wire.content.split_whitespace().collect();
+        use base64::Engine;
+        base64::engine::general_purpose::STANDARD
+            .decode(joined.as_bytes())
+            .ok()
+    };
+
+    let (text, is_binary) = match decoded {
+        None => (None, false),
+        Some(bytes) => match String::from_utf8(bytes) {
+            Ok(text) => (Some(text), false),
+            // Not UTF-8, so not something to render as text. Showing it would
+            // fill the panel with replacement characters and read as
+            // corruption rather than as a picture.
+            Err(_) => (None, true),
+        },
+    };
+
+    Ok(FileContent {
+        name: wire.name,
+        path: wire.path,
+        size: wire.size,
+        html_url: wire.html_url,
+        text,
+        is_binary,
+        too_large,
+    })
+}
+
+pub fn parse_commits(json: &str) -> Result<Vec<Commit>, GitHubError> {
+    let wire: Vec<WireCommit> =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+
+    Ok(wire
+        .into_iter()
+        .map(|c| {
+            let git_author = c.commit.author.unwrap_or(WireGitAuthor {
+                name: String::new(),
+                date: String::new(),
+            });
+            Commit {
+                short_sha: c.sha.chars().take(7).collect(),
+                sha: c.sha,
+                // The subject only. A body pasted into a row makes every row a
+                // different height and buries the next commit.
+                subject: c.commit.message.lines().next().unwrap_or_default().to_string(),
+                // A commit from an address with no GitHub account has a null
+                // `author`, and the name has to come from the commit itself.
+                author: c
+                    .author
+                    .map(|a| a.login)
+                    .filter(|l| !l.is_empty())
+                    .unwrap_or(git_author.name),
+                date: git_author.date,
+                html_url: c.html_url,
+            }
+        })
+        .collect())
+}
+
+pub fn parse_branches(json: &str) -> Result<Vec<Branch>, GitHubError> {
+    let wire: Vec<WireBranch> =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+    Ok(wire
+        .into_iter()
+        .map(|b| Branch {
+            name: b.name,
+            protected: b.protected,
+        })
+        .collect())
+}
+
+pub fn parse_notifications(json: &str) -> Result<Vec<Notification>, GitHubError> {
+    let wire: Vec<WireNotification> =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+
+    Ok(wire
+        .into_iter()
+        .map(|n| {
+            let html_url = browsable(&n.repository.full_name, &n.subject.kind, n.subject.url.as_deref());
+            Notification {
+                id: n.id,
+                title: n.subject.title,
+                // "review_requested" is how the API writes it; "review
+                // requested" is how it reads in a row.
+                reason: n.reason.replace('_', " "),
+                kind: n.subject.kind,
+                repo: n.repository.full_name,
+                unread: n.unread,
+                updated_at: n.updated_at,
+                html_url,
+            }
+        })
+        .collect())
+}
+
+/// A url a browser can open, from the API url a notification carries.
+///
+/// The subject url points at the API, which is not something a person can
+/// follow. The number at the end of it, against the repository, is.
+fn browsable(repo: &str, kind: &str, api_url: Option<&str>) -> String {
+    let base = format!("https://github.com/{repo}");
+    let Some(number) = api_url.and_then(|u| u.rsplit('/').next()).filter(|n| !n.is_empty()) else {
+        return base;
+    };
+    // GitHub's API says "pulls" and its website says "pull".
+    let segment = match kind {
+        "PullRequest" => "pull",
+        "Issue" => "issues",
+        "Discussion" => "discussions",
+        _ => return base,
+    };
+    format!("{base}/{segment}/{number}")
+}
+
+// ---- urls ----
+
+/// Escape a path for a URL without escaping the separators.
+///
+/// A filename can contain a space or a hash, either of which would end the
+/// path or start a fragment; the slashes between segments must survive.
+fn encode_path(path: &str) -> String {
+    path.split('/')
+        .map(encode)
+        .collect::<Vec<_>>()
+        .join("/")
+}
+
+pub fn contents_url(repo: &str, path: &str) -> String {
+    if path.is_empty() {
+        format!("{API}/repos/{repo}/contents")
+    } else {
+        format!("{API}/repos/{repo}/contents/{}", encode_path(path))
+    }
+}
+
+pub fn commits_url(repo: &str) -> String {
+    format!("{API}/repos/{repo}/commits?per_page=20")
+}
+
+pub fn branches_url(repo: &str) -> String {
+    format!("{API}/repos/{repo}/branches?per_page=30")
+}
+
+pub fn notifications_url() -> String {
+    format!("{API}/notifications?per_page=20")
+}
+
 // ---- fetching ----
 
 /// A summary of the account, as one panel-load.
@@ -479,6 +823,73 @@ pub async fn fetch_summary(client: &reqwest::Client, token: &str) -> Result<Summ
         issues,
         pulls,
     })
+}
+
+/// One repository's tree at a path. An empty path is the root.
+pub async fn fetch_entries(
+    client: &reqwest::Client,
+    token: &str,
+    repo: &str,
+    path: &str,
+) -> Result<Vec<Entry>, GitHubError> {
+    let url = contents_url(repo, path);
+    let body = crate::net::retrying(crate::net::ATTEMPTS, GitHubError::is_transient, || {
+        api_get(client, &url, token)
+    })
+    .await?;
+    parse_entries(&body)
+}
+
+pub async fn fetch_file(
+    client: &reqwest::Client,
+    token: &str,
+    repo: &str,
+    path: &str,
+) -> Result<FileContent, GitHubError> {
+    let url = contents_url(repo, path);
+    let body = crate::net::retrying(crate::net::ATTEMPTS, GitHubError::is_transient, || {
+        api_get(client, &url, token)
+    })
+    .await?;
+    parse_file(&body)
+}
+
+pub async fn fetch_commits(
+    client: &reqwest::Client,
+    token: &str,
+    repo: &str,
+) -> Result<Vec<Commit>, GitHubError> {
+    let url = commits_url(repo);
+    let body = crate::net::retrying(crate::net::ATTEMPTS, GitHubError::is_transient, || {
+        api_get(client, &url, token)
+    })
+    .await?;
+    parse_commits(&body)
+}
+
+pub async fn fetch_branches(
+    client: &reqwest::Client,
+    token: &str,
+    repo: &str,
+) -> Result<Vec<Branch>, GitHubError> {
+    let url = branches_url(repo);
+    let body = crate::net::retrying(crate::net::ATTEMPTS, GitHubError::is_transient, || {
+        api_get(client, &url, token)
+    })
+    .await?;
+    parse_branches(&body)
+}
+
+pub async fn fetch_notifications(
+    client: &reqwest::Client,
+    token: &str,
+) -> Result<Vec<Notification>, GitHubError> {
+    let url = notifications_url();
+    let body = crate::net::retrying(crate::net::ATTEMPTS, GitHubError::is_transient, || {
+        api_get(client, &url, token)
+    })
+    .await?;
+    parse_notifications(&body)
 }
 
 #[cfg(test)]
@@ -704,5 +1115,215 @@ mod default_client_tests {
         // GitHub client secrets are 40 hex characters. Nothing that long and
         // hex-shaped should ever appear here.
         assert!(DEFAULT_CLIENT_ID.len() < 40);
+    }
+}
+
+#[cfg(test)]
+mod browse_tests {
+    use super::*;
+
+    const DIR: &str = include_str!("../fixtures/gh-contents-dir.json");
+    const FILE: &str = include_str!("../fixtures/gh-file.json");
+    const BINARY: &str = include_str!("../fixtures/gh-file-binary.json");
+    const COMMITS: &str = include_str!("../fixtures/gh-commits.json");
+    const BRANCHES: &str = include_str!("../fixtures/gh-branches.json");
+    const NOTIFICATIONS: &str = include_str!("../fixtures/gh-notifications.json");
+
+    // ---- browsing a tree ----
+
+    #[test]
+    fn reads_a_directory_listing() {
+        let entries = parse_entries(DIR).expect("fixture parses");
+        assert_eq!(entries.len(), 3);
+        // Sorted, so the directory leads and the files follow by name:
+        // src, Cargo.toml, README.md.
+        assert_eq!(entries[0].name, "src");
+        assert!(entries[0].is_dir);
+        assert_eq!(entries[1].name, "Cargo.toml");
+        assert!(!entries[1].is_dir);
+        assert_eq!(entries[2].name, "README.md");
+        assert_eq!(entries[2].size, 1284);
+    }
+
+    // A file browser that lists in API order puts directories among the files.
+    // Folders first, then alphabetical, is what every file browser does.
+    #[test]
+    fn sorts_folders_first_then_by_name() {
+        let json = r#"[
+          {"name":"zeta.txt","path":"zeta.txt","type":"file","size":1,"html_url":"h"},
+          {"name":"alpha.txt","path":"alpha.txt","type":"file","size":1,"html_url":"h"},
+          {"name":"zebra","path":"zebra","type":"dir","size":0,"html_url":"h"},
+          {"name":"apple","path":"apple","type":"dir","size":0,"html_url":"h"}
+        ]"#;
+        let names: Vec<String> = parse_entries(json)
+            .expect("parses")
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
+        assert_eq!(names, ["apple", "zebra", "alpha.txt", "zeta.txt"]);
+    }
+
+    #[test]
+    fn sorts_names_without_regard_to_case() {
+        let json = r#"[
+          {"name":"banana","path":"b","type":"file","size":1,"html_url":"h"},
+          {"name":"Apple","path":"a","type":"file","size":1,"html_url":"h"}
+        ]"#;
+        let names: Vec<String> = parse_entries(json)
+            .expect("parses")
+            .into_iter()
+            .map(|e| e.name)
+            .collect();
+        assert_eq!(names, ["Apple", "banana"]);
+    }
+
+    #[test]
+    fn refuses_a_listing_it_cannot_read() {
+        assert!(parse_entries("not json").is_err());
+    }
+
+    // ---- reading a file ----
+
+    #[test]
+    fn decodes_a_files_contents() {
+        let file = parse_file(FILE).expect("fixture parses");
+        assert_eq!(file.name, "README.md");
+        assert!(file.text.as_deref().unwrap().starts_with("# Hello"));
+    }
+
+    // GitHub wraps its base64 at sixty columns. A decoder that does not strip
+    // the newlines fails on every file larger than a line.
+    #[test]
+    fn copes_with_base64_wrapped_across_lines() {
+        let file = parse_file(FILE).expect("fixture parses");
+        assert!(file.text.as_deref().unwrap().contains("café"), "UTF-8 survived");
+    }
+
+    // Rendering a PNG as text produces a screen of replacement characters and
+    // looks like corruption rather than a picture.
+    #[test]
+    fn refuses_to_show_a_binary_file_as_text() {
+        let file = parse_file(BINARY).expect("fixture parses");
+        assert_eq!(file.text, None);
+        assert!(file.is_binary);
+        assert_eq!(file.name, "icon.png");
+    }
+
+    // The contents API sends no `content` at all past a megabyte, and a file
+    // that arrives empty is not the same as an empty file.
+    #[test]
+    fn says_when_a_file_was_too_large_to_send() {
+        let json = r#"{"name":"big.bin","path":"big.bin","size":2000000,
+                       "html_url":"h","type":"file","content":"","encoding":"none"}"#;
+        let file = parse_file(json).expect("parses");
+        assert_eq!(file.text, None);
+        assert!(file.too_large);
+    }
+
+    #[test]
+    fn reads_a_genuinely_empty_file_as_empty_rather_than_missing() {
+        let json = r#"{"name":"empty","path":"empty","size":0,"html_url":"h",
+                       "type":"file","content":"","encoding":"base64"}"#;
+        let file = parse_file(json).expect("parses");
+        assert_eq!(file.text.as_deref(), Some(""));
+        assert!(!file.too_large);
+        assert!(!file.is_binary);
+    }
+
+    // ---- history ----
+
+    #[test]
+    fn reads_commits() {
+        let commits = parse_commits(COMMITS).expect("fixture parses");
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].short_sha, "9f6aaa2");
+        assert_eq!(commits[0].author, "kartikeyajay2006");
+    }
+
+    // A list of commits wants the subject line. The body belongs on the commit
+    // page, and pasting it into a row makes every row a different height.
+    #[test]
+    fn shows_only_the_subject_line_of_a_commit_message() {
+        let commits = parse_commits(COMMITS).expect("fixture parses");
+        assert_eq!(commits[0].subject, "feat(apps): a thing");
+        assert!(!commits[0].subject.contains("body"));
+    }
+
+    // A commit from an email address with no GitHub account has a null
+    // `author`, and the name has to come from the commit itself.
+    #[test]
+    fn names_a_committer_who_has_no_github_account() {
+        let commits = parse_commits(COMMITS).expect("fixture parses");
+        assert_eq!(commits[1].author, "Someone Else");
+    }
+
+    #[test]
+    fn reads_branches_and_says_which_are_protected() {
+        let branches = parse_branches(BRANCHES).expect("fixture parses");
+        assert_eq!(branches.len(), 2);
+        assert_eq!(branches[0].name, "main");
+        assert!(branches[0].protected);
+        assert!(!branches[1].protected);
+    }
+
+    // ---- notifications ----
+
+    #[test]
+    fn reads_notifications() {
+        let items = parse_notifications(NOTIFICATIONS).expect("fixture parses");
+        assert_eq!(items.len(), 2);
+        assert_eq!(items[0].title, "Something needs your eyes");
+        assert_eq!(items[0].repo, "octocat/Hello-World");
+        assert!(items[0].unread);
+        assert!(!items[1].unread);
+    }
+
+    // "mention" and "review_requested" say why this is in front of you, which
+    // is the most useful word in the row.
+    #[test]
+    fn keeps_the_reason_in_words_a_person_reads() {
+        let items = parse_notifications(NOTIFICATIONS).expect("fixture parses");
+        assert_eq!(items[0].reason, "mention");
+        assert_eq!(items[1].reason, "review requested");
+    }
+
+    // The API url is not something a person can open. The number at the end of
+    // it, against the repository, is.
+    #[test]
+    fn turns_the_api_url_into_one_that_opens_in_a_browser() {
+        let items = parse_notifications(NOTIFICATIONS).expect("fixture parses");
+        assert_eq!(
+            items[0].html_url,
+            "https://github.com/octocat/Hello-World/issues/12"
+        );
+        assert_eq!(
+            items[1].html_url,
+            "https://github.com/octocat/Spoon-Knife/pull/34"
+        );
+    }
+
+    // ---- urls ----
+
+    #[test]
+    fn builds_the_browsing_urls() {
+        assert_eq!(
+            contents_url("octocat/Hello-World", ""),
+            "https://api.github.com/repos/octocat/Hello-World/contents"
+        );
+        assert_eq!(
+            contents_url("octocat/Hello-World", "src/main.rs"),
+            "https://api.github.com/repos/octocat/Hello-World/contents/src/main.rs"
+        );
+        assert!(commits_url("o/r").contains("/repos/o/r/commits"));
+        assert!(branches_url("o/r").contains("/repos/o/r/branches"));
+    }
+
+    // A path segment reaches a URL. A repository name or a filename with a
+    // space or a hash in it must not end the path or start a fragment.
+    #[test]
+    fn escapes_a_path_without_escaping_its_separators() {
+        let url = contents_url("o/r", "some dir/a#b.txt");
+        assert!(url.contains("some%20dir/a%23b.txt"), "got {url}");
+        assert!(url.contains("/repos/o/r/contents/"));
     }
 }

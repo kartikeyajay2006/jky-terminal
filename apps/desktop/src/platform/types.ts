@@ -353,6 +353,53 @@ export interface GitHubItem {
   draft: boolean;
 }
 
+/** One row in a repository's file listing. */
+export interface GitHubEntry {
+  name: string;
+  path: string;
+  is_dir: boolean;
+  size: number;
+  html_url: string;
+}
+
+/** A file's contents, or the reason there are none to show. */
+export interface GitHubFile {
+  name: string;
+  path: string;
+  size: number;
+  html_url: string;
+  text: string | null;
+  is_binary: boolean;
+  too_large: boolean;
+}
+
+export interface GitHubCommit {
+  sha: string;
+  short_sha: string;
+  /** The first line of the message; the body stays on the commit page. */
+  subject: string;
+  author: string;
+  date: string;
+  html_url: string;
+}
+
+export interface GitHubBranch {
+  name: string;
+  protected: boolean;
+}
+
+export interface GitHubNotification {
+  id: string;
+  title: string;
+  /** Why it is in front of you: "mention", "review requested", … */
+  reason: string;
+  kind: string;
+  repo: string;
+  unread: boolean;
+  updated_at: string;
+  html_url: string;
+}
+
 export interface GitHubSummary {
   user: GitHubUser;
   repos: GitHubRepo[];
@@ -373,6 +420,12 @@ export interface GitHubApi {
   connectPoll(): Promise<GitHubConnectState>;
   disconnect(): Promise<void>;
   summary(): Promise<GitHubSummary>;
+  /** One repository's tree at a path; an empty path is the root. */
+  contents(repo: string, path: string): Promise<GitHubEntry[]>;
+  file(repo: string, path: string): Promise<GitHubFile>;
+  commits(repo: string): Promise<GitHubCommit[]>;
+  branches(repo: string): Promise<GitHubBranch[]>;
+  notifications(): Promise<GitHubNotification[]>;
 }
 
 /**

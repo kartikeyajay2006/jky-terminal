@@ -1989,6 +1989,7 @@ dependencies = [
 name = "jky-apps"
 version = "0.1.0"
 dependencies = [
+ "base64 0.21.7",
  "futures-util",
  "quick-xml",
  "reqwest 0.12.28",

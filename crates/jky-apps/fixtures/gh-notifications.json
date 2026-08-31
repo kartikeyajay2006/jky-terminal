@@ -1,0 +1,32 @@
+[
+ {
+  "id": "1",
+  "unread": true,
+  "reason": "mention",
+  "updated_at": "2026-08-31T08:00:00Z",
+  "subject": {
+   "title": "Something needs your eyes",
+   "url": "https://api.github.com/repos/o/r/issues/12",
+   "type": "Issue"
+  },
+  "repository": {
+   "full_name": "octocat/Hello-World",
+   "html_url": "https://github.com/octocat/Hello-World"
+  }
+ },
+ {
+  "id": "2",
+  "unread": false,
+  "reason": "review_requested",
+  "updated_at": "2026-08-30T08:00:00Z",
+  "subject": {
+   "title": "A pull request",
+   "url": "https://api.github.com/repos/o/r/pulls/34",
+   "type": "PullRequest"
+  },
+  "repository": {
+   "full_name": "octocat/Spoon-Knife",
+   "html_url": "https://github.com/octocat/Spoon-Knife"
+  }
+ }
+]

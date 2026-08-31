@@ -1,0 +1,31 @@
+[
+ {
+  "sha": "9f6aaa2b1c3d4e5f60718293a4b5c6d7e8f90123",
+  "html_url": "https://github.com/o/r/commit/9f6aaa2",
+  "commit": {
+   "message": "feat(apps): a thing\n\nWith a body that should not reach the list.",
+   "author": {
+    "name": "Kartikeya",
+    "email": "k@example.com",
+    "date": "2026-08-30T18:33:15Z"
+   }
+  },
+  "author": {
+   "login": "kartikeyajay2006",
+   "avatar_url": "https://avatars.githubusercontent.com/u/1?v=4"
+  }
+ },
+ {
+  "sha": "1122334455667788990011223344556677889900",
+  "html_url": "https://github.com/o/r/commit/1122334",
+  "commit": {
+   "message": "fix: one line only",
+   "author": {
+    "name": "Someone Else",
+    "email": "s@example.com",
+    "date": "2026-08-29T09:00:00Z"
+   }
+  },
+  "author": null
+ }
+]
