@@ -105,14 +105,6 @@ pub enum PollOutcome {
 }
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct User {
-    pub login: String,
-    pub name: Option<String>,
-    pub avatar_url: Option<String>,
-    pub html_url: String,
-}
-
-#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Repo {
     pub name: String,
     pub full_name: String,
@@ -154,14 +146,6 @@ struct WirePoll {
     access_token: Option<String>,
     error: Option<String>,
     interval: Option<u64>,
-}
-
-#[derive(Deserialize)]
-struct WireUser {
-    login: String,
-    name: Option<String>,
-    avatar_url: Option<String>,
-    html_url: String,
 }
 
 #[derive(Deserialize)]
@@ -245,17 +229,6 @@ pub fn parse_poll(json: &str) -> Result<PollOutcome, GitHubError> {
     })
 }
 
-pub fn parse_user(json: &str) -> Result<User, GitHubError> {
-    let wire: WireUser =
-        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
-    Ok(User {
-        login: wire.login,
-        name: wire.name,
-        avatar_url: wire.avatar_url,
-        html_url: wire.html_url,
-    })
-}
-
 pub fn parse_repos(json: &str) -> Result<Vec<Repo>, GitHubError> {
     let wire: Vec<WireRepo> =
         serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
@@ -330,6 +303,310 @@ pub fn user_url() -> String {
 
 pub fn repos_url() -> String {
     format!("{API}/user/repos?per_page=20&sort=updated&affiliation=owner,collaborator")
+}
+
+// ---- the dashboard ----
+
+/// The account, with the counts the overview tiles show.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Profile {
+    pub login: String,
+    pub name: Option<String>,
+    pub bio: Option<String>,
+    pub avatar_url: Option<String>,
+    pub html_url: String,
+    pub public_repos: u32,
+    pub followers: u32,
+    pub following: u32,
+}
+
+/// One line of the activity feed, already turned into words.
+///
+/// The verb and the detail are split so the row can set them differently, and
+/// so a feed never has to parse an event type in the frontend.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Activity {
+    pub id: String,
+    /// "Pushed to", "Opened PR", "Merged PR", "Starred", …
+    pub verb: String,
+    pub repo: String,
+    /// The branch, the title, whatever the verb needs beside it.
+    pub detail: String,
+    pub html_url: String,
+    pub at: String,
+}
+
+/// One day in the contribution calendar.
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct ContribDay {
+    pub date: String,
+    pub count: u32,
+    /// 0–4, graded against the busiest day of the year.
+    pub level: u8,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq)]
+pub struct Contributions {
+    pub total: u32,
+    /// Weeks of seven days, oldest first — the shape the heatmap draws.
+    pub weeks: Vec<Vec<ContribDay>>,
+}
+
+#[derive(Deserialize)]
+struct WireProfile {
+    login: String,
+    name: Option<String>,
+    bio: Option<String>,
+    avatar_url: Option<String>,
+    #[serde(default)]
+    html_url: String,
+    #[serde(default)]
+    public_repos: u32,
+    #[serde(default)]
+    followers: u32,
+    #[serde(default)]
+    following: u32,
+}
+
+#[derive(Deserialize)]
+struct WireEvent {
+    id: String,
+    #[serde(rename = "type")]
+    kind: Option<String>,
+    #[serde(default)]
+    created_at: String,
+    repo: Option<WireEventRepo>,
+    payload: Option<serde_json::Value>,
+}
+
+#[derive(Deserialize)]
+struct WireEventRepo {
+    #[serde(default)]
+    name: String,
+}
+
+pub fn parse_profile(json: &str) -> Result<Profile, GitHubError> {
+    let wire: WireProfile =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+    Ok(Profile {
+        login: wire.login,
+        name: wire.name,
+        bio: wire.bio,
+        avatar_url: wire.avatar_url,
+        html_url: wire.html_url,
+        public_repos: wire.public_repos,
+        followers: wire.followers,
+        following: wire.following,
+    })
+}
+
+/// The event feed, as sentences.
+///
+/// The translation happens here rather than in the window so there is one
+/// place that knows GitHub's event vocabulary. An event type this build has
+/// never seen is dropped: GitHub adds them, and a blank row saying nothing is
+/// worse than one fewer row.
+pub fn parse_activity(json: &str) -> Result<Vec<Activity>, GitHubError> {
+    let wire: Vec<WireEvent> =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+
+    Ok(wire.into_iter().filter_map(describe_event).collect())
+}
+
+fn describe_event(e: WireEvent) -> Option<Activity> {
+    let repo = e.repo.map(|r| r.name).unwrap_or_default();
+    let payload = e.payload.unwrap_or(serde_json::Value::Null);
+    let text = |path: &[&str]| -> Option<String> {
+        let mut node = &payload;
+        for key in path {
+            node = node.get(key)?;
+        }
+        node.as_str().map(str::to_string)
+    };
+    let number = |key: &str| payload.get(key)?.get("number")?.as_u64();
+    let repo_url = format!("https://github.com/{repo}");
+
+    let (verb, detail, url) = match e.kind.as_deref()? {
+        "PushEvent" => {
+            // A large push arrives with its commits truncated away, so the
+            // branch is what the row can always say.
+            let branch = text(&["ref"])
+                .map(|r| r.trim_start_matches("refs/heads/").to_string())
+                .unwrap_or_default();
+            ("Pushed to", branch, repo_url.clone())
+        }
+        "PullRequestEvent" => {
+            let merged = payload
+                .get("pull_request")
+                .and_then(|p| p.get("merged"))
+                .and_then(serde_json::Value::as_bool)
+                .unwrap_or(false);
+            let action = text(&["action"]).unwrap_or_default();
+            let verb = match (action.as_str(), merged) {
+                (_, true) => "Merged PR",
+                ("closed", false) => "Closed PR",
+                ("opened", _) | ("reopened", _) => "Opened PR",
+                _ => "Updated PR",
+            };
+            let title = text(&["pull_request", "title"]).unwrap_or_default();
+            let url = text(&["pull_request", "html_url"]).unwrap_or_else(|| {
+                number("pull_request")
+                    .map(|n| format!("{repo_url}/pull/{n}"))
+                    .unwrap_or_else(|| repo_url.clone())
+            });
+            (verb, title, url)
+        }
+        "IssuesEvent" => {
+            let verb = match text(&["action"]).unwrap_or_default().as_str() {
+                "closed" => "Closed issue",
+                "reopened" => "Reopened issue",
+                _ => "Opened issue",
+            };
+            let title = text(&["issue", "title"]).unwrap_or_default();
+            let url = text(&["issue", "html_url"]).unwrap_or_else(|| repo_url.clone());
+            (verb, title, url)
+        }
+        "IssueCommentEvent" => {
+            let title = text(&["issue", "title"]).unwrap_or_default();
+            let url = text(&["comment", "html_url"]).unwrap_or_else(|| repo_url.clone());
+            ("Commented on", title, url)
+        }
+        "WatchEvent" => ("Starred", String::new(), repo_url.clone()),
+        "ForkEvent" => ("Forked", String::new(), repo_url.clone()),
+        "CreateEvent" => {
+            let what = text(&["ref_type"]).unwrap_or_default();
+            let name = text(&["ref"]).unwrap_or_default();
+            let verb = if what == "branch" {
+                "Created branch"
+            } else if what == "tag" {
+                "Created tag"
+            } else {
+                "Created repository"
+            };
+            (verb, name, repo_url.clone())
+        }
+        "ReleaseEvent" => {
+            let name = text(&["release", "tag_name"]).unwrap_or_default();
+            let url = text(&["release", "html_url"]).unwrap_or_else(|| repo_url.clone());
+            ("Released", name, url)
+        }
+        // Unknown to this build. GitHub keeps adding types, and one fewer row
+        // is better than a row that says nothing.
+        _ => return None,
+    };
+
+    Some(Activity {
+        id: e.id,
+        verb: verb.to_string(),
+        repo,
+        detail,
+        html_url: url,
+        at: e.created_at,
+    })
+}
+
+/// The contribution calendar, which only GraphQL has.
+///
+/// REST publishes no endpoint for it — the heatmap on a GitHub profile is not
+/// reachable any other way — so this is the one call in the crate that speaks
+/// GraphQL.
+pub fn contributions_query() -> String {
+    "{\"query\":\"{ viewer { contributionsCollection { contributionCalendar { \
+     totalContributions weeks { contributionDays { date contributionCount } } } } } }\"}"
+        .to_string()
+}
+
+pub fn parse_contributions(json: &str) -> Result<Contributions, GitHubError> {
+    let root: serde_json::Value =
+        serde_json::from_str(json).map_err(|e| GitHubError::Malformed(e.to_string()))?;
+
+    // GraphQL answers 200 with an `errors` array, so the status says nothing
+    // and a caller that only checked it would draw an empty year.
+    if let Some(errors) = root.get("errors").and_then(|e| e.as_array()) {
+        let first = errors
+            .first()
+            .and_then(|e| e.get("message"))
+            .and_then(serde_json::Value::as_str)
+            .unwrap_or("GraphQL refused the query");
+        return Err(GitHubError::Refused(first.to_string()));
+    }
+
+    let calendar = root
+        .pointer("/data/viewer/contributionsCollection/contributionCalendar")
+        .ok_or_else(|| GitHubError::Malformed("no contribution calendar in the reply".into()))?;
+
+    let total = calendar
+        .get("totalContributions")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0) as u32;
+
+    let raw: Vec<Vec<(String, u32)>> = calendar
+        .get("weeks")
+        .and_then(serde_json::Value::as_array)
+        .map(|weeks| {
+            weeks
+                .iter()
+                .map(|w| {
+                    w.get("contributionDays")
+                        .and_then(serde_json::Value::as_array)
+                        .map(|days| {
+                            days.iter()
+                                .map(|d| {
+                                    (
+                                        d.get("date")
+                                            .and_then(serde_json::Value::as_str)
+                                            .unwrap_or_default()
+                                            .to_string(),
+                                        d.get("contributionCount")
+                                            .and_then(serde_json::Value::as_u64)
+                                            .unwrap_or(0) as u32,
+                                    )
+                                })
+                                .collect()
+                        })
+                        .unwrap_or_default()
+                })
+                .collect()
+        })
+        .unwrap_or_default();
+
+    // Graded against the busiest day rather than fixed thresholds, so a quiet
+    // year still shows its own shape instead of rendering as a blank grid.
+    let busiest = raw
+        .iter()
+        .flatten()
+        .map(|(_, count)| *count)
+        .max()
+        .unwrap_or(0);
+
+    let weeks = raw
+        .into_iter()
+        .map(|week| {
+            week.into_iter()
+                .map(|(date, count)| ContribDay {
+                    level: level_for(count, busiest),
+                    date,
+                    count,
+                })
+                .collect()
+        })
+        .collect();
+
+    Ok(Contributions { total, weeks })
+}
+
+/// 0 for nothing, then four bands up to the busiest day.
+fn level_for(count: u32, busiest: u32) -> u8 {
+    if count == 0 || busiest == 0 {
+        return 0;
+    }
+    let share = count as f64 / busiest as f64;
+    match share {
+        s if s > 0.75 => 4,
+        s if s > 0.5 => 3,
+        s if s > 0.25 => 2,
+        _ => 1,
+    }
 }
 
 // ---- browsing a repository ----
@@ -678,14 +955,23 @@ pub fn notifications_url() -> String {
 
 // ---- fetching ----
 
-/// A summary of the account, as one panel-load.
+/// Everything the dashboard shows, as one panel-load.
+///
+/// One reply rather than eight round trips from the window: the panel draws
+/// all of it at once, and eight separate calls would fill it in eight jerks.
 #[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct Summary {
-    pub user: User,
+    pub user: Profile,
     pub repos: Vec<Repo>,
-    /// Open issues assigned to, or opened by, the signed-in person.
+    /// Open issues assigned to the signed-in person.
     pub issues: Vec<Item>,
     pub pulls: Vec<Item>,
+    pub notifications: Vec<Notification>,
+    pub activity: Vec<Activity>,
+    /// Stars across the repositories they own — what a profile calls "stars".
+    pub stars_received: u32,
+    /// Absent when GraphQL declined; the rest of the dashboard still draws.
+    pub contributions: Option<Contributions>,
 }
 
 async fn api_get(client: &reqwest::Client, url: &str, token: &str) -> Result<String, GitHubError> {
@@ -787,13 +1073,17 @@ pub async fn fetch_summary(client: &reqwest::Client, token: &str) -> Result<Summ
             api_get(client, &account_url, token)
         })
         .await?;
-    let user = parse_user(&user_body)?;
+    let user = parse_profile(&user_body)?;
 
     let repos_url = repos_url();
     let issues_url = search_url("is:open is:issue assignee:@me archived:false");
     let pulls_url = search_url("is:open is:pr author:@me archived:false");
+    let events_url = format!("{API}/users/{}/events?per_page=20", encode(&user.login));
+    let notes_url = notifications_url();
 
-    let (repos, issues, pulls) = tokio::join!(
+    // Everything at once. Each section fails to an empty list rather than
+    // taking the dashboard with it — the same rule the news app follows.
+    let (repos, issues, pulls, notifications, activity, contributions) = tokio::join!(
         async {
             api_get(client, &repos_url, token)
                 .await
@@ -814,15 +1104,69 @@ pub async fn fetch_summary(client: &reqwest::Client, token: &str) -> Result<Summ
                 .ok()
                 .and_then(|b| parse_items(&b).ok())
                 .unwrap_or_default()
-        }
+        },
+        async {
+            api_get(client, &notes_url, token)
+                .await
+                .ok()
+                .and_then(|b| parse_notifications(&b).ok())
+                .unwrap_or_default()
+        },
+        async {
+            api_get(client, &events_url, token)
+                .await
+                .ok()
+                .and_then(|b| parse_activity(&b).ok())
+                .unwrap_or_default()
+        },
+        async { fetch_contributions(client, token).await.ok() }
     );
+
+    // What a profile page calls "stars": the ones other people gave you.
+    let stars_received = repos.iter().map(|r| r.stars).sum();
 
     Ok(Summary {
         user,
         repos,
         issues,
         pulls,
+        notifications,
+        activity,
+        stars_received,
+        contributions,
     })
+}
+
+/// The contribution calendar, over GraphQL.
+///
+/// The one call in this crate that is not REST, because REST publishes no
+/// endpoint for it. Not retried: it is optional to the dashboard, and a
+/// failure costs the heatmap rather than the page.
+pub async fn fetch_contributions(
+    client: &reqwest::Client,
+    token: &str,
+) -> Result<Contributions, GitHubError> {
+    let response = client
+        .post(format!("{API}/graphql"))
+        .header("Authorization", format!("Bearer {token}"))
+        .header("User-Agent", "JKY-Terminal")
+        .header("Content-Type", "application/json")
+        .body(contributions_query())
+        .send()
+        .await
+        .map_err(|e| GitHubError::Network(e.to_string()))?;
+
+    let status = response.status();
+    if !status.is_success() {
+        return Err(GitHubError::Upstream(status.as_u16()));
+    }
+
+    let body = response
+        .text()
+        .await
+        .map_err(|e| GitHubError::Network(e.to_string()))?;
+
+    parse_contributions(&body)
 }
 
 /// One repository's tree at a path. An empty path is the root.
@@ -997,7 +1341,7 @@ mod tests {
 
     #[test]
     fn reads_who_is_signed_in() {
-        let user = parse_user(USER).expect("fixture parses");
+        let user = parse_profile(USER).expect("fixture parses");
         assert_eq!(user.login, "octocat");
         assert_eq!(user.name.as_deref(), Some("The Octocat"));
         assert!(user.html_url.starts_with("https://github.com/"));
@@ -1325,5 +1669,128 @@ mod browse_tests {
         let url = contents_url("o/r", "some dir/a#b.txt");
         assert!(url.contains("some%20dir/a%23b.txt"), "got {url}");
         assert!(url.contains("/repos/o/r/contents/"));
+    }
+}
+
+#[cfg(test)]
+mod dashboard_tests {
+    use super::*;
+
+    const EVENTS: &str = include_str!("../fixtures/gh-events.json");
+    const CONTRIB: &str = include_str!("../fixtures/gh-contributions.json");
+    const PROFILE: &str = include_str!("../fixtures/gh-profile.json");
+
+    #[test]
+    fn reads_the_counts_the_overview_shows() {
+        let p = parse_profile(PROFILE).expect("fixture parses");
+        assert_eq!(p.login, "kartikeyajay2006");
+        assert_eq!(p.name.as_deref(), Some("Kartikeya Yadav"));
+        assert_eq!(p.bio.as_deref(), Some("Focus · Build · Ship"));
+        assert_eq!(p.public_repos, 27);
+        assert_eq!(p.followers, 142);
+        assert_eq!(p.following, 98);
+    }
+
+    // ---- the activity feed ----
+
+    #[test]
+    fn turns_events_into_sentences() {
+        let feed = parse_activity(EVENTS).expect("fixture parses");
+        assert!(feed.len() >= 6);
+        assert_eq!(feed[0].verb, "Pushed to");
+        assert_eq!(feed[0].repo, "torvalds/linux");
+    }
+
+    // "Opened" and "Merged" are different events on the same type, and a feed
+    // that called both "pull request" would say nothing useful.
+    #[test]
+    fn tells_an_opened_pull_request_from_a_merged_one() {
+        let feed = parse_activity(EVENTS).expect("fixture parses");
+        let opened = feed.iter().find(|a| a.detail.contains("Add config file")).unwrap();
+        let merged = feed.iter().find(|a| a.detail.contains("Fix Windows build")).unwrap();
+        assert_eq!(opened.verb, "Opened PR");
+        assert_eq!(merged.verb, "Merged PR");
+    }
+
+    #[test]
+    fn names_a_closed_issue_and_a_star() {
+        let feed = parse_activity(EVENTS).expect("fixture parses");
+        assert!(feed.iter().any(|a| a.verb == "Closed issue" && a.detail.contains("Invalid config")));
+        assert!(feed.iter().any(|a| a.verb == "Starred" && a.repo == "sindresorhus/awesome"));
+    }
+
+    #[test]
+    fn names_a_branch_that_was_created() {
+        let feed = parse_activity(EVENTS).expect("fixture parses");
+        assert!(feed.iter().any(|a| a.verb == "Created branch" && a.detail == "feat/apps"));
+    }
+
+    // GitHub adds event types. One this build has never heard of must not
+    // break the feed or appear as a blank row.
+    #[test]
+    fn passes_over_an_event_type_it_does_not_know() {
+        let feed = parse_activity(EVENTS).expect("fixture parses");
+        assert!(!feed.iter().any(|a| a.verb.is_empty()));
+        assert!(!feed.iter().any(|a| a.verb.contains("SomeFuture")));
+    }
+
+    // A large push arrives with its commit list truncated to nothing. The row
+    // still has to say something, and the branch is what it knows.
+    #[test]
+    fn describes_a_push_whose_commits_were_truncated() {
+        let feed = parse_activity(EVENTS).expect("fixture parses");
+        assert_eq!(feed[0].detail, "master");
+    }
+
+    #[test]
+    fn refuses_an_event_list_it_cannot_read() {
+        assert!(parse_activity("not json").is_err());
+    }
+
+    // ---- contributions ----
+
+    #[test]
+    fn reads_the_contribution_calendar() {
+        let c = parse_contributions(CONTRIB).expect("fixture parses");
+        assert_eq!(c.total, 1337);
+        assert_eq!(c.weeks.len(), 3);
+        assert_eq!(c.weeks[0].len(), 7);
+    }
+
+    // The heatmap needs a level, not a raw count: the scale is relative to the
+    // busiest day, so a quiet year is not rendered as a blank year.
+    #[test]
+    fn grades_each_day_against_the_busiest_one() {
+        let c = parse_contributions(CONTRIB).expect("fixture parses");
+        let levels: Vec<u8> = c.weeks.iter().flatten().map(|d| d.level).collect();
+        assert!(levels.iter().all(|l| *l <= 4));
+        assert!(levels.contains(&0), "a day with nothing is level 0");
+        assert!(levels.contains(&4), "the busiest day is level 4");
+    }
+
+    #[test]
+    fn a_year_with_no_contributions_is_all_level_zero() {
+        let json = r#"{"data":{"viewer":{"contributionsCollection":{"contributionCalendar":{
+            "totalContributions":0,
+            "weeks":[{"contributionDays":[{"date":"2026-01-01","contributionCount":0}]}]}}}}}"#;
+        let c = parse_contributions(json).expect("parses");
+        assert_eq!(c.total, 0);
+        assert_eq!(c.weeks[0][0].level, 0);
+    }
+
+    // GraphQL answers HTTP 200 with an `errors` array, so the status says
+    // nothing and a caller that only checked it would show an empty heatmap.
+    #[test]
+    fn refuses_a_graphql_reply_carrying_errors() {
+        let json = r#"{"errors":[{"message":"Bad credentials"}]}"#;
+        assert!(parse_contributions(json).is_err());
+    }
+
+    #[test]
+    fn builds_the_graphql_query_against_the_viewer() {
+        let body = contributions_query();
+        assert!(body.contains("contributionsCollection"));
+        assert!(body.contains("viewer"), "asks about the signed-in account");
+        assert!(!body.contains('\n'), "sent as one line");
     }
 }

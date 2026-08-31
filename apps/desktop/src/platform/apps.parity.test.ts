@@ -177,7 +177,26 @@ describe("apps adapter parity", () => {
         "interval_s",
         "expires_in_s",
       ]);
-      expect(fieldsOf("User")).toEqual(["login", "name", "avatar_url", "html_url"]);
+      expect(fieldsOf("Profile")).toEqual([
+        "login",
+        "name",
+        "bio",
+        "avatar_url",
+        "html_url",
+        "public_repos",
+        "followers",
+        "following",
+      ]);
+      expect(fieldsOf("Activity")).toEqual([
+        "id",
+        "verb",
+        "repo",
+        "detail",
+        "html_url",
+        "at",
+      ]);
+      expect(fieldsOf("Contributions")).toEqual(["total", "weeks"]);
+      expect(fieldsOf("ContribDay")).toEqual(["date", "count", "level"]);
       expect(fieldsOf("Repo")).toEqual([
         "name",
         "full_name",
@@ -198,7 +217,16 @@ describe("apps adapter parity", () => {
         "is_pull_request",
         "draft",
       ]);
-      expect(fieldsOf("Summary")).toEqual(["user", "repos", "issues", "pulls"]);
+      expect(fieldsOf("Summary")).toEqual([
+        "user",
+        "repos",
+        "issues",
+        "pulls",
+        "notifications",
+        "activity",
+        "stars_received",
+        "contributions",
+      ]);
     });
 
     // The one field that must never exist on the way out. The device code

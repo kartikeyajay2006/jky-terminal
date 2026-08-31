@@ -470,8 +470,12 @@ export function createWebPlatform(): Platform {
           user: {
             login: "preview-user",
             name: "Preview User",
+            bio: "Focus · Build · Ship",
             avatar_url: null,
             html_url: "https://github.com/preview-user",
+            public_repos: 27,
+            followers: 142,
+            following: 98,
           },
           repos: [
             {
@@ -519,6 +523,47 @@ export function createWebPlatform(): Platform {
               draft: true,
             },
           ],
+          notifications: [
+            {
+              id: "1",
+              title: "Something needs your eyes",
+              reason: "mention",
+              kind: "Issue",
+              repo: "preview-user/jky-terminal",
+              unread: true,
+              updated_at: "2026-08-31T08:00:00Z",
+              html_url: "https://github.com/preview-user/jky-terminal/issues/12",
+            },
+          ],
+          activity: [
+            {
+              id: "a1",
+              verb: "Pushed to",
+              repo: "preview-user/jky-terminal",
+              detail: "main",
+              html_url: "https://github.com/preview-user/jky-terminal",
+              at: "2026-08-31T08:30:00Z",
+            },
+            {
+              id: "a2",
+              verb: "Merged PR",
+              repo: "preview-user/jky-terminal",
+              detail: "Add the apps section",
+              html_url: "https://github.com/preview-user/jky-terminal/pull/8",
+              at: "2026-08-30T18:00:00Z",
+            },
+          ],
+          stars_received: 12,
+          contributions: {
+            total: 1337,
+            weeks: Array.from({ length: 6 }, (_, w) =>
+              Array.from({ length: 7 }, (_, d) => ({
+                date: `2026-0${(w % 9) + 1}-0${d + 1}`,
+                count: (w * 7 + d) % 9,
+                level: ((w * 7 + d) % 5) as number,
+              })),
+            ),
+          },
         };
       },
       async contents(_repo, path) {

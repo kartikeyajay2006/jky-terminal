@@ -125,7 +125,7 @@ describe("GitHub", () => {
       // The mock needs two polls at a one-second interval, which is longer
       // than findBy waits by default.
       expect(
-        await screen.findByRole("heading", { name: /preview-user/i }, { timeout: 5000 }),
+        await screen.findByRole("region", { name: /account/i }, { timeout: 5000 }),
       ).toBeInTheDocument();
     });
 
@@ -195,29 +195,39 @@ describe("GitHub", () => {
     it("shows who is signed in", async () => {
       await connected();
       render(<GitHub />);
-      expect(await screen.findByRole("heading", { name: /preview-user/i })).toBeInTheDocument();
+      const card = await screen.findByRole("region", { name: /account/i });
+      expect(within(card).getByText("preview-user")).toBeInTheDocument();
     });
 
     it("lists repositories, and marks the private ones", async () => {
       await connected();
+      const user = typist();
       render(<GitHub />);
+      await user.click(await screen.findByRole("button", { name: /^repositories$/i }));
       const repos = await screen.findByRole("list", { name: /repositories/i });
       expect(within(repos).getByText("jky-terminal")).toBeInTheDocument();
       expect(within(repos).getByText(/private/i)).toBeInTheDocument();
     });
 
-    it("lists open issues and pull requests apart from each other", async () => {
+    it("lists open issues and pull requests in sections of their own", async () => {
       await connected();
+      const user = typist();
       render(<GitHub />);
+
+      await user.click(await screen.findByRole("button", { name: /^issues$/i }));
       const issues = await screen.findByRole("list", { name: /issues/i });
-      const pulls = await screen.findByRole("list", { name: /pull requests/i });
       expect(within(issues).getByText(/preview issue/i)).toBeInTheDocument();
+
+      await user.click(screen.getByRole("button", { name: /^pull requests$/i }));
+      const pulls = await screen.findByRole("list", { name: /pull requests/i });
       expect(within(pulls).getByText(/preview pull request/i)).toBeInTheDocument();
     });
 
     it("marks a draft pull request as one", async () => {
       await connected();
+      const user = typist();
       render(<GitHub />);
+      await user.click(await screen.findByRole("button", { name: /^pull requests$/i }));
       const pulls = await screen.findByRole("list", { name: /pull requests/i });
       expect(within(pulls).getByText(/draft/i)).toBeInTheDocument();
     });
@@ -268,7 +278,117 @@ describe("GitHub", () => {
       expect(opened).toEqual(["https://github.com/preview-user/jky-terminal"]);
     });
 
+    it("shows notifications, with the reason each one is in front of you", async () => {
+      await connected();
+      const user = typist();
+      render(<GitHub />);
+      await user.click(await screen.findByRole("button", { name: /^notifications/i }));
+      const list = await screen.findByRole("list", { name: /notifications/i });
+      expect(within(list).getByText(/something needs your eyes/i)).toBeInTheDocument();
+      expect(within(list).getByText(/mention/i)).toBeInTheDocument();
+    });
+
+    describe("the dashboard", () => {
+      it("shows the profile card with the name and bio", async () => {
+        await connected();
+        render(<GitHub />);
+        const card = await screen.findByRole("region", { name: /account/i });
+        expect(within(card).getByText("preview-user")).toBeInTheDocument();
+        expect(within(card).getByText(/focus . build . ship/i)).toBeInTheDocument();
+      });
+
+      // The counts a GitHub profile leads with, each in its own box.
+      it("shows the overview tiles", async () => {
+        await connected();
+        render(<GitHub />);
+        const overview = await screen.findByRole("region", { name: /overview/i });
+        for (const [label, value] of [
+          ["Repositories", "27"],
+          ["Followers", "142"],
+          ["Following", "98"],
+          ["Stars", "12"],
+          ["Contributions", "1,337"],
+        ]) {
+          const tile = within(overview).getByRole("group", { name: new RegExp(label, "i") });
+          expect(within(tile).getByText(value)).toBeInTheDocument();
+        }
+      });
+
+      it("draws the contribution heatmap", async () => {
+        await connected();
+        render(<GitHub />);
+        const heat = await screen.findByRole("img", { name: /contributions in the last year/i });
+        expect(heat.querySelectorAll("[data-level]").length).toBe(42);
+      });
+
+      // A heatmap that renders a blank grid when GraphQL declines looks
+      // broken. Saying so is better than showing an empty year.
+      it("says so when the heatmap could not be loaded", async () => {
+        const base = createWebPlatform();
+        await base.apps.github.connectStart();
+        await base.apps.github.connectPoll();
+        await base.apps.github.connectPoll();
+        const full = await base.apps.github.summary();
+        __setPlatformForTests({
+          ...base,
+          apps: {
+            ...base.apps,
+            github: {
+              ...base.apps.github,
+              summary: async () => ({ ...full, contributions: null }),
+            },
+          },
+        });
+        render(<GitHub />);
+        await screen.findByRole("region", { name: /overview/i });
+        expect(screen.queryByRole("img", { name: /contributions/i })).not.toBeInTheDocument();
+        expect(screen.getByText(/contribution graph is unavailable/i)).toBeInTheDocument();
+      });
+
+      it("shows the activity feed as sentences", async () => {
+        await connected();
+        render(<GitHub />);
+        const feed = await screen.findByRole("list", { name: /activity/i });
+        expect(within(feed).getByText(/pushed to/i)).toBeInTheDocument();
+        expect(within(feed).getByText(/merged pr/i)).toBeInTheDocument();
+      });
+
+      it("lists the sections in a sidebar you can move between", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        const nav = await screen.findByRole("navigation", { name: /github sections/i });
+        expect(within(nav).getByRole("button", { name: /dashboard/i })).toBeInTheDocument();
+
+        await user.click(within(nav).getByRole("button", { name: /repositories/i }));
+        expect(await screen.findByRole("list", { name: /repositories/i })).toBeInTheDocument();
+        // The overview belongs to the dashboard, so moving away leaves it.
+        expect(screen.queryByRole("region", { name: /overview/i })).not.toBeInTheDocument();
+      });
+
+      it("marks the section being shown", async () => {
+        await connected();
+        const user = typist();
+        render(<GitHub />);
+        const nav = await screen.findByRole("navigation", { name: /github sections/i });
+        await user.click(within(nav).getByRole("button", { name: /pull requests/i }));
+        expect(within(nav).getByRole("button", { name: /pull requests/i })).toHaveAttribute(
+          "aria-current",
+          "true",
+        );
+      });
+
+      it("counts unread notifications beside the sidebar entry", async () => {
+        await connected();
+        render(<GitHub />);
+        const nav = await screen.findByRole("navigation", { name: /github sections/i });
+        expect(within(nav).getByRole("button", { name: /notifications/i })).toHaveTextContent("1");
+      });
+    });
+
     describe("browsing a repository", () => {
+      // The dashboard shows the five most recent; the section shows them all.
+      // Either is a fine way in, and the dashboard is fewer clicks.
       async function openRepo(user: ReturnType<typeof userEvent.setup>) {
         const repos = await screen.findByRole("list", { name: /repositories/i });
         await user.click(within(repos).getByRole("button", { name: /jky-terminal/i }));
@@ -368,7 +488,7 @@ describe("GitHub", () => {
       await connected();
       const user = typist();
       render(<GitHub />);
-      await screen.findByRole("heading", { name: /preview-user/i });
+      await screen.findByRole("region", { name: /account/i });
 
       await user.click(screen.getByRole("button", { name: /sign out/i }));
       expect(await screen.findByRole("button", { name: /sign in to github/i })).toBeInTheDocument();
@@ -400,7 +520,7 @@ describe("GitHub", () => {
       expect(await screen.findByRole("alert")).toHaveTextContent(/could not reach/i);
       await user.click(screen.getByRole("button", { name: /try again/i }));
       await waitFor(() =>
-        expect(screen.getByRole("heading", { name: /preview-user/i })).toBeInTheDocument(),
+        expect(screen.getByRole("region", { name: /account/i })).toBeInTheDocument(),
       );
     });
   });

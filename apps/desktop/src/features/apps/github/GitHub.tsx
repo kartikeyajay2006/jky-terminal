@@ -8,6 +8,14 @@ import type {
   GitHubSummary,
 } from "../../../platform/types";
 import { RepoView } from "./RepoView";
+import {
+  ActivityFeed,
+  Heatmap,
+  Overview,
+  ProfileCard,
+  Sidebar,
+  type Section,
+} from "./Dashboard";
 
 /** Where the panel is. */
 type Phase =
@@ -58,7 +66,7 @@ export function GitHub() {
   const [phase, setPhase] = useState<Phase>({ at: "loading" });
   const [clientId, setClientId] = useState("");
   const [summary, setSummary] = useState<GitHubSummary | null>(null);
-  const [notifications, setNotifications] = useState<GitHubNotification[]>([]);
+  const [section, setSection] = useState<Section>("dashboard");
   /** Which repository is open, or null for the account view. */
   const [repo, setRepo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -81,13 +89,6 @@ export function GitHub() {
     try {
       setSummary(await getPlatform().apps.github.summary());
       setPhase({ at: "connected" });
-      // The notification list is a section, not the panel: losing it should
-      // not cost the account view, so it is fetched apart and failure is
-      // simply an empty list.
-      getPlatform()
-        .apps.github.notifications()
-        .then(setNotifications)
-        .catch(() => setNotifications([]));
     } catch (e) {
       setSummary(null);
       setPhase({ at: "connected" });
@@ -308,88 +309,158 @@ export function GitHub() {
       )}
 
       {phase.at === "connected" && summary && (
-        <>
-          <header className="gh__head">
-            <div>
-              <h2 className="gh__login">{summary.user.login}</h2>
-              {summary.user.name && <p className="gh__name">{summary.user.name}</p>}
-            </div>
-            <div className="gh__head-actions">
-              <button type="button" className="gh__ghost" onClick={() => void loadSummary()}>
-                Refresh
-              </button>
-              <button type="button" className="gh__ghost" onClick={() => void signOut()}>
-                Sign out
-              </button>
-            </div>
-          </header>
-
-          {notifications.length > 0 && (
-            <section className="gh__section">
-              <h3 className="gh__section-title">
-                Notifications
-                <span className="gh__count">{notifications.filter((n) => n.unread).length}</span>
-              </h3>
-              <ul className="gh__list" aria-label="Notifications">
-                {notifications.map((note) => (
-                  <li key={note.id}>
-                    <button
-                      type="button"
-                      className="gh__row"
-                      data-unread={note.unread ? "" : undefined}
-                      onClick={() => open(note.html_url)}
-                    >
-                      <span className="gh__row-main">
-                        <span className="gh__row-title">{note.title}</span>
-                        <span className="gh__row-sub">
-                          <span className="gh__reason">{note.reason}</span>
-                          <span className="gh__repo">{note.repo}</span>
-                          {relativeDay(note.updated_at, now) && (
-                            <span>{relativeDay(note.updated_at, now)}</span>
-                          )}
-                        </span>
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          <Items
-            label="Pull requests"
-            items={summary.pulls}
-            empty="Nothing of yours is open."
-            onOpen={open}
-          />
-          <Items
-            label="Issues"
-            items={summary.issues}
-            empty="Nothing is assigned to you."
-            onOpen={open}
+        <div className="ghd">
+          <Sidebar
+            current={section}
+            unread={summary.notifications.filter((n) => n.unread).length}
+            onSelect={setSection}
           />
 
-          <section className="gh__section">
-            <h3 className="gh__section-title">Repositories</h3>
-            {summary.repos.length === 0 ? (
-              <p className="gh__quiet">No repositories yet.</p>
-            ) : (
-              <ul className="gh__list" aria-label="Repositories">
-                {summary.repos.map((entry) => (
-                  <li key={entry.full_name}>
-                    <RepoRow
-                      repo={entry}
-                      now={now}
-                      onOpen={() => setRepo(entry.full_name)}
-                    />
-                  </li>
-                ))}
-              </ul>
+          <div className="ghd__main">
+            <header className="ghd__head">
+              <h2 className="ghd__title">
+                {SECTION_TITLES[section]}
+              </h2>
+              <div className="gh__head-actions">
+                <button type="button" className="gh__ghost" onClick={() => void loadSummary()}>
+                  Refresh
+                </button>
+                <button type="button" className="gh__ghost" onClick={() => void signOut()}>
+                  Sign out
+                </button>
+              </div>
+            </header>
+
+            {section === "dashboard" && (
+              <>
+                <ProfileCard user={summary.user} onOpen={open} />
+                <Overview summary={summary} />
+                {summary.contributions ? (
+                  <Heatmap contributions={summary.contributions} />
+                ) : (
+                  <div className="ghd__box">
+                    <p className="gh__quiet">
+                      The contribution graph is unavailable — GitHub only publishes it through
+                      its GraphQL API, and that call did not answer.
+                    </p>
+                  </div>
+                )}
+                <div className="ghd__split">
+                  <RepoBox repos={summary.repos.slice(0, 5)} now={now} onOpen={setRepo} />
+                  <ActivityFeed activity={summary.activity} now={now} onOpen={open} />
+                </div>
+              </>
             )}
-          </section>
-        </>
+
+            {section === "notifications" && (
+              <div className="ghd__box">
+                <p className="ghd__box-title">Notifications</p>
+                <NotificationList notes={summary.notifications} now={now} onOpen={open} />
+              </div>
+            )}
+
+            {section === "repositories" && (
+              <RepoBox repos={summary.repos} now={now} onOpen={setRepo} />
+            )}
+
+            {section === "issues" && (
+              <Items
+                label="Issues"
+                items={summary.issues}
+                empty="Nothing is assigned to you."
+                onOpen={open}
+              />
+            )}
+
+            {section === "pulls" && (
+              <Items
+                label="Pull requests"
+                items={summary.pulls}
+                empty="Nothing of yours is open."
+                onOpen={open}
+              />
+            )}
+
+            {section === "activity" && (
+              <ActivityFeed activity={summary.activity} now={now} onOpen={open} />
+            )}
+          </div>
+        </div>
       )}
     </div>
+  );
+}
+
+const SECTION_TITLES: Record<Section, string> = {
+  dashboard: "Dashboard",
+  notifications: "Notifications",
+  repositories: "Repositories",
+  issues: "Issues",
+  pulls: "Pull requests",
+  activity: "Activity",
+};
+
+function RepoBox({
+  repos,
+  now,
+  onOpen,
+}: {
+  repos: GitHubRepo[];
+  now: number;
+  onOpen: (full: string) => void;
+}) {
+  return (
+    <div className="ghd__box">
+      <p className="ghd__box-title">Repositories</p>
+      {repos.length === 0 ? (
+        <p className="gh__quiet">No repositories yet.</p>
+      ) : (
+        <ul className="gh__list" aria-label="Repositories">
+          {repos.map((entry) => (
+            <li key={entry.full_name}>
+              <RepoRow repo={entry} now={now} onOpen={() => onOpen(entry.full_name)} />
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function NotificationList({
+  notes,
+  now,
+  onOpen,
+}: {
+  notes: GitHubNotification[];
+  now: number;
+  onOpen: (url: string) => void;
+}) {
+  if (notes.length === 0) return <p className="gh__quiet">Nothing needs you right now.</p>;
+  return (
+    <ul className="gh__list" aria-label="Notifications">
+      {notes.map((note) => (
+        <li key={note.id}>
+          <button
+            type="button"
+            className="gh__row"
+            data-unread={note.unread ? "" : undefined}
+            onClick={() => onOpen(note.html_url)}
+          >
+            <span className="gh__row-main">
+              <span className="gh__row-title">{note.title}</span>
+              <span className="gh__row-sub">
+                <span className="gh__reason">{note.reason}</span>
+                <span className="gh__repo">{note.repo}</span>
+                {relativeDay(note.updated_at, now) && (
+                  <span>{relativeDay(note.updated_at, now)}</span>
+                )}
+              </span>
+            </span>
+          </button>
+        </li>
+      ))}
+    </ul>
   );
 }
 

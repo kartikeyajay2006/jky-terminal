@@ -323,11 +323,39 @@ export type GitHubConnectState =
   | { state: "denied" }
   | { state: "expired" };
 
-export interface GitHubUser {
+export interface GitHubProfile {
   login: string;
   name: string | null;
+  bio: string | null;
   avatar_url: string | null;
   html_url: string;
+  public_repos: number;
+  followers: number;
+  following: number;
+}
+
+/** One line of the activity feed, already turned into words by Rust. */
+export interface GitHubActivity {
+  id: string;
+  /** "Pushed to", "Opened PR", "Merged PR", "Starred", … */
+  verb: string;
+  repo: string;
+  detail: string;
+  html_url: string;
+  at: string;
+}
+
+export interface GitHubContribDay {
+  date: string;
+  count: number;
+  /** 0–4, graded against the busiest day of the year. */
+  level: number;
+}
+
+export interface GitHubContributions {
+  total: number;
+  /** Weeks of seven days, oldest first — the shape the heatmap draws. */
+  weeks: GitHubContribDay[][];
 }
 
 export interface GitHubRepo {
@@ -401,10 +429,16 @@ export interface GitHubNotification {
 }
 
 export interface GitHubSummary {
-  user: GitHubUser;
+  user: GitHubProfile;
   repos: GitHubRepo[];
   issues: GitHubItem[];
   pulls: GitHubItem[];
+  notifications: GitHubNotification[];
+  activity: GitHubActivity[];
+  /** Stars across the repositories they own. */
+  stars_received: number;
+  /** Absent when GraphQL declined; the rest of the dashboard still draws. */
+  contributions: GitHubContributions | null;
 }
 
 /**
