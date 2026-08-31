@@ -91,7 +91,7 @@ export function RepoView({ repo, onBack }: { repo: string; onBack: () => void })
   const segments = path === "" ? [] : path.split("/");
 
   return (
-    <div className="gh">
+    <div className="gh gh--wide">
       <div className="gh__head">
         <div>
           <button type="button" className="gh__link" onClick={onBack}>
@@ -157,10 +157,10 @@ export function RepoView({ repo, onBack }: { repo: string; onBack: () => void })
             ))}
           </nav>
 
-          {file ? (
-            <FileView file={file} onClose={() => setFile(null)} onOpen={open} />
-          ) : (
-            <>
+          {/* The tree stays beside the file rather than being replaced by it,
+              so reading one file does not cost you your place in the folder. */}
+          <div className="gh__browser" data-open={file ? "" : undefined}>
+            <div className="ghd__box gh__tree">
               {busy && !entries && <p className="gh__quiet">Reading…</p>}
               {entries && entries.length === 0 && <p className="gh__quiet">Nothing here.</p>}
               {entries && entries.length > 0 && (
@@ -186,8 +186,10 @@ export function RepoView({ repo, onBack }: { repo: string; onBack: () => void })
                   ))}
                 </ul>
               )}
-            </>
-          )}
+            </div>
+
+            {file && <FileView file={file} onClose={() => setFile(null)} onOpen={open} />}
+          </div>
         </>
       )}
 
@@ -204,7 +206,9 @@ export function RepoView({ repo, onBack }: { repo: string; onBack: () => void })
                     onClick={() => open(commit.html_url)}
                   >
                     <span className="gh__row-main">
-                      <span className="gh__row-title">{commit.subject}</span>
+                      <span className="gh__row-title">
+                        <span className="gh__name">{commit.subject}</span>
+                      </span>
                       <span className="gh__row-sub">
                         <span className="gh__sha">{commit.short_sha}</span>
                         <span>{commit.author}</span>
@@ -234,7 +238,7 @@ export function RepoView({ repo, onBack }: { repo: string; onBack: () => void })
                     onClick={() => open(`https://github.com/${repo}/tree/${branch.name}`)}
                   >
                     <span className="gh__row-title">
-                      {branch.name}
+                      <span className="gh__name">{branch.name}</span>
                       {branch.protected && <span className="gh__badge">protected</span>}
                     </span>
                   </button>

@@ -1709,6 +1709,14 @@
   padding: var(--s5) var(--s4) var(--s6);
 }
 
+/* A sign-in card wants a narrow column; a dashboard wants the window. The
+   680px above is right for the first and was starving the second. */
+.gh--wide {
+  max-width: none;
+  margin: 0;
+  padding: var(--s4) var(--s5) var(--s6);
+}
+
 .gh__quiet {
   margin: 0;
   color: var(--text-dim);
@@ -1927,12 +1935,22 @@
   display: flex;
   flex-direction: column;
   gap: 1px;
+  min-width: 0;
+}
+
+/* Inside a dashboard box the list scrolls itself, so three boxes side by side
+   stay the same height and the page does not become one long column. */
+.ghd__box .gh__list,
+.ghd__box .ghd__feed {
+  max-height: 22rem;
+  overflow-y: auto;
 }
 
 .gh__row {
   display: flex;
   width: 100%;
-  padding: var(--s3);
+  min-width: 0;
+  padding: var(--s2) var(--s3);
   cursor: pointer;
   background: var(--surface);
   border: 1px solid transparent;
@@ -1950,16 +1968,42 @@
 .gh__row-main {
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
+  gap: 2px;
   min-width: 0;
+  width: 100%;
 }
 
 .gh__row-title {
   display: flex;
   align-items: center;
   gap: var(--s2);
+  min-width: 0;
   font-size: 14px;
   font-weight: 600;
+}
+
+/* Truncated rather than wrapped. A repository called
+   "Multimodal-Data-Management-Pipeline-for-RAG-Ready-Systems" was taking four
+   lines and making every row in the list a different height. The name is in a
+   span of its own so the ellipsis has an element to apply to — a bare text
+   node beside a badge cannot be truncated on its own. */
+.gh__name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh__row-title:not(:has(> *)) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gh__row-desc {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gh__row-desc {
@@ -1970,10 +2014,13 @@
 
 .gh__row-sub {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: var(--s3);
+  min-width: 0;
+  overflow: hidden;
   color: var(--text-dim);
-  font-size: 12px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .gh__repo,
@@ -2166,13 +2213,28 @@
 
 .ghd {
   display: grid;
-  grid-template-columns: 190px 1fr;
+  grid-template-columns: 176px minmax(0, 1fr);
   gap: var(--s4);
   align-items: start;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 720px) {
   .ghd {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The account beside the counts rather than above them: stacked, the tiles
+   were pushed a screen down and the top of the page said almost nothing. */
+.ghd__top {
+  display: grid;
+  grid-template-columns: minmax(240px, 22rem) minmax(0, 1fr);
+  gap: var(--s4);
+  align-items: stretch;
+}
+
+@media (max-width: 1000px) {
+  .ghd__top {
     grid-template-columns: 1fr;
   }
 }
@@ -2308,15 +2370,9 @@
 
 .ghd__split {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--s4);
   align-items: start;
-}
-
-@media (max-width: 900px) {
-  .ghd__split {
-    grid-template-columns: 1fr;
-  }
 }
 
 /* ---- the account card ---- */
@@ -2381,8 +2437,9 @@
 
 .ghd__overview {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: var(--s3);
+  align-content: stretch;
 }
 
 .ghd__tile {
@@ -2428,6 +2485,7 @@
 .ghd__heat-grid {
   display: flex;
   gap: 3px;
+  justify-content: space-between;
   overflow-x: auto;
   padding-bottom: var(--s1);
 }
@@ -2441,8 +2499,8 @@
 /* The scale is the app's own accent at rising strength rather than a fixed
    green, so the graph belongs to whichever theme is on. */
 .ghd__day {
-  width: 10px;
-  height: 10px;
+  width: 11px;
+  height: 11px;
   border-radius: 2px;
   background: var(--line);
 }
@@ -2480,9 +2538,13 @@
 }
 
 .ghd__feed-row {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "line when"
+    "detail detail";
+  gap: 1px var(--s3);
+  align-items: baseline;
   width: 100%;
   padding: var(--s2) var(--s3);
   cursor: pointer;
@@ -2505,6 +2567,11 @@
 }
 
 .ghd__feed-line {
+  grid-area: line;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-size: 13px;
 }
 
@@ -2519,6 +2586,8 @@
 }
 
 .ghd__feed-detail {
+  grid-area: detail;
+  min-width: 0;
   color: var(--text-muted);
   font-size: 12px;
   overflow: hidden;
@@ -2527,6 +2596,37 @@
 }
 
 .ghd__feed-when {
+  grid-area: when;
+  flex: none;
   color: var(--text-dim);
   font-size: 11px;
+  white-space: nowrap;
+}
+
+/* The tree keeps its place while a file is open beside it. Replacing the list
+   with the file meant every file you read cost you the folder you were in. */
+.gh__browser {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--s4);
+  align-items: start;
+}
+
+.gh__browser[data-open] {
+  grid-template-columns: minmax(220px, 20rem) minmax(0, 1fr);
+}
+
+@media (max-width: 820px) {
+  .gh__browser[data-open] {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.gh__tree {
+  padding: var(--s2);
+}
+
+.gh__tree .gh__list {
+  max-height: 30rem;
+  overflow-y: auto;
 }

@@ -199,7 +199,7 @@ export function GitHub() {
   }
 
   return (
-    <div className="gh">
+    <div className={phase.at === "connected" && summary ? "gh gh--wide" : "gh"}>
       {error && (
         <div className="gh__failure">
           <p className="gh__error" role="alert">
@@ -333,8 +333,10 @@ export function GitHub() {
 
             {section === "dashboard" && (
               <>
-                <ProfileCard user={summary.user} onOpen={open} />
-                <Overview summary={summary} />
+                <div className="ghd__top">
+                  <ProfileCard user={summary.user} onOpen={open} />
+                  <Overview summary={summary} />
+                </div>
                 {summary.contributions ? (
                   <Heatmap contributions={summary.contributions} />
                 ) : (
@@ -346,8 +348,16 @@ export function GitHub() {
                   </div>
                 )}
                 <div className="ghd__split">
-                  <RepoBox repos={summary.repos.slice(0, 5)} now={now} onOpen={setRepo} />
-                  <ActivityFeed activity={summary.activity} now={now} onOpen={open} />
+                  <RepoBox repos={summary.repos.slice(0, 6)} now={now} onOpen={setRepo} />
+                  <ActivityFeed activity={summary.activity.slice(0, 8)} now={now} onOpen={open} />
+                  <div className="ghd__box">
+                    <p className="ghd__box-title">Notifications</p>
+                    <NotificationList
+                      notes={summary.notifications.slice(0, 6)}
+                      now={now}
+                      onOpen={open}
+                    />
+                  </div>
                 </div>
               </>
             )}
@@ -521,7 +531,7 @@ function RepoRow({
     <button type="button" className="gh__row" onClick={onOpen}>
       <span className="gh__row-main">
         <span className="gh__row-title">
-          {repo.name}
+          <span className="gh__name">{repo.name}</span>
           {repo.private && <span className="gh__badge">private</span>}
         </span>
         {repo.description && <span className="gh__row-desc">{repo.description}</span>}
