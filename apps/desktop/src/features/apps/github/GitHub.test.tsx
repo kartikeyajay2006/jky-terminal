@@ -46,6 +46,31 @@ describe("GitHub", () => {
       expect(screen.queryByRole("textbox", { name: /client id/i })).not.toBeInTheDocument();
     });
 
+    // Someone who has just installed this has no idea what connecting does or
+    // what it costs them. The screen has to answer that before they press it.
+    it("tells a first-time user what connecting gives them", async () => {
+      render(<GitHub />);
+      const welcome = await screen.findByRole("region", { name: /sign in to github/i });
+      expect(welcome).toHaveTextContent(/repositor/i);
+      expect(welcome).toHaveTextContent(/issue/i);
+      expect(welcome).toHaveTextContent(/pull request/i);
+    });
+
+    // The three things a person is entitled to know before handing over access.
+    it("says it is read-only, stays on this machine, and never sees a password", async () => {
+      render(<GitHub />);
+      const welcome = await screen.findByRole("region", { name: /sign in to github/i });
+      expect(welcome).toHaveTextContent(/read.only|never writes/i);
+      expect(welcome).toHaveTextContent(/keychain|this machine|stays on/i);
+      expect(welcome).toHaveTextContent(/never sees your password/i);
+    });
+
+    it("says the approval happens on your own account, not here", async () => {
+      render(<GitHub />);
+      const welcome = await screen.findByRole("region", { name: /sign in to github/i });
+      expect(welcome).toHaveTextContent(/two-factor|GitHub Mobile|security key/i);
+    });
+
     // Still reachable for anyone who would rather run against their own app.
     it("lets someone use their own OAuth app instead", async () => {
       const user = typist();

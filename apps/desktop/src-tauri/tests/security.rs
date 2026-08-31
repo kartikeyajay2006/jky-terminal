@@ -427,3 +427,64 @@ fn the_csp_frames_only_the_embed_endpoints_the_spec_allows() {
         );
     }
 }
+
+/// The app is about to host webviews that render other people's pages, so the
+/// question "which webview may call Rust" stops being rhetorical.
+///
+/// Tauri resolves a capability's `windows` list against *every webview in that
+/// window*, and its own schema says so: "If a window label matches any of the
+/// patterns in this list, the capability will be enabled on all the webviews
+/// of that window, regardless of the value of `webviews`." A capability scoped
+/// by window would therefore hand `core:default` to a page loaded from the
+/// internet the moment one is added to the main window.
+///
+/// Scoping by webview label instead is what keeps that from happening.
+#[test]
+fn no_capability_is_scoped_by_window_where_a_child_webview_would_inherit_it() {
+    for (path, capability) in capability_files() {
+        let name = path.file_name().unwrap().to_string_lossy();
+
+        assert!(
+            capability.get("windows").is_none(),
+            "SECURITY: {name} is scoped with `windows`. Tauri grants such a capability to \
+             every webview in that window, including one loaded from the internet. Scope it \
+             with `webviews` instead so only this app's own webview can call Rust."
+        );
+
+        let webviews = capability
+            .get("webviews")
+            .and_then(|w| w.as_array())
+            .unwrap_or_else(|| {
+                panic!("SECURITY: {name} names no webviews, so its reach is unbounded")
+            });
+
+        for label in webviews {
+            let label = label.as_str().unwrap_or_default();
+            assert!(
+                !label.contains('*'),
+                "SECURITY: {name} grants capabilities to the glob '{label}'. A pattern that \
+                 matches a future webview grants it to pages nobody has reviewed."
+            );
+            assert_eq!(
+                label, "main",
+                "SECURITY: {name} grants capabilities to the webview '{label}'. Only this \
+                 app's own webview may call Rust."
+            );
+        }
+    }
+}
+
+/// Every capability file, parsed.
+fn capability_files() -> Vec<(PathBuf, serde_json::Value)> {
+    let dir = crate_root().join("capabilities");
+    let mut out = Vec::new();
+    for entry in fs::read_dir(&dir).expect("capabilities directory").flatten() {
+        let path = entry.path();
+        if path.extension().is_some_and(|x| x == "json") {
+            let raw = fs::read_to_string(&path).expect("readable capability");
+            out.push((path, serde_json::from_str(&raw).expect("valid capability JSON")));
+        }
+    }
+    assert!(!out.is_empty(), "SECURITY: no capability files found to check");
+    out
+}

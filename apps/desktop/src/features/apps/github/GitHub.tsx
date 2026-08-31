@@ -260,13 +260,32 @@ export function GitHub() {
       )}
 
       {phase.at === "signed-out" && (
-        <section className="gh__setup" aria-label="Sign in to GitHub">
-          <h2 className="gh__setup-title">Sign in to GitHub</h2>
+        <section className="gh__setup gh__welcome" aria-label="Sign in to GitHub">
+          <h2 className="gh__setup-title">Your GitHub, in the terminal</h2>
           <p className="gh__setup-body">
-            GitHub will show a short code to approve. Your own two-factor settings decide what
-            that takes — a push to GitHub Mobile, a one-time code, or a security key. This app
-            never sees your password.
+            Connect your account and this becomes a dashboard: your repositories with their
+            files, commits and branches; the issues assigned to you; your open pull requests;
+            and the notifications waiting for you — without leaving this window.
           </p>
+
+          <ul className="gh__promises">
+            <li>
+              <b>Read-only.</b> It asks for permission to read your repositories, organisations
+              and notifications. Nothing it can do writes to your account, and it cannot delete
+              anything.
+            </li>
+            <li>
+              <b>You approve it on GitHub.</b> A short code appears here, you enter it on
+              github.com, and your own two-factor settings decide what that takes — a push to
+              GitHub Mobile, a one-time code, or a security key. This app never sees your
+              password.
+            </li>
+            <li>
+              <b>The token stays on this machine</b>, in your operating system&rsquo;s keychain.
+              It is never sent anywhere but GitHub, and nothing in this window can read it back.
+            </li>
+          </ul>
+
           <button type="button" className="gh__primary" onClick={() => void signIn()}>
             Sign in to GitHub
           </button>
