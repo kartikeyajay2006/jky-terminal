@@ -237,6 +237,16 @@ Due events, due reminders and open todos surface as **notifications**: a
 heads-up banner slides in and retires after eight seconds, leaving the row in
 the centre behind the bell.
 
+**Edit board** rearranges the overview the same way the Apps grid is
+rearranged: drag cards into a new order, resize them (small, medium, large),
+hide the ones you do not want. The calendar starts as the tall one because it
+is the only card that is never empty — dates exist whether or not anything has
+been written yet — but that is a starting size, not a rule.
+
+Restore stays offered whenever anything is hidden, in or out of edit mode. A
+board you can empty, whose way back is only inside a mode you would have to
+guess at, is one you would clear browser storage to fix.
+
 ### ◈ Games
 
 An arcade drawn as character grids, so it looks like the terminal it lives in.

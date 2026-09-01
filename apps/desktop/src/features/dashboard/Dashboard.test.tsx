@@ -6,6 +6,9 @@ import { useDashboard } from "./dashboardStore";
 import { EVENT_COLOURS, __setPlatformForTests, createWebPlatform } from "../../platform";
 
 function reset() {
+  // The board's arrangement is stored, so one test's edits would otherwise
+  // be the next test's starting board.
+  localStorage.clear();
   __setPlatformForTests(createWebPlatform());
   useDashboard.setState({
     notes: [],
@@ -75,7 +78,9 @@ describe("the overview grid", () => {
 
     const cards = [...container.querySelectorAll(".card")];
     expect(cards[0].getAttribute("aria-label")).toBe("Calendar");
-    expect(cards[0].className).toContain("card--tall");
+    // Its height is a size on the board now, not a class of its own — the
+    // same fact, expressed in the thing that can also be changed.
+    expect(cards[0].getAttribute("data-size")).toBe("medium");
   });
 
   // Only the anchor is tall. If every card claimed two rows the board would
@@ -84,7 +89,141 @@ describe("the overview grid", () => {
   it("makes exactly one card the tall one", async () => {
     const { container } = render(<Dashboard />);
     await screen.findByRole("heading", { name: "Overview" });
-    expect(container.querySelectorAll(".card--tall")).toHaveLength(1);
+    expect(container.querySelectorAll('.card:not([data-size="small"])')).toHaveLength(1);
+  });
+
+  describe("the layout editor", () => {
+    const edit = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(await screen.findByRole("button", { name: /edit board/i }));
+    };
+
+    /*
+     * Editing is a mode, as it is in Apps. A card carries live controls —
+     * a checkbox, a "new note" button — and putting five more on every one of
+     * them permanently would make the board unusable for the thing it is for.
+     */
+    it("shows no editing controls until asked", async () => {
+      render(<Dashboard />);
+      await screen.findByRole("heading", { name: "Overview" });
+      expect(screen.queryByRole("button", { name: /hide card/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /edit board/i })).toBeInTheDocument();
+    });
+
+    it("offers hide and resize on every card once editing", async () => {
+      const user = userEvent.setup();
+      render(<Dashboard />);
+      await edit(user);
+
+      const card = screen.getByRole("region", { name: "Notes" });
+      expect(within(card).getByRole("button", { name: /hide card/i })).toBeInTheDocument();
+      expect(within(card).getByRole("button", { name: /size/i })).toBeInTheDocument();
+    });
+
+    it("hides a card, and says how many are hidden", async () => {
+      const user = userEvent.setup();
+      render(<Dashboard />);
+      await edit(user);
+
+      const card = screen.getByRole("region", { name: "Notes" });
+      await user.click(within(card).getByRole("button", { name: /hide card/i }));
+
+      await waitFor(() =>
+        expect(screen.queryByRole("region", { name: "Notes" })).not.toBeInTheDocument(),
+      );
+      expect(screen.getByRole("button", { name: /restore 1/i })).toBeInTheDocument();
+    });
+
+    it("brings everything back", async () => {
+      const user = userEvent.setup();
+      render(<Dashboard />);
+      await edit(user);
+
+      const card = screen.getByRole("region", { name: "Notes" });
+      await user.click(within(card).getByRole("button", { name: /hide card/i }));
+      await waitFor(() =>
+        expect(screen.queryByRole("region", { name: "Notes" })).not.toBeInTheDocument(),
+      );
+
+      await user.click(screen.getByRole("button", { name: /restore 1/i }));
+      expect(await screen.findByRole("region", { name: "Notes" })).toBeInTheDocument();
+    });
+
+    it("resizes a card", async () => {
+      const user = userEvent.setup();
+      const { container } = render(<Dashboard />);
+      await edit(user);
+
+      const card = screen.getByRole("region", { name: "Notes" });
+      await user.click(within(card).getByRole("button", { name: /size/i }));
+
+      await waitFor(() =>
+        expect(container.querySelector('[aria-label="Notes"]')).toHaveAttribute(
+          "data-size",
+          "medium",
+        ),
+      );
+    });
+
+    /*
+     * The board can be emptied, and that has to be a state it can come back
+     * from. A dashboard showing nothing with no visible way out is one you
+     * would have to clear storage to fix.
+     */
+    it("can be emptied and still offers the way back", async () => {
+      const user = userEvent.setup();
+      render(<Dashboard />);
+      await edit(user);
+
+      for (const name of ["Calendar", "Notes", "Reminders", "Upcoming Events", "Todos", "Quick Actions"]) {
+        const card = screen.getByRole("region", { name });
+        await user.click(within(card).getByRole("button", { name: /hide card/i }));
+      }
+
+      expect(await screen.findByRole("button", { name: /restore 6/i })).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /restore 6/i }));
+      expect(await screen.findByRole("region", { name: "Calendar" })).toBeInTheDocument();
+    });
+
+    // An arrangement lost on every restart is not an arrangement.
+    it("remembers the board across a remount", async () => {
+      const user = userEvent.setup();
+      const view = render(<Dashboard />);
+      await edit(user);
+
+      const card = screen.getByRole("region", { name: "Notes" });
+      await user.click(within(card).getByRole("button", { name: /hide card/i }));
+      await waitFor(() =>
+        expect(screen.queryByRole("region", { name: "Notes" })).not.toBeInTheDocument(),
+      );
+
+      view.unmount();
+      render(<Dashboard />);
+      await screen.findByRole("heading", { name: "Overview" });
+      expect(screen.queryByRole("region", { name: "Notes" })).not.toBeInTheDocument();
+    });
+
+    it("puts the board back the way it shipped", async () => {
+      const user = userEvent.setup();
+      render(<Dashboard />);
+      await edit(user);
+
+      const card = screen.getByRole("region", { name: "Notes" });
+      await user.click(within(card).getByRole("button", { name: /hide card/i }));
+      await waitFor(() =>
+        expect(screen.queryByRole("region", { name: "Notes" })).not.toBeInTheDocument(),
+      );
+
+      await user.click(screen.getByRole("button", { name: /reset/i }));
+      expect(await screen.findByRole("region", { name: "Notes" })).toBeInTheDocument();
+    });
+
+    it("leaves edit mode", async () => {
+      const user = userEvent.setup();
+      render(<Dashboard />);
+      await edit(user);
+      await user.click(screen.getByRole("button", { name: /done/i }));
+      expect(screen.queryByRole("button", { name: /hide card/i })).not.toBeInTheDocument();
+    });
   });
 
   it("gives every card its own colour", async () => {

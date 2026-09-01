@@ -170,10 +170,43 @@
   min-height: 0;
 }
 
-/* The anchor. Exactly one card wears this, and a test pins that: a board of
-   uniformly tall cards is the same failure with more scrolling. */
-.card--tall {
+/*
+ * Size, as the board records it.
+ *
+ * `small` is one cell. `medium` is the tall one the calendar starts as — the
+ * anchor that stops an empty board reading as broken. `large` takes two
+ * columns as well, for a card someone wants to actually read from across the
+ * room.
+ */
+.card[data-size="medium"] {
   grid-row: span 2;
+}
+
+.card[data-size="large"] {
+  grid-row: span 2;
+  grid-column: span 2;
+}
+
+/* A card being dragged, and the board it is being dragged around. */
+.card[data-editing] {
+  cursor: grab;
+}
+
+.card[data-dragging] {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+.card__edit {
+  margin-left: auto;
+  display: flex;
+  gap: var(--s2);
+}
+
+.board__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
 }
 
 /* One column, and nothing spans two rows in it — a card claiming double
@@ -183,8 +216,9 @@
     grid-template-columns: 1fr;
   }
 
-  .card--tall {
+  .card[data-size] {
     grid-row: auto;
+    grid-column: auto;
   }
 }
 
@@ -303,11 +337,11 @@
 
 /* The anchor's calendar is the point of making it tall, so it takes the room
    rather than sitting small at the top of it. */
-.card--tall .card__body {
+.card:not([data-size="small"]) .card__body {
   align-content: stretch;
 }
 
-.card--tall .cal__grid--mini {
+.card:not([data-size="small"]) .cal__grid--mini {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
