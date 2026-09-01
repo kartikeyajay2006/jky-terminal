@@ -84,9 +84,15 @@
   min-width: 0;
 }
 
-/* The overview grid needs more room than a reading column. */
-.panel--wide {
-  max-width: 1280px;
+/*
+ * The overview is a board, not an article, so it takes the window rather than
+ * a reading column. Qualified by its base class on purpose: written as
+ * `.panel--wide` it tied with `.panel` in another stylesheet and lost on
+ * import order, which capped it at the width it was opting out of.
+ */
+.panel.panel--wide {
+  max-width: none;
+  padding: var(--s5) var(--s5) var(--s7);
 }
 
 .dash__subhead {
@@ -130,11 +136,40 @@
 
 /* ---- the widget grid ---------------------------------------------------- */
 
+/*
+ * Columns rather than rows.
+ *
+ * A grid puts every card in a row as tall as the tallest card in it, so the
+ * short Notes card sat beside the tall Calendar with a card-sized hole beneath
+ * it, and the next row started below both. Columns let each card sit directly
+ * under the one above, whatever its height, which is what a board of unequal
+ * cards wants.
+ *
+ * `break-inside` is what keeps a card from being split across two columns.
+ */
 .grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-  gap: var(--s4);
+  column-width: 21rem;
+  column-gap: var(--s4);
   align-items: start;
+}
+
+.grid > * {
+  break-inside: avoid;
+  margin-bottom: var(--s4);
+}
+
+/* Grid, not columns, once there is only room for one: a single column with
+   column-width still leaves the last card's margin hanging. */
+@media (max-width: 40rem) {
+  .grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--s4);
+  }
+
+  .grid > * {
+    margin-bottom: 0;
+  }
 }
 
 /* Each card resolves --tone to one of the six event colours, so the whole
@@ -523,9 +558,9 @@
   min-width: 12ch;
 }
 
-.input--date,
-.input--time,
-.input--select {
+.input.input--date,
+.input.input--time,
+.input.input--select {
   flex: 0 0 auto;
   font-family: var(--font-mono);
 }
@@ -930,8 +965,8 @@
 
 /* Native date and time controls render their own text and picker glyph; both
    need telling about a dark ground or they come out black on black. */
-.input--date,
-.input--time {
+.input.input--date,
+.input.input--time {
   color-scheme: light dark;
 }
 

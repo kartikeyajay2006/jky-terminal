@@ -448,7 +448,7 @@
 }
 
 /* A hint that is a warning rather than an aside. */
-.hint--warn {
+.hint.hint--warn {
   padding: var(--s2);
   border: 1px solid color-mix(in srgb, var(--warn) 45%, var(--line-strong));
   border-radius: var(--radius);
