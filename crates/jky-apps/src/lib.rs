@@ -14,6 +14,7 @@ pub mod browser;
 pub mod feeds;
 pub mod github;
 pub mod net;
+pub mod oauth;
 pub mod places;
 pub mod routes;
 pub mod weather;
