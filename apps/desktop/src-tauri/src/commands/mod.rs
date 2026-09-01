@@ -3,6 +3,7 @@ pub mod ai;
 pub mod browser;
 pub mod games;
 pub mod github;
+pub mod gmail;
 pub mod open;
 pub mod pty;
 pub mod scrollback;

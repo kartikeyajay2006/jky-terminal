@@ -151,6 +151,27 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "apps_github_set_client_id".to_string(),
         "apps_github_status".to_string(),
         "apps_github_summary".to_string(),
+        // Gmail, over the authorization-code flow with PKCE. Google answers
+        // an OAuth request from an embedded webview with `disallowed_useragent`,
+        // so the sign-in happens in the person's own browser and this app
+        // listens on a loopback socket for the redirect. `connect` runs that
+        // whole exchange and returns an email address; the verifier, the
+        // `state`, the code, the access token and the refresh token all stay
+        // in Rust, and no command returns any of them.
+        //
+        // `inbox` is the only reader, and it reads metadata: three named
+        // headers and the snippet Gmail sends. No message body is ever
+        // fetched, so none can cross this boundary. The count is clamped and
+        // the search term percent-encoded in jky-apps, against a fixed host.
+        //
+        // `set_client_id` stores a public identifier — an installed-app client
+        // has no secret, which is why PKCE is doing the work — validated here
+        // so a pasted document becomes a refusal.
+        "apps_gmail_connect".to_string(),
+        "apps_gmail_disconnect".to_string(),
+        "apps_gmail_inbox".to_string(),
+        "apps_gmail_set_client_id".to_string(),
+        "apps_gmail_status".to_string(),
         // apps_locate: roughly where this machine is, from its public
         // address. Takes nothing from the window, so there is no input to
         // validate; it is a request Rust makes on its own to a fixed host.

@@ -12,6 +12,8 @@ import type {
   GitHubNotification,
   GitHubDeviceStart,
   GitHubStatus,
+  GmailMailbox,
+  GmailStatus,
   GitHubSummary,
   NewsSource,
   Route,
@@ -186,6 +188,15 @@ export function createTauriPlatform(): Platform {
       commits: (repo) => invoke<GitHubCommit[]>("apps_github_commits", { repo }),
       branches: (repo) => invoke<GitHubBranch[]>("apps_github_branches", { repo }),
       notifications: () => invoke<GitHubNotification[]>("apps_github_notifications"),
+    },
+    gmail: {
+      status: () => invoke<GmailStatus>("apps_gmail_status"),
+      setClientId: (id) => invoke<void>("apps_gmail_set_client_id", { id }),
+      // Resolves only when the person has finished in their browser, which is
+      // a wait of minutes rather than milliseconds. The panel says so.
+      connect: () => invoke<string>("apps_gmail_connect"),
+      disconnect: () => invoke<void>("apps_gmail_disconnect"),
+      inbox: (count, query) => invoke<GmailMailbox>("apps_gmail_inbox", { count, query }),
     },
     route: (from, to) =>
       invoke<Route>("apps_route", {

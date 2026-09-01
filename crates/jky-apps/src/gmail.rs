@@ -76,7 +76,7 @@ impl GmailError {
 /// which one they are looking at, which is the question a second account
 /// makes urgent and a first account never raises.
 #[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct Profile {
+pub struct Account {
     pub address: String,
     pub messages_total: u64,
 }
@@ -149,10 +149,10 @@ struct WireHeader {
     value: String,
 }
 
-pub fn parse_profile(json: &str) -> Result<Profile, GmailError> {
+pub fn parse_account(json: &str) -> Result<Account, GmailError> {
     let wire: WireProfile =
         serde_json::from_str(json).map_err(|e| GmailError::Malformed(e.to_string()))?;
-    Ok(Profile {
+    Ok(Account {
         address: wire.email_address.unwrap_or_default(),
         messages_total: wire.messages_total.unwrap_or(0),
     })
@@ -322,8 +322,8 @@ async fn api_get(client: &reqwest::Client, url: &str, token: &str) -> Result<Str
     .await
 }
 
-pub async fn fetch_profile(client: &reqwest::Client, token: &str) -> Result<Profile, GmailError> {
-    parse_profile(&api_get(client, &profile_url(), token).await?)
+pub async fn fetch_account(client: &reqwest::Client, token: &str) -> Result<Account, GmailError> {
+    parse_account(&api_get(client, &profile_url(), token).await?)
 }
 
 /// A list of messages, ready to draw.
@@ -374,7 +374,7 @@ mod tests {
 
     #[test]
     fn reads_which_mailbox_this_is() {
-        let p = parse_profile(PROFILE).expect("fixture parses");
+        let p = parse_account(PROFILE).expect("fixture parses");
         assert_eq!(p.address, "someone@example.com");
         assert_eq!(p.messages_total, 12043);
     }

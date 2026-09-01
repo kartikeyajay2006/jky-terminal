@@ -462,6 +462,66 @@ export interface GitHubApi {
   notifications(): Promise<GitHubNotification[]>;
 }
 
+/** Whether Gmail can be used, and whether it has been signed in to. */
+export interface GmailStatus {
+  /** A Google client id has been set. Without one there is nothing to sign
+   *  in against, and no default ships. */
+  configured: boolean;
+  /** A token is in the keychain. Never the token. */
+  connected: boolean;
+}
+
+/** Which mailbox this is. */
+export interface GmailAccount {
+  address: string;
+  messages_total: number;
+}
+
+/**
+ * One row in the list.
+ *
+ * There is no body field, and that is not an omission: only three headers and
+ * the snippet are ever fetched, so the contents of the mail never reach this
+ * side of the boundary.
+ */
+export interface GmailMessage {
+  id: string;
+  thread_id: string;
+  /** The sender's display name, or their address when they have none. */
+  from_name: string;
+  from_address: string;
+  subject: string;
+  snippet: string;
+  /** Milliseconds since the epoch. */
+  received_ms: number;
+  unread: boolean;
+}
+
+export interface GmailMailbox {
+  account: GmailAccount;
+  messages: GmailMessage[];
+}
+
+/**
+ * Gmail, read-only.
+ *
+ * `connect` is one call rather than the start/poll pair GitHub needs: Google
+ * refuses an embedded webview, so the sign-in happens in the person's own
+ * browser and Rust waits on a loopback socket for the redirect. Nothing to
+ * poll, and nothing for the window to hold — it gets back an email address.
+ *
+ * Note what is absent, as with GitHub: no token, no code, no verifier.
+ */
+export interface GmailApi {
+  status(): Promise<GmailStatus>;
+  setClientId(id: string): Promise<void>;
+  /** Runs the whole sign-in. Resolves to the address that was connected. */
+  connect(): Promise<string>;
+  disconnect(): Promise<void>;
+  /** The inbox, or a search across all mail when `query` is given. */
+  inbox(count: number, query: string | null): Promise<GmailMailbox>;
+}
+
 /** Where the browser pane sits, in logical pixels. */
 export interface BrowserRect {
   x: number;
@@ -512,6 +572,7 @@ export interface AppsApi {
   locate(): Promise<Place>;
   route(from: Place, to: Place): Promise<Route>;
   readonly github: GitHubApi;
+  readonly gmail: GmailApi;
 }
 
 export interface Platform {

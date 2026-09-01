@@ -1,5 +1,6 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
+  GmailMessage,
   AppsApi,
   BrowserApi,
   AiApi,
@@ -183,6 +184,47 @@ const WEB_COMMANDS: CommandSpec[] = [
   },
 ];
 
+/**
+ * A mailbox for the preview build.
+ *
+ * Chosen to cover the states the panel has to draw differently rather than to
+ * look plausible: read and unread, a sender with a display name and one with
+ * only an address, a long subject that has to truncate, and a message old
+ * enough that a clock time would be useless where a date is not.
+ */
+const PREVIEW_MAIL: GmailMessage[] = [
+  {
+    id: "18f0a1",
+    thread_id: "18f0a1",
+    from_name: "Ada Lovelace",
+    from_address: "ada@example.com",
+    subject: "Deploy finished",
+    snippet: "The deploy finished and the smoke tests are green. Nothing to do.",
+    received_ms: Date.parse("2026-08-31T12:00:00Z"),
+    unread: true,
+  },
+  {
+    id: "18f0a2",
+    thread_id: "18f09f",
+    from_name: "billing@example.net",
+    from_address: "billing@example.net",
+    subject: "Receipt",
+    snippet: "Your receipt is attached.",
+    received_ms: Date.parse("2026-08-30T09:14:00Z"),
+    unread: false,
+  },
+  {
+    id: "18f0a3",
+    thread_id: "18f0a3",
+    from_name: "Grace Hopper",
+    from_address: "grace@example.org",
+    subject: "Re: the scheduling change we discussed on Tuesday and what it means for the release",
+    snippet: "Happy either way — say which you would prefer and I will move it.",
+    received_ms: Date.parse("2026-08-24T17:40:00Z"),
+    unread: true,
+  },
+];
+
 export function createWebPlatform(): Platform {
   const keys = new Map<string, string>();
   const models = new Map<string, string>();
@@ -360,6 +402,11 @@ export function createWebPlatform(): Platform {
   // A client id ships with the real build, so the preview starts configured
   // too — otherwise the panel's first screen would differ from the desktop's.
   let githubClientId = "Ov23liPREVIEW";
+  // Empty on purpose, unlike GitHub's: no Google client id ships with the
+  // app, so the preview build has to be able to show the "not set up yet"
+  // state the real one starts in.
+  let gmailClientId = "";
+  let gmailToken = false;
   let githubToken = false;
   let githubPolls = 0;
 
@@ -625,6 +672,42 @@ export function createWebPlatform(): Platform {
             html_url: "https://github.com/preview-user/jky-terminal/issues/12",
           },
         ];
+      },
+    },
+    gmail: {
+      async status() {
+        return { configured: gmailClientId !== "", connected: gmailToken };
+      },
+      async setClientId(id) {
+        gmailClientId = id.trim();
+      },
+      async connect() {
+        if (gmailClientId === "") {
+          throw new Error("add a Google client id first");
+        }
+        gmailToken = true;
+        return "preview@example.com";
+      },
+      async disconnect() {
+        gmailToken = false;
+      },
+      async inbox(count, query) {
+        if (!gmailToken) throw new Error("not connected to Gmail");
+        const all = PREVIEW_MAIL;
+        const needle = query?.trim().toLowerCase() ?? "";
+        // The real backend hands the query to Gmail, which searches headers
+        // and bodies. Matching what a row shows is the closest a mock can
+        // honestly get, and it keeps the panel's search path exercised.
+        const matched =
+          needle === ""
+            ? all
+            : all.filter((m) =>
+                `${m.subject} ${m.snippet} ${m.from_name}`.toLowerCase().includes(needle),
+              );
+        return {
+          account: { address: "preview@example.com", messages_total: 12043 },
+          messages: matched.slice(0, Math.max(1, count)),
+        };
       },
     },
     async searchPlaces(query) {

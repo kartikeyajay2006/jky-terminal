@@ -20,20 +20,37 @@ const RUST_NEWS = join(__dirname, "../../../../crates/jky-apps/src/feeds.rs");
 const RUST_PLACES = join(__dirname, "../../../../crates/jky-apps/src/places.rs");
 const RUST_ROUTES = join(__dirname, "../../../../crates/jky-apps/src/routes.rs");
 const RUST_GITHUB = join(__dirname, "../../../../crates/jky-apps/src/github.rs");
+const RUST_GMAIL = join(__dirname, "../../../../crates/jky-apps/src/gmail.rs");
 
 /** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
-  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES, RUST_GITHUB]
+  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES, RUST_GITHUB, RUST_GMAIL]
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
 }
 
-/** The fields declared on one `pub struct` in the Rust source. */
+/**
+ * The fields declared on one `pub struct` in the Rust source.
+ *
+ * A name that appears twice is refused rather than resolved to whichever
+ * module happens to be listed first. Two modules did both want to call their
+ * account type `Profile`, and this checker would have gone on asserting
+ * GitHub's fields while the panel read Gmail's — a green suite over a panel
+ * showing nothing.
+ */
 function fieldsOf(struct: string): string[] {
   const source = rustSource();
-  const start = source.indexOf(`pub struct ${struct} {`);
-  if (start === -1) throw new Error(`no struct ${struct} in weather.rs`);
-  const body = source.slice(start, source.indexOf("\n}", start));
+  const needle = `pub struct ${struct} {`;
+  const at = [...source.matchAll(new RegExp(needle.replace(/[{]/g, "\\{"), "g"))].map(
+    (m) => m.index ?? -1,
+  );
+  if (at.length === 0) throw new Error(`no struct ${struct} in the apps crate`);
+  if (at.length > 1) {
+    throw new Error(
+      `${at.length} structs are named ${struct}; rename one, or this checks the wrong fields`,
+    );
+  }
+  const body = source.slice(at[0], source.indexOf("\n}", at[0]));
   return [...body.matchAll(/^\s{4}pub ([a-z_0-9]+):/gm)].map((m) => m[1]);
 }
 
@@ -154,6 +171,90 @@ describe("apps adapter parity", () => {
 
   it("names every route field the same way in TypeScript", () => {
     expect(fieldsOf("Route")).toEqual(["straight_m", "road_m", "duration_s"]);
+  });
+
+  describe("gmail", () => {
+    // A fresh platform per test: connecting mutates the mock, and a shared one
+    // would make these pass or fail on the order they happen to run in.
+    const mail = () => createWebPlatform().apps.gmail;
+    const CLIENT = "812345678901-preview.apps.googleusercontent.com";
+
+    async function signedIn() {
+      const gmail = mail();
+      await gmail.setClientId(CLIENT);
+      await gmail.connect();
+      return gmail;
+    }
+
+    it("the mock offers the whole gmail surface", () => {
+      for (const call of ["status", "setClientId", "connect", "disconnect", "inbox"] as const) {
+        expect(typeof mail()[call], `gmail.${call} is missing`).toBe("function");
+      }
+    });
+
+    it("names every gmail field the same way in TypeScript", () => {
+      expect(fieldsOf("Account")).toEqual(["address", "messages_total"]);
+      expect(fieldsOf("Message")).toEqual([
+        "id",
+        "thread_id",
+        "from_name",
+        "from_address",
+        "subject",
+        "snippet",
+        "received_ms",
+        "unread",
+      ]);
+    });
+
+    // No Google client id ships with the app, so a fresh install is not
+    // merely signed out — there is nothing yet to sign in against, and the
+    // panel has to be able to tell those two states apart.
+    it("starts unconfigured, because no client id ships", async () => {
+      expect(await mail().status()).toEqual({ configured: false, connected: false });
+    });
+
+    it("cannot sign in before it has been told which client to use", async () => {
+      await expect(mail().connect()).rejects.toThrow();
+    });
+
+    it("reports itself connected once it is", async () => {
+      const gmail = await signedIn();
+      expect(await gmail.status()).toEqual({ configured: true, connected: true });
+    });
+
+    it("the mock returns a mailbox shaped like the real one", async () => {
+      const mailbox = await (await signedIn()).inbox(10, null);
+      for (const field of fieldsOf("Account")) {
+        expect(mailbox.account, `Account.${field} is missing`).toHaveProperty(field);
+      }
+      expect(mailbox.messages.length).toBeGreaterThan(0);
+      for (const field of fieldsOf("Message")) {
+        expect(mailbox.messages[0], `Message.${field} is missing`).toHaveProperty(field);
+      }
+    });
+
+    it("refuses to read a mailbox nobody has signed in to", async () => {
+      await expect(mail().inbox(10, null)).rejects.toThrow();
+    });
+
+    // Signing out has to actually sign out, or the panel keeps showing a
+    // mailbox belonging to an account the person just disconnected.
+    it("stops reading the mailbox after signing out", async () => {
+      const gmail = await signedIn();
+      await gmail.disconnect();
+      expect((await gmail.status()).connected).toBe(false);
+      await expect(gmail.inbox(10, null)).rejects.toThrow();
+    });
+
+    it("searches rather than listing when given a query", async () => {
+      const gmail = await signedIn();
+      const found = await gmail.inbox(10, "deploy");
+      expect(found.messages.length).toBeGreaterThan(0);
+      for (const message of found.messages) {
+        const haystack = `${message.subject} ${message.snippet} ${message.from_name}`;
+        expect(haystack.toLowerCase()).toContain("deploy");
+      }
+    });
   });
 
   describe("github", () => {

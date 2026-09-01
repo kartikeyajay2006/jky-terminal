@@ -6,7 +6,7 @@ mod listing;
 mod turn;
 mod state;
 
-use commands::{ai, apps, browser, games, github, open, pty, scrollback, settings, store, vault};
+use commands::{ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, vault};
 use state::AppState;
 use tauri::Manager;
 
@@ -72,6 +72,11 @@ fn main() {
             github::apps_github_commits,
             github::apps_github_branches,
             github::apps_github_notifications,
+            gmail::apps_gmail_set_client_id,
+            gmail::apps_gmail_status,
+            gmail::apps_gmail_connect,
+            gmail::apps_gmail_disconnect,
+            gmail::apps_gmail_inbox,
             open::open_external,
             scrollback::scrollback_load,
             scrollback::scrollback_save,
