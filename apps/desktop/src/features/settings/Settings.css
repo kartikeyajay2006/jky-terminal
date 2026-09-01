@@ -460,11 +460,3 @@
 }
 
 /* The right-hand half of a field label: what the control is currently doing. */
-.field__note {
-  float: right;
-  color: var(--text-dim);
-  font-size: 10px;
-  font-weight: 400;
-  letter-spacing: 0;
-  text-transform: none;
-}

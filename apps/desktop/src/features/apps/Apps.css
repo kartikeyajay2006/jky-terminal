@@ -3528,49 +3528,11 @@
 
 /* ---- the layout editor -------------------------------------------------- */
 
+/* The editor's toolbar sits under the lede rather than beside it: the header
+   is prose, and a row of buttons wrapping into a paragraph is neither. */
 .apps__tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
+  justify-content: flex-start;
   margin-top: var(--s3);
-}
-
-.apps__tool {
-  padding: var(--s2) var(--s3);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--surface);
-  color: var(--text-muted);
-  font-size: 12px;
-  cursor: pointer;
-  transition:
-    border-color var(--fast) var(--ease),
-    color var(--fast) var(--ease);
-}
-
-.apps__tool:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.apps__tool[aria-pressed="true"] {
-  border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
-  color: var(--accent);
-}
-
-.apps__tool:disabled {
-  opacity: 0.45;
-  cursor: default;
-}
-
-.apps__tool--quiet {
-  color: var(--text-dim);
-}
-
-.apps__tool--small {
-  padding: 1px var(--s2);
-  font-size: 11px;
 }
 
 .apps__group-tools {
@@ -3653,46 +3615,11 @@
   border-top: 1px solid var(--line);
 }
 
-.apps__pill {
-  display: grid;
-  place-items: center;
-  min-width: 26px;
-  height: 24px;
-  padding: 0 var(--s2);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--ground);
-  color: var(--text-muted);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  cursor: pointer;
-  transition:
-    border-color var(--fast) var(--ease),
-    color var(--fast) var(--ease);
-}
 
-.apps__pill:hover {
-  border-color: var(--app-accent);
-  color: var(--app-accent);
-}
 
-.apps__pill[aria-pressed="true"] {
-  border-color: var(--app-accent);
-  background: color-mix(in srgb, var(--app-accent) 16%, transparent);
-  color: var(--app-accent);
-}
 
 /* The one control that loses something wears the colour that says so. */
-.apps__pill--danger:hover {
-  border-color: var(--danger);
-  color: var(--danger);
-}
 
-.apps__pill:focus-visible,
-.apps__tool:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
-}
 
 /* A small tile has no room for the blurb; the name and the glyph carry it. */
 .apps__tile[data-size="small"] .apps__tile-blurb {

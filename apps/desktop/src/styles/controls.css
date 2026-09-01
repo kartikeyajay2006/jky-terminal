@@ -1,0 +1,187 @@
+/*
+ * The small controls two features now share.
+ *
+ * They started in `Apps.css` for the layout editor, and the dashboard's board
+ * editor reached across and used them by name. That works only for as long as
+ * both stylesheets happen to be in the bundle together — a component styled by
+ * another feature's stylesheet is one that loses its styling the day that
+ * feature is split out, and nothing fails when it does. So they live here,
+ * loaded once, belonging to neither.
+ *
+ * Two shapes. A `tool` is a labelled action in a toolbar; a `pill` is a single
+ * glyph acting on the thing it sits on.
+ */
+
+.tool {
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.2;
+  white-space: nowrap;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-quick) var(--ease),
+    color var(--motion-quick) var(--ease);
+}
+
+.tool:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.tool[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.tool:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.tool--quiet {
+  color: var(--text-dim);
+}
+
+.tool--small {
+  padding: 1px var(--s2);
+  font-size: 11px;
+}
+
+.pill {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-quick) var(--ease),
+    color var(--motion-quick) var(--ease);
+}
+
+/* Falls back to the accent where no app colour is in scope. */
+.pill:hover {
+  border-color: var(--app-accent, var(--accent));
+  color: var(--app-accent, var(--accent));
+}
+
+.pill[aria-pressed="true"] {
+  border-color: var(--app-accent, var(--accent));
+  background: color-mix(in srgb, var(--app-accent, var(--accent)) 16%, transparent);
+  color: var(--app-accent, var(--accent));
+}
+
+/* The one control that loses something wears the colour that says so. */
+.pill--danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.pill:focus-visible,
+.tool:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* A row of tools. Right-aligned and only as tall as its buttons — it is a
+   toolbar, not a panel, and it has no business taking a row of the layout. */
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--s2);
+}
+
+
+/*
+ * Buttons, fields and alerts.
+ *
+ * These lived in the key vault's stylesheet and were used by the assistant
+ * and the dashboard from there — the same borrowing the ownership test now
+ * refuses. They are the app's general control vocabulary rather than the
+ * vault's, so they belong here.
+ */
+.field {
+  display: grid;
+  gap: var(--s2);
+}
+
+.field__label {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.field__row {
+  display: flex;
+  gap: var(--s2);
+}
+
+.field__note {
+  float: right;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.btn {
+  padding: var(--s3) var(--s4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: all var(--fast) var(--ease);
+}
+
+.btn:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn:disabled {
+  opacity: 0.4;
+}
+
+.btn--primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #04141a;
+  font-weight: 700;
+}
+
+.btn--primary:hover:not(:disabled) {
+  background: #4af0ff;
+  border-color: #4af0ff;
+  color: #04141a;
+}
+
+.btn--danger:hover:not(:disabled) {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.alert {
+  margin: 0;
+  padding: var(--s3);
+  border-left: 2px solid var(--danger);
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
+  font-size: 12px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}

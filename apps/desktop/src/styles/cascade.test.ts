@@ -57,6 +57,98 @@ function selectors(css: string): string[] {
     .filter((s) => s.startsWith("."));
 }
 
+/** Every class named in a `className` literal under a directory. */
+function classesUsedIn(dir: string): Map<string, string> {
+  const out = new Map<string, string>();
+
+  function walk(at: string) {
+    let entries;
+    try {
+      entries = readdirSync(at, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = join(at, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (entry.name.endsWith(".tsx") && !entry.name.endsWith(".test.tsx")) {
+        const text = readFileSync(full, "utf8");
+        for (const [, literal] of text.matchAll(/className=\{?"([^"]+)"/g)) {
+          for (const name of literal.split(/\s+/).filter(Boolean)) {
+            if (!out.has(name)) out.set(name, full);
+          }
+        }
+      }
+    }
+  }
+
+  walk(join(__dirname, "../..", dir));
+  return out;
+}
+
+/** The classes a stylesheet defines, by the directory it lives in. */
+function classesDefined(): Map<string, Set<string>> {
+  const byFile = new Map<string, Set<string>>();
+  for (const { path, text } of cssFiles()) {
+    const names = new Set<string>();
+    for (const selector of selectors(text)) {
+      for (const [, name] of selector.matchAll(/\.([a-z0-9_-]+)/gi)) names.add(name);
+    }
+    byFile.set(path, names);
+  }
+  return byFile;
+}
+
+describe("stylesheet ownership", () => {
+  /*
+   * A component styled by another feature's stylesheet.
+   *
+   * The dashboard's board editor reached across and used `.apps__tool` and
+   * `.apps__pill` by name. It looked right, because both stylesheets happen
+   * to be in the same bundle — and it would have lost its styling silently
+   * the day either feature was split out or lazily loaded. Nothing would
+   * fail; the buttons would just stop looking like buttons.
+   *
+   * Only fires when the class genuinely exists in another feature, so an
+   * unrecognised class — xterm's, or one built at runtime — is not a false
+   * positive.
+   */
+  it("never styles one feature with another feature's stylesheet", () => {
+    const defined = classesDefined();
+    const features = readdirSync(join(__dirname, "../features"), { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => e.name);
+
+    const borrowed: string[] = [];
+
+    for (const feature of features) {
+      const own = new Set<string>();
+      const elsewhere = new Map<string, string>();
+
+      for (const [path, names] of defined) {
+        const isShared = path.includes("/styles/") || path.includes("/app/");
+        const otherFeature = /\/features\/([^/]+)\//.exec(path)?.[1];
+
+        for (const name of names) {
+          if (isShared || otherFeature === feature) own.add(name);
+          else if (otherFeature) elsewhere.set(name, otherFeature);
+        }
+      }
+
+      for (const [name, where] of classesUsedIn(`src/features/${feature}`)) {
+        if (!own.has(name) && elsewhere.has(name)) {
+          borrowed.push(`${feature} uses .${name}, defined only in ${elsewhere.get(name)} (${where.split("/").pop()})`);
+        }
+      }
+    }
+
+    expect(
+      borrowed,
+      "move the shared class into src/styles, or give this feature its own",
+    ).toEqual([]);
+  });
+});
+
 describe("stylesheet cascade", () => {
   it("finds the stylesheets to check", () => {
     expect(cssFiles().length).toBeGreaterThan(3);

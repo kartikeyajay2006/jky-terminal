@@ -340,10 +340,10 @@ function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: s
           <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>A</kbd> to move between them.
         </p>
 
-        <div className="apps__tools">
+        <div className="toolbar apps__tools">
           <button
             type="button"
-            className="apps__tool"
+            className="tool"
             aria-pressed={editing}
             onClick={() => setEditing((on) => !on)}
           >
@@ -353,7 +353,7 @@ function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: s
             <>
               <button
                 type="button"
-                className="apps__tool"
+                className="tool"
                 onClick={() => {
                   // Straight into the name field: you name a thing when you
                   // make it, and "New group" is not a name anyone wanted.
@@ -369,7 +369,7 @@ function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: s
               {hidden > 0 && (
                 <button
                   type="button"
-                  className="apps__tool"
+                  className="tool"
                   onClick={() => setLayout(restoreAll)}
                 >
                   Restore {hidden} hidden
@@ -377,7 +377,7 @@ function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: s
               )}
               <button
                 type="button"
-                className="apps__tool apps__tool--quiet"
+                className="tool tool--quiet"
                 onClick={() => setLayout(defaultLayout(APPS))}
               >
                 Reset
@@ -416,14 +416,14 @@ function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: s
                 <span className="apps__group-tools">
                   <button
                     type="button"
-                    className="apps__tool apps__tool--small"
+                    className="tool tool--small"
                     onClick={() => setNaming(group.id)}
                   >
                     Rename
                   </button>
                   <button
                     type="button"
-                    className="apps__tool apps__tool--small"
+                    className="tool tool--small"
                     aria-label={`Remove group ${group.name}`}
                     disabled={layout.groups.length <= 1}
                     onClick={() => setLayout((l) => removeGroup(l, group.id))}
@@ -547,7 +547,7 @@ function Tile({
         <div className="apps__tile-edit">
           <button
             type="button"
-            className="apps__pill"
+            className="pill"
             aria-label={`Size: ${item.size}`}
             onClick={() => onChange((l) => setSize(l, item.key, nextSize))}
           >
@@ -555,7 +555,7 @@ function Tile({
           </button>
           <button
             type="button"
-            className="apps__pill"
+            className="pill"
             aria-pressed={item.pinned}
             aria-label={item.pinned ? "Unpin" : "Pin"}
             onClick={() => onChange((l) => togglePin(l, item.key))}
@@ -564,7 +564,7 @@ function Tile({
           </button>
           <button
             type="button"
-            className="apps__pill"
+            className="pill"
             aria-label="Duplicate"
             onClick={() => onChange((l) => duplicateItem(l, item.key, elsewhere.id))}
           >
@@ -572,7 +572,7 @@ function Tile({
           </button>
           <button
             type="button"
-            className="apps__pill"
+            className="pill"
             aria-label="Hide"
             onClick={() => onChange((l) => setHidden(l, item.key, true))}
           >
@@ -580,7 +580,7 @@ function Tile({
           </button>
           <button
             type="button"
-            className="apps__pill apps__pill--danger"
+            className="pill pill--danger"
             aria-label="Remove"
             onClick={() => onChange((l) => removeItem(l, item.key))}
           >

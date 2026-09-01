@@ -219,10 +219,10 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
         status={<>{longDate(today.toISOString())}</>}
       />
 
-      <div className="board__tools">
+      <div className="toolbar">
         <button
           type="button"
-          className="apps__tool"
+          className="tool"
           aria-pressed={editing}
           onClick={() => setEditing((on) => !on)}
         >
@@ -234,7 +234,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
         {hidden > 0 && (
           <button
             type="button"
-            className="apps__tool"
+            className="tool"
             onClick={() => setLayout(restoreAllCards)}
           >
             Restore {hidden} hidden
@@ -243,7 +243,7 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
         {editing && (
           <button
             type="button"
-            className="apps__tool apps__tool--quiet"
+            className="tool tool--quiet"
             onClick={() => setLayout(defaultCardLayout())}
           >
             Reset
@@ -377,13 +377,13 @@ function Card({
           <span className="card__edit">
             <button
               type="button"
-              className="apps__pill"
+              className="pill"
               aria-label={`Size: ${size}`}
               onClick={onResize}
             >
               {size[0].toUpperCase()}
             </button>
-            <button type="button" className="apps__pill" aria-label="Hide card" onClick={onHide}>
+            <button type="button" className="pill" aria-label="Hide card" onClick={onHide}>
               ◯
             </button>
           </span>

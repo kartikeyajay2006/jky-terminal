@@ -97,7 +97,13 @@
      up against the top of it. `align-content` overrides the base panel's
      `start`, which is right for an article and wrong for a board. */
   min-height: 100%;
-  grid-template-rows: auto minmax(0, 1fr);
+  /*
+   * Head, toolbar, board — and only the board stretches. With two rows named
+   * and three children, the toolbar took the growing row and the board fell
+   * into an implicit one: a small button drawn the height of the window with
+   * the cards pushed under it.
+   */
+  grid-template-rows: auto auto minmax(0, 1fr);
   align-content: stretch;
 }
 
@@ -203,11 +209,7 @@
   gap: var(--s2);
 }
 
-.board__tools {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
+
 
 /* One column, and nothing spans two rows in it — a card claiming double
    height in a single-column layout is just a taller card. */

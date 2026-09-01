@@ -172,23 +172,6 @@
   gap: var(--s4);
 }
 
-.field {
-  display: grid;
-  gap: var(--s2);
-}
-
-.field__label {
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-dim);
-}
-
-.field__row {
-  display: flex;
-  gap: var(--s2);
-}
-
 .input {
   flex: 1;
   min-width: 0;
@@ -208,42 +191,6 @@
   border-color: var(--accent);
   outline: none;
   box-shadow: 0 0 0 3px var(--accent-glow);
-}
-
-.btn {
-  padding: var(--s3) var(--s4);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  color: var(--text-muted);
-  white-space: nowrap;
-  transition: all var(--fast) var(--ease);
-}
-
-.btn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.btn:disabled {
-  opacity: 0.4;
-}
-
-.btn--primary {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #04141a;
-  font-weight: 700;
-}
-
-.btn--primary:hover:not(:disabled) {
-  background: #4af0ff;
-  border-color: #4af0ff;
-  color: #04141a;
-}
-
-.btn--danger:hover:not(:disabled) {
-  border-color: var(--danger);
-  color: var(--danger);
 }
 
 /* The sealed readout that replaces the input once a key is stored. */
@@ -268,16 +215,6 @@
   font-size: 12px;
   color: var(--text-dim);
   margin: 0;
-}
-
-.alert {
-  margin: 0;
-  padding: var(--s3);
-  border-left: 2px solid var(--danger);
-  background: rgba(255, 77, 106, 0.08);
-  color: var(--danger);
-  font-size: 12px;
-  border-radius: 0 var(--radius) var(--radius) 0;
 }
 
 @media (max-width: 640px) {
