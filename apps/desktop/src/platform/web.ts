@@ -315,6 +315,11 @@ export function createWebPlatform(): Platform {
   };
 
   const ai: AiApi = {
+    // The preview build has no key and no local runtime, so it answers the
+    // way the real one does when neither is configured: by saying so.
+    async askOnce() {
+      throw new Error("add an API key, or run Ollama, to get suggestions");
+    },
     async send(_provider, conversation) {
       const last = conversation[conversation.length - 1];
       const first = last?.content[0];

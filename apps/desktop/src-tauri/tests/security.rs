@@ -102,6 +102,17 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
     // returns secret material, and pty_spawn returns only an opaque session id.
     let expected = vec![
         "ai_approve_tool".to_string(),
+        // One question, one answer, for a command that failed. Not `ai_send`:
+        // no tools, no turn state, no history — so a suggestion under a
+        // failed command cannot run anything, and cannot collide with a
+        // conversation in the Assistant panel over the single turn slot.
+        //
+        // It reads a key to make the request and returns text. The prompt is
+        // built and bounded in the window, refused here if it is larger than
+        // a bounded one could be, and the answer is cut off once it is long
+        // enough — dropping the connection is the only way to stop paying for
+        // words nobody asked for.
+        "ai_ask_once".to_string(),
         "ai_cancel".to_string(),
         "ai_reject_tool".to_string(),
         "ai_send".to_string(),

@@ -7,7 +7,7 @@ mod turn;
 mod state;
 
 use commands::{
-    ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, system,
+    advice, ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, system,
     vault,
 };
 use state::AppState;
@@ -40,6 +40,7 @@ fn main() {
             pty::commands_list,
             ai::ai_send,
             ai::ai_cancel,
+            advice::ai_ask_once,
             ai::ai_approve_tool,
             ai::ai_reject_tool,
             store::store_list_notes,

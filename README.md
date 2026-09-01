@@ -177,6 +177,29 @@ It installs its own shell commands:
 the pty like any other output — no socket, no port, no knowledge of where the
 app is.
 
+#### When a command fails
+
+The shell reports a non-zero exit through its own prompt hook, and an offer
+appears under the command: **Explain**, **Fix**, **Show commands**, **Ignore**
+— by button or by the number beside each one.
+
+**Nothing is sent until you choose.** The offer is drawn from what the
+terminal already knows, which is what lets it appear under every failure
+without costing anything. Pressing a button builds one bounded request — the
+command, the exit code, and the tail of the output, capped — asks for a short
+answer, and stops reading once the answer is long enough, which is the only
+way to actually stop paying for one. It is a single question with no tools, no
+history and no conversation state, so a suggestion in the terminal can never
+run anything and never collides with the Assistant panel.
+
+With no API key and no local runtime, it says so once instead of offering four
+buttons that all fail the same way. Ollama counts: it needs no key, and its
+OpenAI-compatible endpoint is served by the adapter that already exists.
+
+Bash and zsh are hooked, by their own mechanisms — `PROMPT_COMMAND` for one,
+startup files that hand straight back to yours for the other. Any other shell
+is left completely alone, and the feature is simply absent there.
+
 ### ✦ Assistant
 
 Streaming chat over the Anthropic Messages API, with tools:

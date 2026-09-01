@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useXterm } from "./useXterm";
 import { TerminalSearch } from "./TerminalSearch";
 import { TerminalMenu, type MenuPoint } from "./TerminalMenu";
+import { FailureHelp } from "./FailureHelp";
+import type { CommandFailure } from "./commandFailure";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 
@@ -12,7 +14,14 @@ interface TerminalProps {
 export function Terminal({ tabId }: TerminalProps) {
   const container = useRef<HTMLDivElement>(null);
   // The tab id is the key its scrollback is saved under.
-  const term = useXterm(container, tabId);
+  /*
+   * The last command that failed, if the shell reported one.
+   *
+   * Replaced rather than queued: a second failure is the one you are looking
+   * at, and a stack of offers under a terminal would be worse than none.
+   */
+  const [failure, setFailure] = useState<CommandFailure | null>(null);
+  const term = useXterm(container, tabId, setFailure);
 
   const [searching, setSearching] = useState(false);
   const [menuAt, setMenuAt] = useState<MenuPoint | null>(null);
@@ -65,6 +74,20 @@ export function Terminal({ tabId }: TerminalProps) {
           setMenuAt({ x: e.clientX, y: e.clientY });
         }}
       />
+
+      {/* Under the terminal rather than inside it: the offer needs buttons and
+          focus, and xterm draws characters. It sits in the same box so it
+          reads as part of the output it is about. */}
+      {failure && (
+        <FailureHelp
+          failure={failure}
+          recentOutput={() => term.recentOutput()}
+          onDismiss={() => {
+            setFailure(null);
+            term.focus();
+          }}
+        />
+      )}
 
       {searching && (
         <TerminalSearch

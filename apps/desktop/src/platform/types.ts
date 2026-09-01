@@ -91,6 +91,15 @@ export interface AiApi {
   onToolRan(handler: (ran: ToolRan) => void): Promise<() => void>;
   onDone(handler: (stopReason: string) => void): Promise<() => void>;
   onError(handler: (message: string) => void): Promise<() => void>;
+  /**
+   * One question, one answer.
+   *
+   * Not `send`: no tools, no history, no turn — so a suggestion under a
+   * failed command cannot run anything, and cannot collide with a
+   * conversation in the Assistant panel. The answer is cut off once it is
+   * long enough, which is the only way to stop paying for one.
+   */
+  askOnce(provider: string, prompt: string): Promise<string>;
 }
 
 export interface CommandSpec {

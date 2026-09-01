@@ -1,4 +1,5 @@
 pub mod apps;
+pub mod advice;
 pub mod ai;
 pub mod browser;
 pub mod games;

@@ -118,6 +118,7 @@ export function createTauriPlatform(): Platform {
   };
 
   const ai: AiApi = {
+    askOnce: (provider, prompt) => invoke<string>("ai_ask_once", { provider, prompt }),
     async send(provider, conversation) {
       await invoke<void>("ai_send", { provider, conversation });
     },

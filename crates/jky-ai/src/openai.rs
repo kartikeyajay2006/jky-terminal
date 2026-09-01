@@ -6,6 +6,14 @@ use crate::types::{ChatRequest, ContentBlock, Role, StreamEvent};
 
 pub const CHAT_COMPLETIONS_URL: &str = "https://api.openai.com/v1/chat/completions";
 
+/// Ollama's OpenAI-compatible endpoint, on the machine this is running on.
+///
+/// Ollama speaks two protocols and this is the one that needs no second
+/// adapter: the same request body, the same SSE framing, a different host. It
+/// wants an API key header and ignores what is in it, which is the one place
+/// a local runtime and a paid one differ here.
+pub const OLLAMA_CHAT_URL: &str = "http://localhost:11434/v1/chat/completions";
+
 /// Build the request body.
 ///
 /// Differs from the Anthropic shape in four places, each of which fails
@@ -153,12 +161,27 @@ fn decode_frame(frame: &str) -> Vec<StreamEvent> {
 
 pub struct OpenAiProvider {
     api_key: Secret<String>,
+    url: String,
     client: reqwest::Client,
 }
 
 impl OpenAiProvider {
     pub fn new(api_key: Secret<String>) -> Self {
-        Self { api_key, client: reqwest::Client::new() }
+        Self::at(CHAT_COMPLETIONS_URL, api_key)
+    }
+
+    /// The same protocol, somewhere else.
+    ///
+    /// Exists for Ollama, which serves an OpenAI-compatible endpoint on this
+    /// machine. A whole second adapter for a body and a stream format that
+    /// are already implemented here would be two copies of one thing, and the
+    /// second copy is the one that stops getting fixed.
+    pub fn at(url: &str, api_key: Secret<String>) -> Self {
+        Self {
+            api_key,
+            url: url.to_string(),
+            client: reqwest::Client::new(),
+        }
     }
 }
 
@@ -170,7 +193,7 @@ impl AIProvider for OpenAiProvider {
     ) -> Result<(), AiError> {
         let response = self
             .client
-            .post(CHAT_COMPLETIONS_URL)
+            .post(&self.url)
             // Bearer, not x-api-key. The other spelling returns a 401 that
             // reads like a bad key rather than a bad header.
             .header("authorization", format!("Bearer {}", self.api_key.expose()))
@@ -269,6 +292,25 @@ mod tests {
     #[test]
     fn the_endpoint_is_the_documented_one() {
         assert_eq!(CHAT_COMPLETIONS_URL, "https://api.openai.com/v1/chat/completions");
+    }
+
+    // The two constructors differ in exactly one thing, and it is the thing
+    // that decides whether a request leaves this machine.
+    #[test]
+    fn the_default_endpoint_is_openai_and_the_other_one_is_local() {
+        assert!(CHAT_COMPLETIONS_URL.starts_with("https://api.openai.com/"));
+        assert!(OLLAMA_CHAT_URL.starts_with("http://localhost:"));
+        assert!(OLLAMA_CHAT_URL.ends_with("/v1/chat/completions"), "not the compatible endpoint");
+    }
+
+    #[test]
+    fn a_provider_built_for_ollama_posts_to_ollama() {
+        let p = OpenAiProvider::at(OLLAMA_CHAT_URL, Secret::new("ignored".to_string()));
+        assert_eq!(p.url, OLLAMA_CHAT_URL);
+        assert_eq!(
+            OpenAiProvider::new(Secret::new("k".to_string())).url,
+            CHAT_COMPLETIONS_URL
+        );
     }
 
     #[test]

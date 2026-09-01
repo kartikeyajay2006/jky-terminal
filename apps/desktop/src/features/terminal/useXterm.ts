@@ -13,11 +13,19 @@ import { isAppShortcut } from "../../app/shortcuts";
 import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFont";
 import { copyText, readText } from "./clipboard";
 import { decodeCommand, renderResult } from "./shellCommand";
+import { decodeFailure, type CommandFailure } from "./commandFailure";
 import { runShellCommand } from "./runShellCommand";
 import type { SearchHits } from "./TerminalSearch";
 
 /** What a mounted terminal lets the surrounding UI do to it. */
 export interface TerminalControls {
+  /**
+   * The tail of what is on screen, for a request that has been asked for.
+   *
+   * Read on demand rather than kept, so a terminal nobody asks about never
+   * copies its own buffer.
+   */
+  recentOutput: (lines?: number) => string;
   search: (query: string) => void;
   findNext: () => void;
   findPrevious: () => void;
@@ -52,11 +60,21 @@ export function useXterm(
    * not care about persistence want.
    */
   scrollbackKey?: string,
+  /**
+   * Called when the shell reports a command that failed.
+   *
+   * Kept in a ref rather than a dependency: this effect creates and destroys
+   * an xterm and a pty, and re-running it because a handler identity changed
+   * would tear down the terminal under the user.
+   */
+  onFailure?: (failure: CommandFailure) => void,
 ): TerminalControls {
   const term = useRef<Xterm | null>(null);
   const searchAddon = useRef<SearchAddon | null>(null);
   const ptyRef = useRef<string | null>(null);
   const [hits, setHits] = useState<SearchHits>(NO_HITS);
+  const failureHandler = useRef(onFailure);
+  failureHandler.current = onFailure;
 
   useEffect(() => {
     const node = container.current;
@@ -165,6 +183,14 @@ export function useXterm(
       const game = decodeGamePayload(payload);
       if (game) {
         useOpenGame.getState().open(game);
+        return true;
+      }
+
+      // The shell's prompt hook, reporting a command that failed. Only
+      // failures are ever sent, so anything decoded here is one.
+      const failure = decodeFailure(payload);
+      if (failure) {
+        failureHandler.current?.(failure);
         return true;
       }
 
@@ -354,6 +380,26 @@ export function useXterm(
         setHits(NO_HITS);
       },
       selection: () => term.current?.getSelection() ?? "",
+      /*
+       * The last few lines on screen, read out of xterm's own buffer.
+       *
+       * From the viewport's bottom upward, because what went wrong is the
+       * last thing printed. Trailing blanks are dropped here rather than
+       * shipped and trimmed later.
+       */
+      recentOutput: (lines = 40) => {
+        const buffer = term.current?.buffer.active;
+        if (!buffer) return "";
+
+        const end = buffer.baseY + buffer.cursorY;
+        const start = Math.max(0, end - lines);
+        const out: string[] = [];
+        for (let y = start; y <= end; y += 1) {
+          out.push(buffer.getLine(y)?.translateToString(true) ?? "");
+        }
+        while (out.length > 0 && out[out.length - 1].trim() === "") out.pop();
+        return out.join("\n");
+      },
       async copySelection() {
         const text = term.current?.getSelection() ?? "";
         return text ? copyText(text) : false;
