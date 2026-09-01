@@ -43,7 +43,7 @@ Six places to be, reachable from the rail or from `Ctrl+K`:
 | ❯ | **Terminal** | Real PTY shells in tabs, with find, links and history |
 | ✦ | **Assistant** | Streaming chat that can read your project and run commands |
 | ◈ | **Games** | An arcade: Dino Run, Snake, Tic Tac Toe, Flappy Bird |
-| ⊞ | **Apps** | Seven, in tabs: GitHub, Browser, Weather, News, Map, Timer, Calculator |
+| ⊞ | **Apps** | Eight, in tabs: GitHub, Gmail, Browser, Weather, News, Map, Timer, Calculator |
 | ⚙ | **Settings** | Themes, API keys, and the shell commands it installs |
 
 ---
@@ -74,7 +74,7 @@ flowchart TB
         PTY["jky-pty<br/>portable-pty · shell launchers"]
         AI["jky-ai<br/>Anthropic · tool sandbox"]
         STORE["jky-store<br/>notes · todos · events · reminders"]
-        APPS["jky-apps<br/>weather · news · maps · github"]
+        APPS["jky-apps<br/>weather · news · maps · github · gmail"]
         SETTINGS["jky-settings"]
         AUDIT["jky-audit"]
     end
@@ -84,7 +84,7 @@ flowchart TB
         SHELL[("Your shell")]
         DISK[("~/.config/dev.jky.terminal")]
         NET[("api.anthropic.com")]
-        PUB[("open-meteo · newspapers<br/>osm · github")]
+        PUB[("open-meteo · newspapers<br/>osm · github · gmail")]
     end
 
     ADAPTER -->|invoke| CSP
@@ -232,13 +232,14 @@ already reacted is shorter than human reaction time.
 
 ### ⊞ Apps
 
-Seven apps, several open at once in tabs. They stay mounted while you switch,
+Eight apps, several open at once in tabs. They stay mounted while you switch,
 so a timer keeps counting while you read the news and a half-typed sum is
 still there when you come back. `Ctrl+Shift+A` moves between them.
 
 | | App | What it is |
 |---|---|---|
 | ◐ | **GitHub** | A dashboard: your repositories with their files, commits and branches; issues; pull requests; notifications; a contribution graph |
+| ✉ | **Gmail** | Your inbox, read-only. It cannot send, delete or label anything, and never fetches a message body |
 | 🌐 | **Browser** | Private browsing in this window, on the webview your OS already ships |
 | ☀ | **Weather** | Now and three days ahead, anywhere. No key, no account |
 | 📰 | **News** | Front pages from The Hindu, Times of India, Indian Express, BBC World and Hacker News |
@@ -248,7 +249,12 @@ still there when you come back. `Ctrl+Shift+A` moves between them.
 
 Each app carries its own colour, and it is the same colour on its tile, its
 tab, and the panel it opens. Colour is wayfinding here: you can tell where you
-are without reading.
+are without reading — which is why the eighth app needed an eighth colour
+rather than a shared one. It was picked by measurement: mapping each theme's
+hue space, checking candidates in CIE Lab against every colour that theme
+already defines, and keeping the one whose worst separation across all seven
+themes was widest. That is 30 ΔE, wider than several pairs those themes
+already ship, at no worse than 4.63:1 against any ground.
 
 #### GitHub
 
@@ -270,6 +276,43 @@ An OAuth app ships with the build, so a new install signs in immediately
 without registering anything. A device-flow client id is public by design and
 has no secret beside it — which is why committing one is safe, and a test pins
 its shape so nothing secret-looking can be slipped in next to it.
+
+#### Gmail
+
+Read-only, and that is the design rather than a limitation waiting to be
+lifted. The scope is `gmail.readonly` and nothing else, so there is no send,
+no delete and no label change — and the consent screen Google shows you says
+exactly that.
+
+**No message body is ever fetched.** A list needs three headers and the
+snippet Gmail already sends, so that is all this asks for. Opening a message
+hands it to Gmail in your browser rather than rendering it here, because
+rendering it would mean fetching it, and a terminal has no business holding
+the contents of your inbox.
+
+Sign-in is the **authorization-code flow with PKCE**, in your own browser.
+Not by preference: Google has answered OAuth requests from embedded webviews
+with `disallowed_useragent` since July 2023, so a sign-in inside this window
+is not possible and is not attempted. Rust opens a socket on `127.0.0.1`, your
+browser redirects back to it, and the socket closes. It serves exactly one
+request — a doorbell, not a web server.
+
+Nothing from that flow reaches the window: not the verifier, not the `state`,
+not the code, not the access token, not the refresh token. The panel calls
+`connect` and is told an email address.
+
+Unlike GitHub, **no client id ships with the app**, and the panel walks you
+through making one. A Google client belongs to a project and a consent screen
+that someone owns; shipping one would put every install of JKY Terminal in a
+stranger's audit log. You need a project with the Gmail API enabled and an
+OAuth client of type **Desktop app** — a Web client will not work, because it
+wants a redirect address this app does not have. There is no client secret to
+copy: an installed-app client is issued without one, which is what PKCE is
+there to replace.
+
+Access tokens last an hour, which is shorter than this app stays open, so a
+401 refreshes once and retries rather than telling you to sign in again when
+nothing had gone wrong.
 
 #### Browser
 
@@ -377,7 +420,7 @@ jky-terminal/
 │  │  │  ├─ dashboard/        notes, todos, calendar, reminders
 │  │  │  ├─ notifications/    banners and the notification centre
 │  │  │  ├─ games/            grid engine + four games
-│  │  │  ├─ apps/             registry, tabs, switcher, and the seven apps
+│  │  │  ├─ apps/             registry, tabs, switcher, and the eight apps
 │  │  │  ├─ palette/          Ctrl+K
 │  │  │  └─ settings/         themes, keys, command catalogue
 │  │  ├─ platform/            the adapter — tauri.ts and web.ts
@@ -388,7 +431,7 @@ jky-terminal/
    ├─ jky-pty/                portable-pty, launchers, command catalogue
    ├─ jky-ai/                 AIProvider, Anthropic, tool sandbox
    ├─ jky-store/              collections + capped scrollback
-   ├─ jky-apps/               weather, news, places, routes, github, browser
+   ├─ jky-apps/               weather, news, places, routes, github, gmail, browser
    ├─ jky-settings/           preferences
    └─ jky-audit/              local-only audit log
 ```
@@ -420,11 +463,13 @@ where a platform-specific keychain backend actually fails.
 
 Stated plainly, because a README that only lists what works is a sales page.
 
-- **Gmail and YouTube.** Both need Google OAuth, and that cannot happen inside
-  an embedded webview: since July 2023 Google answers `disallowed_useragent`
-  to one, and no setting turns it off. The sign-in has to go out to the real
-  browser and come back, which means a loopback server this app does not have
-  yet.
+- **YouTube.** It needs Google OAuth like Gmail does, and Gmail now has the
+  loopback sign-in that makes that possible — so this is a matter of building
+  it rather than of not being able to. What is not planned is stripping ads:
+  it violates YouTube's terms, and this app ships under a real name.
+- **Reading a message in the Gmail app.** By design, not by omission. Showing
+  the mail would mean fetching the mail, and the scope this app asks for is
+  deliberately narrow enough that it cannot. Messages open in Gmail instead.
 - **Signing and auto-update.** The release pipeline works; certificates and an
   updater keypair do not exist yet. See [`docs/RELEASING.md`](docs/RELEASING.md).
 - **Editor tab.** Monaco is a multi-megabyte dependency and the bundle is
