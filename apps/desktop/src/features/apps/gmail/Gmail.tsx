@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { getPlatform } from "../../../platform";
-import type { GmailMailbox, GmailMessage } from "../../../platform/types";
+import type { GmailFull, GmailMailbox, GmailMessage } from "../../../platform/types";
 
 /** How many rows one view asks for. Each one costs a request to Google. */
 const ROWS = 25;
@@ -98,6 +98,7 @@ export function Gmail() {
   const [draft, setDraft] = useState("");
   const [secretDraft, setSecretDraft] = useState("");
   const [query, setQuery] = useState("");
+  const [open, setOpen] = useState<GmailFull | null>(null);
   const [busy, setBusy] = useState(false);
   const now = Date.now();
 
@@ -178,12 +179,27 @@ export function Gmail() {
     setQuery(draft.trim());
   }
 
+  /**
+   * Read a message here.
+   *
+   * This is the one call that fetches a body, and only for the message that
+   * was opened — the list still asks for metadata alone, so the contents of
+   * everything else stay where they are. What comes back is text: Rust turns
+   * an HTML part into text before it leaves the backend, so nothing in a
+   * message can request an image or reach anything that would run a script.
+   */
   function openMessage(message: GmailMessage) {
-    // Gmail's own reader, in the browser. Rendering it here would mean
-    // fetching the body, which this app deliberately never does.
-    void getPlatform().openExternal(
-      `https://mail.google.com/mail/u/0/#inbox/${encodeURIComponent(message.id)}`,
-    );
+    setError(null);
+    // Shown immediately from the row we already have, so the pane appears at
+    // once and fills in — rather than nothing happening for a round trip.
+    setOpen({ message, body: "" });
+    void getPlatform()
+      .apps.gmail.message(message.id)
+      .then(setOpen)
+      .catch((e: unknown) => {
+        setOpen(null);
+        setError(e instanceof Error ? e.message : String(e));
+      });
   }
 
   if (phase.at === "loading") {
@@ -350,6 +366,7 @@ export function Gmail() {
         </p>
       )}
 
+      <div className="gm__split" data-reading={open ? "" : undefined}>
       {mailbox && mailbox.messages.length > 0 && (
         <ul className="gm__list" aria-label={query === "" ? "Inbox" : "Search results"}>
           {mailbox.messages.map((message) => (
@@ -358,6 +375,7 @@ export function Gmail() {
                 type="button"
                 className="gm__row"
                 data-unread={message.unread ? "" : undefined}
+                aria-current={open?.message.id === message.id ? "true" : undefined}
                 onClick={() => openMessage(message)}
               >
                 <span className="gm__from" title={message.from_address}>
@@ -376,6 +394,43 @@ export function Gmail() {
           ))}
         </ul>
       )}
+
+      {open && <Reading full={open} onClose={() => setOpen(null)} />}
+      </div>
     </div>
+  );
+}
+
+/**
+ * One message, read here.
+ *
+ * The body is put in a `<pre>` and never with `dangerouslySetInnerHTML`. It
+ * arrives as text and is rendered as text — mail is the one place where the
+ * document was written by someone who has never met you.
+ */
+function Reading({ full, onClose }: { full: GmailFull; onClose: () => void }) {
+  const { message, body } = full;
+  return (
+    <article className="gm__reading" aria-label={message.subject}>
+      <header className="gm__reading-head">
+        <div className="gm__reading-who">
+          <p className="gm__reading-subject">{message.subject}</p>
+          <p className="gm__reading-from">
+            <span className="gm__strong">{message.from_name}</span>
+            <span className="gm__reading-address">{message.from_address}</span>
+          </p>
+        </div>
+        <span className="gm__when">{relativeWhen(message.received_ms, Date.now())}</span>
+        <button type="button" className="gm__ghost" onClick={onClose}>
+          Close
+        </button>
+      </header>
+
+      {body === "" ? (
+        <p className="gm__quiet">Reading…</p>
+      ) : (
+        <pre className="gm__reading-body">{body}</pre>
+      )}
+    </article>
   );
 }

@@ -497,6 +497,19 @@ export interface GmailMessage {
   unread: boolean;
 }
 
+/**
+ * One message with its text, for the reading pane.
+ *
+ * `body` is text, never markup. Rust turns an HTML part into text before it
+ * leaves the backend, so nothing in a message can request an image — a
+ * tracking pixel cannot report that it was opened — and no script in one ever
+ * reaches something that would run it.
+ */
+export interface GmailFull {
+  message: GmailMessage;
+  body: string;
+}
+
 export interface GmailMailbox {
   account: GmailAccount;
   messages: GmailMessage[];
@@ -528,6 +541,8 @@ export interface GmailApi {
   disconnect(): Promise<void>;
   /** The inbox, or a search across all mail when `query` is given. */
   inbox(count: number, query: string | null): Promise<GmailMailbox>;
+  /** One message, with its text. The only call that fetches a body. */
+  message(id: string): Promise<GmailFull>;
 }
 
 /** Where the browser pane sits, in logical pixels. */

@@ -19,7 +19,7 @@
 //! every install of this app in a stranger's audit log. So the panel asks for
 //! one, and says where to get it.
 
-use jky_apps::gmail::{self, Account, Message};
+use jky_apps::gmail::{self, Account, Full, Message};
 use jky_apps::oauth;
 use jky_audit::{AuditEvent, AuditKind};
 use jky_secrets::Secret;
@@ -317,6 +317,36 @@ pub async fn apps_gmail_inbox(
         Err(gmail::GmailError::Upstream(401)) => {
             let token = refreshed(&state).await?;
             load(&state, &token, count, search)
+                .await
+                .map_err(|e| e.to_string())
+        }
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+/// One message, with its text, for the reading pane.
+///
+/// The only command in this module that fetches a message body. The list does
+/// not and cannot: it asks for `format=metadata`, so the contents of every
+/// other message in the mailbox stay where they are. This asks for the one a
+/// person opened.
+///
+/// What comes back is text, never markup. `jky-apps` turns an HTML part into
+/// text before it leaves Rust, so no image in a message can be requested and
+/// no script in one can be handed to anything — a tracking pixel cannot
+/// report that this message was opened, because nothing here can load it.
+#[tauri::command]
+pub async fn apps_gmail_message(
+    state: State<'_, AppState>,
+    id: String,
+) -> Result<Full, String> {
+    let token = access_token(&state)?;
+
+    match gmail::fetch_full(&state.http, &token, &id).await {
+        Ok(full) => Ok(full),
+        Err(gmail::GmailError::Upstream(401)) => {
+            let token = refreshed(&state).await?;
+            gmail::fetch_full(&state.http, &token, &id)
                 .await
                 .map_err(|e| e.to_string())
         }

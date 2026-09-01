@@ -239,7 +239,7 @@ still there when you come back. `Ctrl+Shift+A` moves between them.
 | | App | What it is |
 |---|---|---|
 | ◐ | **GitHub** | A dashboard: your repositories with their files, commits and branches; issues; pull requests; notifications; a contribution graph |
-| ✉ | **Gmail** | Your inbox, read-only. It cannot send, delete or label anything, and never fetches a message body |
+| ✉ | **Gmail** | Your inbox, read here. Read-only — it cannot send, delete or label anything |
 | 🌐 | **Browser** | Private browsing in this window, on the webview your OS already ships |
 | ☀ | **Weather** | Now and three days ahead, anywhere. No key, no account |
 | 📰 | **News** | Front pages from The Hindu, Times of India, Indian Express, BBC World and Hacker News |
@@ -284,11 +284,18 @@ lifted. The scope is `gmail.readonly` and nothing else, so there is no send,
 no delete and no label change — and the consent screen Google shows you says
 exactly that.
 
-**No message body is ever fetched.** A list needs three headers and the
-snippet Gmail already sends, so that is all this asks for. Opening a message
-hands it to Gmail in your browser rather than rendering it here, because
-rendering it would mean fetching it, and a terminal has no business holding
-the contents of your inbox.
+**The list fetches no message bodies.** It needs three headers and the snippet
+Gmail already sends, so `format=metadata` is all it asks for — the contents of
+a mailbox stay in the mailbox. Opening one message fetches that message, and
+only that one.
+
+**What arrives is text, never markup.** When a message carries both a plain
+and an HTML part the plain one is used; when it carries only HTML, Rust turns
+it into text before it leaves the backend. That is not tidiness. Rendering a
+stranger's markup would load their images, and a tracking pixel is the whole
+reason mail readers ask before doing that — so nothing here can request one,
+because the tag is gone before the text reaches the window. Scripts go the
+same way, and the body is put in a `<pre>`, never into `innerHTML`.
 
 Sign-in is the **authorization-code flow with PKCE**, in your own browser.
 Not by preference: Google has answered OAuth requests from embedded webviews
@@ -475,9 +482,10 @@ Stated plainly, because a README that only lists what works is a sales page.
   loopback sign-in that makes that possible — so this is a matter of building
   it rather than of not being able to. What is not planned is stripping ads:
   it violates YouTube's terms, and this app ships under a real name.
-- **Reading a message in the Gmail app.** By design, not by omission. Showing
-  the mail would mean fetching the mail, and the scope this app asks for is
-  deliberately narrow enough that it cannot. Messages open in Gmail instead.
+- **Sending mail.** The scope is `gmail.readonly` and a test keeps
+  `gmail.send` and `gmail.modify` out of it, so this is enforced rather than
+  promised. Reading your mail is a terminal being useful; sending it is a
+  terminal with your signature, and that is a different decision.
 - **Signing and auto-update.** The release pipeline works; certificates and an
   updater keypair do not exist yet. See [`docs/RELEASING.md`](docs/RELEASING.md).
 - **Editor tab.** Monaco is a multi-megabyte dependency and the bundle is

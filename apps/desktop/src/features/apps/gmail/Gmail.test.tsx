@@ -38,12 +38,13 @@ interface Log {
   connects: number;
   disconnects: number;
   ids: string[];
+  opened: string[];
   secrets: string[];
   queries: (string | null)[];
 }
 
 function fresh(): Log {
-  return { connects: 0, disconnects: 0, ids: [], secrets: [], queries: [] };
+  return { connects: 0, disconnects: 0, ids: [], opened: [], secrets: [], queries: [] };
 }
 
 /** A platform whose Gmail behaves, recording what it was asked. */
@@ -76,6 +77,12 @@ function withGmail(
         async disconnect() {
           log.disconnects += 1;
           current = { ...current, connected: false };
+        },
+        async message(id) {
+          const found = MAILBOX.messages.find((m) => m.id === id);
+          if (!found) throw new Error("no such message");
+          log.opened.push(id);
+          return { message: found, body: `The text of ${found.subject}.` };
         },
         async inbox(_count, query) {
           log.queries.push(query);
@@ -406,13 +413,21 @@ describe("Gmail", () => {
     expect(await screen.findByText(/nothing here/i)).toBeInTheDocument();
   });
 
-  it("opens the message in Gmail rather than pretending to show it", async () => {
-    const opened: string[] = [];
-    const base = withGmail(fresh(), { configured: true, connected: true });
+  /*
+   * Opening a message used to hand it to Gmail in a browser, because no body
+   * was ever fetched. It is read here now — which is a real change of mind
+   * about what this app fetches, not a feature bolted on: the list still asks
+   * for metadata only, and exactly one message's text is fetched, the one
+   * that was opened.
+   */
+  it("opens the message here rather than in a browser", async () => {
+    const log = fresh();
+    const externals: string[] = [];
+    const base = withGmail(log, { configured: true, connected: true });
     __setPlatformForTests({
       ...base,
       async openExternal(url: string) {
-        opened.push(url);
+        externals.push(url);
       },
     });
     const user = typist();
@@ -421,8 +436,100 @@ describe("Gmail", () => {
     const list = await screen.findByRole("list", { name: /inbox/i });
     await user.click(within(list).getAllByRole("button")[0]);
 
-    await waitFor(() => expect(opened).toHaveLength(1));
-    expect(opened[0]).toContain("mail.google.com");
-    expect(opened[0]).toContain("18f0a1");
+    expect(await screen.findByText(/The text of Deploy finished\./)).toBeInTheDocument();
+    expect(log.opened).toEqual(["18f0a1"]);
+    expect(externals, "nothing should have been handed to a browser").toEqual([]);
+  });
+
+  it("shows who the open message is from, and when", async () => {
+    const user = typist();
+    __setPlatformForTests(withGmail(fresh(), { configured: true, connected: true }));
+    render(<Gmail />);
+
+    const list = await screen.findByRole("list", { name: /inbox/i });
+    await user.click(within(list).getAllByRole("button")[0]);
+
+    const reading = await screen.findByRole("article", { name: /deploy finished/i });
+    expect(reading).toHaveTextContent("Ada Lovelace");
+    expect(reading).toHaveTextContent("ada@example.com");
+  });
+
+  // The list stays beside the message rather than being replaced by it, so
+  // reading one does not cost you your place in the mailbox.
+  it("keeps the list while a message is open", async () => {
+    const user = typist();
+    __setPlatformForTests(withGmail(fresh(), { configured: true, connected: true }));
+    render(<Gmail />);
+
+    const list = await screen.findByRole("list", { name: /inbox/i });
+    await user.click(within(list).getAllByRole("button")[0]);
+    await screen.findByRole("article", { name: /deploy finished/i });
+
+    expect(screen.getByRole("list", { name: /inbox/i })).toBeInTheDocument();
+  });
+
+  it("closes the message and goes back to the list alone", async () => {
+    const user = typist();
+    __setPlatformForTests(withGmail(fresh(), { configured: true, connected: true }));
+    render(<Gmail />);
+
+    const list = await screen.findByRole("list", { name: /inbox/i });
+    await user.click(within(list).getAllByRole("button")[0]);
+    await screen.findByRole("article", { name: /deploy finished/i });
+
+    await user.click(screen.getByRole("button", { name: /close/i }));
+    await waitFor(() =>
+      expect(screen.queryByRole("article", { name: /deploy finished/i })).not.toBeInTheDocument(),
+    );
+  });
+
+  it("says so when a message cannot be read", async () => {
+    const base = withGmail(fresh(), { configured: true, connected: true });
+    __setPlatformForTests({
+      ...base,
+      apps: {
+        ...base.apps,
+        gmail: {
+          ...base.apps.gmail,
+          async message() {
+            throw new Error("could not reach Gmail");
+          },
+        },
+      },
+    });
+    const user = typist();
+    render(<Gmail />);
+
+    const list = await screen.findByRole("list", { name: /inbox/i });
+    await user.click(within(list).getAllByRole("button")[0]);
+    expect(await screen.findByRole("alert")).toHaveTextContent(/could not reach gmail/i);
+  });
+
+  // The one thing that must never happen: a message's markup rendered as
+  // markup. Rust strips it, and this checks the panel does not undo that.
+  it("renders the body as text, never as markup", async () => {
+    const base = withGmail(fresh(), { configured: true, connected: true });
+    __setPlatformForTests({
+      ...base,
+      apps: {
+        ...base.apps,
+        gmail: {
+          ...base.apps.gmail,
+          async message(id: string) {
+            const found = MAILBOX.messages.find((m) => m.id === id)!;
+            return { message: found, body: "<img src=x onerror=alert(1)> plain words" };
+          },
+        },
+      },
+    });
+    const user = typist();
+    const { container } = render(<Gmail />);
+
+    const list = await screen.findByRole("list", { name: /inbox/i });
+    await user.click(within(list).getAllByRole("button")[0]);
+    await screen.findByRole("article", { name: /deploy finished/i });
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(screen.getByText(/plain words/)).toBeInTheDocument();
   });
 });

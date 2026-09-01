@@ -1,0 +1,44 @@
+{
+ "id": "18f0a4",
+ "threadId": "18f0a4",
+ "labelIds": [
+  "INBOX"
+ ],
+ "snippet": "Your receipt",
+ "internalDate": "1787990000000",
+ "payload": {
+  "mimeType": "multipart/mixed",
+  "headers": [
+   {
+    "name": "From",
+    "value": "billing@example.net"
+   },
+   {
+    "name": "Subject",
+    "value": "Receipt"
+   }
+  ],
+  "parts": [
+   {
+    "mimeType": "multipart/alternative",
+    "parts": [
+     {
+      "mimeType": "text/html",
+      "body": {
+       "size": 169,
+       "data": "PGRpdiBkaXI9Imx0ciI-PHA-SGkgJm1kYXNoOyB0aGUgZGVwbG95IDxiPmZpbmlzaGVkPC9iPi48L3A-PHA-U21va2UgdGVzdHMgYXJlIGdyZWVuLjwvcD48aW1nIHNyYz0iaHR0cHM6Ly90cmFja2VyLmV4YW1wbGUuY29tL3BpeGVsLmdpZiI-PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0PjwvZGl2Pg"
+      }
+     }
+    ]
+   },
+   {
+    "mimeType": "application/pdf",
+    "filename": "receipt.pdf",
+    "body": {
+     "size": 98123,
+     "attachmentId": "ANGjdJ_x"
+    }
+   }
+  ]
+ }
+}

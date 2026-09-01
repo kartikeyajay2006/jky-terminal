@@ -226,6 +226,17 @@ const PREVIEW_MAIL: GmailMessage[] = [
   },
 ];
 
+/** What the preview's messages say when opened. */
+const PREVIEW_BODIES: Record<string, string> = {
+  "18f0a1":
+    "Hi \u2014 the deploy finished and the smoke tests are green.\n\nNothing to do, but the " +
+    "release notes still need a line about the cache change.\n\n-- \nAda",
+  "18f0a2": "Your receipt is attached.\n\nThanks for your custom.",
+  "18f0a3":
+    "Happy either way \u2014 say which you would prefer and I will move it.\n\nThe only fixed " +
+    "point is the Thursday review.",
+};
+
 export function createWebPlatform(): Platform {
   const keys = new Map<string, string>();
   const models = new Map<string, string>();
@@ -699,6 +710,15 @@ export function createWebPlatform(): Platform {
       },
       async disconnect() {
         gmailToken = false;
+      },
+      async message(id) {
+        if (!gmailToken) throw new Error("not connected to Gmail");
+        const found = PREVIEW_MAIL.find((m) => m.id === id);
+        if (!found) throw new Error("no such message");
+        return {
+          message: found,
+          body: PREVIEW_BODIES[id] ?? "There is nothing to read here.",
+        };
       },
       async inbox(count, query) {
         if (!gmailToken) throw new Error("not connected to Gmail");

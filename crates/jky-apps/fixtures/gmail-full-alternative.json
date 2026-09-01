@@ -1,0 +1,43 @@
+{
+ "id": "18f0a1",
+ "threadId": "18f0a1",
+ "labelIds": [
+  "UNREAD",
+  "INBOX"
+ ],
+ "snippet": "Hi &#8212; the deploy finished.",
+ "internalDate": "1788080000000",
+ "payload": {
+  "mimeType": "multipart/alternative",
+  "headers": [
+   {
+    "name": "From",
+    "value": "Ada Lovelace <ada@example.com>"
+   },
+   {
+    "name": "Subject",
+    "value": "Deploy finished"
+   },
+   {
+    "name": "Date",
+    "value": "Sun, 31 Aug 2026 12:00:00 +0530"
+   }
+  ],
+  "parts": [
+   {
+    "mimeType": "text/plain",
+    "body": {
+     "size": 78,
+     "data": "SGkg4oCUIHRoZSBkZXBsb3kgZmluaXNoZWQuDQoNClNtb2tlIHRlc3RzIGFyZSBncmVlbi4gTm90aGluZyB0byBkby4NCg0KLS0gDQpBZGE"
+    }
+   },
+   {
+    "mimeType": "text/html",
+    "body": {
+     "size": 169,
+     "data": "PGRpdiBkaXI9Imx0ciI-PHA-SGkgJm1kYXNoOyB0aGUgZGVwbG95IDxiPmZpbmlzaGVkPC9iPi48L3A-PHA-U21va2UgdGVzdHMgYXJlIGdyZWVuLjwvcD48aW1nIHNyYz0iaHR0cHM6Ly90cmFja2VyLmV4YW1wbGUuY29tL3BpeGVsLmdpZiI-PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0PjwvZGl2Pg"
+    }
+   }
+  ]
+ }
+}

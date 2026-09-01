@@ -191,6 +191,26 @@ pub(crate) fn decode_entities(input: &str) -> String {
             "quot" => Some('"'),
             "apos" | "#39" => Some('\''),
             "nbsp" => Some(' '),
+            // The punctuation real prose is written with. Mail and feeds are
+            // full of these, and an unknown entity is left as written — so
+            // without them a dash arrives on screen as the literal text
+            // "&mdash;" in the middle of a sentence.
+            "mdash" => Some('—'),
+            "ndash" => Some('–'),
+            "hellip" => Some('…'),
+            "lsquo" => Some('\u{2018}'),
+            "rsquo" => Some('\u{2019}'),
+            "ldquo" => Some('\u{201C}'),
+            "rdquo" => Some('\u{201D}'),
+            "bull" => Some('•'),
+            "middot" => Some('·'),
+            "laquo" => Some('«'),
+            "raquo" => Some('»'),
+            "copy" => Some('©'),
+            "reg" => Some('®'),
+            "trade" => Some('™'),
+            "deg" => Some('°'),
+            "times" => Some('×'),
             _ => numeric_entity(entity),
         };
 

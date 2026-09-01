@@ -229,7 +229,7 @@ describe("apps adapter parity", () => {
     }
 
     it("the mock offers the whole gmail surface", () => {
-      for (const call of ["status", "connect", "disconnect", "inbox", "configure"] as const) {
+      for (const call of ["status", "connect", "disconnect", "inbox", "configure", "message"] as const) {
         expect(typeof mail()[call], `gmail.${call} is missing`).toBe("function");
       }
     });
@@ -280,6 +280,29 @@ describe("apps adapter parity", () => {
       expect(mailbox.messages.length).toBeGreaterThan(0);
       for (const field of fieldsOf("Message")) {
         expect(mailbox.messages[0], `Message.${field} is missing`).toHaveProperty(field);
+      }
+    });
+
+    // A body is fetched for the one message that was opened, and for no
+    // other. The list cannot fetch one at all.
+    it("the mock reads one message, with its text", async () => {
+      const gmail = await signedIn();
+      const inbox = await gmail.inbox(10, null);
+      const opened = await gmail.message(inbox.messages[0].id);
+      for (const field of fieldsOf("Message")) {
+        expect(opened.message, `Message.${field} is missing`).toHaveProperty(field);
+      }
+      expect(opened.body.length).toBeGreaterThan(0);
+    });
+
+    // Text, never markup: Rust strips an HTML part before it leaves the
+    // backend, so nothing in a message can request an image or run a script.
+    it("never hands the window markup to render", async () => {
+      const gmail = await signedIn();
+      const inbox = await gmail.inbox(10, null);
+      for (const row of inbox.messages) {
+        const opened = await gmail.message(row.id);
+        expect(opened.body).not.toMatch(/<[a-z/]/i);
       }
     });
 

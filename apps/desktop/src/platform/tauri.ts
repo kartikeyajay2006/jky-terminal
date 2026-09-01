@@ -12,6 +12,7 @@ import type {
   GitHubNotification,
   GitHubDeviceStart,
   GitHubStatus,
+  GmailFull,
   GmailMailbox,
   GmailStatus,
   SystemApi,
@@ -199,6 +200,7 @@ export function createTauriPlatform(): Platform {
       connect: () => invoke<string>("apps_gmail_connect"),
       disconnect: () => invoke<void>("apps_gmail_disconnect"),
       inbox: (count, query) => invoke<GmailMailbox>("apps_gmail_inbox", { count, query }),
+      message: (id) => invoke<GmailFull>("apps_gmail_message", { id }),
     },
     route: (from, to) =>
       invoke<Route>("apps_route", {

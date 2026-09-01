@@ -1,0 +1,26 @@
+{
+ "id": "18f0a5",
+ "threadId": "18f0a5",
+ "labelIds": [
+  "INBOX"
+ ],
+ "snippet": "one line",
+ "internalDate": "1787900000000",
+ "payload": {
+  "mimeType": "text/plain",
+  "headers": [
+   {
+    "name": "From",
+    "value": "noreply@example.org"
+   },
+   {
+    "name": "Subject",
+    "value": "Ping"
+   }
+  ],
+  "body": {
+   "size": 8,
+   "data": "SnVzdCBvbmUgbGluZS4"
+  }
+ }
+}

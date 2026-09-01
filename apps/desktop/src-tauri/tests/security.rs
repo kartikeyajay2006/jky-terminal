@@ -177,6 +177,15 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "apps_gmail_connect".to_string(),
         "apps_gmail_disconnect".to_string(),
         "apps_gmail_inbox".to_string(),
+        // The one command that fetches a message body, for the one message a
+        // person opened. The list still asks for metadata only, so the
+        // contents of every other message stay where they are. What crosses
+        // is text: jky-apps turns an HTML part into text before it leaves
+        // Rust, so no image in a message can be requested — a tracking pixel
+        // cannot report the message was opened — and no script in one is ever
+        // handed to something that would run it. The id is checked against
+        // the same rule the list uses before it reaches a URL path.
+        "apps_gmail_message".to_string(),
         "apps_gmail_status".to_string(),
         // apps_locate: roughly where this machine is, from its public
         // address. Takes nothing from the window, so there is no input to

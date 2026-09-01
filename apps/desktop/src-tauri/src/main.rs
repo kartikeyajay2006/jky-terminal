@@ -81,6 +81,7 @@ fn main() {
             gmail::apps_gmail_connect,
             gmail::apps_gmail_disconnect,
             gmail::apps_gmail_inbox,
+            gmail::apps_gmail_message,
             open::open_external,
             scrollback::scrollback_load,
             scrollback::scrollback_save,
