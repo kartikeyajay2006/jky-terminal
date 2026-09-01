@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SystemStatus, size, rateText } from "./SystemStatus";
+import { SystemStatus, size, rateText, sparkPoints, netScale } from "./SystemStatus";
 import { createWebPlatform, __setPlatformForTests } from "../platform";
 import type { Platform, SystemReading } from "../platform/types";
 
@@ -42,6 +42,59 @@ describe("rateText", () => {
   it("writes a rate per second", () => {
     expect(rateText(0)).toBe("0 B/s");
     expect(rateText(1_200_000)).toBe("1.1 MB/s");
+  });
+});
+
+describe("sparkPoints", () => {
+  // The shape of the last minute is the thing a readout can show that a
+  // single number cannot: 90% climbing and 90% falling are different facts.
+  it("draws one point per reading, oldest on the left", () => {
+    const points = sparkPoints([0, 50, 100], 100, 10, 100).split(" ");
+    expect(points).toHaveLength(3);
+    expect(points[0]).toBe("0,10");
+    expect(points[2]).toBe("100,0");
+  });
+
+  it("puts a flat series on a flat line", () => {
+    const points = sparkPoints([40, 40, 40], 90, 10, 100).split(" ");
+    expect(new Set(points.map((p) => p.split(",")[1])).size).toBe(1);
+  });
+
+  // A reading above the scale is drawn at the top rather than above the box,
+  // where it would be clipped or overlap the row above.
+  it("keeps a reading larger than the scale inside the picture", () => {
+    const points = sparkPoints([500], 100, 10, 100).split(" ");
+    expect(points[0]).toBe("0,0");
+  });
+
+  it("draws nothing from no readings, rather than a stray dot", () => {
+    expect(sparkPoints([], 100, 10, 100)).toBe("");
+    expect(sparkPoints([12], 100, 10, 100)).toBe("0,9");
+  });
+
+  // A scale of zero would divide by nothing on a machine reporting no memory.
+  it("survives a scale of zero", () => {
+    expect(() => sparkPoints([1, 2], 100, 10, 0)).not.toThrow();
+  });
+});
+
+describe("netScale", () => {
+  /*
+   * Network rates have no ceiling, so the picture has to scale to what it
+   * has seen. Without a floor, a machine doing nothing draws its own noise as
+   * a mountain range — 200 bytes a second becomes a full-height spike, and
+   * the readout reports drama that is not happening.
+   */
+  it("does not amplify a quiet network into a mountain range", () => {
+    expect(netScale([120, 400, 80])).toBeGreaterThanOrEqual(64 * 1024);
+  });
+
+  it("scales to the peak once there is real traffic", () => {
+    expect(netScale([0, 5_000_000, 100])).toBe(5_000_000);
+  });
+
+  it("has a scale even with nothing to scale to", () => {
+    expect(netScale([])).toBeGreaterThan(0);
   });
 });
 
@@ -146,6 +199,50 @@ describe("SystemStatus", () => {
 
     await vi.advanceTimersByTimeAsync(10_000);
     expect(calls).toBe(after);
+  });
+
+  // The readout claims to be live; the sparkline is where that claim shows.
+  it("draws the recent history, not only the latest number", async () => {
+    vi.useFakeTimers();
+    let calls = 0;
+    __setPlatformForTests(
+      reading(() => {
+        calls += 1;
+        return { ...IDLE, cpu_pct: calls * 7 };
+      }),
+    );
+
+    const { container } = render(<SystemStatus />);
+    await vi.waitFor(() => expect(container.querySelector(".sys__spark")).toBeTruthy());
+
+    const pointsAfterOne = container.querySelector("polyline")?.getAttribute("points") ?? "";
+    await vi.advanceTimersByTimeAsync(2500);
+    await vi.advanceTimersByTimeAsync(2500);
+
+    const pointsAfterThree = container.querySelector("polyline")?.getAttribute("points") ?? "";
+    expect(pointsAfterThree.split(" ").length).toBeGreaterThan(pointsAfterOne.split(" ").length);
+  });
+
+  // Unbounded history in a component that never unmounts is a slow leak.
+  it("keeps the history bounded", async () => {
+    vi.useFakeTimers();
+    __setPlatformForTests(reading(() => IDLE));
+    const { container } = render(<SystemStatus />);
+    await vi.waitFor(() => expect(container.querySelector(".sys__spark")).toBeTruthy());
+
+    for (let i = 0; i < 90; i += 1) await vi.advanceTimersByTimeAsync(2100);
+
+    const points = container.querySelector("polyline")!.getAttribute("points")!.split(" ");
+    expect(points.length).toBeLessThanOrEqual(60);
+  });
+
+  // The paste that started this had an up-arrow with nothing after it.
+  it("always gives the network both a down and an up figure", async () => {
+    render(<SystemStatus />);
+    const net = await screen.findByLabelText(/network/i);
+    const values = within(net).getAllByText(/\/s$/);
+    expect(values).toHaveLength(2);
+    for (const v of values) expect(v.textContent?.trim()).not.toBe("");
   });
 
   it("says so before the first reading arrives", () => {

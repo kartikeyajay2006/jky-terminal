@@ -421,31 +421,43 @@
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--s2);
-  padding: var(--s3);
+  gap: var(--s1);
+  padding: var(--s3) var(--s2);
 }
 
 /*
- * Label, number, bar — down a column, so the numbers line up and a glance
- * reads the shape rather than each row in turn.
+ * Label and number on one line, the picture under both.
+ *
+ * The sparkline spans the full width because its whole job is the shape of
+ * the last two minutes, and a shape squeezed into a third of a 180px rail is
+ * a smudge.
  */
 .sys__row {
+  position: relative;
   display: grid;
-  grid-template-columns: 2.4rem minmax(0, 1fr);
-  align-items: center;
-  gap: var(--s1) var(--s2);
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0 var(--s2);
+  padding: var(--s2) var(--s2) var(--s1);
+  border-radius: var(--radius-sm);
+  transition: background var(--fast) var(--ease);
+}
+
+.sys__row:hover {
+  background: var(--surface-raised);
 }
 
 .sys__label {
   color: var(--text-dim);
-  font-size: 10px;
-  letter-spacing: 0.1em;
+  font-size: 9px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
 /* Tabular figures, or the numbers jitter sideways every two seconds as the
    digits change width — which is exactly the movement the eye notices. */
 .sys__value {
+  justify-self: end;
   font-family: var(--font-mono);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -455,9 +467,89 @@
   text-overflow: ellipsis;
 }
 
+/* Near the top is worth colouring, and it is a warning rather than an error:
+   a disk at 90% is not broken yet. */
+.sys__row[data-hot] .sys__value {
+  color: var(--warn);
+}
+
+/*
+ * The picture.
+ *
+ * `preserveAspectRatio: none` lets one viewBox stretch to whatever width the
+ * rail is, and `vector-effect` keeps the stroke a hairline while it does —
+ * without it the line thickens with the box and the shape turns to mush.
+ */
+.sys__spark {
+  grid-column: 1 / -1;
+  width: 100%;
+  height: 16px;
+  margin-top: var(--s1);
+  overflow: visible;
+}
+
+.sys__spark polyline {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.25;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.sys__row[data-hot] .sys__spark polyline {
+  stroke: var(--warn);
+}
+
+/* Down is the line you read; up is the quieter one beside it, so they are
+   told apart by weight rather than by needing a key. */
+.sys__spark--rx polyline {
+  stroke: var(--accent);
+}
+
+.sys__spark--tx polyline {
+  stroke: var(--violet);
+  stroke-dasharray: 2 2;
+}
+
+/* The two network figures sit side by side rather than stacked: stacked, the
+   second one was the first thing to be cut off. */
+.sys__row--net .sys__net {
+  justify-self: end;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.sys__dir {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  min-width: 0;
+}
+
+.sys__arrow {
+  color: var(--text-dim);
+  font-size: 9px;
+}
+
+.sys__row--net .sys__value {
+  font-size: 10px;
+}
+
+/* Both network lines share one box, so they can be compared. */
+.sys__row--net .sys__spark {
+  margin-top: 0;
+}
+
+.sys__row--net .sys__spark--tx {
+  margin-top: calc(-16px - var(--s1));
+}
+
 .sys__bar {
   grid-column: 1 / -1;
   height: 3px;
+  margin-top: var(--s2);
   border-radius: 2px;
   background: var(--line);
   overflow: hidden;
@@ -473,8 +565,6 @@
   transition: width 600ms var(--ease), background-color 300ms var(--ease);
 }
 
-/* Nearly full is the one state worth colouring, and it is a warning rather
-   than an error: a disk at 90% is not broken yet. */
 .sys__fill[data-hot] {
   background: var(--warn);
 }
@@ -485,21 +575,17 @@
   }
 }
 
-/* No total to be a fraction of, so no bar — a rate is not a proportion. */
-.sys__row--net {
-  grid-template-columns: 2.4rem minmax(0, 1fr);
-}
+/* Collapsed rail: there is no room for numbers, so only the shapes remain —
+   still live, still a glance, just without the words. */
+@media (max-width: 900px) {
+  .sys__label,
+  .sys__value,
+  .sys__net {
+    display: none;
+  }
 
-.sys__net {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.sys__dir {
-  display: flex;
-  align-items: baseline;
-  gap: var(--s1);
-  color: var(--text-dim);
-  font-size: 10px;
+  .sys__spark {
+    grid-column: 1 / -1;
+    margin-top: 0;
+  }
 }
