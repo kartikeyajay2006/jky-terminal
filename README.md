@@ -8,7 +8,7 @@ in one fast desktop app. Built by
 
 [![CI](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
 ![Linux · macOS · Windows](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff)
-![Tests](https://img.shields.io/badge/tests-1240%20frontend%20%2B%20405%20Rust-3ddc97)
+![Tests](https://img.shields.io/badge/tests-1371%20frontend%20%2B%20534%20Rust-3ddc97)
 ![License](https://img.shields.io/badge/license-MIT-7c3aed)
 
 ---
@@ -43,7 +43,7 @@ Six places to be, reachable from the rail or from `Ctrl+K`:
 | ❯ | **Terminal** | Real PTY shells in tabs, with find, links and history |
 | ✦ | **Assistant** | Streaming chat that can read your project and run commands |
 | ◈ | **Games** | An arcade: Dino Run, Snake, Tic Tac Toe, Flappy Bird |
-| ⊞ | **Apps** | Calculator, Timer, Weather, News, Map — each opening in this window |
+| ⊞ | **Apps** | Seven, in tabs: GitHub, Browser, Weather, News, Map, Timer, Calculator |
 | ⚙ | **Settings** | Themes, API keys, and the shell commands it installs |
 
 ---
@@ -74,7 +74,7 @@ flowchart TB
         PTY["jky-pty<br/>portable-pty · shell launchers"]
         AI["jky-ai<br/>Anthropic · tool sandbox"]
         STORE["jky-store<br/>notes · todos · events · reminders"]
-        APPS["jky-apps<br/>weather · news · no keys"]
+        APPS["jky-apps<br/>weather · news · maps · github"]
         SETTINGS["jky-settings"]
         AUDIT["jky-audit"]
     end
@@ -84,7 +84,7 @@ flowchart TB
         SHELL[("Your shell")]
         DISK[("~/.config/dev.jky.terminal")]
         NET[("api.anthropic.com")]
-        PUB[("open-meteo · hacker-news")]
+        PUB[("open-meteo · newspapers<br/>osm · github")]
     end
 
     ADAPTER -->|invoke| CSP
@@ -134,13 +134,18 @@ sequenceDiagram
     W-->>U: the answer, token by token
 ```
 
-Four tests fail the build if that ever stops being true: no command may be
+Six tests fail the build if that ever stops being true: no command may be
 shaped like a secret getter, the exposed command list is pinned by name, the
-CSP's `connect-src` may name no host but `'self'`, and its `frame-src` may name
-only the embed endpoints the Apps section is allowed to render. The last two
-are different permissions: `frame-src` lets the window *display* another
-origin's document, while same-origin policy still stops this app's JavaScript
-from reading into it or reaching that host.
+CSP's `connect-src` may name no host but `'self'`, its `frame-src` may name
+only the embed endpoints the Apps section is allowed to render, no capability
+may be scoped by window, and none may name the browser's webview.
+
+The last three are worth separating. `frame-src` lets the window *display*
+another origin's document, while same-origin policy still stops this app's
+JavaScript from reading into it. And a capability scoped by **window** is
+granted to every webview in that window — Tauri's own schema says so — which
+would have handed IPC to a page the Browser app loaded from the internet.
+Scoping by **webview** is what keeps that from happening.
 
 ---
 
@@ -227,28 +232,76 @@ already reacted is shorter than human reaction time.
 
 ### ⊞ Apps
 
-Five apps, each opening in this window rather than handing you to a browser.
-`Ctrl+Shift+A` switches between them without going back to the grid.
+Seven apps, several open at once in tabs. They stay mounted while you switch,
+so a timer keeps counting while you read the news and a half-typed sum is
+still there when you come back. `Ctrl+Shift+A` moves between them.
 
 | | App | What it is |
 |---|---|---|
-| 🖩 | **Calculator** | A real parser — not `eval` — with history you can click back into |
-| ⏱ | **Timer** | Counts by the clock, so a backgrounded window does not lose time |
+| ◐ | **GitHub** | A dashboard: your repositories with their files, commits and branches; issues; pull requests; notifications; a contribution graph |
+| 🌐 | **Browser** | Private browsing in this window, on the webview your OS already ships |
 | ☀ | **Weather** | Now and three days ahead, anywhere. No key, no account |
-| 📰 | **News** | The Hacker News front page, with the site each link goes to |
-| 🗺 | **Map** | OpenStreetMap, drawn inside the window |
+| 📰 | **News** | Front pages from The Hindu, Times of India, Indian Express, BBC World and Hacker News |
+| 🗺 | **Map** | OpenStreetMap, with road distance and driving time between two places |
+| ⏱ | **Timer** | Counts by the clock, so a backgrounded window does not lose time |
+| 🖩 | **Calculator** | A real parser — not `eval` — with history you can click back into |
 
-Weather and News fetch through Rust like everything else — the window can
+Each app carries its own colour, and it is the same colour on its tile, its
+tab, and the panel it opens. Colour is wayfinding here: you can tell where you
+are without reading.
+
+#### GitHub
+
+Sign-in is the **device authorization grant**. A short code appears, you enter
+it on github.com, and your own two-factor settings decide what approving it
+takes — a push to GitHub Mobile, a one-time code, a security key. This app
+never sees your password.
+
+Two things never reach the window. The **device code** — the credential that
+redeems the token — stays in Rust for the whole flow; `connect_poll` takes no
+arguments at all, because the window has nothing the exchange needs. The
+**access token** goes straight to the OS keychain, and the window is told two
+booleans: configured, connected.
+
+Scopes are pinned by a test: `repo read:org notifications`. Nothing that
+writes, nothing administrative, no `delete_repo`.
+
+An OAuth app ships with the build, so a new install signs in immediately
+without registering anything. A device-flow client id is public by design and
+has no secret beside it — which is why committing one is safe, and a test pins
+its shape so nothing secret-looking can be slipped in next to it.
+
+#### Browser
+
+Not an iframe, because most of the web refuses to be one — measured, not
+assumed:
+
+| Site | Answer |
+|---|---|
+| GitHub, Jira | `X-Frame-Options: deny` |
+| Gmail, Grafana | `DENY` |
+| Slack, Notion, Figma, YouTube, Reddit | `SAMEORIGIN` |
+
+Framing rules govern nested browsing contexts only, so this is a **native child
+webview** — a top-level one — drawn by whichever engine the OS already ships:
+WebKitGTK on Linux, WKWebView on macOS, WebView2 on Windows. Nothing is
+bundled, so it costs no download size and no memory beyond the page on screen.
+
+- **It cannot call into the app.** Its webview is labelled `browser` and no
+  capability names that label. Two tests pin it.
+- **It keeps nothing.** Incognito: cookies, storage and history live in memory
+  and are gone when it closes.
+- **It only opens the web.** `http` and `https`; every other scheme refused —
+  `file://` above all, which would make the address bar a reader for the disk.
+- Searches go to DuckDuckGo, and the user agent is deliberately ordinary,
+  because one nobody else sends is a fingerprint.
+
+#### What the others need
+
+Nothing. Weather, News, Map, Timer and Calculator ask for no account and no
+key. Weather and News fetch through Rust like everything else — the window can
 reach no host — so neither needed a CSP change. Map did: it renders another
 origin's document, and `frame-src` names exactly one host for it.
-
-**Why only five.** Most of the web refuses to be embedded. Measured directly:
-GitHub and Jira send `X-Frame-Options: deny`; Gmail and Grafana `DENY`; Slack,
-Notion, Figma, YouTube, Reddit and OpenStreetMap's main site all `SAMEORIGIN`.
-Purpose-built embed endpoints are the exception, which is what Map uses. The
-apps that need an account — GitHub, Reddit, YouTube — are next, and each needs
-its own OAuth app registered; a Google login cannot authenticate GitHub or
-Reddit, because those run their own authorization servers.
 
 ### 🎨 Seven themes
 
@@ -296,6 +349,23 @@ cargo test --workspace          # Rust
 cargo clippy --workspace --all-targets -- -D warnings
 ```
 
+**Building a binary that runs on its own** needs the `custom-protocol` feature,
+not just `--release`. Tauri decides dev-versus-production from that feature and
+not from the build profile — `let dev = !custom_protocol` — so a plain
+`cargo build --release` still points at the dev server and opens a blank
+window:
+
+```sh
+pnpm --filter @jky/desktop build                              # the frontend
+cargo build --release -p jky-terminal --features tauri/custom-protocol
+```
+
+`pnpm dev:desktop` needs a file watcher for each of Vite and the Tauri CLI. On
+Linux that is an inotify instance apiece, and the default
+`fs.inotify.max_user_instances` of 128 is easy to exhaust with a desktop shell
+running — the symptom is `Too many open files`. `sysctl -w
+fs.inotify.max_user_instances=512` fixes it.
+
 ```
 jky-terminal/
 ├─ apps/desktop/
@@ -307,7 +377,7 @@ jky-terminal/
 │  │  │  ├─ dashboard/        notes, todos, calendar, reminders
 │  │  │  ├─ notifications/    banners and the notification centre
 │  │  │  ├─ games/            grid engine + four games
-│  │  │  ├─ apps/             registry, switcher, and the five apps
+│  │  │  ├─ apps/             registry, tabs, switcher, and the seven apps
 │  │  │  ├─ palette/          Ctrl+K
 │  │  │  └─ settings/         themes, keys, command catalogue
 │  │  ├─ platform/            the adapter — tauri.ts and web.ts
@@ -318,7 +388,7 @@ jky-terminal/
    ├─ jky-pty/                portable-pty, launchers, command catalogue
    ├─ jky-ai/                 AIProvider, Anthropic, tool sandbox
    ├─ jky-store/              collections + capped scrollback
-   ├─ jky-apps/               weather + news: fetch, parse, no keys
+   ├─ jky-apps/               weather, news, places, routes, github, browser
    ├─ jky-settings/           preferences
    └─ jky-audit/              local-only audit log
 ```
@@ -336,7 +406,7 @@ Every push runs, on **Linux, macOS and Windows** with `fail-fast: false`:
 
 | Job | What it proves |
 |---|---|
-| Frontend | typecheck, lint, 1240 tests |
+| Frontend | typecheck, lint, 1371 tests |
 | Native ×3 | `cargo test`, `clippy -D warnings`, and the shippable binary **links** |
 | Dependency audit | `pnpm audit` and `cargo audit`, failing on high or critical |
 | Security assertions | the command surface, the CSP, and no key in the bundle |
@@ -350,20 +420,20 @@ where a platform-specific keychain backend actually fails.
 
 Stated plainly, because a README that only lists what works is a sales page.
 
+- **Gmail and YouTube.** Both need Google OAuth, and that cannot happen inside
+  an embedded webview: since July 2023 Google answers `disallowed_useragent`
+  to one, and no setting turns it off. The sign-in has to go out to the real
+  browser and come back, which means a loopback server this app does not have
+  yet.
 - **Signing and auto-update.** The release pipeline works; certificates and an
   updater keypair do not exist yet. See [`docs/RELEASING.md`](docs/RELEASING.md).
-- **The signed-in apps.** The Apps section ships the five that need no
-  account. GitHub, Reddit and YouTube need their own OAuth apps registered
-  first — a Google login cannot authenticate GitHub or Reddit, which run their
-  own authorization servers.
-- **A Browser app.** Arbitrary pages cannot be framed: GitHub and Jira send
-  `X-Frame-Options: deny`, and Slack, Notion, Figma, YouTube and Reddit all
-  send `SAMEORIGIN`. A real browser needs a native webview docked in the
-  window, which is behind Tauri's `unstable` flag today.
 - **Editor tab.** Monaco is a multi-megabyte dependency and the bundle is
   already at its budget; the notes editor covers the common case for now.
-- **Browser and Database tabs.** v0.2.
+- **Database tab.** v0.2.
 - **Plugins.** v0.3.
+- **Trending and Explore in the GitHub app.** GitHub publishes no API for
+  either; every client that shows them scrapes the page. Left out rather than
+  shipped as dead menu entries.
 
 ---
 
