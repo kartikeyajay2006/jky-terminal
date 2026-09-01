@@ -9,4 +9,5 @@ pub mod pty;
 pub mod scrollback;
 pub mod settings;
 pub mod store;
+pub mod system;
 pub mod vault;

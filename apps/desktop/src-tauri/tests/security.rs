@@ -262,6 +262,14 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "store_save_note".to_string(),
         "store_save_reminder".to_string(),
         "store_save_todo".to_string(),
+        // What the machine is doing: processor, memory, disk, network. It
+        // takes no arguments and reads nothing belonging to the user — no
+        // paths, no processes, no command lines, no file contents. Seven
+        // numbers about this computer, which is the narrowest thing that can
+        // answer "is it the machine or is it me". The sampler is held in
+        // AppState because two of those four are differences between
+        // successive moments, not because it holds anything privileged.
+        "system_status".to_string(),
         "vault_delete_secret".to_string(),
         "vault_has_secret".to_string(),
         "vault_list_providers".to_string(),

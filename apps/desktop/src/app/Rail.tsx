@@ -1,4 +1,5 @@
 import { IdentityMark } from "./IdentityMark";
+import { SystemStatus } from "./SystemStatus";
 
 export interface RailItem {
   id: string;
@@ -48,6 +49,10 @@ export function Rail({ activeId, onSelect }: RailProps) {
           </li>
         ))}
       </ul>
+
+      {/* A readout, not a destination — so it sits with Settings at the foot
+          of the rail rather than among the places you can go. */}
+      <SystemStatus />
 
       <ul className="rail__list rail__list--footer">
         {RAIL_FOOTER.map((item) => (

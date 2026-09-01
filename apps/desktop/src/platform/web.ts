@@ -1,6 +1,7 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
   GmailMessage,
+  SystemReading,
   AppsApi,
   BrowserApi,
   AiApi,
@@ -731,6 +732,30 @@ export function createWebPlatform(): Platform {
   // preview is for developing the UI, and a mock that quietly persisted would
   // let a bug that never reaches the real store look like it works.
   const buffers = new Map<string, string>();
+  /*
+   * A machine that looks alive without pretending to be this one.
+   *
+   * The numbers drift rather than sitting still, because the readout's whole
+   * claim is that it is live: a preview showing one frozen reading would look
+   * identical to the bug where polling has stopped.
+   */
+  let tick = 0;
+  const system = {
+    async status(): Promise<SystemReading> {
+      tick += 1;
+      const wave = (period: number) => (Math.sin(tick / period) + 1) / 2;
+      return {
+        cpu_pct: 8 + wave(3) * 34,
+        mem_used: Math.round((7 + wave(5) * 2) * 1024 ** 3),
+        mem_total: 16 * 1024 ** 3,
+        disk_used: 223 * 1024 ** 3,
+        disk_total: 465 * 1024 ** 3,
+        net_rx_bps: Math.round(wave(2) * 2_400_000),
+        net_tx_bps: Math.round(wave(4) * 180_000),
+      };
+    },
+  };
+
   const scrollback: ScrollbackApi = {
     async load(key) {
       return buffers.get(key) ?? "";
@@ -765,6 +790,7 @@ export function createWebPlatform(): Platform {
 
   return {
     kind: "web",
+    system,
     vault,
     settings,
     pty,

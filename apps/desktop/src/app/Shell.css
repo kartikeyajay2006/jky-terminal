@@ -214,9 +214,15 @@
   gap: 2px;
 }
 
-/* Pushed to the bottom of the rail. */
+/*
+ * The foot of the rail.
+ *
+ * No `margin-top: auto` here any more. The readings sit above this and carry
+ * it, and two auto margins in one flex column do not stack — they share the
+ * free space out between them, which would push the readings up into the
+ * middle of the rail and leave a gap under them.
+ */
 .rail__list--footer {
-  margin-top: auto;
   padding-top: var(--s3);
   border-top: 1px solid var(--line);
 }
@@ -400,4 +406,100 @@
 
 .status__backend[data-live="true"] {
   color: var(--accent);
+}
+
+/* ---- what the machine is doing ------------------------------------------ */
+
+/*
+ * A readout in the rail, above Settings.
+ *
+ * `margin-top: auto` is what pushes this and the footer list to the bottom —
+ * the destinations stay at the top where they are reached for, and the things
+ * that are not destinations sit out of the way beneath them.
+ */
+.sys {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  padding: var(--s3);
+}
+
+/*
+ * Label, number, bar — down a column, so the numbers line up and a glance
+ * reads the shape rather than each row in turn.
+ */
+.sys__row {
+  display: grid;
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+  align-items: center;
+  gap: var(--s1) var(--s2);
+}
+
+.sys__label {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* Tabular figures, or the numbers jitter sideways every two seconds as the
+   digits change width — which is exactly the movement the eye notices. */
+.sys__value {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sys__bar {
+  grid-column: 1 / -1;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.sys__fill {
+  display: block;
+  height: 100%;
+  border-radius: 2px;
+  background: var(--accent);
+  /* Slower than the two-second poll, so the bar glides between readings
+     instead of stepping. */
+  transition: width 600ms var(--ease), background-color 300ms var(--ease);
+}
+
+/* Nearly full is the one state worth colouring, and it is a warning rather
+   than an error: a disk at 90% is not broken yet. */
+.sys__fill[data-hot] {
+  background: var(--warn);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sys__fill {
+    transition: none;
+  }
+}
+
+/* No total to be a fraction of, so no bar — a rate is not a proportion. */
+.sys__row--net {
+  grid-template-columns: 2.4rem minmax(0, 1fr);
+}
+
+.sys__net {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.sys__dir {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s1);
+  color: var(--text-dim);
+  font-size: 10px;
 }

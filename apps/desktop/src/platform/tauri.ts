@@ -14,6 +14,8 @@ import type {
   GitHubStatus,
   GmailMailbox,
   GmailStatus,
+  SystemApi,
+  SystemReading,
   GitHubSummary,
   NewsSource,
   Route,
@@ -215,6 +217,10 @@ export function createTauriPlatform(): Platform {
     history: (step) => invoke<void>("browser_history", { step }),
   };
 
+  const system: SystemApi = {
+    status: () => invoke<SystemReading>("system_status"),
+  };
+
   const scrollback: ScrollbackApi = {
     load: (key) => invoke<string>("scrollback_load", { key }),
     save: (key, text) => invoke<void>("scrollback_save", { key, text }),
@@ -224,6 +230,7 @@ export function createTauriPlatform(): Platform {
 
   return {
     kind: "tauri",
+    system,
     vault,
     settings,
     pty,

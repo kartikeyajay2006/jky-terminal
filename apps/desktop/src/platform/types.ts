@@ -575,6 +575,36 @@ export interface AppsApi {
   readonly gmail: GmailApi;
 }
 
+/**
+ * One reading of the machine, as Rust measured it.
+ *
+ * Rates are per second since the previous reading, not totals since boot —
+ * the interval is measured on the Rust side rather than assumed, because a
+ * sleeping window makes the real gap longer than the one the timer asked for.
+ */
+export interface SystemReading {
+  /** Across all cores, 0–100. */
+  cpu_pct: number;
+  mem_used: number;
+  mem_total: number;
+  /** The disk the user's own files are on, not necessarily the root one. */
+  disk_used: number;
+  disk_total: number;
+  net_rx_bps: number;
+  net_tx_bps: number;
+}
+
+/**
+ * What the machine is doing.
+ *
+ * The window cannot read any of this itself, so Rust does and hands back
+ * seven numbers. Nothing here names a process, a path or a file — the
+ * narrowest thing that can answer "is it the machine or is it me".
+ */
+export interface SystemApi {
+  status(): Promise<SystemReading>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
@@ -589,6 +619,8 @@ export interface Platform {
   readonly browser: BrowserApi;
   /** What the Apps section needs fetched, since the window cannot fetch. */
   readonly apps: AppsApi;
+  /** Processor, memory, disk and network, for the status readout. */
+  readonly system: SystemApi;
   /** What each terminal had on screen last time. */
   readonly scrollback: ScrollbackApi;
   /** The shell commands JKY Terminal installs. */

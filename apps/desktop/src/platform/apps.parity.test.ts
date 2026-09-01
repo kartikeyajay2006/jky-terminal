@@ -21,10 +21,11 @@ const RUST_PLACES = join(__dirname, "../../../../crates/jky-apps/src/places.rs")
 const RUST_ROUTES = join(__dirname, "../../../../crates/jky-apps/src/routes.rs");
 const RUST_GITHUB = join(__dirname, "../../../../crates/jky-apps/src/github.rs");
 const RUST_GMAIL = join(__dirname, "../../../../crates/jky-apps/src/gmail.rs");
+const RUST_SYSTEM = join(__dirname, "../../../../crates/jky-system/src/lib.rs");
 
 /** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
-  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES, RUST_GITHUB, RUST_GMAIL]
+  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES, RUST_GITHUB, RUST_GMAIL, RUST_SYSTEM]
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
 }
@@ -171,6 +172,47 @@ describe("apps adapter parity", () => {
 
   it("names every route field the same way in TypeScript", () => {
     expect(fieldsOf("Route")).toEqual(["straight_m", "road_m", "duration_s"]);
+  });
+
+  describe("system", () => {
+    it("the mock reads the machine", async () => {
+      const now = await web.system.status();
+      for (const field of fieldsOf("Status")) {
+        expect(now, `Status.${field} is missing from the mock`).toHaveProperty(field);
+      }
+    });
+
+    it("names every system field the same way in TypeScript", () => {
+      expect(fieldsOf("Status")).toEqual([
+        "cpu_pct",
+        "mem_used",
+        "mem_total",
+        "disk_used",
+        "disk_total",
+        "net_rx_bps",
+        "net_tx_bps",
+      ]);
+    });
+
+    // The readout's whole claim is that it is live. A mock returning one
+    // frozen reading would look exactly like polling having stopped.
+    it("the mock moves, so a stopped poll is visible in the preview", async () => {
+      const a = await web.system.status();
+      const b = await web.system.status();
+      expect(a).not.toEqual(b);
+    });
+
+    // Every reading drives a bar or a rate, and a negative one draws
+    // backwards.
+    it("never reports a negative or impossible reading", async () => {
+      const now = await web.system.status();
+      expect(now.cpu_pct).toBeGreaterThanOrEqual(0);
+      expect(now.cpu_pct).toBeLessThanOrEqual(100);
+      expect(now.mem_used).toBeLessThanOrEqual(now.mem_total);
+      expect(now.disk_used).toBeLessThanOrEqual(now.disk_total);
+      expect(now.net_rx_bps).toBeGreaterThanOrEqual(0);
+      expect(now.net_tx_bps).toBeGreaterThanOrEqual(0);
+    });
   });
 
   describe("gmail", () => {

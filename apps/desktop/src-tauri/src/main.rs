@@ -6,7 +6,10 @@ mod listing;
 mod turn;
 mod state;
 
-use commands::{ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, vault};
+use commands::{
+    ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, system,
+    vault,
+};
 use state::AppState;
 use tauri::Manager;
 
@@ -28,6 +31,7 @@ fn main() {
             settings::settings_set_selected_model,
             settings::settings_set_active_provider,
             settings::settings_set_terminal_start_dir,
+            system::system_status,
             pty::pty_spawn,
             pty::pty_attach,
             pty::pty_write,

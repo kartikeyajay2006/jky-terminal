@@ -7,6 +7,7 @@ use jky_audit::AuditLog;
 use jky_pty::PtyRegistry;
 use jky_secrets::{KeyringStore, SecretStore};
 use jky_settings::SettingsStore;
+use jky_system::Sampler;
 use jky_store::Store;
 
 pub const KEYCHAIN_SERVICE: &str = "dev.jky.terminal";
@@ -69,6 +70,12 @@ pub struct AppState {
     /// Its timeouts are set in `jky_apps::net`, beside the retry policy, so
     /// there is one place that decides how long anything waits.
     pub http: reqwest::Client,
+    /// Reads processor, memory, disk and network for the status bar.
+    ///
+    /// One for the app, kept alive between calls: two of those four are
+    /// differences between successive moments, so a sampler built fresh per
+    /// call would report zero for ever.
+    pub sampler: Arc<Mutex<Sampler>>,
     /// The GitHub sign-in in flight, if any. One at a time: starting another
     /// abandons the first rather than leaving two waiting.
     pub github_flow: Arc<Mutex<Option<PendingDevice>>>,
@@ -89,6 +96,7 @@ impl AppState {
             turn: Arc::new(Mutex::new(None)),
             cancelled: Arc::new(AtomicBool::new(false)),
             http: jky_apps::net::client(),
+            sampler: Arc::new(Mutex::new(Sampler::new())),
             github_flow: Arc::new(Mutex::new(None)),
         }
     }
