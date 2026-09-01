@@ -51,12 +51,23 @@ pub fn pty_spawn(
     // the same accent as the banner beside it.
     let _ = crate::listing::write_all(&state.store, &bin_dir, parse_accent(&accent));
 
+    // The shell's own prompt hook, which is how the terminal learns that a
+    // command failed. Written every spawn so it follows the app rather than
+    // whatever was left in the directory by an older version. A failure here
+    // costs the failure notices and nothing else — the shell is the feature.
+    let shell = default_shell();
+    let home = dirs_home();
+    let integration_ok = home.as_deref().is_some_and(|h| {
+        jky_pty::install_shell_integration(&state.config_dir, h).is_ok()
+    });
+
     let session = PtySession::spawn(SpawnConfig {
-        shell: default_shell(),
+        shell,
         cwd,
         cols,
         rows,
         path_prepend: launchers_ok.then_some(bin_dir),
+        integration_dir: integration_ok.then(|| state.config_dir.clone()),
     })
     .map_err(|e| e.to_string())?;
 
@@ -131,4 +142,14 @@ pub fn pty_resize(
 pub fn pty_kill(state: State<'_, AppState>, id: String) -> Result<(), String> {
     state.ptys.remove(&id);
     Ok(()) // killing an already-dead pty is the desired end state
+}
+
+/// The user's home directory, which is where zsh looks for startup files when
+/// `ZDOTDIR` is unset. Read here rather than in `jky-pty` so the crate stays
+/// free of assumptions about whose machine it is on.
+fn dirs_home() -> Option<std::path::PathBuf> {
+    std::env::var_os("ZDOTDIR")
+        .or_else(|| std::env::var_os("HOME"))
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(std::path::PathBuf::from)
 }

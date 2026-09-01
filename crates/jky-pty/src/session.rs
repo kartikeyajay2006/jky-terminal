@@ -29,6 +29,13 @@ pub struct SpawnConfig {
     /// inside our shells without installing anything system-wide or editing
     /// the user's shell configuration.
     pub path_prepend: Option<PathBuf>,
+    /// Where the shell-integration startup files live.
+    ///
+    /// Set for a shell this app knows how to hook, and it is what lets the
+    /// terminal be told that a command failed. `None` leaves the shell
+    /// entirely alone — which is the right outcome for one this cannot hook,
+    /// rather than a half-applied hook that shows escapes at the prompt.
+    pub integration_dir: Option<PathBuf>,
 }
 
 impl Default for SpawnConfig {
@@ -42,6 +49,7 @@ impl Default for SpawnConfig {
             cols: 80,
             rows: 24,
             path_prepend: None,
+            integration_dir: None,
         }
     }
 }
@@ -82,6 +90,13 @@ impl PtySession {
         }
         if let Some(dir) = &config.path_prepend {
             cmd.env("PATH", path_with(dir, std::env::var("PATH").ok()));
+        }
+        // Applied after the base environment so a shell we can hook gets its
+        // hook, and one we cannot gets nothing at all.
+        if let Some(dir) = &config.integration_dir {
+            for (k, v) in crate::integration::integration_env(&config.shell.program, dir, None) {
+                cmd.env(k, v);
+            }
         }
 
         let child = pair.slave.spawn_command(cmd).map_err(|e| PtyError::Spawn {
@@ -163,6 +178,7 @@ mod tests {
             cols: 80,
             rows: 24,
             path_prepend: None,
+            integration_dir: None,
         }
     }
 
