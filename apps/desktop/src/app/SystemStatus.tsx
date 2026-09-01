@@ -5,30 +5,6 @@ import type { SystemReading } from "../platform/types";
 /** How often the machine is asked. */
 const EVERY_MS = 2000;
 
-/**
- * How many readings the sparklines remember.
- *
- * Two minutes at the poll rate, which is the span over which "is this thing
- * busy" is a question with an answer. Bounded because this component never
- * unmounts — an unbounded array in the rail is a leak with a two-second
- * clock on it.
- */
-const HISTORY = 60;
-
-/** The picture the sparklines are drawn into, in user units. */
-const SPARK_W = 100;
-const SPARK_H = 16;
-
-/**
- * The quietest network the sparkline will draw at full height.
- *
- * Rates have no ceiling, so the picture must scale to what it has seen — and
- * without a floor a machine doing nothing draws its own noise as a mountain
- * range: 200 bytes a second becomes a full-height spike and the rail reports
- * drama that is not happening.
- */
-const NET_FLOOR = 64 * 1024;
-
 const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"];
 
 /**
@@ -37,7 +13,7 @@ const UNITS = ["B", "KB", "MB", "GB", "TB", "PB"];
  * One decimal above a kilobyte and none below: "1023 B" is a real answer and
  * "1023.0 B" is a precision nobody asked for. A reading that is not a number
  * gives back an em dash rather than "NaN" — a machine that cannot report its
- * disk is a real machine, and the bar still has to draw something.
+ * disk is a real machine, and the panel still has to draw something.
  */
 export function size(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes < 0) return "—";
@@ -59,56 +35,53 @@ export function rateText(bytesPerSecond: number): string {
 }
 
 /**
- * A series as SVG polyline points, oldest on the left.
+ * How long the machine has been up, in the units a person would use.
  *
- * A reading above `scale` is drawn at the top rather than above the box,
- * where it would be clipped or overlap the row above. One reading is a dot on
- * the left rather than a line, and none is nothing at all.
+ * Two units at most. "2d 14h" is the answer; "2d 14h 32m 09s" is a stopwatch,
+ * and the seconds would redraw the row every two seconds for no information.
  */
-export function sparkPoints(
-  values: number[],
-  width: number,
-  height: number,
-  scale: number,
-): string {
-  if (values.length === 0) return "";
-  const top = scale > 0 ? scale : 1;
-  const step = values.length > 1 ? width / (values.length - 1) : 0;
+export function uptimeText(seconds: number): string {
+  if (!Number.isFinite(seconds) || seconds < 0) return "—";
 
-  return values
-    .map((value, i) => {
-      const clamped = Math.min(Math.max(value, 0), top);
-      const y = height - (clamped / top) * height;
-      return `${Math.round(i * step)},${Math.round(y)}`;
-    })
-    .join(" ");
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor((seconds % 86_400) / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
 }
 
-/** What to scale the network picture against. See `NET_FLOOR`. */
-export function netScale(values: number[]): number {
-  return Math.max(NET_FLOOR, ...values, 0);
-}
-
-/** `used` of `total` as a whole percentage, and never a division by zero. */
-function share(used: number, total: number): number {
+/** `used` of `total` as a percentage, and never a division by zero. */
+export function share(used: number, total: number): number {
   if (!Number.isFinite(used) || !Number.isFinite(total) || total <= 0) return 0;
   return Math.min(100, Math.max(0, (used / total) * 100));
 }
 
 /**
+ * The quietest network drawn as a full bar.
+ *
+ * A rate has no ceiling, so the bar needs something to be a fraction of. A
+ * floor stops a machine doing nothing from drawing its own noise as a full
+ * bar — 200 bytes a second is not "busy", and a bar that says it is would be
+ * the readout lying every time the machine is idle.
+ */
+const NET_FULL = 2 * 1024 * 1024;
+
+/**
  * What the machine is doing, in the rail above Settings.
  *
- * It is a readout rather than a destination, which is why it sits at the foot
- * of the rail with Settings rather than among the places you can go.
+ * A labelled box of bars: name, how full, and the figure. Bars rather than
+ * lines because the question each row answers is "how much of it is left",
+ * which is a proportion — and because at 156px of rail a shape is a smudge
+ * while a bar is still a bar.
  *
- * A failed reading keeps the last one rather than blanking. The numbers are
- * two seconds old at worst either way, and a row that empties itself every
- * time a sample is missed reads as a broken sidebar rather than as a busy
- * machine.
+ * A failed reading keeps the last one. The numbers are two seconds old at
+ * worst either way, and a row that empties whenever a sample is missed reads
+ * as a broken sidebar rather than as a busy machine.
  */
 export function SystemStatus() {
   const [reading, setReading] = useState<SystemReading | null>(null);
-  const [history, setHistory] = useState<SystemReading[]>([]);
   /** Kept so an unmount between the ask and the answer sets no state. */
   const live = useRef(true);
 
@@ -119,9 +92,7 @@ export function SystemStatus() {
       void getPlatform()
         .system.status()
         .then((next) => {
-          if (!live.current) return;
-          setReading(next);
-          setHistory((past) => [...past, next].slice(-HISTORY));
+          if (live.current) setReading(next);
         })
         .catch(() => {
           // Keep what we have. See above.
@@ -139,110 +110,83 @@ export function SystemStatus() {
   const cpu = reading ? share(reading.cpu_pct, 100) : 0;
   const ram = reading ? share(reading.mem_used, reading.mem_total) : 0;
   const disk = reading ? share(reading.disk_used, reading.disk_total) : 0;
-
-  const memTotal = reading?.mem_total ?? 0;
-  const rx = history.map((h) => h.net_rx_bps);
-  const tx = history.map((h) => h.net_tx_bps);
-  const netTop = netScale([...rx, ...tx]);
+  const net = reading ? reading.net_rx_bps + reading.net_tx_bps : 0;
 
   return (
-    <div className="sys" role="group" aria-label="System">
-      <Metric
+    <section className="sys" aria-label="System status">
+      <p className="sys__title">System status</p>
+
+      <Row
         label="CPU"
+        tone="cpu"
+        fill={cpu}
         value={reading ? `${Math.round(reading.cpu_pct)}%` : "—"}
-        hot={cpu >= 85}
-        // A fixed 0–100 scale. Auto-scaling this would make an idle machine's
-        // 2% jitter look identical to a pegged core, which is the one
-        // distinction the row exists to make.
-        points={sparkPoints(history.map((h) => h.cpu_pct), SPARK_W, SPARK_H, 100)}
       />
-
-      <Metric
+      <Row
         label="RAM"
-        value={reading ? `${size(reading.mem_used)} / ${size(reading.mem_total)}` : "—"}
-        hot={ram >= 85}
-        points={sparkPoints(history.map((h) => h.mem_used), SPARK_W, SPARK_H, memTotal)}
+        tone="ram"
+        fill={ram}
+        value={reading ? `${Math.round(ram)}%` : "—"}
+        // The percentage is what fits; the figures behind it are one hover
+        // away rather than gone.
+        detail={reading ? `${size(reading.mem_used)} of ${size(reading.mem_total)}` : undefined}
+      />
+      <Row
+        label="Disk"
+        tone="disk"
+        fill={disk}
+        value={reading ? `${Math.round(disk)}%` : "—"}
+        detail={reading ? `${size(reading.disk_used)} of ${size(reading.disk_total)}` : undefined}
+      />
+      <Row
+        label="Net"
+        tone="net"
+        fill={share(net, NET_FULL)}
+        value={reading ? rateText(net) : "—"}
+        detail={
+          reading
+            ? `down ${rateText(reading.net_rx_bps)}, up ${rateText(reading.net_tx_bps)}`
+            : undefined
+        }
       />
 
-      {/* Disk gets a bar, not a sparkline. It does not move on this
-          timescale, and a flat line for ever would be a picture of nothing
-          pretending to be a reading. */}
-      <div className="sys__row">
-        <span className="sys__label">Disk</span>
-        <span className="sys__value">
-          {reading ? `${size(reading.disk_used)} / ${size(reading.disk_total)}` : "—"}
-        </span>
-        <span className="sys__bar" aria-hidden="true">
-          <span className="sys__fill" style={{ width: `${disk}%` }} data-hot={disk >= 85 || undefined} />
-        </span>
-      </div>
-
-      {/* Two lines on one scale, so down and up are comparable to each other
-          rather than each filling its own box. */}
-      <div className="sys__row sys__row--net" aria-label="Network">
-        <span className="sys__label">Net</span>
-        <span className="sys__net">
-          <span className="sys__dir">
-            <span className="sys__arrow" aria-hidden="true">
-              ↓
-            </span>
-            <span className="sys__value">{reading ? rateText(reading.net_rx_bps) : "—"}</span>
-          </span>
-          <span className="sys__dir">
-            <span className="sys__arrow" aria-hidden="true">
-              ↑
-            </span>
-            <span className="sys__value">{reading ? rateText(reading.net_tx_bps) : "—"}</span>
-          </span>
-        </span>
-        <Spark points={sparkPoints(rx, SPARK_W, SPARK_H, netTop)} className="sys__spark--rx" />
-        <Spark points={sparkPoints(tx, SPARK_W, SPARK_H, netTop)} className="sys__spark--tx" />
-      </div>
-    </div>
-  );
-}
-
-/** One reading, its number, and the shape of the last two minutes. */
-function Metric({
-  label,
-  value,
-  points,
-  hot,
-}: {
-  label: string;
-  value: string;
-  points: string;
-  hot: boolean;
-}) {
-  return (
-    <div className="sys__row" data-hot={hot || undefined}>
-      <span className="sys__label">{label}</span>
-      <span className="sys__value">{value}</span>
-      <Spark points={points} />
-    </div>
+      {/* No bar: uptime is not a proportion of anything, and a bar under it
+          would be a picture of a number that has no maximum. */}
+      <p className="sys__row sys__row--plain">
+        <span className="sys__label">Uptime</span>
+        <span className="sys__value">{reading ? uptimeText(reading.uptime_s) : "—"}</span>
+      </p>
+    </section>
   );
 }
 
 /**
- * The picture.
+ * One reading: name, bar, figure.
  *
- * `aria-hidden`, because the number beside it already says what it says — a
- * screen reader reading out a shape it cannot convey would be noise. The
- * polyline is not scaled by CSS: `vectorEffect` keeps the stroke one pixel
- * wide however wide the rail gets.
+ * The bar is `aria-hidden` because the figure beside it says the same thing,
+ * and a screen reader announcing both says everything twice.
  */
-function Spark({ points, className }: { points: string; className?: string }) {
+function Row({
+  label,
+  tone,
+  fill,
+  value,
+  detail,
+}: {
+  label: string;
+  tone: string;
+  fill: number;
+  value: string;
+  /** Shown on hover, for the figures the row has no width for. */
+  detail?: string;
+}) {
   return (
-    <svg
-      className={className ? `sys__spark ${className}` : "sys__spark"}
-      viewBox={`0 0 ${SPARK_W} ${SPARK_H}`}
-      preserveAspectRatio="none"
-      aria-hidden="true"
-      focusable="false"
-    >
-      {points !== "" && (
-        <polyline points={points} vectorEffect="non-scaling-stroke" />
-      )}
-    </svg>
+    <p className="sys__row" data-tone={tone} title={detail}>
+      <span className="sys__label">{label}</span>
+      <span className="sys__bar" aria-hidden="true">
+        <span className="sys__fill" style={{ width: `${fill}%` }} data-hot={fill >= 85 || undefined} />
+      </span>
+      <span className="sys__value">{value}</span>
+    </p>
   );
 }

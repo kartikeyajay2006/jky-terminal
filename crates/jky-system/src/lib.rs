@@ -35,6 +35,8 @@ pub struct Status {
     /// Bytes per second since the previous sample, not since boot.
     pub net_rx_bps: u64,
     pub net_tx_bps: u64,
+    /// How long the machine has been up, in seconds.
+    pub uptime_s: u64,
 }
 
 /// A mounted filesystem, as much of one as choosing between them needs.
@@ -178,6 +180,7 @@ impl Sampler {
             disk_total: disk.as_ref().map(|d| d.total).unwrap_or(0),
             net_rx_bps: rate(rx, elapsed),
             net_tx_bps: rate(tx, elapsed),
+            uptime_s: System::uptime(),
         }
     }
 }
@@ -303,6 +306,8 @@ mod tests {
         assert!(status.mem_total > 0, "a machine with no memory is running this");
         assert!(status.mem_used <= status.mem_total);
         assert!(status.disk_used <= status.disk_total);
+        // Anything running this has been up for at least a moment.
+        assert!(status.uptime_s > 0, "a machine that has been up no time is running this");
         // Not asserted to be non-zero: a quiet machine is a real machine.
         let _ = first;
     }

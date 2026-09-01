@@ -785,6 +785,7 @@ export function createWebPlatform(): Platform {
         disk_total: 465 * 1024 ** 3,
         net_rx_bps: Math.round(wave(2) * 2_400_000),
         net_tx_bps: Math.round(wave(4) * 180_000),
+        uptime_s: 226_320 + tick * 2,
       };
     },
   };

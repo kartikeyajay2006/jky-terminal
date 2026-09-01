@@ -191,6 +191,7 @@ describe("apps adapter parity", () => {
         "disk_total",
         "net_rx_bps",
         "net_tx_bps",
+        "uptime_s",
       ]);
     });
 

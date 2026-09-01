@@ -624,6 +624,8 @@ export interface SystemReading {
   disk_total: number;
   net_rx_bps: number;
   net_tx_bps: number;
+  /** How long the machine has been up, in seconds. */
+  uptime_s: number;
 }
 
 /**

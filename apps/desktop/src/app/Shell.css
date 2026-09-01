@@ -411,46 +411,70 @@
 /* ---- what the machine is doing ------------------------------------------ */
 
 /*
- * A readout in the rail, above Settings.
+ * A labelled box in the rail, above Settings.
  *
  * `margin-top: auto` is what pushes this and the footer list to the bottom —
  * the destinations stay at the top where they are reached for, and the things
  * that are not destinations sit out of the way beneath them.
+ *
+ * Bars rather than lines. Each row answers "how much of it is in use", which
+ * is a proportion; and at 156px of rail a shape is a smudge while a bar is
+ * still a bar.
  */
 .sys {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: var(--s1);
-  padding: var(--s3) var(--s2);
+  gap: var(--s2);
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+}
+
+.sys__title {
+  margin: 0 0 var(--s1);
+  color: var(--text-dim);
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
 }
 
 /*
- * Label and number on one line, the picture under both.
+ * Label, bar, figure — on one line, with the bar taking whatever is left.
  *
- * The sparkline spans the full width because its whole job is the shape of
- * the last two minutes, and a shape squeezed into a third of a 180px rail is
- * a smudge.
+ * The label column is fixed so the bars start at the same x on every row: a
+ * ragged left edge is what makes a stack of bars unreadable at a glance,
+ * which is the only way this is ever read.
  */
 .sys__row {
-  position: relative;
+  --tone: var(--accent);
   display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
-  align-items: baseline;
-  gap: 0 var(--s2);
-  padding: var(--s2) var(--s2) var(--s1);
-  border-radius: var(--radius-sm);
-  transition: background var(--fast) var(--ease);
+  grid-template-columns: 2.6rem minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
 }
 
-.sys__row:hover {
-  background: var(--surface-raised);
+/* One colour per row, so a glance finds the row before it reads the label. */
+.sys__row[data-tone="cpu"] { --tone: var(--mint); }
+.sys__row[data-tone="ram"] { --tone: var(--accent); }
+.sys__row[data-tone="disk"] { --tone: var(--warn); }
+.sys__row[data-tone="net"] { --tone: var(--violet); }
+
+/* No bar, so the figure takes the space one would have had. */
+.sys__row--plain {
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  margin-top: var(--s1);
+  padding-top: var(--s2);
+  border-top: 1px solid var(--line);
 }
 
 .sys__label {
   color: var(--text-dim);
   font-size: 9px;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -459,98 +483,15 @@
 .sys__value {
   justify-self: end;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: 10px;
   font-variant-numeric: tabular-nums;
   color: var(--text-muted);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* Near the top is worth colouring, and it is a warning rather than an error:
-   a disk at 90% is not broken yet. */
-.sys__row[data-hot] .sys__value {
-  color: var(--warn);
-}
-
-/*
- * The picture.
- *
- * `preserveAspectRatio: none` lets one viewBox stretch to whatever width the
- * rail is, and `vector-effect` keeps the stroke a hairline while it does —
- * without it the line thickens with the box and the shape turns to mush.
- */
-.sys__spark {
-  grid-column: 1 / -1;
-  width: 100%;
-  height: 16px;
-  margin-top: var(--s1);
-  overflow: visible;
-}
-
-.sys__spark polyline {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.25;
-  stroke-linejoin: round;
-  stroke-linecap: round;
-}
-
-.sys__row[data-hot] .sys__spark polyline {
-  stroke: var(--warn);
-}
-
-/* Down is the line you read; up is the quieter one beside it, so they are
-   told apart by weight rather than by needing a key. */
-.sys__spark--rx polyline {
-  stroke: var(--accent);
-}
-
-.sys__spark--tx polyline {
-  stroke: var(--violet);
-  stroke-dasharray: 2 2;
-}
-
-/* The two network figures sit side by side rather than stacked: stacked, the
-   second one was the first thing to be cut off. */
-.sys__row--net .sys__net {
-  justify-self: end;
-  display: flex;
-  align-items: baseline;
-  gap: var(--s2);
-  min-width: 0;
-}
-
-.sys__dir {
-  display: flex;
-  align-items: baseline;
-  gap: 2px;
-  min-width: 0;
-}
-
-.sys__arrow {
-  color: var(--text-dim);
-  font-size: 9px;
-}
-
-.sys__row--net .sys__value {
-  font-size: 10px;
-}
-
-/* Both network lines share one box, so they can be compared. */
-.sys__row--net .sys__spark {
-  margin-top: 0;
-}
-
-.sys__row--net .sys__spark--tx {
-  margin-top: calc(-16px - var(--s1));
 }
 
 .sys__bar {
-  grid-column: 1 / -1;
-  height: 3px;
-  margin-top: var(--s2);
-  border-radius: 2px;
+  height: 5px;
+  border-radius: 999px;
   background: var(--line);
   overflow: hidden;
 }
@@ -558,15 +499,22 @@
 .sys__fill {
   display: block;
   height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
-  /* Slower than the two-second poll, so the bar glides between readings
+  border-radius: 999px;
+  background: var(--tone);
+  /* Slower than the two-second poll, so a bar glides between readings
      instead of stepping. */
   transition: width 600ms var(--ease), background-color 300ms var(--ease);
 }
 
+/* Nearly full is worth colouring, and it is a warning rather than an error:
+   a disk at 90% is not broken yet. */
 .sys__fill[data-hot] {
-  background: var(--warn);
+  background: var(--danger);
+}
+
+.sys__row[data-tone="disk"] .sys__fill[data-hot],
+.sys__row[data-tone="cpu"] .sys__fill[data-hot] {
+  background: var(--danger);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -575,17 +523,24 @@
   }
 }
 
-/* Collapsed rail: there is no room for numbers, so only the shapes remain —
-   still live, still a glance, just without the words. */
+/* Collapsed rail: no room for words or figures, so the bars carry it alone —
+   still live, still a glance, just without the labels. */
 @media (max-width: 900px) {
+  .sys {
+    padding: var(--s2);
+  }
+
+  .sys__title,
   .sys__label,
-  .sys__value,
-  .sys__net {
+  .sys__value {
     display: none;
   }
 
-  .sys__spark {
-    grid-column: 1 / -1;
-    margin-top: 0;
+  .sys__row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sys__row--plain {
+    display: none;
   }
 }

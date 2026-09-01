@@ -1,6 +1,6 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { SystemStatus, size, rateText, sparkPoints, netScale } from "./SystemStatus";
+import { SystemStatus, size, rateText, uptimeText, share } from "./SystemStatus";
 import { createWebPlatform, __setPlatformForTests } from "../platform";
 import type { Platform, SystemReading } from "../platform/types";
 
@@ -12,6 +12,7 @@ const IDLE: SystemReading = {
   disk_total: 500_000_000_000,
   net_rx_bps: 1_200_000,
   net_tx_bps: 64_000,
+  uptime_s: 226_320,
 };
 
 function reading(next: () => SystemReading | Promise<never>): Platform {
@@ -45,56 +46,28 @@ describe("rateText", () => {
   });
 });
 
-describe("sparkPoints", () => {
-  // The shape of the last minute is the thing a readout can show that a
-  // single number cannot: 90% climbing and 90% falling are different facts.
-  it("draws one point per reading, oldest on the left", () => {
-    const points = sparkPoints([0, 50, 100], 100, 10, 100).split(" ");
-    expect(points).toHaveLength(3);
-    expect(points[0]).toBe("0,10");
-    expect(points[2]).toBe("100,0");
+describe("uptimeText", () => {
+  // Two units at most. Seconds would redraw the row every two seconds to say
+  // nothing, and "2d 14h 32m 09s" is a stopwatch rather than an answer.
+  it("says how long in the units a person would use", () => {
+    expect(uptimeText(226_320)).toBe("2d 14h");
+    expect(uptimeText(3600 * 5 + 60 * 7)).toBe("5h 7m");
+    expect(uptimeText(90)).toBe("1m");
+    expect(uptimeText(0)).toBe("0m");
   });
 
-  it("puts a flat series on a flat line", () => {
-    const points = sparkPoints([40, 40, 40], 90, 10, 100).split(" ");
-    expect(new Set(points.map((p) => p.split(",")[1])).size).toBe(1);
-  });
-
-  // A reading above the scale is drawn at the top rather than above the box,
-  // where it would be clipped or overlap the row above.
-  it("keeps a reading larger than the scale inside the picture", () => {
-    const points = sparkPoints([500], 100, 10, 100).split(" ");
-    expect(points[0]).toBe("0,0");
-  });
-
-  it("draws nothing from no readings, rather than a stray dot", () => {
-    expect(sparkPoints([], 100, 10, 100)).toBe("");
-    expect(sparkPoints([12], 100, 10, 100)).toBe("0,9");
-  });
-
-  // A scale of zero would divide by nothing on a machine reporting no memory.
-  it("survives a scale of zero", () => {
-    expect(() => sparkPoints([1, 2], 100, 10, 0)).not.toThrow();
+  it("survives a reading that is not a number", () => {
+    expect(uptimeText(Number.NaN)).toBe("—");
+    expect(uptimeText(-1)).toBe("—");
   });
 });
 
-describe("netScale", () => {
-  /*
-   * Network rates have no ceiling, so the picture has to scale to what it
-   * has seen. Without a floor, a machine doing nothing draws its own noise as
-   * a mountain range — 200 bytes a second becomes a full-height spike, and
-   * the readout reports drama that is not happening.
-   */
-  it("does not amplify a quiet network into a mountain range", () => {
-    expect(netScale([120, 400, 80])).toBeGreaterThanOrEqual(64 * 1024);
-  });
-
-  it("scales to the peak once there is real traffic", () => {
-    expect(netScale([0, 5_000_000, 100])).toBe(5_000_000);
-  });
-
-  it("has a scale even with nothing to scale to", () => {
-    expect(netScale([])).toBeGreaterThan(0);
+describe("share", () => {
+  it("is a percentage and never a division by zero", () => {
+    expect(share(50, 200)).toBe(25);
+    expect(share(0, 0)).toBe(0);
+    expect(share(300, 200)).toBe(100);
+    expect(share(Number.NaN, 100)).toBe(0);
   });
 });
 
@@ -107,10 +80,10 @@ describe("SystemStatus", () => {
     vi.useRealTimers();
   });
 
-  it("shows all four readings", async () => {
+  it("shows every reading, under one heading", async () => {
     render(<SystemStatus />);
-    const box = await screen.findByRole("group", { name: /system/i });
-    for (const label of ["CPU", "RAM", "Disk", "Net"]) {
+    const box = await screen.findByRole("region", { name: /system status/i });
+    for (const label of ["CPU", "RAM", "Disk", "Net", "Uptime"]) {
       expect(within(box).getByText(label), `${label} is missing`).toBeInTheDocument();
     }
   });
@@ -122,17 +95,19 @@ describe("SystemStatus", () => {
 
   // "6.0 GB" alone does not say whether that is a lot. The total is what
   // makes the number mean something.
-  it("reports memory and disk against what the machine has", async () => {
+  it("reports memory and disk as how full they are", async () => {
     render(<SystemStatus />);
-    expect(await screen.findByText(/5\.6 GB \/ 14\.9 GB/)).toBeInTheDocument();
-    expect(screen.getByText(/223\.5 GB \/ 465\.7 GB/)).toBeInTheDocument();
+    // 6 GB of 16, and 240 GB of 500.
+    expect(await screen.findByText("38%")).toBeInTheDocument();
+    expect(screen.getByText("48%")).toBeInTheDocument();
   });
 
-  it("reports the network both ways", async () => {
-    render(<SystemStatus />);
-    const net = await screen.findByLabelText(/network/i);
-    expect(net).toHaveTextContent(/1\.1 MB\/s/);
-    expect(net).toHaveTextContent(/62\.5 KB\/s/);
+  it("reports the network, with the split within reach", async () => {
+    const { container } = render(<SystemStatus />);
+    await screen.findByText("2d 14h");
+    const net = container.querySelector('[data-tone="net"]')!;
+    expect(net).toHaveTextContent(/1\.2 MB\/s/);
+    expect(net.getAttribute("title")).toMatch(/down 1\.1 MB\/s, up 62\.5 KB\/s/);
   });
 
   /*
@@ -201,54 +176,49 @@ describe("SystemStatus", () => {
     expect(calls).toBe(after);
   });
 
-  // The readout claims to be live; the sparkline is where that claim shows.
-  it("draws the recent history, not only the latest number", async () => {
-    vi.useFakeTimers();
-    let calls = 0;
-    __setPlatformForTests(
-      reading(() => {
-        calls += 1;
-        return { ...IDLE, cpu_pct: calls * 7 };
-      }),
-    );
-
+  /*
+   * A bar is a proportion, so it needs something to be a proportion of.
+   * A rate has no ceiling, which is why the network row has a fixed one — and
+   * why a machine doing nothing must not draw a full bar.
+   */
+  it("does not draw an idle network as a busy one", async () => {
+    __setPlatformForTests(reading(() => ({ ...IDLE, net_rx_bps: 200, net_tx_bps: 0 })));
     const { container } = render(<SystemStatus />);
-    await vi.waitFor(() => expect(container.querySelector(".sys__spark")).toBeTruthy());
+    await waitFor(() => expect(container.querySelector('[data-tone="net"]')).toBeTruthy());
 
-    const pointsAfterOne = container.querySelector("polyline")?.getAttribute("points") ?? "";
-    await vi.advanceTimersByTimeAsync(2500);
-    await vi.advanceTimersByTimeAsync(2500);
-
-    const pointsAfterThree = container.querySelector("polyline")?.getAttribute("points") ?? "";
-    expect(pointsAfterThree.split(" ").length).toBeGreaterThan(pointsAfterOne.split(" ").length);
+    const fill = container.querySelector('[data-tone="net"] .sys__fill') as HTMLElement;
+    expect(parseFloat(fill.style.width)).toBeLessThan(5);
   });
 
-  // Unbounded history in a component that never unmounts is a slow leak.
-  it("keeps the history bounded", async () => {
-    vi.useFakeTimers();
-    __setPlatformForTests(reading(() => IDLE));
-    const { container } = render(<SystemStatus />);
-    await vi.waitFor(() => expect(container.querySelector(".sys__spark")).toBeTruthy());
-
-    for (let i = 0; i < 90; i += 1) await vi.advanceTimersByTimeAsync(2100);
-
-    const points = container.querySelector("polyline")!.getAttribute("points")!.split(" ");
-    expect(points.length).toBeLessThanOrEqual(60);
-  });
-
-  // The paste that started this had an up-arrow with nothing after it.
-  it("always gives the network both a down and an up figure", async () => {
+  it("says how long the machine has been up", async () => {
     render(<SystemStatus />);
-    const net = await screen.findByLabelText(/network/i);
-    const values = within(net).getAllByText(/\/s$/);
-    expect(values).toHaveLength(2);
-    for (const v of values) expect(v.textContent?.trim()).not.toBe("");
+    expect(await screen.findByText("2d 14h")).toBeInTheDocument();
+  });
+
+  // Uptime has no maximum, so a bar under it would be a picture of nothing.
+  it("gives uptime no bar", async () => {
+    const { container } = render(<SystemStatus />);
+    await screen.findByText("2d 14h");
+    const rows = [...container.querySelectorAll(".sys__row")];
+    const uptime = rows.find((r) => r.textContent?.includes("Uptime"))!;
+    expect(uptime.querySelector(".sys__bar")).toBeNull();
+  });
+
+  // The rail has no room for "9.3 GB / 15.3 GB", but the figures should not
+  // simply be gone.
+  it("keeps the absolute figures within reach", async () => {
+    const { container } = render(<SystemStatus />);
+    await waitFor(() => expect(container.querySelector('[data-tone="ram"]')).toBeTruthy());
+    expect(container.querySelector('[data-tone="ram"]')).toHaveAttribute(
+      "title",
+      expect.stringContaining("GB"),
+    );
   });
 
   it("says so before the first reading arrives", () => {
     __setPlatformForTests(reading(() => new Promise<never>(() => {})));
     render(<SystemStatus />);
-    expect(screen.getByRole("group", { name: /system/i })).toHaveTextContent(/reading|—/i);
+    expect(screen.getByRole("region", { name: /system status/i })).toHaveTextContent("—");
   });
 });
 
