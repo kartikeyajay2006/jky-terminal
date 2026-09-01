@@ -261,11 +261,32 @@ export function Apps() {
   );
 }
 
+/**
+ * The grid, in two groups.
+ *
+ * Split by whether an app signs in to something, because that is the one
+ * thing worth knowing before clicking a tile and it is already a field on the
+ * registry record. Structure carrying a fact, rather than eight tiles in an
+ * undifferentiated rack.
+ *
+ * Both counts are derived. The header used to read "no account needed", which
+ * stopped being true the moment GitHub arrived and stayed on screen through
+ * Gmail — a sentence that cannot go stale is worth more than a shorter one.
+ */
 function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: string[] }) {
+  const ready = APPS.filter((app) => app.auth === "none");
+  const accounts = APPS.filter((app) => app.auth !== "none");
+
   return (
     <div className="apps">
-      <header className="apps__head">
-        <p className="apps__eyebrow">{APPS.length} apps · no account needed</p>
+      <header className="apps__head" aria-label="Apps">
+        <p className="apps__eyebrow">
+          <span>{APPS.length} apps</span>
+          <span className="apps__eyebrow-sep" aria-hidden="true">
+            ·
+          </span>
+          <span>{ready.length} need nothing but a click</span>
+        </p>
         <h1 className="apps__title">Apps</h1>
         <p className="apps__lede">
           Open as many as you like — they stay open in tabs above. Press{" "}
@@ -273,14 +294,59 @@ function AppGrid({ onOpen, openIds }: { onOpen: (id: string) => void; openIds: s
         </p>
       </header>
 
-      <ul className="apps__grid" aria-label="Apps">
-        {APPS.map((app) => (
+      <div className="apps__groups" role="region" aria-label="Apps">
+        <Group
+          name="Ready to use"
+          note="No account, no key, nothing to set up."
+          apps={ready}
+          openIds={openIds}
+          onOpen={onOpen}
+        />
+        <Group
+          name="Your accounts"
+          note="Signs in through your own browser. Read-only, both of them."
+          apps={accounts}
+          openIds={openIds}
+          onOpen={onOpen}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** One labelled group of tiles. A group with nothing in it is not drawn. */
+function Group({
+  name,
+  note,
+  apps,
+  openIds,
+  onOpen,
+}: {
+  name: string;
+  note: string;
+  apps: AppDef[];
+  openIds: string[];
+  onOpen: (id: string) => void;
+}) {
+  if (apps.length === 0) return null;
+
+  return (
+    <section className="apps__group">
+      <div className="apps__group-head">
+        <h2 className="apps__group-name">{name}</h2>
+        <p className="apps__group-note">{note}</p>
+        <span className="apps__group-count" aria-hidden="true">
+          {apps.length}
+        </span>
+      </div>
+      <ul className="apps__grid" aria-label={name}>
+        {apps.map((app) => (
           <li key={app.id}>
             <Tile app={app} open={openIds.includes(app.id)} onOpen={onOpen} />
           </li>
         ))}
       </ul>
-    </div>
+    </section>
   );
 }
 
@@ -307,8 +373,15 @@ function Tile({
       </span>
       <span className="apps__tile-name">{app.name}</span>
       <span className="apps__tile-blurb">{app.blurb}</span>
-      {open && <span className="apps__tile-open">open</span>}
-      {app.auth !== "none" && <span className="apps__tile-auth">needs {app.auth}</span>}
+      <span className="apps__tile-feet">
+        {open && <span className="apps__tile-open">open</span>}
+        {app.auth !== "none" && <span className="apps__tile-auth">needs {app.auth}</span>}
+      </span>
+      {/* Points the way on hover and focus. Decorative: the whole tile is the
+          button, and its name already says where it goes. */}
+      <span className="apps__tile-go" aria-hidden="true">
+        →
+      </span>
     </button>
   );
 }

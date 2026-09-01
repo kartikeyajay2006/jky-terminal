@@ -247,6 +247,14 @@ still there when you come back. `Ctrl+Shift+A` moves between them.
 | ⏱ | **Timer** | Counts by the clock, so a backgrounded window does not lose time |
 | 🖩 | **Calculator** | A real parser — not `eval` — with history you can click back into |
 
+The grid is in two groups — what needs nothing, and what signs in to an
+account of yours — because that is the one thing worth knowing before you
+click a tile, and it is already a field on the registry record rather than a
+label someone has to keep in step. Both counts in the header are derived from
+that list for the same reason: it used to read "no account needed", which
+stopped being true the moment GitHub arrived and stayed on screen through
+Gmail.
+
 Each app carries its own colour, and it is the same colour on its tile, its
 tab, and the panel it opens. Colour is wayfinding here: you can tell where you
 are without reading — which is why the eighth app needed an eighth colour

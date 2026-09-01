@@ -20,9 +20,57 @@ describe("Apps", () => {
 
   it("shows every app on the grid", () => {
     render(<Apps />);
-    const grid = screen.getByRole("list", { name: /apps/i });
+    const grid = screen.getByRole("region", { name: /^apps$/i });
     for (const app of APPS) {
       expect(within(grid).getByText(app.name)).toBeInTheDocument();
+    }
+  });
+
+  /*
+   * "8 apps · no account needed" stopped being true the moment GitHub
+   * arrived, and stayed on screen through Gmail. The counts are derived from
+   * the registry now, so the header cannot go stale behind the list again.
+   */
+  it("counts what is here without claiming none of it needs an account", () => {
+    render(<Apps />);
+    const head = screen.getByRole("banner", { name: /apps/i });
+    expect(head).not.toHaveTextContent(/no account needed/i);
+    expect(head).toHaveTextContent(String(APPS.length));
+    expect(head).toHaveTextContent(String(APPS.filter((a) => a.auth === "none").length));
+  });
+
+  /*
+   * The one thing worth knowing before clicking a tile is whether it will ask
+   * you to sign in. That fact is already in the registry, so the grid is laid
+   * out by it — structure carrying something true rather than eight tiles in
+   * an undifferentiated rack.
+   */
+  it("separates the apps that need an account from the ones that do not", () => {
+    render(<Apps />);
+    const ready = screen.getByRole("list", { name: /ready to use/i });
+    const accounts = screen.getByRole("list", { name: /your accounts/i });
+
+    for (const app of APPS) {
+      const where = app.auth === "none" ? ready : accounts;
+      expect(within(where).getByText(app.name), `${app.name} is in the wrong group`)
+        .toBeInTheDocument();
+    }
+    expect(within(accounts).getByText("GitHub")).toBeInTheDocument();
+    expect(within(accounts).getByText("Gmail")).toBeInTheDocument();
+  });
+
+  it("shows every app exactly once", () => {
+    const { container } = render(<Apps />);
+    const tiles = container.querySelectorAll(".apps__tile");
+    expect(tiles).toHaveLength(APPS.length);
+  });
+
+  // A group with nothing in it is a heading over empty space.
+  it("shows no group heading it has no apps for", () => {
+    render(<Apps />);
+    for (const name of [/ready to use/i, /your accounts/i]) {
+      const list = screen.getByRole("list", { name });
+      expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
     }
   });
 
@@ -38,7 +86,7 @@ describe("Apps", () => {
     render(<Apps />);
     await user.click(screen.getByRole("button", { name: new RegExp(APPS[0].name, "i") }));
     await user.click(screen.getByRole("button", { name: /all apps/i }));
-    expect(screen.getByRole("list", { name: /apps/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /^apps$/i })).toBeInTheDocument();
   });
 
   it("has no switcher open to begin with", async () => {
@@ -111,7 +159,7 @@ describe("Apps", () => {
     // Scoped to the grid: once an app is open its tab carries the same name,
     // so an unscoped query would match both.
     async function open(user: ReturnType<typeof userEvent.setup>, name: RegExp) {
-      const grid = screen.getByRole("list", { name: /apps/i });
+      const grid = screen.getByRole("region", { name: /^apps$/i });
       await user.click(within(grid).getByRole("button", { name }));
     }
 
@@ -205,7 +253,7 @@ describe("Apps", () => {
       render(<Apps />);
       await open(user, /calculator/i);
       await close(user, /calculator/i);
-      expect(screen.getByRole("list", { name: /apps/i })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: /^apps$/i })).toBeInTheDocument();
     });
 
     it("moves to a neighbour when the app being shown is closed", async () => {
@@ -243,7 +291,7 @@ describe("Apps", () => {
       await open(user, /calculator/i);
       await user.click(screen.getByRole("button", { name: /all apps/i }));
 
-      expect(screen.getByRole("list", { name: /apps/i })).toBeInTheDocument();
+      expect(screen.getByRole("region", { name: /^apps$/i })).toBeInTheDocument();
       expect(within(tabs()).getByRole("tab", { name: /calculator/i })).toBeInTheDocument();
     });
 
