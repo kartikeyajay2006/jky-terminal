@@ -168,7 +168,7 @@ pub fn strip_html(input: &str) -> String {
 }
 
 /// Turn the entities a feed may contain back into characters.
-fn decode_entities(input: &str) -> String {
+pub(crate) fn decode_entities(input: &str) -> String {
     let mut out = String::with_capacity(input.len());
     let mut rest = input;
 

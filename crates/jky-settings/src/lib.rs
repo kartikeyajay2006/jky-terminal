@@ -43,6 +43,20 @@ pub struct Settings {
     /// the keychain would say it was confidential when it is not.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub github_client_id: Option<String>,
+
+    /// The Google OAuth client this app signs in to Gmail against.
+    ///
+    /// Public for the same reason the GitHub one is, and for a stricter one:
+    /// this is an installed-app client, so Google issues it with no secret at
+    /// all and the flow relies on PKCE instead. Keeping it in settings rather
+    /// than the keychain keeps the keychain meaning "confidential".
+    ///
+    /// Unlike GitHub there is no default to fall back on. A Google client is
+    /// tied to a project and a consent screen belonging to whoever created it,
+    /// so shipping one would mean every install of this app appearing in one
+    /// stranger's audit log.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub google_client_id: Option<String>,
 }
 
 pub struct SettingsStore {
@@ -127,6 +141,24 @@ impl SettingsStore {
 
     pub fn github_client_id(&self) -> Result<Option<String>, SettingsError> {
         Ok(self.load()?.github_client_id)
+    }
+
+    /// Same trimming as the GitHub id, for the same reason: this one is
+    /// copied out of the Google Cloud console, and what comes with it is a
+    /// trailing newline.
+    pub fn set_google_client_id(&self, id: &str) -> Result<(), SettingsError> {
+        let mut settings = self.load()?;
+        let trimmed = id.trim();
+        settings.google_client_id = if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_string())
+        };
+        self.save(&settings)
+    }
+
+    pub fn google_client_id(&self) -> Result<Option<String>, SettingsError> {
+        Ok(self.load()?.google_client_id)
     }
 
     pub fn terminal_start_dir(&self) -> Result<Option<String>, SettingsError> {
@@ -317,5 +349,60 @@ mod github_client_id_tests {
         store.set_terminal_start_dir("/tmp").unwrap();
         store.set_github_client_id("Iv23liABCDEF").unwrap();
         assert_eq!(store.terminal_start_dir().unwrap().as_deref(), Some("/tmp"));
+    }
+}
+
+#[cfg(test)]
+mod google_client_id_tests {
+    use super::*;
+
+    fn store() -> (tempfile::TempDir, SettingsStore) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = SettingsStore::new(dir.path().join("settings.json"));
+        (dir, store)
+    }
+
+    #[test]
+    fn nothing_is_stored_to_begin_with() {
+        let (_dir, store) = store();
+        assert_eq!(store.google_client_id().unwrap(), None);
+    }
+
+    #[test]
+    fn keeps_the_id_it_was_given() {
+        let (_dir, store) = store();
+        store.set_google_client_id("123-abc.apps.googleusercontent.com").unwrap();
+        assert_eq!(
+            store.google_client_id().unwrap().as_deref(),
+            Some("123-abc.apps.googleusercontent.com")
+        );
+    }
+
+    #[test]
+    fn trims_what_was_pasted() {
+        let (_dir, store) = store();
+        store.set_google_client_id("  123-abc.apps.googleusercontent.com\n").unwrap();
+        assert_eq!(
+            store.google_client_id().unwrap().as_deref(),
+            Some("123-abc.apps.googleusercontent.com")
+        );
+    }
+
+    #[test]
+    fn clearing_it_removes_it_rather_than_storing_an_empty_string() {
+        let (_dir, store) = store();
+        store.set_google_client_id("123-abc.apps.googleusercontent.com").unwrap();
+        store.set_google_client_id("   ").unwrap();
+        assert_eq!(store.google_client_id().unwrap(), None);
+    }
+
+    // Two accounts in one settings file: connecting one must not disconnect
+    // the other.
+    #[test]
+    fn setting_it_leaves_the_github_id_alone() {
+        let (_dir, store) = store();
+        store.set_github_client_id("Iv23liABCDEF").unwrap();
+        store.set_google_client_id("123-abc.apps.googleusercontent.com").unwrap();
+        assert_eq!(store.github_client_id().unwrap().as_deref(), Some("Iv23liABCDEF"));
     }
 }

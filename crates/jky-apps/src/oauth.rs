@@ -86,6 +86,22 @@ pub fn new_pkce() -> Pkce {
     }
 }
 
+/// A fresh `state` value for one sign-in.
+///
+/// PKCE proves the code came back to the process that asked for it; `state`
+/// proves the redirect itself belongs to this attempt. Without it the socket
+/// open on this machine would take a code from any tab that reached it, which
+/// on a shared desktop is not a hypothetical.
+///
+/// Drawn from the same alphabet as the verifier so it crosses a URL unchanged.
+pub fn new_state() -> String {
+    use rand::Rng;
+    let mut rng = rand::thread_rng();
+    (0..32)
+        .map(|_| VERIFIER_CHARS[rng.gen_range(0..VERIFIER_CHARS.len())] as char)
+        .collect()
+}
+
 /// SHA-256 of the verifier, base64url, unpadded — the `S256` method.
 pub fn challenge_for(verifier: &str) -> String {
     let digest = Sha256::digest(verifier.as_bytes());
@@ -208,7 +224,7 @@ pub fn parse_tokens(json: &str) -> Result<Tokens, OAuthError> {
 }
 
 /// Percent-encode a query value. The same encoder the rest of the crate uses.
-fn encode(value: &str) -> String {
+pub(crate) fn encode(value: &str) -> String {
     let mut out = String::with_capacity(value.len());
     for byte in value.as_bytes() {
         match byte {
@@ -419,6 +435,29 @@ pub async fn refresh(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    // `state` is what stops a code from somewhere else being accepted by the
+    // listener sitting open on this machine, so it has to be unguessable and
+    // it has to be different every time.
+    #[test]
+    fn a_fresh_state_is_long_enough_to_be_unguessable() {
+        let state = new_state();
+        assert!(state.len() >= 32, "only {} characters", state.len());
+    }
+
+    #[test]
+    fn no_two_states_are_the_same() {
+        let many: std::collections::HashSet<String> = (0..64).map(|_| new_state()).collect();
+        assert_eq!(many.len(), 64);
+    }
+
+    // It travels in a URL and comes back out of one, so anything needing
+    // escaping is a bug waiting for the round trip.
+    #[test]
+    fn a_state_survives_a_url_unescaped() {
+        let state = new_state();
+        assert_eq!(encode(&state), state);
+    }
 
     // ---- PKCE ----
 

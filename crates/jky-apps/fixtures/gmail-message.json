@@ -1,0 +1,35 @@
+{
+ "id": "18f0a1",
+ "threadId": "18f0a1",
+ "labelIds": [
+  "UNREAD",
+  "CATEGORY_PERSONAL",
+  "INBOX"
+ ],
+ "snippet": "Hi \u2014 the deploy finished and the smoke tests are green. Nothing to do&#39;",
+ "internalDate": "1788080000000",
+ "payload": {
+  "headers": [
+   {
+    "name": "Delivered-To",
+    "value": "someone@example.com"
+   },
+   {
+    "name": "From",
+    "value": "Ada Lovelace <ada@example.com>"
+   },
+   {
+    "name": "To",
+    "value": "someone@example.com"
+   },
+   {
+    "name": "Subject",
+    "value": "Deploy finished"
+   },
+   {
+    "name": "Date",
+    "value": "Sun, 31 Aug 2026 12:00:00 +0530"
+   }
+  ]
+ }
+}
