@@ -85,6 +85,10 @@ const REQUIREMENTS: Array<{ token: string; min: number; why: string }> = [
   { token: "--violet", min: 3, why: "the violet event dot" },
   { token: "--mint", min: 3, why: "the mint event dot" },
   { token: "--accent-dim", min: 3, why: "the azure event dot" },
+  // The eighth app accent. Added when Gmail made the palette one short, and
+  // chosen by measuring: it clears 30 ΔE from the nearest colour already in
+  // every theme, which is a wider gap than several pairs those themes ship.
+  { token: "--lime", min: 3, why: "the lime app accent" },
 ];
 
 describe("theme contrast", () => {

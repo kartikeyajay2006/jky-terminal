@@ -39,6 +39,14 @@
   /* The sixth event colour. Every theme sets its own. */
   --mint: #3ddc97;
   --warn: #ffb340;
+  /*
+   * The eighth app accent, added when an eighth app arrived and the palette
+   * was one colour short. Chosen by measurement rather than taste: it is the
+   * widest gap left in every theme's hue space, and it clears 30 ΔE from the
+   * nearest colour each theme already defines — a wider separation than
+   * several pairs those themes ship with.
+   */
+  --lime: #a3e635;
 
   /* Type */
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono",

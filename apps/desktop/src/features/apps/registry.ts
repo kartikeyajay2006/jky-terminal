@@ -45,6 +45,10 @@ export type AppAccent =
   | "magenta"
   | "mint"
   | "warn"
+  /// The eighth. Added with the eighth app: the palette had exactly seven
+  /// colours and seven apps, and a shared accent would have made colour stop
+  /// identifying anything.
+  | "lime"
   /// The neutral of the set. A browser shows other people's colours, so it
   /// brings none of its own to fight with them.
   | "text-muted";
@@ -121,6 +125,15 @@ export const APPS: AppDef[] = [
     auth: "github",
     accent: "accent-dim",
     blurb: "Your repositories, issues and pull requests. Approved on your phone.",
+  },
+  {
+    id: "gmail",
+    name: "Gmail",
+    glyph: "✉",
+    mode: "data",
+    auth: "google",
+    accent: "lime",
+    blurb: "Read your inbox here. Read-only — nothing can be sent or deleted.",
   },
   {
     id: "browser",

@@ -2840,3 +2840,336 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+
+/* ---------------------------------------------------------------------------
+   Gmail
+   ---------------------------------------------------------------------------
+   A mail list is a table pretending not to be one, and the thing that makes
+   one readable is that the three columns line up down the page: who, what,
+   when. So this is a grid with fixed outer columns and an elastic middle,
+   rather than a flex row that lets every sender push the subject somewhere
+   different.
+   --------------------------------------------------------------------------- */
+
+.gm {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+  min-height: 0;
+}
+
+.gm__bar {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.gm__who {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.gm__address {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Said once, in the bar, and never repeated per row. It is a property of the
+   connection rather than of any message. */
+.gm__note {
+  flex: none;
+  padding: 2px var(--s2);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+  color: var(--app-accent);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.gm__search {
+  flex: 1 1 220px;
+  min-width: 0;
+}
+
+.gm__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.gm__list > li + li {
+  border-top: 1px solid var(--line);
+}
+
+/*
+ * `who / what / when`, aligned down the page.
+ *
+ * The sender column is fixed so subjects start at the same x on every row —
+ * the eye scans that column, and a ragged left edge is what makes a long mail
+ * list tiring to read.
+ */
+.gm__row {
+  display: grid;
+  grid-template-columns: 180px minmax(0, 1fr) auto;
+  align-items: baseline;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s3) var(--s4);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.gm__row:hover {
+  background: color-mix(in srgb, var(--app-accent) 8%, transparent);
+}
+
+.gm__row:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--app-accent);
+}
+
+/* Unread carries a marker in the gutter as well as weight, because weight
+   alone disappears on a screen at arm's length. The word is in the row too,
+   for anyone who reads it rather than sees it. */
+.gm__row[data-unread] {
+  box-shadow: inset 3px 0 0 var(--app-accent);
+}
+
+.gm__from {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.gm__row[data-unread] .gm__from {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.gm__line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+}
+
+.gm__subject {
+  flex: none;
+  max-width: 60%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.gm__row[data-unread] .gm__subject {
+  font-weight: 600;
+}
+
+/* The snippet is context, not content — it takes whatever the subject leaves
+   and gives up quietly rather than wrapping the row onto a second line. */
+.gm__snippet {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.gm__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+}
+
+.gm__badge {
+  padding: 1px var(--s2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--app-accent) 18%, transparent);
+  color: var(--app-accent);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* Tabular figures so the dates form a column rather than a ragged edge. */
+.gm__when {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-dim);
+}
+
+/* The two setup screens share a measure: this is prose to be read once, and
+   a full-width paragraph is prose nobody finishes. */
+.gm--setup {
+  align-items: flex-start;
+}
+
+.gm__setup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  max-width: 62ch;
+  padding: var(--s5);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 30%, var(--line));
+  border-radius: var(--radius-lg);
+  background:
+    linear-gradient(
+      160deg,
+      color-mix(in srgb, var(--app-accent) 12%, transparent),
+      transparent 65%
+    ),
+    var(--surface);
+}
+
+.gm__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.gm__body {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gm__strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Numbered because these genuinely are steps in order: the API has to be on
+   before the credential can be made, and the type cannot be changed after. */
+.gm__steps {
+  margin: 0;
+  padding-left: var(--s5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.gm__form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.gm__label {
+  flex: 100%;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.gm__input {
+  flex: 1 1 260px;
+  min-width: 0;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 13px;
+}
+
+.gm__input:focus-visible {
+  outline: none;
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+
+.gm__go {
+  flex: none;
+  padding: var(--s2) var(--s4);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 55%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--app-accent) 16%, transparent);
+  color: var(--app-accent);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.gm__go:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.gm__go:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
+}
+
+.gm__ghost {
+  flex: none;
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.gm__ghost:hover {
+  color: var(--text);
+  border-color: var(--app-accent);
+}
+
+.gm__quiet {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.gm__error {
+  margin: 0;
+  color: var(--danger);
+  font-size: 13px;
+}
+
+/* Below this the three columns stop helping: the sender column would take
+   half the width and the subject would have nowhere to go. */
+@media (max-width: 720px) {
+  .gm__row {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .gm__from {
+    grid-column: 1 / -1;
+  }
+}

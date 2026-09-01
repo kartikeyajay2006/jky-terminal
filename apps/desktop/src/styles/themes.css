@@ -21,6 +21,7 @@
   --danger: #ff5555;
   --mint: #50fa7b;
   --warn: #ffb86c;
+  --lime: #c3f36b;
 }
 
 :root[data-theme="nord"] {
@@ -40,6 +41,9 @@
   --danger: #bf616a;
   --mint: #a3be8c;
   --warn: #ebcb8b;
+  /* Yellower and brighter than the aurora green, so the two greens are
+     told apart at a glance rather than only side by side. */
+  --lime: #aceb88;
 }
 
 :root[data-theme="solarized"] {
@@ -59,6 +63,8 @@
   --danger: #dc322f;
   --mint: #2aa198;
   --warn: #b58900;
+  /* Solarized's own green. Its mint is the teal, so this one was free. */
+  --lime: #859900;
 }
 
 :root[data-theme="light"] {
@@ -78,6 +84,7 @@
   --danger: #da1e28;
   --mint: #0f7b5f;
   --warn: #8e6a00;
+  --lime: #4d7c0f;
   color-scheme: light;
 }
 
@@ -103,6 +110,7 @@
   --danger: #ff8080;
   --mint: #4ee88a;
   --warn: #ffd24d;
+  --lime: #b8ff5c;
 }
 
 /*
@@ -134,5 +142,8 @@
   --danger: #a91414;
   --mint: #2f7d55;
   --warn: #8a5a05;
+  /* Darker than it looks in a swatch: a lime on parchment fails as text
+     well before it stops looking like a lime. */
+  --lime: #5c7a12;
   color-scheme: light;
 }

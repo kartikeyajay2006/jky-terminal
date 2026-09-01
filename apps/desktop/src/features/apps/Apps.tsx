@@ -4,6 +4,7 @@ import { APPS, findApp, type AppDef } from "./registry";
 import { Calculator } from "./calculator/Calculator";
 import { Browser } from "./browser/Browser";
 import { GitHub } from "./github/GitHub";
+import { Gmail } from "./gmail/Gmail";
 import { MapApp } from "./map/Map";
 import { News } from "./news/News";
 import { Timer } from "./timer/Timer";
@@ -60,6 +61,8 @@ function appBody(id: string): ReactNode {
       return <MapApp />;
     case "github":
       return <GitHub />;
+    case "gmail":
+      return <Gmail />;
     case "browser":
       return <Browser />;
     default:

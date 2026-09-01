@@ -45,7 +45,16 @@ describe("the app registry", () => {
     // `accent-dim` is a real accent, not a shade: the dashboard already uses
     // it as a distinct event colour and the contrast test verifies it in all
     // seven themes.
-    const PALETTE = ["accent", "accent-dim", "violet", "magenta", "mint", "warn", "text-muted"];
+    const PALETTE = [
+      "accent",
+      "accent-dim",
+      "violet",
+      "magenta",
+      "mint",
+      "warn",
+      "lime",
+      "text-muted",
+    ];
     for (const app of APPS) {
       expect(PALETTE, `${app.name} has an unknown accent`).toContain(app.accent);
     }
@@ -62,6 +71,17 @@ describe("the app registry", () => {
   it("gives each app a distinct accent, so colour identifies it", () => {
     const used = APPS.map((a) => a.accent);
     expect(new Set(used).size).toBe(used.length);
+  });
+
+  // Gmail is read-only and says so on the tile, because "connect your email"
+  // is a sentence people are right to be careful about.
+  it("includes gmail as a data app that needs a Google account", () => {
+    expect(findApp("gmail")).toMatchObject({
+      id: "gmail",
+      mode: "data",
+      auth: "google",
+    });
+    expect(findApp("gmail")?.blurb.toLowerCase()).toContain("read");
   });
 
   it("includes github as a data app that needs an account", () => {
