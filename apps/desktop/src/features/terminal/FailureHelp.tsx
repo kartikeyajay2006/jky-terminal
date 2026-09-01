@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { getPlatform } from "../../platform";
+import { Spinner } from "../../components/Spinner";
+import { useTypewriter } from "../../components/useTypewriter";
 import type { ProviderStatus } from "../../platform/types";
 import {
   HELP_KINDS,
@@ -154,7 +156,14 @@ export function FailureHelp({
         </>
       )}
 
-      {asking !== null && <p className="fail__quiet">Thinking…</p>}
+      {/* A spinner and a bar with no known end: the request has no progress
+          to report, and a bar that pretended to would be a lie told smoothly. */}
+      {asking !== null && (
+        <div className="fail__working">
+          <Spinner label="Thinking…" />
+          <span className="progress" aria-hidden="true" />
+        </div>
+      )}
 
       {error && (
         <p className="fail__error" role="alert">
@@ -162,9 +171,27 @@ export function FailureHelp({
         </p>
       )}
 
-      {/* A `pre`, because the answer is often a command and its whitespace is
-          the difference between one that runs and one that does not. */}
-      {answer && <pre className="fail__answer">{answer}</pre>}
+      {answer && <Answer text={answer} />}
     </div>
+  );
+}
+
+/**
+ * The answer, typed out.
+ *
+ * It arrives in a terminal, and text that simply appears in one reads as
+ * something that was always there. Typed, it reads as an answer arriving.
+ *
+ * A `pre`, because the answer is often a command and its whitespace is the
+ * difference between one that runs and one that does not. The caret is on
+ * only while there is more to come — a caret under finished text is a prompt
+ * that does not take input.
+ */
+function Answer({ text }: { text: string }) {
+  const shown = useTypewriter(text);
+  return (
+    <pre className={shown.length < text.length ? "fail__answer caret" : "fail__answer"}>
+      {shown}
+    </pre>
   );
 }

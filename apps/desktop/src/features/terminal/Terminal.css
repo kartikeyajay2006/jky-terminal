@@ -333,3 +333,14 @@
   line-height: 1.6;
   color: var(--text-muted);
 }
+
+/* The AI offer arriving under a failed command, rather than appearing there. */
+.fail {
+  animation: jky-rise var(--motion-normal) var(--ease) both;
+}
+
+.fail__working {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}

@@ -356,6 +356,10 @@
 /* ---- the CRT the playfield sits behind ---------------------------------- */
 
 .gamescreen__frame {
+  /* A game beginning is a moment. Cutting straight to a running screen
+     loses it, and this is the one place in the app where a beat of ceremony
+     is the point rather than a cost. */
+  animation: jky-start var(--motion-enter) var(--ease) both;
   position: relative;
   flex: 1;
   min-width: 0;

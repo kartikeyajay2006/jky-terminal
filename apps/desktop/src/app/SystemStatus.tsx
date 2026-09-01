@@ -114,7 +114,12 @@ export function SystemStatus() {
 
   return (
     <section className="sys" aria-label="System status">
-      <p className="sys__title">System status</p>
+      <p className="sys__title">
+        System status
+        {/* Says the readings are still arriving. Without it a frozen poll and
+            a quiet machine look exactly alike. */}
+        <span className="pulse" aria-hidden="true" data-live={reading ? "" : undefined} />
+      </p>
 
       <Row
         label="CPU"

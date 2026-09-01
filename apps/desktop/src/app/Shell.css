@@ -329,6 +329,7 @@
 }
 
 .tabbar__tab {
+  position: relative;
   display: flex;
   align-items: center;
   gap: var(--s2);
@@ -338,12 +339,37 @@
   border-radius: var(--radius) var(--radius) 0 0;
   color: var(--text-muted);
   white-space: nowrap;
+  transition:
+    color var(--motion-quick) var(--ease),
+    background var(--motion-quick) var(--ease),
+    border-color var(--motion-quick) var(--ease);
+}
+
+/*
+ * The underline grows from the middle rather than switching on.
+ *
+ * A transform rather than a width, so it is the compositor moving it and not
+ * the layout — a tab strip that reflows on every switch is one you feel.
+ */
+.tabbar__tab::after {
+  content: "";
+  position: absolute;
+  inset: auto var(--s2) 0 var(--s2);
+  height: 2px;
+  border-radius: 2px;
+  background: var(--accent);
+  transform: scaleX(0);
+  transition: transform var(--motion-normal) var(--ease);
 }
 
 .tabbar__tab[aria-selected="true"] {
   border-color: var(--line);
   background: var(--ground);
   color: var(--accent);
+}
+
+.tabbar__tab[aria-selected="true"]::after {
+  transform: scaleX(1);
 }
 
 .tabbar__close {
@@ -433,6 +459,9 @@
 }
 
 .sys__title {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   margin: 0 0 var(--s1);
   color: var(--text-dim);
   font-size: 9px;
@@ -448,6 +477,16 @@
  * ragged left edge is what makes a stack of bars unreadable at a glance,
  * which is the only way this is ever read.
  */
+/* Dim until the first reading lands, so it pulses only once it is telling
+   the truth about something. */
+.sys .pulse {
+  color: var(--line-strong);
+}
+
+.sys .pulse[data-live] {
+  color: var(--mint);
+}
+
 .sys__row {
   --tone: var(--accent);
   display: grid;

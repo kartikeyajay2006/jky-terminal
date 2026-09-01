@@ -64,7 +64,10 @@
 /* Every panel sits in this, so all four line up under the same measure.
    Providers used to bring its own centred container while the rest hugged
    the left edge, and switching sections shunted the content sideways. */
+/* Arriving rather than appearing: a panel rises a few pixels into place, so
+   a section change reads as a move rather than a cut. */
 .panel {
+  animation: jky-rise var(--motion-normal) var(--ease) both;
   max-width: 860px;
   margin: 0 auto;
   padding: var(--s7) var(--s5) var(--s8);

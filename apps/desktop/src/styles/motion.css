@@ -1,0 +1,199 @@
+/*
+ * Motion, in one place.
+ *
+ * Every animation in the app is named here, so there is one list to read when
+ * deciding whether there is now too much of it — the failure mode with motion
+ * is never one animation, it is the ninth one nobody weighed against the
+ * other eight.
+ *
+ * Three rules hold throughout.
+ *
+ * Motion says something or it does not happen. A panel rising as it arrives
+ * says where it came from; a spinner says the app is still working; a banner
+ * sliding in says it arrived rather than having always been there. Anything
+ * that only decorates is not here.
+ *
+ * It is quick. The longest of these is a third of a second, because the point
+ * is to be understood rather than watched, and a transition you have time to
+ * notice is one you will resent by the fiftieth time.
+ *
+ * And it is all switchable off in one place, at the bottom of this file. For
+ * anyone who has asked their system for less motion, "subtle" is not an
+ * answer — a guard per rule would be a guard someone eventually forgets, so
+ * there is exactly one and a test pins it.
+ */
+
+:root {
+  /* A panel arriving, a tab changing — the everyday ones. */
+  --motion-quick: 140ms;
+  --motion-normal: 220ms;
+  /* Something crossing the screen, which needs longer to be followed. */
+  --motion-enter: 320ms;
+  /* A pulse or a spin: slow, because it repeats for as long as it is there. */
+  --motion-loop: 1400ms;
+}
+
+/* A panel arriving: up and in, a few pixels, from where it came. */
+@keyframes jky-rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* A notification: in from the edge it lives on. */
+@keyframes jky-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Working. One turn, for as long as it takes. */
+@keyframes jky-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+/* Alive. A slow breath rather than a flash — this runs the whole time the app
+   is open, and anything sharper would be a thing you learn to ignore or a
+   thing you learn to hate. */
+@keyframes jky-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    transform: scale(0.9);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* Progress with no known end: a band travelling the length of the bar. Says
+   "still going" without claiming to know how far along it is. */
+@keyframes jky-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(400%);
+  }
+}
+
+/* A game beginning: the screen taking its place. */
+@keyframes jky-start {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  60% {
+    opacity: 1;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The caret at the end of text being typed out. */
+@keyframes jky-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+/* ---- the shared pieces --------------------------------------------------- */
+
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: jky-spin 700ms linear infinite;
+}
+
+/* A dot that says the readings are still arriving. */
+.pulse {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: jky-pulse var(--motion-loop) var(--ease) infinite;
+}
+
+.progress {
+  position: relative;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.progress::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 25%;
+  border-radius: 999px;
+  background: var(--accent);
+  animation: jky-indeterminate 1100ms var(--ease) infinite;
+}
+
+/* The caret trailing text as it is typed. */
+.caret::after {
+  content: "▍";
+  margin-left: 1px;
+  color: var(--accent);
+  animation: jky-caret 900ms steps(1) infinite;
+}
+
+/*
+ * The one switch.
+ *
+ * `prefers-reduced-motion` is a request from someone who may get motion sick,
+ * or who simply cannot read a moving interface. Honouring it per-rule means
+ * honouring it until somebody adds a rule and forgets, so it is done once,
+ * here, for everything — and a test asserts this block exists and covers both
+ * animation and transition.
+ *
+ * Not `0s`: a zero-length animation never fires its `animationend`, and
+ * anything waiting on one would wait for ever. One hundredth of a millisecond
+ * is imperceptible and still completes.
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* A spinner and its words, on one line. */
+.spin {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text-muted);
+  font-size: 12px;
+}

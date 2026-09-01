@@ -408,6 +408,36 @@ key. Weather and News fetch through Rust like everything else — the window can
 reach no host — so neither needed a CSP change. Map did: it renders another
 origin's document, and `frame-src` names exactly one host for it.
 
+### ✨ Motion
+
+Nine places move, and they are all named in one file — `src/styles/motion.css`
+— because the failure mode with motion is never one animation, it is the ninth
+that nobody weighed against the other eight.
+
+| | Where |
+|---|---|
+| Cursor blink | the terminal caret |
+| Panel transition | a section rising into place |
+| Loading spinner | anywhere the app is waiting on something |
+| Progress | an indeterminate bar while a suggestion is being fetched |
+| Terminal typing | the answer under a failed command, typed rather than pasted |
+| Status pulse | the dot beside System status, so a frozen poll and a quiet machine do not look alike |
+| Tab transition | the underline growing from the middle |
+| Notification slide | a banner arriving from the edge it lives on |
+| Game start | the screen taking its place |
+
+Two rules hold. Motion says something or it does not happen: a panel rising
+says where it came from, a spinner says the app is still working, a banner
+sliding says it arrived. And it is quick — the longest is a third of a second,
+because a transition you have time to notice is one you resent by the
+fiftieth.
+
+`prefers-reduced-motion` is honoured by **one** rule for the whole app, not one
+per animation, and a test pins that — a per-rule guard is a guard somebody
+eventually forgets. It shortens motion rather than removing it, because a
+zero-length animation never fires `animationend` and anything waiting on one
+would wait for ever.
+
 ### 🎨 Seven themes
 
 Cyberpunk, Dracula, Nord, Solarized, Light, Gold, High Contrast. Themes are

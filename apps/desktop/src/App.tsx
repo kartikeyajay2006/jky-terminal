@@ -19,6 +19,8 @@ import { getPlatform } from "./platform";
 import "./styles/tokens.css";
 import "./styles/themes.css";
 import "./styles/base.css";
+// After the tokens it reads and before any component that animates.
+import "./styles/motion.css";
 
 export function App() {
   const [section, setSection] = useState("terminal");

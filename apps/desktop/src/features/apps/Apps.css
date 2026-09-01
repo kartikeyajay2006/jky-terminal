@@ -3710,3 +3710,9 @@
 .apps__tile[data-size="large"] .apps__tile-name {
   font-size: 18px;
 }
+
+/* A tile arriving with the grid. Staggering these would be eight animations
+   where one is the point, so they arrive together. */
+.apps__groups {
+  animation: jky-rise var(--motion-normal) var(--ease) both;
+}

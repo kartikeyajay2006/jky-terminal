@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { getPlatform } from "../../../platform";
+import { Spinner } from "../../../components/Spinner";
 import type { GmailFull, GmailMailbox, GmailMessage } from "../../../platform/types";
 
 /** How many rows one view asks for. Each one costs a request to Google. */
@@ -203,7 +204,7 @@ export function Gmail() {
   }
 
   if (phase.at === "loading") {
-    return <p className="gm__quiet">Checking your mailbox…</p>;
+    return <p className="gm__quiet"><Spinner label="Checking your mailbox…" /></p>;
   }
 
   if (phase.at === "needs-client-id") {
@@ -314,7 +315,7 @@ export function Gmail() {
             disabled={waiting}
             onClick={() => void signIn()}
           >
-            {waiting ? "Waiting for your browser…" : "Sign in with Google"}
+            {waiting ? <Spinner label="Waiting for your browser…" /> : "Sign in with Google"}
           </button>
           {clientId !== "" && <p className="gm__quiet">Using the client id you just saved.</p>}
           {error && (
@@ -358,7 +359,11 @@ export function Gmail() {
         </p>
       )}
 
-      {busy && !mailbox && <p className="gm__quiet">Reading your mail…</p>}
+      {busy && !mailbox && (
+        <p className="gm__quiet">
+          <Spinner label="Reading your mail…" />
+        </p>
+      )}
 
       {mailbox && mailbox.messages.length === 0 && (
         <p className="gm__quiet">
@@ -427,7 +432,7 @@ function Reading({ full, onClose }: { full: GmailFull; onClose: () => void }) {
       </header>
 
       {body === "" ? (
-        <p className="gm__quiet">Reading…</p>
+        <p className="gm__quiet"><Spinner label="Reading…" /></p>
       ) : (
         <pre className="gm__reading-body">{body}</pre>
       )}
