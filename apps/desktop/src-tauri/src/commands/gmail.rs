@@ -73,13 +73,57 @@ fn check_client_id(raw: &str) -> Result<String, String> {
     Ok(trimmed.to_string())
 }
 
+/// A Google client secret, checked before it is stored.
+///
+/// Google's are short and made of the same characters as a client id, with a
+/// `GOCSPX-` prefix on current ones. The prefix is not required here — older
+/// clients predate it and still work — but the length bound and the charset
+/// turn a pasted paragraph into a refusal rather than a keychain entry with
+/// an essay in it.
+fn check_client_secret(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err("the client secret is on the same page as the client id".into());
+    }
+    if trimmed.len() > 200 {
+        return Err("that does not look like a client secret".into());
+    }
+    if !trimmed
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+    {
+        return Err("a client secret is letters, digits, dashes and underscores".into());
+    }
+    Ok(trimmed.to_string())
+}
+
+/// Store the pair that identifies the OAuth client.
+///
+/// Both together, because either alone cannot sign in and a panel that
+/// accepted one would report itself ready and then fail at the exchange —
+/// which is exactly the failure this pair was added to fix.
+///
+/// The id goes to settings and the secret to the keychain. Google treats the
+/// secret as not-secret for an installed app, so this is not a claim that it
+/// is confidential; it is a credential the machine holds either way, and
+/// keeping it beside the tokens costs nothing.
 #[tauri::command]
-pub fn apps_gmail_set_client_id(state: State<'_, AppState>, id: String) -> Result<(), String> {
-    let checked = check_client_id(&id)?;
+pub fn apps_gmail_configure(
+    state: State<'_, AppState>,
+    id: String,
+    secret: String,
+) -> Result<(), String> {
+    let checked_id = check_client_id(&id)?;
+    let checked_secret = check_client_secret(&secret)?;
+
     state
         .settings
-        .set_google_client_id(&checked)
-        .map_err(|e| format!("could not save that: {e}"))
+        .set_google_client_id(&checked_id)
+        .map_err(|e| format!("could not save that: {e}"))?;
+    state
+        .secrets
+        .set(gmail::CLIENT_SECRET_KEY, Secret::new(checked_secret))
+        .map_err(|_| "could not store the Google client secret".to_string())
 }
 
 fn client_id(state: &AppState) -> Option<String> {
@@ -91,10 +135,21 @@ fn client_id(state: &AppState) -> Option<String> {
         .filter(|id| !id.trim().is_empty())
 }
 
+/// The stored client secret, or the reason there is none.
+fn client_secret(state: &AppState) -> Result<String, String> {
+    state
+        .secrets
+        .get(gmail::CLIENT_SECRET_KEY)
+        .map(|s| s.expose().to_string())
+        .map_err(|_| "add the Google client secret as well as the id".to_string())
+}
+
 #[tauri::command]
 pub fn apps_gmail_status(state: State<'_, AppState>) -> GmailStatus {
     GmailStatus {
-        configured: client_id(&state).is_some(),
+        // Both halves, or the panel would offer a sign-in that cannot finish.
+        configured: client_id(&state).is_some()
+            && state.secrets.has(gmail::CLIENT_SECRET_KEY).unwrap_or(false),
         connected: state.secrets.has(gmail::TOKEN_KEY).unwrap_or(false),
     }
 }
@@ -110,6 +165,7 @@ pub async fn apps_gmail_connect(state: State<'_, AppState>) -> Result<String, St
     let client_id = client_id(&state).ok_or(
         "add a Google client id first — the panel explains where to get one",
     )?;
+    let client_secret = client_secret(&state)?;
 
     // Opened before the browser is, so a failure to bind is a refusal now
     // rather than a tab that leads nowhere.
@@ -143,9 +199,16 @@ pub async fn apps_gmail_connect(state: State<'_, AppState>) -> Result<String, St
     .map_err(|_| "the sign-in was interrupted".to_string())?;
     let code = waited.map_err(|e| e.to_string())?;
 
-    let tokens = oauth::exchange(&state.http, &client_id, &code, &pkce.verifier, &redirect)
-        .await
-        .map_err(|e| e.to_string())?;
+    let tokens = oauth::exchange(
+        &state.http,
+        &client_id,
+        &client_secret,
+        &code,
+        &pkce.verifier,
+        &redirect,
+    )
+    .await
+    .map_err(|e| e.to_string())?;
 
     // The refresh token first. If storing the pair is interrupted, having the
     // standing grant without the hour-long token is recoverable and the
@@ -210,12 +273,13 @@ fn access_token(state: &AppState) -> Result<String, String> {
 /// actually gone wrong.
 async fn refreshed(state: &AppState) -> Result<String, String> {
     let client_id = client_id(state).ok_or("not connected to Gmail")?;
+    let client_secret = client_secret(state)?;
     let refresh = state
         .secrets
         .get(gmail::REFRESH_KEY)
         .map_err(|_| "sign in to Gmail again".to_string())?;
 
-    let tokens = oauth::refresh(&state.http, &client_id, refresh.expose())
+    let tokens = oauth::refresh(&state.http, &client_id, &client_secret, refresh.expose())
         .await
         .map_err(|_| "sign in to Gmail again".to_string())?;
 
@@ -274,6 +338,35 @@ async fn load(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn accepts_a_client_secret_as_google_issues_it() {
+        assert_eq!(
+            check_client_secret("GOCSPX-aB3dEfGh1jKlMn0pQrStUvWx").unwrap(),
+            "GOCSPX-aB3dEfGh1jKlMn0pQrStUvWx"
+        );
+        // Older clients predate the prefix and still work.
+        assert!(check_client_secret("aB3dEfGh1jKlMn0pQrStUvWx").is_ok());
+    }
+
+    #[test]
+    fn trims_a_pasted_client_secret() {
+        assert_eq!(check_client_secret("  GOCSPX-abc\n").unwrap(), "GOCSPX-abc");
+    }
+
+    // An empty secret is the failure this whole field exists to prevent, so
+    // it is refused rather than stored as nothing.
+    #[test]
+    fn refuses_an_empty_client_secret() {
+        assert!(check_client_secret("   ").is_err());
+        assert!(check_client_secret("").is_err());
+    }
+
+    #[test]
+    fn refuses_something_that_is_not_a_client_secret() {
+        assert!(check_client_secret(&"a".repeat(5000)).is_err());
+        assert!(check_client_secret("GOCSPX abc").is_err());
+    }
 
     #[test]
     fn accepts_a_client_id_as_google_issues_it() {

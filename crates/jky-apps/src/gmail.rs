@@ -36,6 +36,15 @@ const MAX_ID: usize = 128;
 /// Where the access token is kept in the OS keychain.
 pub const TOKEN_KEY: &str = "gmail-access-token";
 
+/// Where the Google client secret is kept.
+///
+/// In the keychain rather than in settings beside the client id, even though
+/// Google documents it as not secret for an installed app — anyone can read
+/// one out of a binary they downloaded, which is why PKCE and not this is
+/// what protects the exchange. It is still a credential this machine holds on
+/// the user's behalf, and the cost of keeping it with the tokens is nothing.
+pub const CLIENT_SECRET_KEY: &str = "gmail-client-secret";
+
 /// Where the refresh token is kept.
 ///
 /// A separate entry rather than a field beside the access token, because the
@@ -362,9 +371,9 @@ mod tests {
     // GitHub silently signed you out of Gmail.
     #[test]
     fn keeps_its_tokens_under_names_no_other_account_uses() {
-        assert_ne!(TOKEN_KEY, REFRESH_KEY);
-        assert_ne!(TOKEN_KEY, crate::github::TOKEN_KEY);
-        assert_ne!(REFRESH_KEY, crate::github::TOKEN_KEY);
+        let keys = [TOKEN_KEY, REFRESH_KEY, CLIENT_SECRET_KEY, crate::github::TOKEN_KEY];
+        let unique: std::collections::HashSet<&str> = keys.iter().copied().collect();
+        assert_eq!(unique.len(), keys.len(), "two of {keys:?} are the same entry");
     }
 
     const LIST: &str = include_str!("../fixtures/gmail-list.json");

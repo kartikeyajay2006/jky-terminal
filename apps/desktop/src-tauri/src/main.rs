@@ -76,7 +76,7 @@ fn main() {
             github::apps_github_commits,
             github::apps_github_branches,
             github::apps_github_notifications,
-            gmail::apps_gmail_set_client_id,
+            gmail::apps_gmail_configure,
             gmail::apps_gmail_status,
             gmail::apps_gmail_connect,
             gmail::apps_gmail_disconnect,

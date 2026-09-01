@@ -40,7 +40,7 @@ const SETUP: { title: string; url: string; button: string; detail: string }[] = 
     url: "https://console.cloud.google.com/auth/clients",
     button: "Open Clients",
     detail:
-      "Create client → application type Desktop app → Create. Copy the Client ID it shows you. There is no client secret; a desktop client is issued without one.",
+      "Create client → application type Desktop app → Create. Google then shows a Client ID and a Client secret — you need both, and both are on that one panel.",
   },
 ];
 
@@ -96,6 +96,7 @@ export function Gmail() {
   const [error, setError] = useState<string | null>(null);
   const [clientId, setClientId] = useState("");
   const [draft, setDraft] = useState("");
+  const [secretDraft, setSecretDraft] = useState("");
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const now = Date.now();
@@ -134,12 +135,15 @@ export function Gmail() {
     e.preventDefault();
     setError(null);
     try {
-      await getPlatform().apps.gmail.setClientId(draft);
+      await getPlatform().apps.gmail.configure(draft, secretDraft);
       setClientId(draft);
       // The same field becomes the search box two screens later, and a search
       // box arriving pre-filled with a client id is the first thing a new user
       // would see.
       setDraft("");
+      // The secret has been handed to the keychain; there is no reason for a
+      // copy of it to sit in the window for the rest of the session.
+      setSecretDraft("");
       setPhase({ at: "signed-out" });
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -235,13 +239,33 @@ export function Gmail() {
               placeholder="000000000000-xxxx.apps.googleusercontent.com"
               onChange={(e) => setDraft(e.target.value)}
             />
-            <button type="submit" className="gm__go" disabled={draft.trim() === ""}>
+
+            <label className="gm__label" htmlFor="gm-secret">
+              Client secret
+            </label>
+            <input
+              id="gm-secret"
+              className="gm__input"
+              type="password"
+              value={secretDraft}
+              spellCheck={false}
+              autoComplete="off"
+              placeholder="GOCSPX-…"
+              onChange={(e) => setSecretDraft(e.target.value)}
+            />
+
+            <button
+              type="submit"
+              className="gm__go"
+              disabled={draft.trim() === "" || secretDraft.trim() === ""}
+            >
               Save
             </button>
           </form>
           <p className="gm__quiet">
-            It is one long line ending in <span className="gm__strong">.apps.googleusercontent.com</span>.
-            Nothing here is secret, and nothing is sent anywhere but Google.
+            Both are on the panel Google shows after you create the client. Google requires the
+            secret even for a desktop app, and says itself that it is not really secret — anyone
+            can read one out of a downloaded program. It is kept in your keychain anyway.
           </p>
           {error && (
             <p className="gm__error" role="alert">

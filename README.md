@@ -306,9 +306,17 @@ through making one. A Google client belongs to a project and a consent screen
 that someone owns; shipping one would put every install of JKY Terminal in a
 stranger's audit log. You need a project with the Gmail API enabled and an
 OAuth client of type **Desktop app** — a Web client will not work, because it
-wants a redirect address this app does not have. There is no client secret to
-copy: an installed-app client is issued without one, which is what PKCE is
-there to replace.
+wants a redirect address this app does not have. Copy **both** the Client ID and the
+Client secret that Google then shows you.
+
+That second one is a wart worth naming. The OAuth spec calls an installed app
+a *public client* and PKCE exists precisely so one needs no secret — but
+Google's token endpoint refuses the exchange without a `client_secret` anyway,
+answering `invalid_request: client_secret is missing`, while its own
+documentation says the value is not treated as a secret for this client type
+because anyone can read one out of a program they downloaded. PKCE is what
+actually protects the exchange here; the secret is Google's paperwork. It goes
+to the OS keychain regardless, and no command returns it.
 
 Access tokens last an hour, which is shorter than this app stays open, so a
 401 refreshes once and retries rather than telling you to sign in again when

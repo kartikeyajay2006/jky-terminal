@@ -514,7 +514,15 @@ export interface GmailMailbox {
  */
 export interface GmailApi {
   status(): Promise<GmailStatus>;
-  setClientId(id: string): Promise<void>;
+  /**
+   * Both halves of the OAuth client, together.
+   *
+   * Google requires a `client_secret` at the token endpoint even for an
+   * installed app, so either half alone cannot sign in — and a panel that
+   * accepted one would report itself ready and then fail at the exchange,
+   * after the browser, the consent and the redirect had all succeeded.
+   */
+  configure(id: string, secret: string): Promise<void>;
   /** Runs the whole sign-in. Resolves to the address that was connected. */
   connect(): Promise<string>;
   disconnect(): Promise<void>;

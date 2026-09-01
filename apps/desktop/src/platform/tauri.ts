@@ -193,7 +193,7 @@ export function createTauriPlatform(): Platform {
     },
     gmail: {
       status: () => invoke<GmailStatus>("apps_gmail_status"),
-      setClientId: (id) => invoke<void>("apps_gmail_set_client_id", { id }),
+      configure: (id, secret) => invoke<void>("apps_gmail_configure", { id, secret }),
       // Resolves only when the person has finished in their browser, which is
       // a wait of minutes rather than milliseconds. The panel says so.
       connect: () => invoke<string>("apps_gmail_connect"),

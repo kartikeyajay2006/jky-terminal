@@ -393,24 +393,67 @@ async fn post_form(
     }
 }
 
+/// What the token request carries, separated from the sending of it.
+///
+/// Split out because the failure it hides is invisible from the outside: the
+/// browser opens, consent is given, the code comes back to the loopback, and
+/// only then does the one request nobody sees get refused. A missing field
+/// here reads as "the sign-in did not complete" three steps later.
+///
+/// `client_secret` is here despite PKCE, and despite an installed app being a
+/// public client under the OAuth spec. Google requires it at the token
+/// endpoint for this client type — refusing the exchange with
+/// `invalid_request: client_secret is missing` — while documenting the value
+/// itself as not secret for installed apps, since anyone can read it out of a
+/// binary they downloaded. PKCE is what actually protects the exchange; this
+/// field is Google's paperwork.
+pub fn exchange_form<'a>(
+    client_id: &'a str,
+    client_secret: &'a str,
+    code: &'a str,
+    verifier: &'a str,
+    redirect: &'a str,
+) -> Vec<(&'static str, &'a str)> {
+    vec![
+        ("client_id", client_id),
+        ("client_secret", client_secret),
+        ("code", code),
+        ("code_verifier", verifier),
+        ("grant_type", "authorization_code"),
+        ("redirect_uri", redirect),
+    ]
+}
+
+/// The same, for trading a refresh token in for a new access token.
+///
+/// No `redirect_uri` — Google refuses one here — and no verifier, which would
+/// mean nothing: there is no fresh authorisation to bind to.
+pub fn refresh_form<'a>(
+    client_id: &'a str,
+    client_secret: &'a str,
+    refresh_token: &'a str,
+) -> Vec<(&'static str, &'a str)> {
+    vec![
+        ("client_id", client_id),
+        ("client_secret", client_secret),
+        ("refresh_token", refresh_token),
+        ("grant_type", "refresh_token"),
+    ]
+}
+
 /// Trade the code for tokens. The verifier is what proves this is the same
 /// client that started the flow.
 pub async fn exchange(
     client: &reqwest::Client,
     client_id: &str,
+    client_secret: &str,
     code: &str,
     verifier: &str,
     redirect: &str,
 ) -> Result<Tokens, OAuthError> {
     post_form(
         client,
-        &[
-            ("client_id", client_id),
-            ("code", code),
-            ("code_verifier", verifier),
-            ("grant_type", "authorization_code"),
-            ("redirect_uri", redirect),
-        ],
+        &exchange_form(client_id, client_secret, code, verifier, redirect),
     )
     .await
 }
@@ -419,22 +462,74 @@ pub async fn exchange(
 pub async fn refresh(
     client: &reqwest::Client,
     client_id: &str,
+    client_secret: &str,
     refresh_token: &str,
 ) -> Result<Tokens, OAuthError> {
-    post_form(
-        client,
-        &[
-            ("client_id", client_id),
-            ("refresh_token", refresh_token),
-            ("grant_type", "refresh_token"),
-        ],
-    )
-    .await
+    post_form(client, &refresh_form(client_id, client_secret, refresh_token)).await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn field<'a>(form: &'a [(&str, &'a str)], name: &str) -> Option<&'a str> {
+        form.iter().find(|(k, _)| *k == name).map(|(_, v)| *v)
+    }
+
+    /*
+     * Google requires `client_secret` at the token endpoint even for an
+     * installed app, which the OAuth spec calls a public client and PKCE
+     * exists to make safe without one. Google documents the value as "not
+     * treated as a secret" for this client type and still refuses the
+     * exchange without it: `invalid_request: client_secret is missing`.
+     *
+     * The whole flow can succeed — browser opened, consent given, code
+     * delivered back to the loopback — and then fail on the one request the
+     * person never sees. These tests exist because the ones that came before
+     * checked what Google sent back and never what was sent to it.
+     */
+    #[test]
+    fn the_exchange_carries_the_client_secret_google_insists_on() {
+        let form = exchange_form("id", "secret", "code", "verifier", "http://127.0.0.1:1");
+        assert_eq!(field(&form, "client_secret"), Some("secret"));
+    }
+
+    #[test]
+    fn a_refresh_carries_it_too() {
+        let form = refresh_form("id", "secret", "1//0gtoken");
+        assert_eq!(field(&form, "client_secret"), Some("secret"));
+    }
+
+    #[test]
+    fn the_exchange_asks_to_redeem_a_code_with_the_verifier() {
+        let form = exchange_form("id", "secret", "the-code", "the-verifier", "http://127.0.0.1:1");
+        assert_eq!(field(&form, "grant_type"), Some("authorization_code"));
+        assert_eq!(field(&form, "code"), Some("the-code"));
+        // PKCE is still doing the work the secret is not: it binds the code to
+        // the process that asked for it.
+        assert_eq!(field(&form, "code_verifier"), Some("the-verifier"));
+        assert_eq!(field(&form, "redirect_uri"), Some("http://127.0.0.1:1"));
+        assert_eq!(field(&form, "client_id"), Some("id"));
+    }
+
+    #[test]
+    fn a_refresh_asks_for_a_refresh_and_sends_no_code() {
+        let form = refresh_form("id", "secret", "1//0gtoken");
+        assert_eq!(field(&form, "grant_type"), Some("refresh_token"));
+        assert_eq!(field(&form, "refresh_token"), Some("1//0gtoken"));
+        assert_eq!(field(&form, "code"), None, "a refresh has no code to send");
+        assert_eq!(field(&form, "code_verifier"), None);
+    }
+
+    // A verifier in a refresh would be meaningless, and a redirect_uri in one
+    // is refused by Google.
+    #[test]
+    fn neither_form_carries_a_field_the_other_needs() {
+        let exchange = exchange_form("id", "secret", "c", "v", "r");
+        assert_eq!(field(&exchange, "refresh_token"), None);
+        let refresh = refresh_form("id", "secret", "t");
+        assert_eq!(field(&refresh, "redirect_uri"), None);
+    }
 
     // `state` is what stops a code from somewhere else being accepted by the
     // listener sitting open on this machine, so it has to be unguessable and

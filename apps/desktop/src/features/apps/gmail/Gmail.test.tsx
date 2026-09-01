@@ -6,6 +6,7 @@ import { createWebPlatform, __setPlatformForTests } from "../../../platform";
 import type { GmailMailbox, GmailStatus, Platform } from "../../../platform/types";
 
 const CLIENT = "812345678901-preview.apps.googleusercontent.com";
+const SECRET = "GOCSPX-preview0000000000000000";
 
 const MAILBOX: GmailMailbox = {
   account: { address: "someone@example.com", messages_total: 12043 },
@@ -37,11 +38,12 @@ interface Log {
   connects: number;
   disconnects: number;
   ids: string[];
+  secrets: string[];
   queries: (string | null)[];
 }
 
 function fresh(): Log {
-  return { connects: 0, disconnects: 0, ids: [], queries: [] };
+  return { connects: 0, disconnects: 0, ids: [], secrets: [], queries: [] };
 }
 
 /** A platform whose Gmail behaves, recording what it was asked. */
@@ -60,9 +62,11 @@ function withGmail(
         async status() {
           return current;
         },
-        async setClientId(id) {
+        async configure(id, secret) {
+          if (secret.trim() === "") throw new Error("the client secret is missing");
           log.ids.push(id);
-          current = { ...current, configured: id.trim() !== "" };
+          log.secrets.push(secret);
+          current = { ...current, configured: true };
         },
         async connect() {
           log.connects += 1;
@@ -186,12 +190,12 @@ describe("Gmail", () => {
 
   // Two details that cost an hour each when missed: the wrong client type
   // fails at the redirect, and people hunt for a secret that is not issued.
-  it("names the client type, and says there is no secret to look for", async () => {
+  it("names the client type", async () => {
     __setPlatformForTests(withGmail(fresh(), { configured: false, connected: false }));
     render(<Gmail />);
-    const setup = await screen.findByRole("region", { name: /set up gmail/i });
-    expect(setup).toHaveTextContent(/desktop app/i);
-    expect(setup).toHaveTextContent(/no client secret|no secret/i);
+    expect(await screen.findByRole("region", { name: /set up gmail/i })).toHaveTextContent(
+      /desktop app/i,
+    );
   });
 
   // The field refuses a project id with a message naming the right problem,
@@ -203,17 +207,50 @@ describe("Gmail", () => {
     expect(box).toHaveAttribute("placeholder", expect.stringContaining("apps.googleusercontent.com"));
   });
 
-  it("saves a client id and then offers to sign in", async () => {
+  /*
+   * Both halves, or none.
+   *
+   * Google requires a client_secret at the token endpoint even for an
+   * installed app, which the OAuth spec calls a public client and PKCE exists
+   * to make safe without one. Asking for the id alone produced the worst
+   * possible failure: the browser opened, consent was given, the code came
+   * back to the loopback, and only then did the one request nobody sees get
+   * refused — "the sign-in was not completed: client_secret is missing".
+   */
+  it("saves both halves of the client and then offers to sign in", async () => {
     const log = fresh();
     __setPlatformForTests(withGmail(log, { configured: false, connected: false }));
     const user = typist();
     render(<Gmail />);
 
     await user.type(await screen.findByRole("textbox", { name: /client id/i }), CLIENT);
+    await user.type(screen.getByLabelText(/client secret/i), SECRET);
     await user.click(screen.getByRole("button", { name: /save/i }));
 
     await waitFor(() => expect(log.ids).toEqual([CLIENT]));
+    expect(log.secrets).toEqual([SECRET]);
     expect(await screen.findByRole("button", { name: /^sign in/i })).toBeInTheDocument();
+  });
+
+  it("will not save an id with no secret beside it", async () => {
+    const log = fresh();
+    __setPlatformForTests(withGmail(log, { configured: false, connected: false }));
+    const user = typist();
+    render(<Gmail />);
+
+    await user.type(await screen.findByRole("textbox", { name: /client id/i }), CLIENT);
+    expect(screen.getByRole("button", { name: /save/i })).toBeDisabled();
+    expect(log.ids).toEqual([]);
+  });
+
+  // The secret is on the same console page as the id, and the step that says
+  // "there is no secret to copy" was wrong and cost a whole sign-in.
+  it("says the secret is on the same page as the id", async () => {
+    __setPlatformForTests(withGmail(fresh(), { configured: false, connected: false }));
+    render(<Gmail />);
+    const setup = await screen.findByRole("region", { name: /set up gmail/i });
+    expect(setup).toHaveTextContent(/client secret/i);
+    expect(setup).not.toHaveTextContent(/no client secret to copy|there is no client secret/i);
   });
 
   // The setup field and the search box are two different questions sharing
@@ -226,6 +263,7 @@ describe("Gmail", () => {
     render(<Gmail />);
 
     await user.type(await screen.findByRole("textbox", { name: /client id/i }), CLIENT);
+    await user.type(screen.getByLabelText(/client secret/i), SECRET);
     await user.click(screen.getByRole("button", { name: /save/i }));
     await user.click(await screen.findByRole("button", { name: /^sign in/i }));
 

@@ -407,6 +407,7 @@ export function createWebPlatform(): Platform {
   // app, so the preview build has to be able to show the "not set up yet"
   // state the real one starts in.
   let gmailClientId = "";
+  let gmailSecret = "";
   let gmailToken = false;
   let githubToken = false;
   let githubPolls = 0;
@@ -677,14 +678,21 @@ export function createWebPlatform(): Platform {
     },
     gmail: {
       async status() {
-        return { configured: gmailClientId !== "", connected: gmailToken };
+        return {
+          configured: gmailClientId !== "" && gmailSecret !== "",
+          connected: gmailToken,
+        };
       },
-      async setClientId(id) {
+      async configure(id, secret) {
+        // Both, or not at all: the mock has to be able to reach the state
+        // where a panel thinks it is ready and the exchange still fails.
+        if (secret.trim() === "") throw new Error("the client secret is missing");
         gmailClientId = id.trim();
+        gmailSecret = secret.trim();
       },
       async connect() {
-        if (gmailClientId === "") {
-          throw new Error("add a Google client id first");
+        if (gmailClientId === "" || gmailSecret === "") {
+          throw new Error("add a Google client id and secret first");
         }
         gmailToken = true;
         return "preview@example.com";

@@ -164,13 +164,19 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // fetched, so none can cross this boundary. The count is clamped and
         // the search term percent-encoded in jky-apps, against a fixed host.
         //
-        // `set_client_id` stores a public identifier — an installed-app client
-        // has no secret, which is why PKCE is doing the work — validated here
-        // so a pasted document becomes a refusal.
+        // `configure` stores both halves of the OAuth client: the id in
+        // settings, the secret in the keychain. Google requires a
+        // `client_secret` at the token endpoint even for an installed app,
+        // which the spec calls a public client — it refuses the exchange
+        // without one — while documenting the value as not secret for this
+        // client type, since anyone can read it out of a downloaded binary.
+        // PKCE is what protects the exchange; the secret is Google's
+        // paperwork. It is kept in the keychain regardless, and no command
+        // returns it.
+        "apps_gmail_configure".to_string(),
         "apps_gmail_connect".to_string(),
         "apps_gmail_disconnect".to_string(),
         "apps_gmail_inbox".to_string(),
-        "apps_gmail_set_client_id".to_string(),
         "apps_gmail_status".to_string(),
         // apps_locate: roughly where this machine is, from its public
         // address. Takes nothing from the window, so there is no input to

@@ -223,13 +223,13 @@ describe("apps adapter parity", () => {
 
     async function signedIn() {
       const gmail = mail();
-      await gmail.setClientId(CLIENT);
+      await gmail.configure(CLIENT, "GOCSPX-preview");
       await gmail.connect();
       return gmail;
     }
 
     it("the mock offers the whole gmail surface", () => {
-      for (const call of ["status", "setClientId", "connect", "disconnect", "inbox"] as const) {
+      for (const call of ["status", "connect", "disconnect", "inbox", "configure"] as const) {
         expect(typeof mail()[call], `gmail.${call} is missing`).toBe("function");
       }
     });
@@ -257,6 +257,14 @@ describe("apps adapter parity", () => {
 
     it("cannot sign in before it has been told which client to use", async () => {
       await expect(mail().connect()).rejects.toThrow();
+    });
+
+    // Google refuses the token exchange without a client_secret even for an
+    // installed app, so half a client is not a client.
+    it("is not configured by an id alone", async () => {
+      const gmail = mail();
+      await expect(gmail.configure(CLIENT, "")).rejects.toThrow();
+      expect((await gmail.status()).configured).toBe(false);
     });
 
     it("reports itself connected once it is", async () => {
