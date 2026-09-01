@@ -140,6 +140,69 @@ describe("Gmail", () => {
     expect(setup).toHaveTextContent(/desktop app/i);
   });
 
+  /*
+   * "Open the Google Cloud console and make a project" is a sentence that
+   * assumes you already know where that is. Every step opens its own page
+   * instead, so the instruction is a button rather than a search.
+   */
+  it("opens each step's page rather than describing where to find it", async () => {
+    const opened: string[] = [];
+    const base = withGmail(fresh(), { configured: false, connected: false });
+    __setPlatformForTests({
+      ...base,
+      async openExternal(url: string) {
+        opened.push(url);
+      },
+    });
+    const user = typist();
+    render(<Gmail />);
+
+    const steps = await screen.findByRole("list", { name: /set up/i });
+    const buttons = within(steps).getAllByRole("button");
+    expect(buttons.length).toBeGreaterThanOrEqual(4);
+    for (const button of buttons) await user.click(button);
+
+    expect(opened).toHaveLength(buttons.length);
+    for (const url of opened) expect(url).toMatch(/^https:\/\/console\.cloud\.google\.com\//);
+    expect(opened.some((u) => u.includes("projectcreate"))).toBe(true);
+    expect(opened.some((u) => u.includes("gmail.googleapis.com"))).toBe(true);
+    expect(opened.some((u) => u.includes("audience"))).toBe(true);
+    expect(opened.some((u) => u.includes("clients"))).toBe(true);
+  });
+
+  /*
+   * The single most common way this fails: Google puts a new project in
+   * testing mode, and testing mode refuses everyone not on the test-user
+   * list — including the person who just made the project. The error it gives
+   * back says "access denied" and names nothing you could act on.
+   */
+  it("warns about the step whose absence looks like a refusal", async () => {
+    __setPlatformForTests(withGmail(fresh(), { configured: false, connected: false }));
+    render(<Gmail />);
+    const setup = await screen.findByRole("region", { name: /set up gmail/i });
+    expect(setup).toHaveTextContent(/test user/i);
+    expect(setup).toHaveTextContent(/access denied/i);
+  });
+
+  // Two details that cost an hour each when missed: the wrong client type
+  // fails at the redirect, and people hunt for a secret that is not issued.
+  it("names the client type, and says there is no secret to look for", async () => {
+    __setPlatformForTests(withGmail(fresh(), { configured: false, connected: false }));
+    render(<Gmail />);
+    const setup = await screen.findByRole("region", { name: /set up gmail/i });
+    expect(setup).toHaveTextContent(/desktop app/i);
+    expect(setup).toHaveTextContent(/no client secret|no secret/i);
+  });
+
+  // The field refuses a project id with a message naming the right problem,
+  // and the panel should show what the right answer looks like.
+  it("shows the shape of the thing being asked for", async () => {
+    __setPlatformForTests(withGmail(fresh(), { configured: false, connected: false }));
+    render(<Gmail />);
+    const box = await screen.findByRole("textbox", { name: /client id/i });
+    expect(box).toHaveAttribute("placeholder", expect.stringContaining("apps.googleusercontent.com"));
+  });
+
   it("saves a client id and then offers to sign in", async () => {
     const log = fresh();
     __setPlatformForTests(withGmail(log, { configured: false, connected: false }));

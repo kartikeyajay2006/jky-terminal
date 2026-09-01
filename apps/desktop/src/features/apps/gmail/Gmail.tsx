@@ -5,6 +5,45 @@ import type { GmailMailbox, GmailMessage } from "../../../platform/types";
 /** How many rows one view asks for. Each one costs a request to Google. */
 const ROWS = 25;
 
+/**
+ * The four things to do in the Google console, each with the page to do it on.
+ *
+ * Written as links rather than directions because "open the Google Cloud
+ * console and make a project" assumes you already know where that is, and
+ * every one of these pages is two or three menus deep from a console home
+ * screen that does not obviously lead to any of them.
+ */
+const SETUP: { title: string; url: string; button: string; detail: string }[] = [
+  {
+    title: "Make a project",
+    url: "https://console.cloud.google.com/projectcreate",
+    button: "Open Google Cloud",
+    detail:
+      "Any name will do — “JKY Terminal” is fine. Click Create and wait a few seconds for it to appear.",
+  },
+  {
+    title: "Turn on the Gmail API",
+    url: "https://console.cloud.google.com/apis/library/gmail.googleapis.com",
+    button: "Open the Gmail API",
+    detail:
+      "Check your new project is the one named at the top of the page, then click Enable.",
+  },
+  {
+    title: "Add yourself as a test user",
+    url: "https://console.cloud.google.com/auth/audience",
+    button: "Open Audience",
+    detail:
+      "Choose External if it asks, then add your own Gmail address under Test users. Skip this and Google answers the sign-in with “access denied” — it is the usual reason this fails.",
+  },
+  {
+    title: "Create the client and copy its id",
+    url: "https://console.cloud.google.com/auth/clients",
+    button: "Open Clients",
+    detail:
+      "Create client → application type Desktop app → Create. Copy the Client ID it shows you. There is no client secret; a desktop client is issued without one.",
+  },
+];
+
 /** Where the panel is. */
 type Phase =
   | { at: "loading" }
@@ -153,22 +192,36 @@ export function Gmail() {
         <section className="gm__setup" aria-label="Set up Gmail">
           <h2 className="gm__title">Set up Gmail</h2>
           <p className="gm__body">
-            Gmail needs a client id of your own. Unlike GitHub, none ships with this app: a
-            Google client belongs to a project someone owns, and a shared one would put every
-            install of JKY Terminal in a stranger's audit log.
+            Google has to know which app is asking to read your mail, so you register one —
+            once, free, about five minutes. None ships with JKY Terminal because a Google
+            client belongs to whoever made it, and a shared one would list every install of
+            this app under one stranger's account.
           </p>
-          <ol className="gm__steps">
-            <li>
-              Open the Google Cloud console, make a project, and turn on the{" "}
-              <span className="gm__strong">Gmail API</span>.
-            </li>
-            <li>
-              Under Credentials, create an OAuth client id of type{" "}
-              <span className="gm__strong">Desktop app</span>. Nothing else works here — a Web
-              client needs a redirect address this app does not have.
-            </li>
-            <li>Paste the client id below. There is no client secret to copy.</li>
+          <p className="gm__body">
+            Each step below opens the page it happens on. Do them in order.
+          </p>
+
+          <ol className="gm__steps" aria-label="Set up steps">
+            {SETUP.map((step, i) => (
+              <li key={step.url} className="gm__step">
+                <span className="gm__step-no" aria-hidden="true">
+                  {i + 1}
+                </span>
+                <span className="gm__step-body">
+                  <span className="gm__step-title">{step.title}</span>
+                  <span className="gm__step-detail">{step.detail}</span>
+                </span>
+                <button
+                  type="button"
+                  className="gm__step-go"
+                  onClick={() => void getPlatform().openExternal(step.url)}
+                >
+                  {step.button} ↗
+                </button>
+              </li>
+            ))}
           </ol>
+
           <form className="gm__form" onSubmit={(e) => void saveClientId(e)}>
             <label className="gm__label" htmlFor="gm-client">
               Client id
@@ -179,13 +232,17 @@ export function Gmail() {
               value={draft}
               spellCheck={false}
               autoComplete="off"
-              placeholder="…apps.googleusercontent.com"
+              placeholder="000000000000-xxxx.apps.googleusercontent.com"
               onChange={(e) => setDraft(e.target.value)}
             />
             <button type="submit" className="gm__go" disabled={draft.trim() === ""}>
               Save
             </button>
           </form>
+          <p className="gm__quiet">
+            It is one long line ending in <span className="gm__strong">.apps.googleusercontent.com</span>.
+            Nothing here is secret, and nothing is sent anywhere but Google.
+          </p>
           {error && (
             <p className="gm__error" role="alert">
               {error}

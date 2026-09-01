@@ -3034,7 +3034,7 @@
   display: flex;
   flex-direction: column;
   gap: var(--s3);
-  max-width: 62ch;
+  max-width: 72ch;
   padding: var(--s5);
   border: 1px solid color-mix(in srgb, var(--app-accent) 30%, var(--line));
   border-radius: var(--radius-lg);
@@ -3067,16 +3067,95 @@
 }
 
 /* Numbered because these genuinely are steps in order: the API has to be on
-   before the credential can be made, and the type cannot be changed after. */
+   before the credential can be made, and the type cannot be changed after.
+   The numbers are drawn rather than left to the list marker, because each row
+   is a grid and a marker sits outside one. */
 .gm__steps {
+  list-style: none;
   margin: 0;
-  padding-left: var(--s5);
+  padding: 0;
   display: flex;
   flex-direction: column;
   gap: var(--s2);
-  color: var(--text-muted);
+}
+
+.gm__step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ground);
+}
+
+.gm__step-no {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--app-accent) 18%, transparent);
+  color: var(--app-accent);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.gm__step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.gm__step-title {
+  color: var(--text);
   font-size: 13px;
-  line-height: 1.6;
+  font-weight: 600;
+}
+
+.gm__step-detail {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+/* The button is the instruction, so it keeps its full width and the text
+   wraps around it rather than the other way about. */
+.gm__step-go {
+  align-self: center;
+  flex: none;
+  padding: var(--s2) var(--s3);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--app-accent);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.gm__step-go:hover {
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+}
+
+.gm__step-go:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
+}
+
+/* Under this the button has nowhere to sit beside the text. */
+@media (max-width: 34rem) {
+  .gm__step {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .gm__step-go {
+    grid-column: 2;
+    justify-self: start;
+  }
 }
 
 .gm__form {
