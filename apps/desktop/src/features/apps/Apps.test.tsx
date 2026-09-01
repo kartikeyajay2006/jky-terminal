@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { Apps } from "./Apps";
@@ -35,8 +35,9 @@ describe("Apps", () => {
     render(<Apps />);
     const head = screen.getByRole("banner", { name: /apps/i });
     expect(head).not.toHaveTextContent(/no account needed/i);
-    expect(head).toHaveTextContent(String(APPS.length));
-    expect(head).toHaveTextContent(String(APPS.filter((a) => a.auth === "none").length));
+    // Counted from the layout, so it follows what is actually on screen
+    // rather than what the registry happens to hold.
+    expect(head).toHaveTextContent(`${APPS.length} apps`);
   });
 
   /*
@@ -72,6 +73,173 @@ describe("Apps", () => {
       const list = screen.getByRole("list", { name });
       expect(within(list).getAllByRole("listitem").length).toBeGreaterThan(0);
     }
+  });
+
+  describe("the layout editor", () => {
+    const edit = async (user: ReturnType<typeof userEvent.setup>) => {
+      await user.click(screen.getByRole("button", { name: /edit layout/i }));
+    };
+
+    /*
+     * Editing is a mode, not a mood. Outside it a tile is a button that opens
+     * an app, and a grid where every tile also has six controls on it is a
+     * grid you cannot use for its actual purpose.
+     */
+    it("shows no editing controls until asked", () => {
+      render(<Apps />);
+      expect(screen.queryByRole("button", { name: /pin/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("button", { name: /edit layout/i })).toBeInTheDocument();
+    });
+
+    it("offers every operation once editing", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      const tile = screen.getAllByRole("group", { name: /calculator/i })[0];
+      for (const name of [/pin/i, /hide/i, /duplicate/i, /remove/i, /size/i]) {
+        expect(within(tile).getByRole("button", { name }), `${name} is missing`)
+          .toBeInTheDocument();
+      }
+    });
+
+    // In edit mode a tile is a thing being arranged, not a thing to launch.
+    it("does not open an app while the layout is being edited", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      const tile = screen.getAllByRole("group", { name: /calculator/i })[0];
+      await user.click(within(tile).getByText("Calculator"));
+      expect(screen.queryByRole("tablist", { name: /open apps/i })).not.toBeInTheDocument();
+    });
+
+    it("hides a tile, and says how many are hidden", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      const tile = screen.getAllByRole("group", { name: /calculator/i })[0];
+      await user.click(within(tile).getByRole("button", { name: /hide/i }));
+
+      await waitFor(() =>
+        expect(screen.queryByRole("group", { name: /calculator/i })).not.toBeInTheDocument(),
+      );
+      // In the header count, not only on the button that undoes it.
+      expect(screen.getByRole("banner", { name: /apps/i })).toHaveTextContent(/1 hidden/i);
+    });
+
+    it("brings everything back", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      const tile = screen.getAllByRole("group", { name: /calculator/i })[0];
+      await user.click(within(tile).getByRole("button", { name: /hide/i }));
+      await waitFor(() =>
+        expect(screen.getByRole("banner", { name: /apps/i })).toHaveTextContent(/1 hidden/i),
+      );
+
+      await user.click(screen.getByRole("button", { name: /restore/i }));
+      expect(await screen.findByRole("group", { name: /calculator/i })).toBeInTheDocument();
+    });
+
+    it("pins a tile to the top of its group", async () => {
+      const user = userEvent.setup();
+      const { container } = render(<Apps />);
+      await edit(user);
+
+      const tiles = [...container.querySelectorAll(".apps__tile")];
+      const last = tiles.at(-1)!;
+      const name = last.getAttribute("aria-label");
+      await user.click(within(last as HTMLElement).getByRole("button", { name: /pin/i }));
+
+      await waitFor(() => {
+        const group = container.querySelector(".apps__group:last-of-type .apps__grid")!;
+        expect(group.querySelector(".apps__tile")!.getAttribute("aria-label")).toBe(name);
+      });
+    });
+
+    it("resizes a tile", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      const tile = screen.getAllByRole("group", { name: /calculator/i })[0];
+      await user.click(within(tile).getByRole("button", { name: /size/i }));
+
+      await waitFor(() =>
+        expect(
+          screen.getAllByRole("group", { name: /calculator/i })[0],
+        ).toHaveAttribute("data-size", "large"),
+      );
+    });
+
+    it("adds a group and lets it be named", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      await user.click(screen.getByRole("button", { name: /add group/i }));
+      const field = screen.getByRole("textbox", { name: /group name/i });
+      await user.clear(field);
+      await user.type(field, "Daily{Enter}");
+
+      expect(await screen.findByRole("list", { name: /daily/i })).toBeInTheDocument();
+    });
+
+    // Removing a group must not remove the apps in it.
+    it("keeps the apps when a group is removed", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      const groups = screen.getAllByRole("button", { name: /remove group/i });
+      await user.click(groups.at(-1)!);
+
+      await waitFor(() =>
+        expect(screen.getAllByRole("group", { name: /github/i }).length).toBeGreaterThan(0),
+      );
+    });
+
+    it("duplicates an app into another group", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+
+      const tile = screen.getAllByRole("group", { name: /calculator/i })[0];
+      await user.click(within(tile).getByRole("button", { name: /duplicate/i }));
+
+      await waitFor(() =>
+        expect(screen.getAllByRole("group", { name: /calculator/i }).length).toBe(2),
+      );
+    });
+
+    // The arrangement is the point; losing it on every restart is not an
+    // arrangement, it is a fidget toy.
+    it("remembers the arrangement across a remount", async () => {
+      const user = userEvent.setup();
+      const view = render(<Apps />);
+      await edit(user);
+
+      const tile = screen.getAllByRole("group", { name: /calculator/i })[0];
+      await user.click(within(tile).getByRole("button", { name: /hide/i }));
+      await waitFor(() =>
+        expect(screen.queryByRole("group", { name: /calculator/i })).not.toBeInTheDocument(),
+      );
+
+      view.unmount();
+      render(<Apps />);
+      expect(screen.queryByRole("group", { name: /calculator/i })).not.toBeInTheDocument();
+    });
+
+    it("leaves edit mode", async () => {
+      const user = userEvent.setup();
+      render(<Apps />);
+      await edit(user);
+      await user.click(screen.getByRole("button", { name: /done/i }));
+      expect(screen.queryByRole("button", { name: /add group/i })).not.toBeInTheDocument();
+    });
   });
 
   it("opens an app when its tile is chosen", async () => {

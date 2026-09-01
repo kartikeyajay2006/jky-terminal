@@ -270,7 +270,23 @@ still there when you come back. `Ctrl+Shift+A` moves between them.
 | ⏱ | **Timer** | Counts by the clock, so a backgrounded window does not lose time |
 | 🖩 | **Calculator** | A real parser — not `eval` — with history you can click back into |
 
-The grid is in two groups — what needs nothing, and what signs in to an
+The grid is yours to arrange. **Edit layout** turns every tile into something
+you can drag between groups, resize (small, medium, large), pin to the top of
+its group, hide, duplicate into another group, or remove — and groups
+themselves can be added, renamed and deleted. It is a mode rather than a
+permanent state: outside it a tile is a button that opens an app, because a
+grid where every tile also carries six controls is a grid you cannot use for
+the thing it is for.
+
+Nothing is lost by accident. Removing a group keeps its apps, hiding is
+reversible, and even remove is undone by **Restore** — a launcher you can
+permanently break by mis-clicking is worse than one you cannot rearrange at
+all. The arrangement is stored, and reconciled against the registry every time
+it loads: apps added in a later version are placed, apps that no longer exist
+are dropped, and a stored layout that is not one falls back to the default
+rather than opening to an empty screen you could not fix from inside the app.
+
+By default the grid is in two groups — what needs nothing, and what signs in to an
 account of yours — because that is the one thing worth knowing before you
 click a tile, and it is already a field on the registry record rather than a
 label someone has to keep in step. Both counts in the header are derived from

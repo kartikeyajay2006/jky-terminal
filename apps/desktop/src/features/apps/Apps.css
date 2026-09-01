@@ -190,13 +190,57 @@
   line-height: 1.5;
 }
 
+/*
+ * A twelve-column bed, so a tile can be a third, a half or the whole width.
+ *
+ * `auto-fill` cannot do this: it decides the column count from one minimum
+ * width, which is exactly the thing being taken away from it once tiles have
+ * sizes of their own.
+ */
 .apps__grid {
   list-style: none;
   margin: 0;
   padding: 0;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: var(--s4);
+}
+
+.apps__grid > li {
+  grid-column: span 6;
+  min-width: 0;
+}
+
+@media (min-width: 68rem) {
+  .apps__grid > li {
+    grid-column: span 4;
+  }
+
+  .apps__grid > li:has(.apps__tile[data-size="small"]) {
+    grid-column: span 3;
+  }
+
+  .apps__grid > li:has(.apps__tile[data-size="large"]) {
+    grid-column: span 6;
+  }
+}
+
+/* Below that there is only room for the size distinction to be a nuisance. */
+@media (max-width: 46rem) {
+  .apps__grid > li {
+    grid-column: span 12;
+  }
+}
+
+/* An empty group in edit mode still needs somewhere to drop things. */
+.apps__empty {
+  grid-column: span 12;
+  padding: var(--s5);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--text-dim);
+  font-size: 12px;
+  text-align: center;
 }
 
 /*
@@ -3479,4 +3523,190 @@
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-muted);
+}
+
+
+/* ---- the layout editor -------------------------------------------------- */
+
+.apps__tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.apps__tool {
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.apps__tool:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.apps__tool[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+}
+
+.apps__tool:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.apps__tool--quiet {
+  color: var(--text-dim);
+}
+
+.apps__tool--small {
+  padding: 1px var(--s2);
+  font-size: 11px;
+}
+
+.apps__group-tools {
+  grid-area: count;
+  justify-self: end;
+  display: flex;
+  gap: var(--s2);
+}
+
+.apps__group-head:has(.apps__group-tools) {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.apps__group-input {
+  grid-area: name;
+  padding: 1px var(--s2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/*
+ * A tile in edit mode is a thing being arranged, so it stops behaving like a
+ * button: the face is inert, the controls sit under it, and the whole tile is
+ * draggable.
+ */
+.apps__tile-face {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "well name"
+    "well blurb"
+    "well auth";
+  align-content: start;
+  gap: 0 var(--s4);
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.apps__tile[data-editing] .apps__tile-face {
+  cursor: grab;
+}
+
+.apps__tile[data-editing] {
+  cursor: grab;
+}
+
+.apps__tile[data-dragging] {
+  opacity: 0.4;
+  border-style: dashed;
+}
+
+/* A pinned tile keeps its marker outside edit mode too — it is a property of
+   the arrangement, not of the editor. */
+.apps__tile[data-pinned]::after {
+  content: "⚲";
+  position: absolute;
+  top: var(--s3);
+  right: var(--s3);
+  color: var(--app-accent);
+  font-size: 11px;
+}
+
+.apps__tile-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+
+.apps__pill {
+  display: grid;
+  place-items: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 var(--s2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  cursor: pointer;
+  transition:
+    border-color var(--fast) var(--ease),
+    color var(--fast) var(--ease);
+}
+
+.apps__pill:hover {
+  border-color: var(--app-accent);
+  color: var(--app-accent);
+}
+
+.apps__pill[aria-pressed="true"] {
+  border-color: var(--app-accent);
+  background: color-mix(in srgb, var(--app-accent) 16%, transparent);
+  color: var(--app-accent);
+}
+
+/* The one control that loses something wears the colour that says so. */
+.apps__pill--danger:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.apps__pill:focus-visible,
+.apps__tool:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+/* A small tile has no room for the blurb; the name and the glyph carry it. */
+.apps__tile[data-size="small"] .apps__tile-blurb {
+  display: none;
+}
+
+.apps__tile[data-size="small"] {
+  min-height: 96px;
+}
+
+.apps__tile[data-size="large"] {
+  min-height: 160px;
+}
+
+.apps__tile[data-size="large"] .apps__tile-name {
+  font-size: 18px;
 }
