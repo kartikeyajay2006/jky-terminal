@@ -38,6 +38,15 @@ pub enum AuditKind {
     AccountConnected,
     /// An account was unlinked and its token deleted.
     AccountDisconnected,
+    /// A sign-in was started: a browser was opened at a provider's
+    /// authorisation page.
+    ///
+    /// Recorded separately from the connection it may become, because the two
+    /// are different facts and only one of them is usually written down. A
+    /// sign-in that a person abandoned, or that a provider refused, leaves no
+    /// account behind and would otherwise leave no trace at all — so the log
+    /// would show a machine that never tried, which is not what happened.
+    AccountConnectStarted,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -245,6 +254,15 @@ mod account_event_tests {
         let gone = serde_json::to_string(&AuditEvent::new(AuditKind::AccountDisconnected, "github"))
             .expect("serialises");
         assert!(gone.contains("AccountDisconnected"), "got {gone}");
+
+        // An attempt is its own fact. Without it the log shows a machine that
+        // never tried, when what happened is that it tried and was refused.
+        let started = serde_json::to_string(&AuditEvent::new(
+            AuditKind::AccountConnectStarted,
+            "gmail, opening the browser",
+        ))
+        .unwrap();
+        assert!(started.contains("AccountConnectStarted"), "got {started}");
     }
 
     #[test]

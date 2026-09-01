@@ -119,6 +119,18 @@ pub async fn apps_gmail_connect(state: State<'_, AppState>) -> Result<String, St
     let expected_state = oauth::new_state();
 
     let url = oauth::auth_url(&client_id, &redirect, &pkce.challenge, &expected_state);
+
+    // The attempt, not only the connection it may become. A sign-in a person
+    // abandoned or a provider refused leaves no account behind and would
+    // otherwise leave no trace, so the log would show a machine that never
+    // tried. Both values here are public identifiers — the client id is
+    // published in the app's own settings and the redirect is a loopback port
+    // — and neither the verifier nor the state is recorded, because those are
+    // what make the returning code worth anything.
+    let _ = state.audit.append(AuditEvent::new(
+        AuditKind::AccountConnectStarted,
+        &format!("gmail, opening the browser for {client_id} back to {redirect}"),
+    ));
     // Through the same validation every other outbound link gets. It is a URL
     // this app built, so it will pass — which is the point of checking it
     // anyway rather than making an exception the next URL can hide behind.
