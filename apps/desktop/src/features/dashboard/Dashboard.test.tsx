@@ -59,6 +59,34 @@ describe("the overview grid", () => {
   beforeEach(reset);
   afterEach(() => __setPlatformForTests(null));
 
+  /*
+   * An empty dashboard used to look broken rather than new.
+   *
+   * With nothing written yet every card collapses to its smallest, and a
+   * board laid out by content alone becomes a thin ribbon across the top of
+   * a laptop screen with black below it. The calendar is the one card that is
+   * never empty — dates exist whether or not you have written anything — so
+   * it leads the board and is told to take two rows, and the rest fill in
+   * around it.
+   */
+  it("leads with the calendar, the one card that is never empty", async () => {
+    const { container } = render(<Dashboard />);
+    await screen.findByRole("heading", { name: "Overview" });
+
+    const cards = [...container.querySelectorAll(".card")];
+    expect(cards[0].getAttribute("aria-label")).toBe("Calendar");
+    expect(cards[0].className).toContain("card--tall");
+  });
+
+  // Only the anchor is tall. If every card claimed two rows the board would
+  // be a column of tall empty boxes, which is the same failure with more
+  // scrolling.
+  it("makes exactly one card the tall one", async () => {
+    const { container } = render(<Dashboard />);
+    await screen.findByRole("heading", { name: "Overview" });
+    expect(container.querySelectorAll(".card--tall")).toHaveLength(1);
+  });
+
   it("gives every card its own colour", async () => {
     // The point of six colours is finding the widget you want before reading
     // a word. A card added later with no tone would be the grey one.

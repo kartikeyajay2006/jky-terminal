@@ -37,25 +37,17 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
         status={<>{longDate(today.toISOString())}</>}
       />
 
+      {/* The calendar leads because it is the one card that is never empty:
+          dates exist whether or not anything has been written yet. It anchors
+          the board so a new install reads as new rather than as broken. */}
       <div className="grid">
-        <Card title="Notes" glyph="▤" tone="amber" action={{ label: "+ New note", onClick: () => {
-          const now = nowIso();
-          void saveNote({ id: newId("note"), title: "Untitled", body: "", created_at: now, updated_at: now });
-          onOpen("notes");
-        } }}>
-          {latest ? (
-            <button type="button" className="card__open" onClick={() => onOpen("notes")}>
-              <span className="card__note-title">{latest.title}</span>
-              <span className="card__note-body">
-                {latest.body.trim() || "Empty. Open it and start writing."}
-              </span>
-            </button>
-          ) : (
-            <p className="hint">Nothing written yet.</p>
-          )}
-        </Card>
-
-        <Card title="Calendar" glyph="▦" tone="azure" action={{ label: "View all", onClick: () => onOpen("calendar") }}>
+        <Card
+          title="Calendar"
+          glyph="▦"
+          tone="azure"
+          tall
+          action={{ label: "View all", onClick: () => onOpen("calendar") }}
+        >
           <p className="card__month">{monthLabel(year, month)}</p>
           <div className="cal__grid cal__grid--mini">
             <div className="cal__weekdays">
@@ -81,6 +73,23 @@ export function Overview({ onOpen }: { onOpen: (panel: DashPanel) => void }) {
               </div>
             ))}
           </div>
+        </Card>
+
+        <Card title="Notes" glyph="▤" tone="amber" action={{ label: "+ New note", onClick: () => {
+          const now = nowIso();
+          void saveNote({ id: newId("note"), title: "Untitled", body: "", created_at: now, updated_at: now });
+          onOpen("notes");
+        } }}>
+          {latest ? (
+            <button type="button" className="card__open" onClick={() => onOpen("notes")}>
+              <span className="card__note-title">{latest.title}</span>
+              <span className="card__note-body">
+                {latest.body.trim() || "Empty. Open it and start writing."}
+              </span>
+            </button>
+          ) : (
+            <p className="hint">Nothing written yet.</p>
+          )}
         </Card>
 
         <Card title="Reminders" glyph="◔" tone="violet" action={{ label: "+ Add", onClick: () => onOpen("reminders") }}>
@@ -181,16 +190,23 @@ function Card({
   glyph,
   tone,
   action,
+  tall,
   children,
 }: {
   title: string;
   glyph: string;
   tone: EventColour;
   action?: { label: string; onClick: () => void };
+  /** Takes two rows of the board. Exactly one card does; see `.grid`. */
+  tall?: boolean;
   children: React.ReactNode;
 }) {
   return (
-    <section className="card" data-tone={tone} aria-label={title}>
+    <section
+      className={tall ? "card card--tall" : "card"}
+      data-tone={tone}
+      aria-label={title}
+    >
       <header className="card__head">
         <span className="card__glyph" aria-hidden="true">
           {glyph}

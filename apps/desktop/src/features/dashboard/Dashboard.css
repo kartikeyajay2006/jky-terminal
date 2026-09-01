@@ -92,7 +92,13 @@
  */
 .panel.panel--wide {
   max-width: none;
-  padding: var(--s5) var(--s5) var(--s7);
+  padding: var(--s5);
+  /* Fills the pane so the board can share out the height rather than piling
+     up against the top of it. `align-content` overrides the base panel's
+     `start`, which is right for an article and wrong for a board. */
+  min-height: 100%;
+  grid-template-rows: auto minmax(0, 1fr);
+  align-content: stretch;
 }
 
 .dash__subhead {
@@ -137,38 +143,48 @@
 /* ---- the widget grid ---------------------------------------------------- */
 
 /*
- * Columns rather than rows.
+ * A board, laid out as a board.
  *
- * A grid puts every card in a row as tall as the tallest card in it, so the
- * short Notes card sat beside the tall Calendar with a card-sized hole beneath
- * it, and the next row started below both. Columns let each card sit directly
- * under the one above, whatever its height, which is what a board of unequal
- * cards wants.
+ * This was CSS columns, to stop a short card leaving a card-sized hole beside
+ * a tall one. That solved the hole and bought a worse problem: with nothing
+ * written yet, every card collapses to its smallest and the whole board
+ * becomes a thin ribbon across the top of the window with black beneath it.
+ * A new dashboard looked broken rather than empty, which is the wrong first
+ * impression for the one screen that is guaranteed to be empty on day one.
  *
- * `break-inside` is what keeps a card from being split across two columns.
+ * So: a real grid. The hole the columns were avoiding cannot form here,
+ * because the tall card is *told* it is tall rather than discovered to be —
+ * the calendar spans two rows, and the short cards fill in around it.
+ *
+ * The rows are `auto`, not `1fr`, on purpose. Auto tracks still share out
+ * leftover height, so the board fills a tall window; but a card with eight
+ * todos in it can also push its row taller instead of scrolling inside a
+ * height something else chose for it.
  */
 .grid {
-  column-width: 21rem;
-  column-gap: var(--s4);
-  align-items: start;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(19rem, 1fr));
+  grid-auto-rows: minmax(9rem, auto);
+  gap: var(--s4);
+  align-content: stretch;
+  min-height: 0;
 }
 
-.grid > * {
-  break-inside: avoid;
-  margin-bottom: var(--s4);
+/* The anchor. Exactly one card wears this, and a test pins that: a board of
+   uniformly tall cards is the same failure with more scrolling. */
+.card--tall {
+  grid-row: span 2;
 }
 
-/* Grid, not columns, once there is only room for one: a single column with
-   column-width still leaves the last card's margin hanging. */
+/* One column, and nothing spans two rows in it — a card claiming double
+   height in a single-column layout is just a taller card. */
 @media (max-width: 40rem) {
   .grid {
-    display: grid;
     grid-template-columns: 1fr;
-    gap: var(--s4);
   }
 
-  .grid > * {
-    margin-bottom: 0;
+  .card--tall {
+    grid-row: auto;
   }
 }
 
@@ -178,6 +194,8 @@
 .card {
   --tone: var(--accent);
   position: relative;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
   background: var(--surface);
@@ -271,13 +289,30 @@
   color: var(--tone);
 }
 
+/* The body takes whatever height the row hands the card, so a card in a tall
+   row is a tall card rather than a short one with a gap under it. */
 .card__body {
   position: relative;
+  flex: 1;
   padding: var(--s4);
   display: grid;
   gap: var(--s3);
   min-height: 96px;
   align-content: start;
+}
+
+/* The anchor's calendar is the point of making it tall, so it takes the room
+   rather than sitting small at the top of it. */
+.card--tall .card__body {
+  align-content: stretch;
+}
+
+.card--tall .cal__grid--mini {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s1);
+  height: 100%;
 }
 
 .card__open {
