@@ -23,6 +23,7 @@ import "./styles/base.css";
 // After the tokens it reads and before any component that animates.
 import "./styles/motion.css";
 import "./styles/controls.css";
+import "./styles/board.css";
 
 export function App() {
   const [section, setSection] = useState("terminal");

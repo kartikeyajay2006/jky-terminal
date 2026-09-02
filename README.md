@@ -253,14 +253,27 @@ guess at, is one you would clear browser storage to fix.
 Six tools in a section of their own, and every one a function of what you
 paste into it: no account, no key, no network, nothing kept.
 
-A section rather than a corner of Apps, and the distinction is real. An app is
-a place you go and stay — a mailbox, a browser, a game — and it earns a tab. A
-tool is something you reach for, use and leave, usually in the middle of doing
-something else. So this wears the frame the Dashboard and Settings wear: a
-list down the side, the chosen thing beside it, switching instant and nothing
-to manage. Which tool you were last in is remembered, because a workbench that
-resets every time you glance at the terminal is one you stop using for
-anything that takes two visits.
+It is the same board the Apps grid is — tiles you open, and the same editor
+behind **Edit layout** for dragging, resizing, pinning, hiding and grouping
+them. The board is one shared component: two copies would be two copies of the
+drag handling, and the second copy is the one that stops getting fixed. The
+tools are grouped by where the work happens, because that is the one thing
+that changes how they behave — three answer as you type, three wait for a
+button — so anyone wondering why one of them pauses has the answer above the
+tile.
+
+**Every tool opens with worked examples.** That is not decoration: an empty box
+with a clever name teaches nobody anything. Each tool says what it is for, when
+you would reach for it, and offers three examples you can load and take apart —
+including the ones that go wrong on purpose, because "what does this do when
+the input is broken" is the question people actually have. A test enforces it,
+so a tool added later has to teach itself too.
+
+A few of them are worth loading for their own sake: **the Norway problem** in
+the YAML tool, where `country: NO` is not the string you expected; **alg: none**
+in the JWT tool, a real attack that reads perfectly and means nothing; and
+**one that never finishes** in the regex tester, which stops a runaway pattern
+in front of you instead of freezing the window.
 
 | | Tool | What it does |
 |---|---|---|

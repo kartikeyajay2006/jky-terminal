@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { getPlatform } from "../../../platform";
 import type { Hashes } from "../../../platform/types";
 import { CopyButton, ToolFrame, ToolInput } from "./Shared";
+import { Examples, WhatFor } from "./Examples";
 
 /** In the order anyone reads them: oldest and weakest first. */
 const ROWS: { key: keyof Hashes; label: string; weak?: boolean }[] = [
@@ -55,6 +56,35 @@ export function HashTool() {
 
   return (
     <ToolFrame hint="Hashes the bytes of the text, exactly as any other tool would.">
+      <WhatFor>
+        <p>Turn text into its digests — a short fixed string that changes if the text does.</p>
+        <p>
+          Reach for it when a download publishes a checksum and you want to
+          confirm what you got, or when two things should be identical and you
+          need one line to compare instead of ten thousand.
+        </p>
+      </WhatFor>
+
+      <Examples
+        examples={[
+          {
+            label: "The classic",
+            shows: "the digests of \"abc\" — the ones every reference lists",
+            load: () => setText("abc"),
+          },
+          {
+            label: "One character apart",
+            shows: "how completely a digest changes for a tiny edit",
+            load: () => setText("The quick brown fox jumps over the lazy dog."),
+          },
+          {
+            label: "Nothing at all",
+            shows: "the digest of the empty string, which is a real answer",
+            load: () => setText(" "),
+          },
+        ]}
+      />
+
       <ToolInput label="Text" value={text} onChange={setText} rows={5} placeholder="Anything…" />
 
       <p className="tl__warn">

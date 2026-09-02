@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { ToolFrame, ToolInput, ToolOutput } from "./Shared";
 import { describeJson, formatJson, minifyJson } from "./json";
+import { Examples, WhatFor } from "./Examples";
 
 /**
  * The JSON tool.
@@ -21,6 +22,41 @@ export function JsonTool() {
 
   return (
     <ToolFrame hint="Formats as you type. Nothing leaves this window.">
+      <WhatFor>
+        <p>
+          Paste JSON to lay it out, check it, or squash it onto one line.
+        </p>
+        <p>
+          Reach for it when an API has handed you one unreadable line, or when
+          something says "invalid JSON" and will not say <em>where</em> — this
+          gives you the line and column.
+        </p>
+      </WhatFor>
+
+      <Examples
+        examples={[
+          {
+            label: "An API response",
+            shows: "one long line laid out, and what is in it",
+            load: () =>
+              setText(
+                '{"users":[{"id":1,"name":"Ada","roles":["admin","dev"]},' +
+                  '{"id":2,"name":"Grace","roles":["dev"]}],"page":1,"total":2}',
+              ),
+          },
+          {
+            label: "Something broken",
+            shows: "the exact line and column that stopped it",
+            load: () => setText('{\n  "name": "jky",\n  "port": ,\n  "debug": true\n}'),
+          },
+          {
+            label: "A very large id",
+            shows: "the warning that reformatting would change a number",
+            load: () => setText('{"orderId":12345678901234567890,"ok":true}'),
+          },
+        ]}
+      />
+
       <ToolInput label="JSON" value={text} onChange={setText} placeholder='{"hello": "world"}' />
 
       <div className="tl__row">

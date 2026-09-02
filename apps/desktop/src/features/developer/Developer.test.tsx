@@ -39,48 +39,66 @@ describe("the tool registry", () => {
 });
 
 describe("Developer", () => {
-  it("lists every tool", () => {
+  /*
+   * Scoped to the tile, not the board.
+   *
+   * A tile's button is named by everything written on it, and one tool's
+   * blurb mentions another by name — YAML converts "to JSON and back" — so an
+   * unscoped query matches two.
+   */
+  const open = async (user: ReturnType<typeof userEvent.setup>, name: string) => {
+    const tile = screen.getByRole("group", { name });
+    await user.click(within(tile).getByRole("button"));
+  };
+
+  it("opens on the board, showing every tool", () => {
     render(<Developer />);
-    const nav = screen.getByRole("navigation", { name: /tools/i });
+    const board = screen.getByRole("region", { name: /developer tools/i });
     for (const tool of TOOLS) {
-      expect(within(nav).getByRole("button", { name: new RegExp(tool.name, "i") }))
-        .toBeInTheDocument();
+      expect(within(board).getByRole("group", { name: tool.name })).toBeInTheDocument();
     }
   });
 
-  // Opening on an empty pane would waste the first visit.
-  it("opens on the first tool", () => {
+  /*
+   * A tile has to say what the tool is for.
+   *
+   * "JSON" tells you nothing you did not know. The board is where someone
+   * decides whether a tool is the one they want, so the reason to open it
+   * belongs there rather than inside.
+   */
+  it("says on the tile what each tool is for", () => {
     render(<Developer />);
-    expect(screen.getByRole("textbox", { name: /json/i })).toBeInTheDocument();
+    const board = screen.getByRole("region", { name: /developer tools/i });
+    for (const tool of TOOLS) {
+      expect(within(board).getByText(tool.blurb)).toBeInTheDocument();
+    }
   });
 
-  it("switches tool", async () => {
+  it("opens a tool when its tile is chosen", async () => {
     const user = userEvent.setup();
     render(<Developer />);
-    await user.click(screen.getByRole("button", { name: /hash/i }));
-    expect(await screen.findByRole("textbox", { name: /text/i })).toBeInTheDocument();
+    await open(user, "JSON");
+    expect(await screen.findByRole("textbox", { name: /json/i })).toBeInTheDocument();
   });
 
-  it("marks which tool is showing", async () => {
+  it("goes back to the board", async () => {
     const user = userEvent.setup();
     render(<Developer />);
-    await user.click(screen.getByRole("button", { name: /regex/i }));
-    expect(screen.getByRole("button", { name: /regex/i })).toHaveAttribute(
-      "aria-current",
-      "page",
-    );
+    await open(user, "Hash");
+    await user.click(screen.getByRole("button", { name: /all tools/i }));
+    expect(screen.getByRole("region", { name: /developer tools/i })).toBeInTheDocument();
   });
 
   /*
    * Which tool you were in survives leaving the section.
    *
-   * A workbench that resets to the first tool every time you glance at the
-   * terminal is one you stop using for anything that takes two visits.
+   * A workbench that resets every time you glance at the terminal is one you
+   * stop using for anything that takes two visits.
    */
   it("comes back to the tool you were using", async () => {
     const user = userEvent.setup();
     const view = render(<Developer />);
-    await user.click(screen.getByRole("button", { name: /diff/i }));
+    await open(user, "Diff");
     view.unmount();
 
     render(<Developer />);
@@ -88,17 +106,77 @@ describe("Developer", () => {
   });
 
   // A stored id from a version that had a tool this one does not.
-  it("falls back to the first tool when the stored one is gone", () => {
+  it("shows the board when the stored tool is gone", () => {
     localStorage.setItem("jky.developer.tool", '"a-tool-that-was-removed"');
     render(<Developer />);
-    expect(screen.getByRole("textbox", { name: /json/i })).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: /developer tools/i })).toBeInTheDocument();
   });
 
-  it("says which tools do their work in Rust", () => {
+  it("can be rearranged, like the Apps grid", async () => {
+    const user = userEvent.setup();
     render(<Developer />);
-    const nav = screen.getByRole("navigation", { name: /tools/i });
-    const hash = within(nav).getByRole("button", { name: /hash/i });
-    expect(hash).toHaveAttribute("data-backend", "rust");
+    await user.click(screen.getByRole("button", { name: /edit layout/i }));
+
+    const tile = screen.getByRole("group", { name: "JSON" });
+    for (const name of [/pin/i, /hide/i, /duplicate/i, /remove/i, /size/i]) {
+      expect(within(tile).getByRole("button", { name })).toBeInTheDocument();
+    }
+  });
+
+  it("keeps its arrangement apart from the Apps one", async () => {
+    const user = userEvent.setup();
+    render(<Developer />);
+    await user.click(screen.getByRole("button", { name: /edit layout/i }));
+    await user.click(within(screen.getByRole("group", { name: "JSON" })).getByRole("button", { name: /hide/i }));
+
+    expect(localStorage.getItem("jky.developer.layout")).not.toBeNull();
+    expect(localStorage.getItem("jky.apps.layout")).toBeNull();
+  });
+
+  /*
+   * Every tool teaches itself.
+   *
+   * The complaint that produced these was "I cannot understand how to use
+   * this", and an empty box with a clever name is the reason. Each tool has
+   * to say what it is for, when you would reach for it, and offer something
+   * you can load and take apart — and a tool added later must too, which is
+   * what this test is for.
+   */
+  it("gives every tool a use, a reason and examples to try", async () => {
+    const user = userEvent.setup();
+
+    for (const tool of TOOLS) {
+      const view = render(<Developer />);
+      await open(user, tool.name);
+
+      const what = await screen.findByRole("region", { name: /examples/i });
+      expect(
+        within(what).getAllByRole("button").length,
+        `${tool.name} offers no examples`,
+      ).toBeGreaterThanOrEqual(2);
+
+      // "Reach for it when…" — the sentence that says why the app has this.
+      expect(
+        screen.getByText(/reach for it/i),
+        `${tool.name} never says when you would want it`,
+      ).toBeInTheDocument();
+
+      view.unmount();
+      localStorage.clear();
+    }
+  });
+
+  // An example that loads nothing is a button that lies.
+  it("puts something in the tool when an example is chosen", async () => {
+    const user = userEvent.setup();
+    render(<Developer />);
+    await open(user, "JSON");
+
+    const examples = screen.getByRole("region", { name: /examples/i });
+    await user.click(within(examples).getAllByRole("button")[0]);
+
+    const box = screen.getByRole("textbox", { name: /json/i }) as HTMLTextAreaElement;
+    expect(box.value).toContain("users");
   });
 
   // The palette can ask for a named tool; the request survives the switch.

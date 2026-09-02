@@ -1,27 +1,8 @@
-/*
- * The Apps section.
- *
- * Every colour here is a token. A literal hex value would be a bug — it is the
- * thing that makes a theme engine impossible to add later, and this section
- * has to look right under all seven.
- */
-
-.apps {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  overflow-y: auto;
-  padding: var(--s6);
-  gap: var(--s5);
-}
-
 .apps--open {
   padding: 0;
   gap: 0;
   overflow: hidden;
 }
-
 /* The section holds a tab strip plus every open app, only one shown. */
 .apps-shell {
   display: flex;
@@ -29,9 +10,7 @@
   height: 100%;
   min-height: 0;
 }
-
 /* ---- open apps ---- */
-
 .apps__tabstrip {
   display: flex;
   align-items: stretch;
@@ -42,13 +21,11 @@
   border-bottom: 1px solid var(--line);
   background: var(--ground);
 }
-
 .apps__tabs {
   display: flex;
   align-items: stretch;
   gap: var(--s1);
 }
-
 .apps__tab {
   position: relative;
   display: inline-flex;
@@ -66,12 +43,10 @@
   font-size: 13px;
   white-space: nowrap;
 }
-
 .apps__tab[aria-selected="true"] {
   background: var(--surface);
   border-color: var(--line);
 }
-
 /* The app's own colour along the top of its tab, so a strip reads as the same
    five colours as the grid rather than five identical boxes. */
 .apps__tab[aria-selected="true"]::before {
@@ -82,21 +57,17 @@
   border-radius: 2px 2px 0 0;
   background: var(--app-accent);
 }
-
 .apps__tab[aria-selected="true"] {
   color: var(--text);
   font-weight: 600;
 }
-
 .apps__tab:hover {
   color: var(--text);
 }
-
 .apps__tab-glyph {
   font-size: 14px;
   line-height: 1;
 }
-
 .apps__tab-close {
   display: grid;
   place-items: center;
@@ -107,12 +78,10 @@
   font-size: 14px;
   line-height: 1;
 }
-
 .apps__tab-close:hover {
   background: var(--line);
   color: var(--danger);
 }
-
 .apps__tab-add {
   flex: none;
   width: 22px;
@@ -125,18 +94,15 @@
   font-size: 15px;
   line-height: 1;
 }
-
 .apps__tab-add {
   align-self: center;
   margin-left: var(--s1);
   border: 1px dashed var(--line-strong);
 }
-
 .apps__tab-add:hover {
   color: var(--text);
   border-color: var(--text-dim);
 }
-
 .apps__tab:focus-visible,
 .apps__tab-add:focus-visible {
   outline: none;
@@ -144,347 +110,7 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
 
-/* ---- the grid ---- */
-
-.apps__head {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-}
-
-/* The eyebrow counts what is here, which is information the grid does not
-   otherwise carry — five is a number you can hold, and it says the list is
-   short on purpose rather than unfinished. */
-.apps__eyebrow {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-}
-
-.apps__eyebrow::after {
-  content: "";
-  flex: 1;
-  height: 1px;
-  background: var(--line);
-}
-
-.apps__title {
-  margin: 0;
-  font-family: var(--font-sans);
-  font-size: 30px;
-  font-weight: 650;
-  letter-spacing: -0.025em;
-  color: var(--text);
-}
-
-.apps__lede {
-  margin: 0;
-  max-width: 54ch;
-  color: var(--text-muted);
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-/*
- * A twelve-column bed, so a tile can be a third, a half or the whole width.
- *
- * `auto-fill` cannot do this: it decides the column count from one minimum
- * width, which is exactly the thing being taken away from it once tiles have
- * sizes of their own.
- */
-.apps__grid {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(12, minmax(0, 1fr));
-  gap: var(--s4);
-}
-
-.apps__grid > li {
-  grid-column: span 6;
-  min-width: 0;
-}
-
-@media (min-width: 68rem) {
-  .apps__grid > li {
-    grid-column: span 4;
-  }
-
-  .apps__grid > li:has(.apps__tile[data-size="small"]) {
-    grid-column: span 3;
-  }
-
-  .apps__grid > li:has(.apps__tile[data-size="large"]) {
-    grid-column: span 6;
-  }
-}
-
-/* Below that there is only room for the size distinction to be a nuisance. */
-@media (max-width: 46rem) {
-  .apps__grid > li {
-    grid-column: span 12;
-  }
-}
-
-/* An empty group in edit mode still needs somewhere to drop things. */
-.apps__empty {
-  grid-column: span 12;
-  padding: var(--s5);
-  border: 1px dashed var(--line-strong);
-  border-radius: var(--radius-lg);
-  color: var(--text-dim);
-  font-size: 12px;
-  text-align: center;
-}
-
-/*
- * A tile is a labelled unit in a rack: a coloured spine down one edge, the
- * glyph sitting in a well tinted the same hue, then the name and the line
- * that says what it is for.
- *
- * Colour here is wayfinding rather than decoration — the same hue marks this
- * app in the switcher and along the top of its open panel, so you can learn
- * where you are without reading. That is the one place this section spends
- * more colour than "neon is earned" would usually allow, and it is spent on
- * telling five destinations apart.
- */
-.apps__tile {
-  position: relative;
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "well name"
-    "well blurb"
-    "well auth";
-  align-content: start;
-  gap: 0 var(--s4);
-  width: 100%;
-  min-height: 128px;
-  padding: var(--s4) var(--s4) var(--s4) var(--s5);
-  overflow: hidden;
-  text-align: left;
-  cursor: pointer;
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--app-accent) 7%, transparent),
-      transparent 42%
-    ),
-    var(--surface);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-lg);
-  color: var(--text);
-  font: inherit;
-  transition:
-    border-color var(--fast) var(--ease),
-    background var(--fast) var(--ease),
-    transform var(--fast) var(--ease);
-}
-
-/* The spine. A pseudo-element rather than a border so it can grow on hover
-   without moving the content beside it. */
-.apps__tile::before {
-  content: "";
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 3px;
-  background: var(--app-accent);
-  transition: width var(--fast) var(--ease);
-}
-
-.apps__tile:hover {
-  background:
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--app-accent) 13%, transparent),
-      transparent 48%
-    ),
-    var(--surface-raised);
-  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--line));
-  transform: translateY(-2px);
-}
-
-.apps__tile:hover::before {
-  width: 5px;
-}
-
-.apps__tile:focus-visible {
-  outline: none;
-  border-color: var(--app-accent);
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
-}
-
-.apps__tile:active {
-  transform: translateY(0);
-}
-
-.apps__tile-well {
-  grid-area: well;
-  align-self: start;
-  display: grid;
-  place-items: center;
-  width: 46px;
-  height: 46px;
-  border-radius: var(--radius);
-  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
-  border: 1px solid color-mix(in srgb, var(--app-accent) 30%, transparent);
-}
-
-.apps__tile-glyph {
-  font-size: 22px;
-  line-height: 1;
-}
-
-.apps__tile-name {
-  grid-area: name;
-  align-self: center;
-  font-size: 16px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
-}
-
-.apps__tile-blurb {
-  grid-area: blurb;
-  margin-top: var(--s2);
-  color: var(--text-muted);
-  font-size: 13px;
-  line-height: 1.5;
-}
-
-/*
- * The badges, in a row.
- *
- * They used to share one grid area and sat on top of each other whenever an
- * app was both open and signed in to — which nothing did until GitHub was
- * opened and Gmail existed to be opened beside it.
- */
-.apps__tile-feet {
-  grid-area: auth;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--s2);
-  margin-top: var(--s3);
-}
-
-.apps__tile-open,
-.apps__tile-auth {
-  padding: 2px var(--s2);
-  border-radius: 999px;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-}
-
-.apps__tile-open {
-  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
-  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
-  color: var(--app-accent);
-}
-
-.apps__tile-auth {
-  border: 1px solid var(--line-strong);
-  color: var(--text-dim);
-}
-
-/* The way in. Still on the tile when the pointer is elsewhere, just quiet —
-   appearing from nothing would be a second thing moving on hover, and the
-   tile already lifts. */
-.apps__tile-go {
-  position: absolute;
-  right: var(--s4);
-  bottom: var(--s4);
-  color: var(--app-accent);
-  font-size: 15px;
-  opacity: 0;
-  transform: translateX(-4px);
-  transition:
-    opacity var(--fast) var(--ease),
-    transform var(--fast) var(--ease);
-}
-
-.apps__tile:hover .apps__tile-go,
-.apps__tile:focus-visible .apps__tile-go {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .apps__tile-go {
-    transition: opacity var(--fast) var(--ease);
-    transform: none;
-  }
-
-  .apps__tile:hover .apps__tile-go,
-  .apps__tile:focus-visible .apps__tile-go {
-    transform: none;
-  }
-}
-
-/* ---- the two groups ---- */
-
-.apps__groups {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s6);
-}
-
-.apps__group-head {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  grid-template-areas:
-    "name  count"
-    "note  note";
-  align-items: baseline;
-  gap: 0 var(--s3);
-  margin-bottom: var(--s3);
-  padding-bottom: var(--s2);
-  border-bottom: 1px solid var(--line);
-}
-
-.apps__group-name {
-  grid-area: name;
-  margin: 0;
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--text);
-}
-
-/* The count sits with the heading rather than under it: it is part of the
-   label, not a second sentence. */
-.apps__group-count {
-  grid-area: count;
-  justify-self: start;
-  padding: 1px var(--s2);
-  border: 1px solid var(--line-strong);
-  border-radius: 999px;
-  color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 10px;
-}
-
-.apps__group-note {
-  grid-area: note;
-  margin: var(--s1) 0 0;
-  color: var(--text-dim);
-  font-size: 12px;
-}
-
-.apps__eyebrow-sep {
-  color: var(--line-strong);
-}
-
 /* ---- an open app ---- */
-
 .apps__bar {
   position: relative;
   display: flex;
@@ -495,7 +121,6 @@
   border-bottom: 1px solid var(--line);
   background: var(--surface);
 }
-
 /* The app's colour, carried from its tile to the panel it opened. */
 .apps__bar::after {
   content: "";
@@ -508,7 +133,6 @@
     color-mix(in srgb, var(--app-accent) 10%, transparent)
   );
 }
-
 .apps__open-title {
   display: flex;
   align-items: center;
@@ -519,12 +143,10 @@
   font-weight: 650;
   color: var(--text);
 }
-
 .apps__open-glyph {
   font-size: 18px;
   line-height: 1;
 }
-
 .apps__back,
 .apps__switch {
   display: inline-flex;
@@ -542,17 +164,14 @@
     color var(--fast) var(--ease),
     border-color var(--fast) var(--ease);
 }
-
 .apps__switch {
   margin-left: auto;
 }
-
 .apps__back:hover,
 .apps__switch:hover {
   color: var(--text);
   border-color: var(--line-strong);
 }
-
 .apps__back:focus-visible,
 .apps__switch:focus-visible {
   outline: none;
@@ -560,7 +179,6 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .apps__chord {
   padding: 1px var(--s1);
   border: 1px solid var(--line-strong);
@@ -569,15 +187,12 @@
   font-family: var(--font-mono);
   font-size: 10px;
 }
-
 .apps__stage {
   flex: 1;
   min-height: 0;
   overflow: auto;
 }
-
 /* ---- the switcher ---- */
-
 .apps__scrim {
   position: fixed;
   inset: 0;
@@ -587,7 +202,6 @@
   padding-top: 12vh;
   background: color-mix(in srgb, var(--ground) 72%, transparent);
 }
-
 .apps__switcher {
   width: min(420px, calc(100vw - var(--s6)));
   padding: var(--s3);
@@ -596,7 +210,6 @@
   border-radius: var(--radius-lg);
   box-shadow: 0 24px 60px color-mix(in srgb, var(--ground) 80%, transparent);
 }
-
 .apps__switcher-title {
   margin: 0 0 var(--s2);
   padding: 0 var(--s2);
@@ -606,7 +219,6 @@
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
-
 .apps__switcher-list {
   list-style: none;
   margin: 0;
@@ -615,7 +227,6 @@
   flex-direction: column;
   gap: 2px;
 }
-
 .apps__switcher-item {
   position: relative;
   display: flex;
@@ -632,7 +243,6 @@
   font-size: 14px;
   text-align: left;
 }
-
 /* The same spine as the tile, so a row and its tile read as one thing. */
 .apps__switcher-item::before {
   content: "";
@@ -644,42 +254,34 @@
   opacity: 0.55;
   transition: opacity var(--fast) var(--ease);
 }
-
 .apps__switcher-item:hover {
   background: var(--surface);
 }
-
 .apps__switcher-item:hover::before,
 .apps__switcher-item[aria-current="true"]::before {
   opacity: 1;
 }
-
 .apps__switcher-item:focus-visible {
   outline: none;
   border-color: var(--app-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
 }
-
 .apps__switcher-item[aria-current="true"] {
   background: var(--surface);
   border-color: var(--line-strong);
 }
-
 .apps__switcher-glyph {
   width: 22px;
   font-size: 17px;
   line-height: 1;
   text-align: center;
 }
-
 .apps__switcher-name {
   flex: 1;
 }
-
 .apps__switcher-open--idle {
   color: var(--text-dim);
 }
-
 .apps__switcher-open {
   color: var(--app-accent);
   font-family: var(--font-mono);
@@ -687,21 +289,17 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
-
 .apps__switcher-hint {
   margin: var(--s3) 0 0;
   padding: 0 var(--s2);
   color: var(--text-dim);
   font-size: 11px;
 }
-
 .apps__switcher-hint kbd {
   font-family: var(--font-mono);
   font-size: 10px;
 }
-
 /* ---- Calculator ---- */
-
 .calc {
   display: flex;
   flex-direction: column;
@@ -710,7 +308,6 @@
   margin: 0 auto;
   padding: var(--s5) var(--s4);
 }
-
 .calc__display {
   display: flex;
   flex-direction: column;
@@ -720,7 +317,6 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-
 .calc__input {
   width: 100%;
   padding: 0;
@@ -731,15 +327,12 @@
   font-size: 24px;
   text-align: right;
 }
-
 .calc__input:focus {
   outline: none;
 }
-
 .calc__input::placeholder {
   color: var(--text-dim);
 }
-
 .calc__answer {
   min-height: 22px;
   color: var(--accent);
@@ -748,18 +341,15 @@
   text-align: right;
   word-break: break-all;
 }
-
 .calc__answer[data-error] {
   color: var(--danger);
   font-size: 13px;
 }
-
 .calc__pad {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: var(--s2);
 }
-
 .calc__key {
   padding: var(--s3) 0;
   cursor: pointer;
@@ -773,36 +363,29 @@
     background var(--fast) var(--ease),
     border-color var(--fast) var(--ease);
 }
-
 .calc__key:hover {
   background: var(--surface-raised);
   border-color: var(--line-strong);
 }
-
 .calc__key:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .calc__key:active {
   background: var(--line);
 }
-
 .calc__key[data-tone="operator"] {
   color: var(--accent);
 }
-
 .calc__key[data-tone="control"] {
   color: var(--text-muted);
 }
-
 .calc__key[data-tone="commit"] {
   background: var(--accent-glow);
   border-color: var(--accent-dim);
   color: var(--accent);
 }
-
 .calc__history {
   list-style: none;
   margin: 0;
@@ -812,7 +395,6 @@
   flex-direction: column;
   gap: 2px;
 }
-
 .calc__entry {
   display: flex;
   align-items: baseline;
@@ -828,30 +410,24 @@
   font-size: 13px;
   text-align: left;
 }
-
 .calc__entry:hover {
   background: var(--surface);
 }
-
 .calc__entry:focus-visible {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .calc__entry-source {
   color: var(--text-dim);
   word-break: break-all;
 }
-
 .calc__entry-value {
   flex: none;
   color: var(--text);
   font-weight: 600;
 }
-
 /* ---- Timer ---- */
-
 .timer {
   display: flex;
   flex-direction: column;
@@ -861,7 +437,6 @@
   margin: 0 auto;
   padding: var(--s6) var(--s4);
 }
-
 .timer__face {
   display: flex;
   flex-direction: column;
@@ -873,12 +448,10 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-
 .timer__face[data-finished] {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .timer__display {
   font-family: var(--font-mono);
   font-size: 56px;
@@ -887,11 +460,9 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
-
 .timer__face[data-finished] .timer__display {
   color: var(--accent);
 }
-
 .timer__track {
   width: 100%;
   height: 4px;
@@ -899,13 +470,11 @@
   background: var(--line);
   border-radius: 999px;
 }
-
 .timer__fill {
   height: 100%;
   background: var(--accent);
   transition: width var(--fast) linear;
 }
-
 .timer__done {
   margin: 0;
   color: var(--accent);
@@ -914,13 +483,11 @@
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
-
 .timer__controls {
   display: flex;
   gap: var(--s3);
   width: 100%;
 }
-
 .timer__primary,
 .timer__secondary {
   flex: 1;
@@ -934,28 +501,23 @@
     background var(--fast) var(--ease),
     border-color var(--fast) var(--ease);
 }
-
 .timer__primary {
   background: var(--accent-glow);
   border: 1px solid var(--accent-dim);
   color: var(--accent);
 }
-
 .timer__primary:hover {
   border-color: var(--accent);
 }
-
 .timer__secondary {
   background: transparent;
   border: 1px solid var(--line);
   color: var(--text-muted);
 }
-
 .timer__secondary:hover {
   border-color: var(--line-strong);
   color: var(--text);
 }
-
 .timer__primary:focus-visible,
 .timer__secondary:focus-visible,
 .timer__preset:focus-visible,
@@ -965,14 +527,12 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 .timer__presets {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--s2);
   width: 100%;
 }
-
 .timer__preset {
   padding: var(--s2) var(--s1);
   cursor: pointer;
@@ -984,18 +544,15 @@
   font-size: 12px;
   white-space: nowrap;
 }
-
 .timer__preset:hover {
   border-color: var(--line-strong);
   color: var(--text);
 }
-
 .timer__entry {
   display: flex;
   gap: var(--s2);
   width: 100%;
 }
-
 .timer__input {
   flex: 1;
   min-width: 0;
@@ -1007,11 +564,9 @@
   font-family: var(--font-mono);
   font-size: 14px;
 }
-
 .timer__input::placeholder {
   color: var(--text-dim);
 }
-
 .timer__set {
   padding: var(--s2) var(--s4);
   cursor: pointer;
@@ -1022,21 +577,17 @@
   font: inherit;
   font-size: 13px;
 }
-
 .timer__set:hover {
   border-color: var(--line-strong);
   color: var(--text);
 }
-
 .timer__hint {
   margin: 0;
   align-self: flex-start;
   color: var(--danger);
   font-size: 12px;
 }
-
 /* ---- Weather ---- */
-
 .wx {
   display: flex;
   flex-direction: column;
@@ -1045,18 +596,15 @@
   margin: 0 auto;
   padding: var(--s5) var(--s4) var(--s6);
 }
-
 .wx--picking {
   padding-top: var(--s7);
 }
-
 .wx__head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: var(--s4);
 }
-
 .wx__place {
   margin: 0;
   font-family: var(--font-sans);
@@ -1065,13 +613,11 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
-
 .wx__where {
   margin: 2px 0 0;
   color: var(--text-dim);
   font-size: 12px;
 }
-
 .wx__change,
 .wx__retry {
   flex: none;
@@ -1084,20 +630,17 @@
   font: inherit;
   font-size: 12px;
 }
-
 .wx__change:hover,
 .wx__retry:hover {
   border-color: var(--line-strong);
   color: var(--text);
 }
-
 .wx__change:focus-visible,
 .wx__retry:focus-visible {
   outline: none;
   border-color: var(--app-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
 }
-
 .wx__failure {
   display: flex;
   align-items: center;
@@ -1107,19 +650,16 @@
   border: 1px solid var(--danger);
   border-radius: var(--radius);
 }
-
 .wx__error {
   margin: 0;
   color: var(--danger);
   font-size: 13px;
 }
-
 .wx__loading {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
 }
-
 /* The current reading is the one thing this app exists to show, so it gets
    the weight: a tinted card, the glyph and the number on one line, and the
    supporting figures below in a row that reads as a caption. */
@@ -1138,7 +678,6 @@
     ),
     var(--surface);
 }
-
 /* Night swaps the accent for violet, which says something the numbers do not
    and is a state rather than decoration. */
 .wx__now[data-night] {
@@ -1147,18 +686,15 @@
     linear-gradient(160deg, color-mix(in srgb, var(--violet) 14%, transparent), transparent 65%),
     var(--surface);
 }
-
 .wx__reading {
   display: flex;
   align-items: center;
   gap: var(--s4);
 }
-
 .wx__glyph {
   font-size: 44px;
   line-height: 1;
 }
-
 .wx__temp {
   margin: 0;
   font-family: var(--font-mono);
@@ -1169,18 +705,15 @@
   letter-spacing: -0.04em;
   color: var(--text);
 }
-
 .wx__desc {
   margin: 0;
   color: var(--app-accent);
   font-size: 16px;
   font-weight: 600;
 }
-
 .wx__now[data-night] .wx__desc {
   color: var(--violet);
 }
-
 .wx__facts {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
@@ -1189,14 +722,12 @@
   padding-top: var(--s3);
   border-top: 1px solid var(--line);
 }
-
 .wx__facts dt {
   color: var(--text-dim);
   font-size: 11px;
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-
 .wx__facts dd {
   margin: 2px 0 0;
   color: var(--text);
@@ -1204,7 +735,6 @@
   font-size: 16px;
   font-variant-numeric: tabular-nums;
 }
-
 .wx__outlook {
   list-style: none;
   margin: 0;
@@ -1215,7 +745,6 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
-
 .wx__day {
   display: grid;
   grid-template-columns: 48px 28px 1fr auto;
@@ -1225,45 +754,36 @@
   background: var(--surface);
   font-size: 13px;
 }
-
 .wx__day + .wx__day {
   border-top: 1px solid var(--line);
 }
-
 .wx__day-name {
   color: var(--text);
   font-weight: 600;
 }
-
 .wx__day-glyph {
   font-size: 16px;
   line-height: 1;
   text-align: center;
 }
-
 .wx__day-desc {
   color: var(--text-muted);
 }
-
 .wx__day-range {
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
-
 .wx__day-range b {
   color: var(--text);
 }
-
 .wx__stamp {
   margin: 0;
   color: var(--text-dim);
   font-size: 11px;
   text-align: right;
 }
-
 /* ---- News ---- */
-
 .news {
   display: flex;
   flex-direction: column;
@@ -1272,14 +792,12 @@
   margin: 0 auto;
   padding: var(--s5) var(--s4) var(--s6);
 }
-
 .news__head {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
   gap: var(--s4);
 }
-
 .news__eyebrow {
   margin: 0 0 2px;
   color: var(--app-accent);
@@ -1288,7 +806,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-
 .news__title {
   margin: 0;
   font-family: var(--font-sans);
@@ -1297,7 +814,6 @@
   letter-spacing: -0.025em;
   color: var(--text);
 }
-
 /* The papers, as a row of tabs rather than a dropdown: five names fit, and a
    menu would hide which paper you are reading behind a click. */
 .news__papers {
@@ -1307,7 +823,6 @@
   padding-bottom: var(--s3);
   border-bottom: 1px solid var(--line);
 }
-
 .news__paper {
   padding: var(--s2) var(--s3);
   cursor: pointer;
@@ -1323,19 +838,16 @@
     border-color var(--fast) var(--ease),
     background var(--fast) var(--ease);
 }
-
 .news__paper:hover {
   color: var(--text);
   border-color: var(--line-strong);
 }
-
 .news__paper[aria-selected="true"] {
   background: color-mix(in srgb, var(--app-accent) 16%, transparent);
   border-color: color-mix(in srgb, var(--app-accent) 55%, transparent);
   color: var(--app-accent);
   font-weight: 600;
 }
-
 .news__paper:focus-visible,
 .news__refresh:focus-visible,
 .news__retry:focus-visible,
@@ -1344,7 +856,6 @@
   border-radius: var(--radius);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 .news__refresh,
 .news__retry {
   flex: none;
@@ -1357,18 +868,15 @@
   font: inherit;
   font-size: 12px;
 }
-
 .news__refresh:hover,
 .news__retry:hover {
   border-color: var(--line-strong);
   color: var(--text);
 }
-
 .news__refresh:disabled {
   cursor: default;
   color: var(--text-dim);
 }
-
 .news__failure {
   display: flex;
   align-items: center;
@@ -1378,20 +886,17 @@
   border: 1px solid var(--danger);
   border-radius: var(--radius);
 }
-
 .news__error {
   margin: 0;
   color: var(--danger);
   font-size: 13px;
 }
-
 .news__loading,
 .news__note {
   margin: 0;
   color: var(--text-dim);
   font-size: 12px;
 }
-
 .news__list {
   list-style: none;
   margin: 0;
@@ -1399,16 +904,13 @@
   display: flex;
   flex-direction: column;
 }
-
 .news__item {
   padding: var(--s4) 0;
   border-bottom: 1px solid var(--line);
 }
-
 .news__item:first-child {
   padding-top: 0;
 }
-
 .news__section {
   display: inline-block;
   margin: 0 0 var(--s2);
@@ -1422,7 +924,6 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-
 .news__headline {
   display: block;
   width: 100%;
@@ -1439,7 +940,6 @@
   text-align: left;
   transition: color var(--fast) var(--ease);
 }
-
 /* The lead runs larger, the way a front page sets its top story. The feed's
    own order is the paper's judgement about what leads, so this is reporting
    something true rather than decorating the first row. */
@@ -1447,22 +947,18 @@
   font-size: 24px;
   line-height: 1.2;
 }
-
 .news__headline:hover {
   color: var(--app-accent);
 }
-
 .news__summary {
   margin: var(--s2) 0 0;
   color: var(--text-muted);
   font-size: 14px;
   line-height: 1.55;
 }
-
 .news__item[data-lead] .news__summary {
   font-size: 15px;
 }
-
 .news__byline {
   display: flex;
   flex-wrap: wrap;
@@ -1472,25 +968,20 @@
   color: var(--text-dim);
   font-size: 12px;
 }
-
 .news__paper-name {
   color: var(--text-muted);
   font-weight: 600;
 }
-
 .news__host {
   font-family: var(--font-mono);
   font-size: 11px;
 }
-
 /* ---- the shared place picker ---- */
-
 .picker {
   display: flex;
   flex-direction: column;
   gap: var(--s3);
 }
-
 .picker__ask {
   margin: 0;
   font-family: var(--font-sans);
@@ -1499,13 +990,11 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
-
 .picker__form {
   position: relative;
   display: flex;
   align-items: center;
 }
-
 .picker__input {
   width: 100%;
   padding: var(--s3) var(--s6) var(--s3) var(--s3);
@@ -1517,11 +1006,9 @@
   font-size: 15px;
   transition: border-color var(--fast) var(--ease);
 }
-
 .picker__input::placeholder {
   color: var(--text-dim);
 }
-
 .picker__input:focus-visible,
 .picker__locate:focus-visible,
 .picker__result:focus-visible {
@@ -1529,7 +1016,6 @@
   border-color: var(--app-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
 }
-
 /* Sits inside the field rather than replacing the results, so the list does
    not flicker out and back while a newer search runs. */
 .picker__status {
@@ -1540,7 +1026,6 @@
   font-size: 16px;
   line-height: 1;
 }
-
 .picker__locate {
   display: inline-flex;
   align-items: center;
@@ -1556,30 +1041,25 @@
   font-size: 13px;
   transition: background var(--fast) var(--ease);
 }
-
 .picker__locate:hover:not(:disabled) {
   background: color-mix(in srgb, var(--app-accent) 18%, transparent);
 }
-
 .picker__locate:disabled {
   cursor: default;
   color: var(--text-dim);
   border-color: var(--line);
   background: transparent;
 }
-
 .picker__error {
   margin: 0;
   color: var(--danger);
   font-size: 13px;
 }
-
 .picker__empty {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
 }
-
 .picker__recents-title {
   margin: var(--s2) 0 var(--s2);
   color: var(--text-dim);
@@ -1588,7 +1068,6 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-
 .picker__results {
   list-style: none;
   margin: 0;
@@ -1597,7 +1076,6 @@
   flex-direction: column;
   gap: 2px;
 }
-
 .picker__result {
   display: flex;
   align-items: baseline;
@@ -1613,23 +1091,18 @@
   text-align: left;
   transition: background var(--fast) var(--ease);
 }
-
 .picker__result:hover {
   background: var(--surface);
 }
-
 .picker__result-name {
   font-weight: 600;
   font-size: 14px;
 }
-
 .picker__result-where {
   color: var(--text-dim);
   font-size: 12px;
 }
-
 /* ---- Map ---- */
-
 .map {
   display: flex;
   flex-direction: column;
@@ -1638,13 +1111,11 @@
   min-height: 0;
   padding: var(--s4);
 }
-
 .map--picking {
   max-width: 520px;
   margin: 0 auto;
   padding-top: var(--s7);
 }
-
 .map__cancel {
   align-self: flex-start;
   padding: var(--s2) var(--s3);
@@ -1656,7 +1127,6 @@
   font: inherit;
   font-size: 12px;
 }
-
 /* The two ends of a journey, read left to right the way one is described. */
 .map__ends {
   display: flex;
@@ -1665,7 +1135,6 @@
   flex: none;
   flex-wrap: wrap;
 }
-
 .map__leg {
   position: relative;
   display: flex;
@@ -1677,7 +1146,6 @@
   border: 1px solid var(--line);
   border-radius: var(--radius);
 }
-
 .map__leg-label {
   margin: 0;
   color: var(--app-accent);
@@ -1686,7 +1154,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-
 .map__leg-place {
   display: flex;
   flex-direction: column;
@@ -1701,18 +1168,15 @@
   font: inherit;
   text-align: left;
 }
-
 .map__leg-name {
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -0.01em;
 }
-
 .map__leg-where {
   color: var(--text-dim);
   font-size: 11px;
 }
-
 .map__leg-clear {
   position: absolute;
   top: var(--s2);
@@ -1727,11 +1191,9 @@
   font-size: 15px;
   line-height: 1;
 }
-
 .map__leg-clear:hover {
   color: var(--danger);
 }
-
 .map__swap,
 .map__add,
 .map__zoom,
@@ -1743,7 +1205,6 @@
   color: var(--text-muted);
   font: inherit;
 }
-
 .map__swap {
   flex: none;
   align-self: center;
@@ -1751,14 +1212,12 @@
   height: 32px;
   font-size: 15px;
 }
-
 .map__add {
   flex: 1 1 200px;
   padding: var(--s3);
   border-style: dashed;
   font-size: 13px;
 }
-
 .map__add:hover,
 .map__swap:hover,
 .map__zoom:hover,
@@ -1767,7 +1226,6 @@
   border-color: color-mix(in srgb, var(--app-accent) 55%, var(--line));
   color: var(--text);
 }
-
 .map__leg-place:focus-visible,
 .map__leg-clear:focus-visible,
 .map__swap:focus-visible,
@@ -1779,7 +1237,6 @@
   border-radius: var(--radius);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 /* The answer to the question two places ask. Given its own band rather than a
    line of small print, because it is what the second place was chosen for. */
 .map__trip {
@@ -1793,32 +1250,27 @@
   border: 1px solid color-mix(in srgb, var(--app-accent) 35%, transparent);
   border-radius: var(--radius);
 }
-
 .map__road {
   color: var(--text);
   font-size: 14px;
 }
-
 .map__road b {
   color: var(--app-accent);
   font-family: var(--font-mono);
   font-size: 17px;
   font-weight: 600;
 }
-
 .map__straight,
 .map__noroad {
   color: var(--text-dim);
   font-size: 12px;
 }
-
 .map__controls {
   display: flex;
   align-items: center;
   gap: var(--s2);
   flex: none;
 }
-
 .map__zoom {
   width: 30px;
   height: 30px;
@@ -1826,12 +1278,10 @@
   font-size: 16px;
   line-height: 1;
 }
-
 .map__change {
   padding: var(--s2) var(--s3);
   font-size: 12px;
 }
-
 /* The frame is another origin's document; the border makes where it starts
    and ends visible rather than letting it pass as part of the app. */
 .map__frame {
@@ -1842,7 +1292,6 @@
   border-radius: var(--radius-lg);
   background: var(--surface);
 }
-
 .map__credit {
   flex: none;
   margin: 0;
@@ -1850,9 +1299,7 @@
   font-size: 11px;
   text-align: right;
 }
-
 /* ---- GitHub ---- */
-
 .gh {
   display: flex;
   flex-direction: column;
@@ -1861,7 +1308,6 @@
   margin: 0 auto;
   padding: var(--s5) var(--s4) var(--s6);
 }
-
 /* A sign-in card wants a narrow column; a dashboard wants the window. The
    680px above is right for the first and was starving the second. */
 .gh--wide {
@@ -1869,13 +1315,11 @@
   margin: 0;
   padding: var(--s4) var(--s5) var(--s6);
 }
-
 .gh__quiet {
   margin: 0;
   color: var(--text-dim);
   font-size: 13px;
 }
-
 .gh__failure {
   display: flex;
   align-items: center;
@@ -1885,15 +1329,12 @@
   border: 1px solid var(--danger);
   border-radius: var(--radius);
 }
-
 .gh__error {
   margin: 0;
   color: var(--danger);
   font-size: 13px;
 }
-
 /* ---- setting up and signing in ---- */
-
 .gh__setup {
   display: flex;
   flex-direction: column;
@@ -1904,7 +1345,6 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-
 .gh__setup-title {
   margin: 0;
   font-family: var(--font-sans);
@@ -1913,7 +1353,6 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
-
 .gh__setup-body {
   margin: 0;
   max-width: 60ch;
@@ -1921,17 +1360,14 @@
   font-size: 14px;
   line-height: 1.6;
 }
-
 .gh__setup-body b {
   color: var(--text);
 }
-
 .gh__setup-row {
   display: flex;
   gap: var(--s2);
   width: 100%;
 }
-
 .gh__input {
   flex: 1;
   min-width: 0;
@@ -1943,11 +1379,9 @@
   font-family: var(--font-mono);
   font-size: 14px;
 }
-
 .gh__input::placeholder {
   color: var(--text-dim);
 }
-
 /* The code is the one thing on screen a person has to copy by eye, so it is
    set large, monospaced and widely tracked — the shape a pairing code takes
    everywhere else it appears. */
@@ -1963,7 +1397,6 @@
   font-weight: 600;
   letter-spacing: 0.16em;
 }
-
 .gh__primary {
   padding: var(--s3) var(--s5);
   cursor: pointer;
@@ -1975,14 +1408,12 @@
   font-size: 14px;
   font-weight: 600;
 }
-
 .gh__primary:disabled {
   cursor: default;
   background: transparent;
   border-color: var(--line);
   color: var(--text-dim);
 }
-
 .gh__ghost,
 .gh__retry {
   flex: none;
@@ -1995,13 +1426,11 @@
   font: inherit;
   font-size: 12px;
 }
-
 .gh__ghost:hover,
 .gh__retry:hover {
   border-color: var(--line-strong);
   color: var(--text);
 }
-
 .gh__link {
   padding: 0;
   cursor: pointer;
@@ -2013,11 +1442,9 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
-
 .gh__link:hover {
   color: var(--app-accent);
 }
-
 .gh__primary:focus-visible,
 .gh__ghost:focus-visible,
 .gh__retry:focus-visible,
@@ -2028,9 +1455,7 @@
   border-radius: var(--radius);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 /* ---- the account ---- */
-
 .gh__head {
   display: flex;
   align-items: flex-start;
@@ -2039,7 +1464,6 @@
   padding-bottom: var(--s3);
   border-bottom: 1px solid var(--line);
 }
-
 .gh__login {
   margin: 0;
   font-family: var(--font-sans);
@@ -2048,18 +1472,15 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
-
 .gh__name {
   margin: 2px 0 0;
   color: var(--text-dim);
   font-size: 12px;
 }
-
 .gh__head-actions {
   display: flex;
   gap: var(--s2);
 }
-
 .gh__section-title {
   display: flex;
   align-items: center;
@@ -2071,7 +1492,6 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-
 .gh__count {
   padding: 1px var(--s2);
   border-radius: 999px;
@@ -2080,7 +1500,6 @@
   font-size: 10px;
   letter-spacing: 0;
 }
-
 .gh__list {
   list-style: none;
   margin: 0;
@@ -2090,7 +1509,6 @@
   gap: 1px;
   min-width: 0;
 }
-
 /* Inside a dashboard box the list scrolls itself, so three boxes side by side
    stay the same height and the page does not become one long column. */
 .ghd__box .gh__list,
@@ -2098,7 +1516,6 @@
   max-height: 22rem;
   overflow-y: auto;
 }
-
 .gh__row {
   display: flex;
   width: 100%;
@@ -2113,11 +1530,9 @@
   text-align: left;
   transition: border-color var(--fast) var(--ease);
 }
-
 .gh__row:hover {
   border-color: color-mix(in srgb, var(--app-accent) 45%, var(--line));
 }
-
 .gh__row-main {
   display: flex;
   flex-direction: column;
@@ -2125,7 +1540,6 @@
   min-width: 0;
   width: 100%;
 }
-
 .gh__row-title {
   display: flex;
   align-items: center;
@@ -2134,7 +1548,6 @@
   font-size: 14px;
   font-weight: 600;
 }
-
 /* Truncated rather than wrapped. A repository called
    "Multimodal-Data-Management-Pipeline-for-RAG-Ready-Systems" was taking four
    lines and making every row in the list a different height. The name is in a
@@ -2146,25 +1559,21 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .gh__row-title:not(:has(> *)) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .gh__row-desc {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .gh__row-desc {
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.45;
 }
-
 .gh__row-sub {
   display: flex;
   align-items: center;
@@ -2175,12 +1584,10 @@
   font-size: 11px;
   white-space: nowrap;
 }
-
 .gh__repo,
 .gh__number {
   font-family: var(--font-mono);
 }
-
 .gh__badge {
   padding: 1px var(--s2);
   border: 1px solid var(--line-strong);
@@ -2192,20 +1599,16 @@
   text-transform: uppercase;
   letter-spacing: 0.06em;
 }
-
 .gh__setup-links {
   display: flex;
   gap: var(--s4);
 }
-
 /* ---- GitHub: browsing a repository ---- */
-
 .gh__tabs {
   display: flex;
   gap: var(--s2);
   border-bottom: 1px solid var(--line);
 }
-
 .gh__tab {
   padding: var(--s2) var(--s3);
   cursor: pointer;
@@ -2217,22 +1620,18 @@
   font-size: 13px;
   text-transform: capitalize;
 }
-
 .gh__tab[aria-selected="true"] {
   border-bottom-color: var(--app-accent);
   color: var(--text);
   font-weight: 600;
 }
-
 .gh__tab:hover {
   color: var(--text);
 }
-
 .gh__tab:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 /* Every ancestor is clickable, not just the one above: a browser you can only
    reverse out of is one you leave and re-enter. */
 .gh__crumbs {
@@ -2243,7 +1642,6 @@
   font-family: var(--font-mono);
   font-size: 12px;
 }
-
 .gh__crumb {
   padding: 2px var(--s2);
   cursor: pointer;
@@ -2253,18 +1651,15 @@
   color: var(--text-dim);
   font: inherit;
 }
-
 .gh__crumb:hover {
   background: var(--surface);
   color: var(--app-accent);
 }
-
 .gh__crumb + .gh__crumb::before {
   content: "/";
   margin-right: var(--s2);
   color: var(--line-strong);
 }
-
 .gh__row--file {
   align-items: center;
   gap: var(--s3);
@@ -2272,13 +1667,11 @@
   font-family: var(--font-mono);
   font-size: 13px;
 }
-
 .gh__file-glyph {
   width: 12px;
   color: var(--app-accent);
   text-align: center;
 }
-
 .gh__file-name {
   flex: 1;
   min-width: 0;
@@ -2286,13 +1679,11 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .gh__file-size {
   flex: none;
   color: var(--text-dim);
   font-size: 11px;
 }
-
 .gh__file {
   display: flex;
   flex-direction: column;
@@ -2301,7 +1692,6 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
 }
-
 .gh__file-bar {
   display: flex;
   align-items: center;
@@ -2312,12 +1702,10 @@
   font-family: var(--font-mono);
   font-size: 12px;
 }
-
 .gh__file-bar .gh__file-name {
   color: var(--text);
   font-weight: 600;
 }
-
 /* Scrolls in its own box rather than stretching the panel: a long file must
    not make the whole page scroll sideways. */
 .gh__code-block {
@@ -2333,23 +1721,19 @@
   tab-size: 2;
   white-space: pre;
 }
-
 .gh__sha,
 .gh__reason {
   font-family: var(--font-mono);
 }
-
 .gh__reason {
   color: var(--app-accent);
 }
-
 /* Unread carries a mark rather than only a shade, so it survives a theme with
    little contrast between surface colours. */
 .gh__row[data-unread] {
   position: relative;
   padding-left: var(--s4);
 }
-
 .gh__row[data-unread]::before {
   content: "";
   position: absolute;
@@ -2361,22 +1745,18 @@
   border-radius: 50%;
   background: var(--app-accent);
 }
-
 /* ---- GitHub: the dashboard ---- */
-
 .ghd {
   display: grid;
   grid-template-columns: 176px minmax(0, 1fr);
   gap: var(--s4);
   align-items: start;
 }
-
 @media (max-width: 720px) {
   .ghd {
     grid-template-columns: 1fr;
   }
 }
-
 /* The account beside the counts rather than above them: stacked, the tiles
    were pushed a screen down and the top of the page said almost nothing. */
 .ghd__top {
@@ -2385,13 +1765,11 @@
   gap: var(--s4);
   align-items: stretch;
 }
-
 @media (max-width: 1000px) {
   .ghd__top {
     grid-template-columns: 1fr;
   }
 }
-
 /* Every panel is a box. That is the shape a dashboard takes: bounded regions
    you can scan, rather than one column you have to read. */
 .ghd__box {
@@ -2400,7 +1778,6 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-
 .ghd__box-title {
   margin: 0 0 var(--s3);
   color: var(--text-muted);
@@ -2409,9 +1786,7 @@
   letter-spacing: 0.12em;
   text-transform: uppercase;
 }
-
 /* ---- the rail ---- */
-
 .ghd__rail {
   position: sticky;
   top: 0;
@@ -2420,7 +1795,6 @@
   border: 1px solid var(--line);
   border-radius: var(--radius-lg);
 }
-
 .ghd__rail-title {
   margin: 0 0 var(--s2);
   padding: 0 var(--s2);
@@ -2430,7 +1804,6 @@
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
-
 .ghd__rail-list {
   list-style: none;
   margin: 0;
@@ -2439,7 +1812,6 @@
   flex-direction: column;
   gap: 1px;
 }
-
 .ghd__rail-item {
   position: relative;
   display: flex;
@@ -2457,18 +1829,15 @@
   font-size: 13px;
   text-align: left;
 }
-
 .ghd__rail-item:hover {
   background: var(--surface-raised);
   color: var(--text);
 }
-
 .ghd__rail-item[aria-current="true"] {
   background: color-mix(in srgb, var(--app-accent) 14%, transparent);
   color: var(--app-accent);
   font-weight: 600;
 }
-
 .ghd__rail-item[aria-current="true"]::before {
   content: "";
   position: absolute;
@@ -2477,12 +1846,10 @@
   border-radius: 2px;
   background: var(--app-accent);
 }
-
 .ghd__rail-item:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 .ghd__rail-count {
   flex: none;
   min-width: 18px;
@@ -2495,23 +1862,19 @@
   font-weight: 600;
   text-align: center;
 }
-
 /* ---- the main column ---- */
-
 .ghd__main {
   display: flex;
   flex-direction: column;
   gap: var(--s4);
   min-width: 0;
 }
-
 .ghd__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s4);
 }
-
 .ghd__title {
   margin: 0;
   font-family: var(--font-sans);
@@ -2520,22 +1883,18 @@
   letter-spacing: -0.02em;
   color: var(--text);
 }
-
 .ghd__split {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--s4);
   align-items: start;
 }
-
 /* ---- the account card ---- */
-
 .ghd__profile {
   display: flex;
   align-items: center;
   gap: var(--s4);
 }
-
 /* Drawn from initials rather than fetched: `img-src` is `'self' data:`, and
    loading the real avatar would mean opening the CSP to GitHub's image host
    for the sake of a circle. */
@@ -2553,11 +1912,9 @@
   font-size: 18px;
   font-weight: 600;
 }
-
 .ghd__profile-who {
   min-width: 0;
 }
-
 .ghd__login {
   padding: 0;
   cursor: pointer;
@@ -2569,36 +1926,29 @@
   font-weight: 650;
   letter-spacing: -0.01em;
 }
-
 .ghd__login:hover {
   color: var(--app-accent);
 }
-
 .ghd__realname {
   margin: 1px 0 0;
   color: var(--text-muted);
   font-size: 13px;
 }
-
 .ghd__bio {
   margin: 2px 0 0;
   color: var(--text-dim);
   font-size: 12px;
 }
-
 /* ---- the overview tiles ---- */
-
 .ghd__overview {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(104px, 1fr));
   gap: var(--s3);
   align-content: stretch;
 }
-
 .ghd__tile {
   padding: var(--s3) var(--s4);
 }
-
 .ghd__tile-label {
   margin: 0;
   color: var(--text-dim);
@@ -2606,7 +1956,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-
 .ghd__tile-value {
   margin: var(--s1) 0 0;
   color: var(--app-accent);
@@ -2616,16 +1965,13 @@
   font-weight: 600;
   letter-spacing: -0.02em;
 }
-
 /* ---- the heatmap ---- */
-
 .ghd__heat-head {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
   gap: var(--s4);
 }
-
 .ghd__heat-key {
   display: flex;
   align-items: center;
@@ -2634,7 +1980,6 @@
   color: var(--text-dim);
   font-size: 10px;
 }
-
 .ghd__heat-grid {
   display: flex;
   gap: 3px;
@@ -2642,13 +1987,11 @@
   overflow-x: auto;
   padding-bottom: var(--s1);
 }
-
 .ghd__week {
   display: flex;
   flex-direction: column;
   gap: 3px;
 }
-
 /* The scale is the app's own accent at rising strength rather than a fixed
    green, so the graph belongs to whichever theme is on. */
 .ghd__day {
@@ -2657,30 +2000,23 @@
   border-radius: 2px;
   background: var(--line);
 }
-
 .ghd__day[data-key] {
   width: 9px;
   height: 9px;
 }
-
 .ghd__day[data-level="1"] {
   background: color-mix(in srgb, var(--app-accent) 30%, var(--line));
 }
-
 .ghd__day[data-level="2"] {
   background: color-mix(in srgb, var(--app-accent) 55%, var(--line));
 }
-
 .ghd__day[data-level="3"] {
   background: color-mix(in srgb, var(--app-accent) 78%, var(--line));
 }
-
 .ghd__day[data-level="4"] {
   background: var(--app-accent);
 }
-
 /* ---- the activity feed ---- */
-
 .ghd__feed {
   list-style: none;
   margin: 0;
@@ -2689,7 +2025,6 @@
   flex-direction: column;
   gap: 1px;
 }
-
 .ghd__feed-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -2708,17 +2043,14 @@
   font: inherit;
   text-align: left;
 }
-
 .ghd__feed-row:hover {
   background: var(--ground);
   border-color: var(--line);
 }
-
 .ghd__feed-row:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 .ghd__feed-line {
   grid-area: line;
   min-width: 0;
@@ -2727,17 +2059,14 @@
   white-space: nowrap;
   font-size: 13px;
 }
-
 .ghd__verb {
   color: var(--app-accent);
   font-weight: 600;
 }
-
 .ghd__feed-repo {
   font-family: var(--font-mono);
   font-size: 12px;
 }
-
 .ghd__feed-detail {
   grid-area: detail;
   min-width: 0;
@@ -2747,7 +2076,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 .ghd__feed-when {
   grid-area: when;
   flex: none;
@@ -2755,7 +2083,6 @@
   font-size: 11px;
   white-space: nowrap;
 }
-
 /* The tree keeps its place while a file is open beside it. Replacing the list
    with the file meant every file you read cost you the folder you were in. */
 .gh__browser {
@@ -2764,32 +2091,26 @@
   gap: var(--s4);
   align-items: start;
 }
-
 .gh__browser[data-open] {
   grid-template-columns: minmax(220px, 20rem) minmax(0, 1fr);
 }
-
 @media (max-width: 820px) {
   .gh__browser[data-open] {
     grid-template-columns: minmax(0, 1fr);
   }
 }
-
 .gh__tree {
   padding: var(--s2);
 }
-
 .gh__tree .gh__list {
   max-height: 30rem;
   overflow-y: auto;
 }
-
 /* The first screen someone new sees. Wider than a bare sign-in card, because
    it has three things to say before anyone should press the button. */
 .gh__welcome {
   max-width: 56rem;
 }
-
 .gh__promises {
   display: flex;
   flex-direction: column;
@@ -2799,7 +2120,6 @@
   list-style: none;
   max-width: 60ch;
 }
-
 .gh__promises li {
   position: relative;
   padding-left: var(--s5);
@@ -2807,7 +2127,6 @@
   font-size: 13px;
   line-height: 1.6;
 }
-
 .gh__promises li::before {
   content: "✓";
   position: absolute;
@@ -2815,14 +2134,11 @@
   color: var(--app-accent);
   font-size: 12px;
 }
-
 .gh__promises b {
   color: var(--text);
   font-weight: 600;
 }
-
 /* ---- Browser ---- */
-
 .br {
   display: flex;
   flex-direction: column;
@@ -2831,14 +2147,12 @@
   min-height: 0;
   padding: var(--s3);
 }
-
 .br--unavailable {
   gap: var(--s3);
   max-width: 46rem;
   margin: 0 auto;
   padding: var(--s7) var(--s4);
 }
-
 .br__title {
   margin: 0;
   font-family: var(--font-sans);
@@ -2846,7 +2160,6 @@
   font-weight: 650;
   color: var(--text);
 }
-
 .br__body {
   margin: 0;
   max-width: 62ch;
@@ -2854,19 +2167,16 @@
   font-size: 13px;
   line-height: 1.6;
 }
-
 .br__bar {
   display: flex;
   align-items: center;
   gap: var(--s2);
   flex: none;
 }
-
 .br__nav {
   display: flex;
   gap: 2px;
 }
-
 .br__step,
 .br__go {
   cursor: pointer;
@@ -2876,31 +2186,26 @@
   color: var(--text-muted);
   font: inherit;
 }
-
 .br__step {
   width: 30px;
   height: 30px;
   font-size: 14px;
   line-height: 1;
 }
-
 .br__go {
   padding: 0 var(--s4);
   height: 30px;
   font-size: 13px;
 }
-
 .br__step:hover,
 .br__go:hover:not(:disabled) {
   border-color: var(--line-strong);
   color: var(--text);
 }
-
 .br__go:disabled {
   cursor: default;
   color: var(--text-dim);
 }
-
 .br__field {
   position: relative;
   display: flex;
@@ -2908,7 +2213,6 @@
   flex: 1;
   min-width: 0;
 }
-
 .br__input {
   width: 100%;
   height: 30px;
@@ -2920,11 +2224,9 @@
   font-family: var(--font-mono);
   font-size: 13px;
 }
-
 .br__input::placeholder {
   color: var(--text-dim);
 }
-
 .br__input:focus-visible,
 .br__step:focus-visible,
 .br__go:focus-visible {
@@ -2932,7 +2234,6 @@
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-glow);
 }
-
 /* The host, not the query string: what a person checks before trusting a page
    is where it came from. */
 .br__site {
@@ -2950,7 +2251,6 @@
   white-space: nowrap;
   pointer-events: none;
 }
-
 .br__error {
   flex: none;
   margin: 0;
@@ -2960,7 +2260,6 @@
   color: var(--danger);
   font-size: 12px;
 }
-
 /*
  * The hole the webview is drawn into.
  *
@@ -2976,7 +2275,6 @@
   background: var(--ground);
   overflow: hidden;
 }
-
 .br__empty {
   display: flex;
   flex-direction: column;
@@ -2984,7 +2282,6 @@
   padding: var(--s6);
   max-width: 52ch;
 }
-
 .br__empty-title {
   margin: 0;
   color: var(--accent);
@@ -2993,7 +2290,6 @@
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
-
 /* ---------------------------------------------------------------------------
    Gmail
    ---------------------------------------------------------------------------
@@ -3003,28 +2299,24 @@
    rather than a flex row that lets every sender push the subject somewhere
    different.
    --------------------------------------------------------------------------- */
-
 .gm {
   display: flex;
   flex-direction: column;
   gap: var(--s4);
   min-height: 0;
 }
-
 .gm__bar {
   display: flex;
   align-items: center;
   gap: var(--s3);
   flex-wrap: wrap;
 }
-
 .gm__who {
   display: flex;
   align-items: baseline;
   gap: var(--s2);
   min-width: 0;
 }
-
 .gm__address {
   font-family: var(--font-mono);
   font-size: 14px;
@@ -3033,7 +2325,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-
 /* Said once, in the bar, and never repeated per row. It is a property of the
    connection rather than of any message. */
 .gm__note {
@@ -3047,12 +2338,10 @@
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
-
 .gm__search {
   flex: 1 1 220px;
   min-width: 0;
 }
-
 .gm__list {
   list-style: none;
   margin: 0;
@@ -3064,11 +2353,9 @@
   overflow: hidden;
   background: var(--surface);
 }
-
 .gm__list > li + li {
   border-top: 1px solid var(--line);
 }
-
 /*
  * `who / what / when`, aligned down the page.
  *
@@ -3090,23 +2377,19 @@
   text-align: left;
   cursor: pointer;
 }
-
 .gm__row:hover {
   background: color-mix(in srgb, var(--app-accent) 8%, transparent);
 }
-
 .gm__row:focus-visible {
   outline: none;
   box-shadow: inset 0 0 0 2px var(--app-accent);
 }
-
 /* Unread carries a marker in the gutter as well as weight, because weight
    alone disappears on a screen at arm's length. The word is in the row too,
    for anyone who reads it rather than sees it. */
 .gm__row[data-unread] {
   box-shadow: inset 3px 0 0 var(--app-accent);
 }
-
 .gm__from {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3114,19 +2397,16 @@
   color: var(--text-muted);
   font-size: 13px;
 }
-
 .gm__row[data-unread] .gm__from {
   color: var(--text);
   font-weight: 600;
 }
-
 .gm__line {
   display: flex;
   align-items: baseline;
   gap: var(--s2);
   min-width: 0;
 }
-
 .gm__subject {
   flex: none;
   max-width: 60%;
@@ -3136,11 +2416,9 @@
   color: var(--text);
   font-size: 13px;
 }
-
 .gm__row[data-unread] .gm__subject {
   font-weight: 600;
 }
-
 /* The snippet is context, not content — it takes whatever the subject leaves
    and gives up quietly rather than wrapping the row onto a second line. */
 .gm__snippet {
@@ -3151,14 +2429,12 @@
   color: var(--text-dim);
   font-size: 13px;
 }
-
 .gm__meta {
   display: flex;
   align-items: center;
   gap: var(--s2);
   flex: none;
 }
-
 .gm__badge {
   padding: 1px var(--s2);
   border-radius: var(--radius-sm);
@@ -3168,7 +2444,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-
 /* Tabular figures so the dates form a column rather than a ragged edge. */
 .gm__when {
   font-family: var(--font-mono);
@@ -3176,13 +2451,11 @@
   font-variant-numeric: tabular-nums;
   color: var(--text-dim);
 }
-
 /* The two setup screens share a measure: this is prose to be read once, and
    a full-width paragraph is prose nobody finishes. */
 .gm--setup {
   align-items: flex-start;
 }
-
 .gm__setup {
   display: flex;
   flex-direction: column;
@@ -3199,26 +2472,22 @@
     ),
     var(--surface);
 }
-
 .gm__title {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
   color: var(--text);
 }
-
 .gm__body {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
   line-height: 1.6;
 }
-
 .gm__strong {
   color: var(--text);
   font-weight: 600;
 }
-
 /* Numbered because these genuinely are steps in order: the API has to be on
    before the credential can be made, and the type cannot be changed after.
    The numbers are drawn rather than left to the list marker, because each row
@@ -3231,7 +2500,6 @@
   flex-direction: column;
   gap: var(--s2);
 }
-
 .gm__step {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto;
@@ -3242,7 +2510,6 @@
   border-radius: var(--radius);
   background: var(--ground);
 }
-
 .gm__step-no {
   display: grid;
   place-items: center;
@@ -3255,26 +2522,22 @@
   font-size: 12px;
   font-weight: 600;
 }
-
 .gm__step-body {
   display: flex;
   flex-direction: column;
   gap: 2px;
   min-width: 0;
 }
-
 .gm__step-title {
   color: var(--text);
   font-size: 13px;
   font-weight: 600;
 }
-
 .gm__step-detail {
   color: var(--text-muted);
   font-size: 12px;
   line-height: 1.55;
 }
-
 /* The button is the instruction, so it keeps its full width and the text
    wraps around it rather than the other way about. */
 .gm__step-go {
@@ -3289,16 +2552,13 @@
   white-space: nowrap;
   cursor: pointer;
 }
-
 .gm__step-go:hover {
   background: color-mix(in srgb, var(--app-accent) 14%, transparent);
 }
-
 .gm__step-go:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 /* Under this the button has nowhere to sit beside the text. */
 @media (max-width: 34rem) {
   .gm__step {
@@ -3310,14 +2570,12 @@
     justify-self: start;
   }
 }
-
 .gm__form {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--s2);
 }
-
 .gm__label {
   flex: 100%;
   color: var(--text-dim);
@@ -3325,7 +2583,6 @@
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
-
 .gm__input {
   flex: 1 1 260px;
   min-width: 0;
@@ -3337,13 +2594,11 @@
   font-family: var(--font-mono);
   font-size: 13px;
 }
-
 .gm__input:focus-visible {
   outline: none;
   border-color: var(--app-accent);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
 }
-
 .gm__go {
   flex: none;
   padding: var(--s2) var(--s4);
@@ -3355,17 +2610,14 @@
   font-weight: 600;
   cursor: pointer;
 }
-
 .gm__go:disabled {
   opacity: 0.5;
   cursor: default;
 }
-
 .gm__go:focus-visible {
   outline: none;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
 }
-
 .gm__ghost {
   flex: none;
   padding: var(--s2) var(--s3);
@@ -3376,24 +2628,20 @@
   font-size: 12px;
   cursor: pointer;
 }
-
 .gm__ghost:hover {
   color: var(--text);
   border-color: var(--app-accent);
 }
-
 .gm__quiet {
   margin: 0;
   color: var(--text-muted);
   font-size: 13px;
 }
-
 .gm__error {
   margin: 0;
   color: var(--danger);
   font-size: 13px;
 }
-
 /* Below this the three columns stop helping: the sender column would take
    half the width and the subject would have nowhere to go. */
 @media (max-width: 720px) {
@@ -3405,7 +2653,6 @@
     grid-column: 1 / -1;
   }
 }
-
 /*
  * The list beside the message, not replaced by it.
  *
@@ -3418,12 +2665,10 @@
   gap: var(--s4);
   min-height: 0;
 }
-
 .gm__split[data-reading] {
   grid-template-columns: minmax(0, 22rem) minmax(0, 1fr);
   align-items: start;
 }
-
 @media (max-width: 62rem) {
   .gm__split[data-reading] {
     grid-template-columns: minmax(0, 1fr);
@@ -3434,25 +2679,20 @@
     display: none;
   }
 }
-
 /* Narrower rows once the list shares the width: the snippet is the first
    thing that can go, and the sender column no longer has room to be fixed. */
 .gm__split[data-reading] .gm__row {
   grid-template-columns: minmax(0, 1fr) auto;
 }
-
 .gm__split[data-reading] .gm__from {
   grid-column: 1 / -1;
 }
-
 .gm__split[data-reading] .gm__snippet {
   display: none;
 }
-
 .gm__row[aria-current] {
   background: color-mix(in srgb, var(--app-accent) 12%, transparent);
 }
-
 .gm__reading {
   display: flex;
   flex-direction: column;
@@ -3463,7 +2703,6 @@
   border-radius: var(--radius-lg);
   background: var(--surface);
 }
-
 .gm__reading-head {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto auto;
@@ -3472,11 +2711,9 @@
   padding-bottom: var(--s3);
   border-bottom: 1px solid var(--line);
 }
-
 .gm__reading-who {
   min-width: 0;
 }
-
 .gm__reading-subject {
   margin: 0;
   color: var(--text);
@@ -3484,7 +2721,6 @@
   font-weight: 600;
   line-height: 1.3;
 }
-
 .gm__reading-from {
   display: flex;
   flex-wrap: wrap;
@@ -3494,13 +2730,11 @@
   font-size: 12px;
   color: var(--text-muted);
 }
-
 .gm__reading-address {
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 11px;
 }
-
 /*
  * The message itself.
  *
@@ -3523,123 +2757,4 @@
   font-size: 13px;
   line-height: 1.7;
   color: var(--text-muted);
-}
-
-
-/* ---- the layout editor -------------------------------------------------- */
-
-/* The editor's toolbar sits under the lede rather than beside it: the header
-   is prose, and a row of buttons wrapping into a paragraph is neither. */
-.apps__tools {
-  justify-content: flex-start;
-  margin-top: var(--s3);
-}
-
-.apps__group-tools {
-  grid-area: count;
-  justify-self: end;
-  display: flex;
-  gap: var(--s2);
-}
-
-.apps__group-head:has(.apps__group-tools) {
-  grid-template-columns: auto minmax(0, 1fr);
-}
-
-.apps__group-input {
-  grid-area: name;
-  padding: 1px var(--s2);
-  border: 1px solid var(--accent);
-  border-radius: var(--radius-sm);
-  background: var(--ground);
-  color: var(--text);
-  font-size: 12px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-}
-
-/*
- * A tile in edit mode is a thing being arranged, so it stops behaving like a
- * button: the face is inert, the controls sit under it, and the whole tile is
- * draggable.
- */
-.apps__tile-face {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-areas:
-    "well name"
-    "well blurb"
-    "well auth";
-  align-content: start;
-  gap: 0 var(--s4);
-  width: 100%;
-  text-align: left;
-  border: 0;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.apps__tile[data-editing] .apps__tile-face {
-  cursor: grab;
-}
-
-.apps__tile[data-editing] {
-  cursor: grab;
-}
-
-.apps__tile[data-dragging] {
-  opacity: 0.4;
-  border-style: dashed;
-}
-
-/* A pinned tile keeps its marker outside edit mode too — it is a property of
-   the arrangement, not of the editor. */
-.apps__tile[data-pinned]::after {
-  content: "⚲";
-  position: absolute;
-  top: var(--s3);
-  right: var(--s3);
-  color: var(--app-accent);
-  font-size: 11px;
-}
-
-.apps__tile-edit {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-  margin-top: var(--s3);
-  padding-top: var(--s3);
-  border-top: 1px solid var(--line);
-}
-
-
-
-
-/* The one control that loses something wears the colour that says so. */
-
-
-/* A small tile has no room for the blurb; the name and the glyph carry it. */
-.apps__tile[data-size="small"] .apps__tile-blurb {
-  display: none;
-}
-
-.apps__tile[data-size="small"] {
-  min-height: 96px;
-}
-
-.apps__tile[data-size="large"] {
-  min-height: 160px;
-}
-
-.apps__tile[data-size="large"] .apps__tile-name {
-  font-size: 18px;
-}
-
-/* A tile arriving with the grid. Staggering these would be eight animations
-   where one is the point, so they arrive together. */
-.apps__groups {
-  animation: jky-rise var(--motion-normal) var(--ease) both;
 }

@@ -62,7 +62,7 @@ describe("Apps", () => {
 
   it("shows every app exactly once", () => {
     const { container } = render(<Apps />);
-    const tiles = container.querySelectorAll(".apps__tile");
+    const tiles = container.querySelectorAll(".board__tile");
     expect(tiles).toHaveLength(APPS.length);
   });
 
@@ -149,14 +149,14 @@ describe("Apps", () => {
       const { container } = render(<Apps />);
       await edit(user);
 
-      const tiles = [...container.querySelectorAll(".apps__tile")];
+      const tiles = [...container.querySelectorAll(".board__tile")];
       const last = tiles.at(-1)!;
       const name = last.getAttribute("aria-label");
       await user.click(within(last as HTMLElement).getByRole("button", { name: /pin/i }));
 
       await waitFor(() => {
-        const group = container.querySelector(".apps__group:last-of-type .apps__grid")!;
-        expect(group.querySelector(".apps__tile")!.getAttribute("aria-label")).toBe(name);
+        const group = container.querySelector(".board__group:last-of-type .board__grid")!;
+        expect(group.querySelector(".board__tile")!.getAttribute("aria-label")).toBe(name);
       });
     });
 

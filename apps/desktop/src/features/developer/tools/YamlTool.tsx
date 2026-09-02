@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { getPlatform } from "../../../platform";
 import { ToolFrame, ToolInput, ToolOutput } from "./Shared";
+import { Examples, WhatFor } from "./Examples";
 
 type Action = "tidy" | "toJson" | "toYaml";
 
@@ -50,6 +51,42 @@ export function YamlTool() {
 
   return (
     <ToolFrame hint="Reads the document, then writes it back — so the output is what the input meant.">
+      <WhatFor>
+        <p>
+          Tidy a YAML file, or turn it into JSON and back — reading it through
+          the parser, so what comes out is what the file <em>means</em>.
+        </p>
+        <p>
+          Reach for it when a config is not doing what it looks like it should.
+          YAML has opinions about indentation and about the word <code>no</code>,
+          and seeing the same document as JSON is the quickest way to find out
+          what it actually says.
+        </p>
+      </WhatFor>
+
+      <Examples
+        examples={[
+          {
+            label: "A service config",
+            shows: "the same file as JSON, keys and all",
+            load: () =>
+              setText(
+                "name: web\nreplicas: 3\nports:\n  - 8080\n  - 8443\nenv:\n  DEBUG: false\n  REGION: eu-west-1\n",
+              ),
+            },
+          {
+            label: "The Norway problem",
+            shows: "why `country: NO` is not the string you expected",
+            load: () => setText("country: NO\nenabled: yes\nversion: 1.10\n"),
+          },
+          {
+            label: "Broken indentation",
+            shows: "the parse error, with the line it stopped on",
+            load: () => setText("services:\n  web:\n    ports: [80\n  db:\n"),
+          },
+        ]}
+      />
+
       <ToolInput label="YAML" value={text} onChange={setText} placeholder={"name: jky\nport: 8080"} />
 
       <div className="tl__row">

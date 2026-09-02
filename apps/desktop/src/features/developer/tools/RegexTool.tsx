@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { ToolFrame, ToolInput } from "./Shared";
 import { FLAGS } from "./regexEngine";
 import { useRegex } from "./useRegex";
+import { Examples, WhatFor } from "./Examples";
 
 /**
  * The regex tester.
@@ -29,6 +30,50 @@ export function RegexTool({ makeWorker }: { makeWorker?: () => Worker }) {
 
   return (
     <ToolFrame hint="Runs off the main thread, so a pattern that will not finish is stopped rather than freezing the window.">
+      <WhatFor>
+        <p>
+          Write a pattern, paste some text, and see what it matches and what
+          each group captured.
+        </p>
+        <p>
+          Reach for it before putting a pattern into code — most of the time
+          spent on a regular expression is spent finding out that it matched
+          one thing more, or one thing less, than you meant.
+        </p>
+      </WhatFor>
+
+      <Examples
+        examples={[
+          {
+            label: "Find email addresses",
+            shows: "every match, and where in the text it was",
+            load: () => {
+              setPattern("[\\w.+-]+@[\\w-]+\\.[\\w.]+");
+              setFlags("g");
+              setText("Write to ada@example.com or grace+work@example.co.uk. Not an email: @nope");
+            },
+          },
+          {
+            label: "Pull a date apart",
+            shows: "named groups — year, month and day, separately",
+            load: () => {
+              setPattern("(?<year>\\d{4})-(?<month>\\d{2})-(?<day>\\d{2})");
+              setFlags("g");
+              setText("Released 2026-09-02, patched 2026-09-14.");
+            },
+          },
+          {
+            label: "One that never finishes",
+            shows: "the runaway being stopped instead of freezing the window",
+            load: () => {
+              setPattern("(a+)+$");
+              setFlags("");
+              setText("a".repeat(40) + "!");
+            },
+          },
+        ]}
+      />
+
       <ToolInput label="Pattern" value={pattern} onChange={setPattern} rows={2} placeholder="\\b\\w+@\\w+\\.\\w+" />
 
       <div className="tl__row" role="group" aria-label="Flags">

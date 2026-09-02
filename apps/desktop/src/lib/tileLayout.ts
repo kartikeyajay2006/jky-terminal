@@ -1,7 +1,10 @@
-import type { AppDef } from "./registry";
 
 /**
- * How the Apps grid is arranged, and every way it can be rearranged.
+ * How a board of tiles is arranged, and every way it can be rearranged.
+ *
+ * Shared by the Apps grid and the Developer Tools grid, which want the same
+ * arranging and disagree only about what a tile is and where a new one lands
+ * — so those two things are passed in and everything else is here.
  *
  * Kept as plain data with pure operations over it, separate from anything
  * that draws. The editor is the part most likely to grow — a drag lands in
@@ -46,18 +49,34 @@ export interface Layout {
   groups: Group[];
 }
 
-export const STORAGE_KEY = "jky.apps.layout";
+/** Each board keeps its arrangement under its own key. */
+export type StorageKey = string;
 
 /**
- * The groups a first run starts with.
+ * What a board needs to know about a thing before it can place one.
  *
- * The split the grid already used, because a first run should look like a
- * considered arrangement rather than an empty editor.
+ * An id and nothing else. Everything a tile *shows* belongs to whoever is
+ * drawing it; this model only ever moves them around.
  */
-export const DEFAULT_GROUPS: { name: string; holds: (app: AppDef) => boolean }[] = [
-  { name: "Ready to use", holds: (app) => app.auth === "none" },
-  { name: "Your accounts", holds: (app) => app.auth !== "none" },
-];
+export interface Placeable {
+  id: string;
+}
+
+/**
+ * Where new tiles go, and what the groups are called on a first run.
+ *
+ * Supplied by the board rather than fixed here, because it is the one thing
+ * the two boards genuinely disagree about: Apps splits by whether something
+ * signs in, and the tools have nothing to split by.
+ *
+ * `holds` is asked in order, and the first group that says yes takes it. A
+ * thing no group claims goes in the first, so a board can name a catch-all
+ * simply by putting it last with a predicate that always answers true.
+ */
+export interface GroupSpec<T extends Placeable> {
+  name: string;
+  holds: (item: T) => boolean;
+}
 
 let counter = 0;
 
@@ -71,13 +90,17 @@ function place(appId: string): Placement {
   return { key: newKey(), appId, size: "medium", pinned: false, hidden: false };
 }
 
-export function defaultLayout(apps: AppDef[]): Layout {
+export function defaultLayout<T extends Placeable>(items: T[], groups: GroupSpec<T>[]): Layout {
   return {
     version: 1,
-    groups: DEFAULT_GROUPS.map((group, i) => ({
+    groups: groups.map((group, i) => ({
       id: `g${i}`,
       name: group.name,
-      items: apps.filter(group.holds).map((app) => place(app.id)),
+      // `find`, not `filter`, so the first matching group takes it and a
+      // thing cannot land in two.
+      items: items
+        .filter((item) => groups.find((g) => g.holds(item)) === group)
+        .map((item) => place(item.id)),
     })),
   };
 }
@@ -228,8 +251,12 @@ export function restoreAll(layout: Layout): Layout {
  * present but hidden is left alone — it was hidden on purpose, and re-adding
  * it would make hiding useless the moment anything else changed.
  */
-export function reconcile(layout: Layout, apps: AppDef[]): Layout {
-  const known = new Set(apps.map((a) => a.id));
+export function reconcile<T extends Placeable>(
+  layout: Layout,
+  items: T[],
+  groups: GroupSpec<T>[],
+): Layout {
+  const known = new Set(items.map((i) => i.id));
   const next = copy(layout);
 
   for (const group of next.groups) {
@@ -237,11 +264,11 @@ export function reconcile(layout: Layout, apps: AppDef[]): Layout {
   }
 
   const placed = new Set(next.groups.flatMap((g) => g.items).map((i) => i.appId));
-  for (const app of apps) {
-    if (placed.has(app.id)) continue;
-    const wanted = DEFAULT_GROUPS.findIndex((g) => g.holds(app));
+  for (const item of items) {
+    if (placed.has(item.id)) continue;
+    const wanted = groups.findIndex((g) => g.holds(item));
     const group = next.groups[wanted] ?? next.groups[0];
-    group.items.push(place(app.id));
+    group.items.push(place(item.id));
   }
 
   return next;
@@ -275,9 +302,9 @@ function isLayout(value: unknown): value is Layout {
   });
 }
 
-export function saveLayout(layout: Layout): void {
+export function saveLayout(key: StorageKey, layout: Layout): void {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(layout));
+    localStorage.setItem(key, JSON.stringify(layout));
   } catch {
     // A private window has no storage. The arrangement lasts the session.
   }
@@ -291,15 +318,19 @@ export function saveLayout(layout: Layout): void {
  * failure mode otherwise is an Apps section that opens to nothing, and no way
  * to fix it from inside the app.
  */
-export function loadLayout(apps: AppDef[]): Layout {
+export function loadLayout<T extends Placeable>(
+  key: StorageKey,
+  items: T[],
+  groups: GroupSpec<T>[],
+): Layout {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(key);
     if (raw) {
       const parsed: unknown = JSON.parse(raw);
-      if (isLayout(parsed)) return reconcile(parsed, apps);
+      if (isLayout(parsed)) return reconcile(parsed, items, groups);
     }
   } catch {
     // Unreadable storage, or JSON that is not. Either way, start clean.
   }
-  return defaultLayout(apps);
+  return defaultLayout(items, groups);
 }

@@ -1,0 +1,428 @@
+/*
+ * A board of tiles: the Apps grid and the Developer Tools grid.
+ *
+ * These styles moved out of `Apps.css` when the board became shared. A
+ * feature dressed by another feature's stylesheet keeps working only while
+ * both happen to be in one bundle, and loses its styling silently the day
+ * either is split out — which the ownership test now refuses, and which is
+ * how this move came to be made.
+ *
+ * The prefix is `board`, not `apps`, because it is not the Apps feature's any
+ * more and a name that says otherwise is a name that misleads the next
+ * person.
+ */
+
+/*
+ * The Apps section.
+ *
+ * Every colour here is a token. A literal hex value would be a bug — it is the
+ * thing that makes a theme engine impossible to add later, and this section
+ * has to look right under all seven.
+ */
+.board {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  padding: var(--s6);
+  gap: var(--s5);
+}
+/* ---- the grid ---- */
+.board__head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+/* The eyebrow counts what is here, which is information the grid does not
+   otherwise carry — five is a number you can hold, and it says the list is
+   short on purpose rather than unfinished. */
+.board__eyebrow {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.board__eyebrow::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+.board__title {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: -0.025em;
+  color: var(--text);
+}
+.board__lede {
+  margin: 0;
+  max-width: 54ch;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+/*
+ * A twelve-column bed, so a tile can be a third, a half or the whole width.
+ *
+ * `auto-fill` cannot do this: it decides the column count from one minimum
+ * width, which is exactly the thing being taken away from it once tiles have
+ * sizes of their own.
+ */
+.board__grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  gap: var(--s4);
+}
+.board__grid > li {
+  grid-column: span 6;
+  min-width: 0;
+}
+/* An empty group in edit mode still needs somewhere to drop things. */
+.board__empty {
+  grid-column: span 12;
+  padding: var(--s5);
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--text-dim);
+  font-size: 12px;
+  text-align: center;
+}
+/*
+ * A tile is a labelled unit in a rack: a coloured spine down one edge, the
+ * glyph sitting in a well tinted the same hue, then the name and the line
+ * that says what it is for.
+ *
+ * Colour here is wayfinding rather than decoration — the same hue marks this
+ * app in the switcher and along the top of its open panel, so you can learn
+ * where you are without reading. That is the one place this section spends
+ * more colour than "neon is earned" would usually allow, and it is spent on
+ * telling five destinations apart.
+ */
+.board__tile {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "well name"
+    "well blurb"
+    "well auth";
+  align-content: start;
+  gap: 0 var(--s4);
+  width: 100%;
+  min-height: 128px;
+  padding: var(--s4) var(--s4) var(--s4) var(--s5);
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--app-accent) 7%, transparent),
+      transparent 42%
+    ),
+    var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  color: var(--text);
+  font: inherit;
+  transition:
+    border-color var(--fast) var(--ease),
+    background var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+/* The spine. A pseudo-element rather than a border so it can grow on hover
+   without moving the content beside it. */
+.board__tile::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--app-accent);
+  transition: width var(--fast) var(--ease);
+}
+.board__tile:hover {
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--app-accent) 13%, transparent),
+      transparent 48%
+    ),
+    var(--surface-raised);
+  border-color: color-mix(in srgb, var(--app-accent) 45%, var(--line));
+  transform: translateY(-2px);
+}
+.board__tile:hover::before {
+  width: 5px;
+}
+.board__tile:focus-visible {
+  outline: none;
+  border-color: var(--app-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 22%, transparent);
+}
+.board__tile:active {
+  transform: translateY(0);
+}
+.board__tile-well {
+  grid-area: well;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--app-accent) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--app-accent) 30%, transparent);
+}
+.board__tile-glyph {
+  font-size: 22px;
+  line-height: 1;
+}
+.board__tile-name {
+  grid-area: name;
+  align-self: center;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.board__tile-blurb {
+  grid-area: blurb;
+  margin-top: var(--s2);
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+/*
+ * The badges, in a row.
+ *
+ * They used to share one grid area and sat on top of each other whenever an
+ * app was both open and signed in to — which nothing did until GitHub was
+ * opened and Gmail existed to be opened beside it.
+ */
+.board__tile-feet {
+  grid-area: auth;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+.board__tile-open,
+.board__tile-auth {
+  padding: 2px var(--s2);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.board__tile-open {
+  border: 1px solid color-mix(in srgb, var(--app-accent) 45%, transparent);
+  background: color-mix(in srgb, var(--app-accent) 12%, transparent);
+  color: var(--app-accent);
+}
+.board__tile-auth {
+  border: 1px solid var(--line-strong);
+  color: var(--text-dim);
+}
+/* The way in. Still on the tile when the pointer is elsewhere, just quiet —
+   appearing from nothing would be a second thing moving on hover, and the
+   tile already lifts. */
+.board__tile-go {
+  position: absolute;
+  right: var(--s4);
+  bottom: var(--s4);
+  color: var(--app-accent);
+  font-size: 15px;
+  opacity: 0;
+  transform: translateX(-4px);
+  transition:
+    opacity var(--fast) var(--ease),
+    transform var(--fast) var(--ease);
+}
+.board__tile:hover .board__tile-go,
+.board__tile:focus-visible .board__tile-go {
+  opacity: 1;
+  transform: translateX(0);
+}
+/* ---- the two groups ---- */
+.board__groups {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s6);
+}
+.board__group-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-areas:
+    "name  count"
+    "note  note";
+  align-items: baseline;
+  gap: 0 var(--s3);
+  margin-bottom: var(--s3);
+  padding-bottom: var(--s2);
+  border-bottom: 1px solid var(--line);
+}
+.board__group-name {
+  grid-area: name;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+}
+/* The count sits with the heading rather than under it: it is part of the
+   label, not a second sentence. */
+.board__group-count {
+  grid-area: count;
+  justify-self: start;
+  padding: 1px var(--s2);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.board__eyebrow-sep {
+  color: var(--line-strong);
+}
+/* ---- the layout editor -------------------------------------------------- */
+/* The editor's toolbar sits under the lede rather than beside it: the header
+   is prose, and a row of buttons wrapping into a paragraph is neither. */
+.board__tools {
+  justify-content: flex-start;
+  margin-top: var(--s3);
+}
+.board__group-tools {
+  grid-area: count;
+  justify-self: end;
+  display: flex;
+  gap: var(--s2);
+}
+.board__group-head:has(.board__group-tools) {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+.board__group-input {
+  grid-area: name;
+  padding: 1px var(--s2);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+/*
+ * A tile in edit mode is a thing being arranged, so it stops behaving like a
+ * button: the face is inert, the controls sit under it, and the whole tile is
+ * draggable.
+ */
+.board__tile-face {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "well name"
+    "well blurb"
+    "well auth";
+  align-content: start;
+  gap: 0 var(--s4);
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.board__tile[data-editing] .board__tile-face {
+  cursor: grab;
+}
+.board__tile[data-editing] {
+  cursor: grab;
+}
+.board__tile[data-dragging] {
+  opacity: 0.4;
+  border-style: dashed;
+}
+/* A pinned tile keeps its marker outside edit mode too — it is a property of
+   the arrangement, not of the editor. */
+.board__tile[data-pinned]::after {
+  content: "⚲";
+  position: absolute;
+  top: var(--s3);
+  right: var(--s3);
+  color: var(--app-accent);
+  font-size: 11px;
+}
+.board__tile-edit {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
+}
+/* The one control that loses something wears the colour that says so. */
+/* A small tile has no room for the blurb; the name and the glyph carry it. */
+.board__tile[data-size="small"] .board__tile-blurb {
+  display: none;
+}
+.board__tile[data-size="small"] {
+  min-height: 96px;
+}
+.board__tile[data-size="large"] {
+  min-height: 160px;
+}
+.board__tile[data-size="large"] .board__tile-name {
+  font-size: 18px;
+}
+/* A tile arriving with the grid. Staggering these would be eight animations
+   where one is the point, so they arrive together. */
+.board__groups {
+  animation: jky-rise var(--motion-normal) var(--ease) both;
+}
+
+@media (min-width: 68rem) {
+  .board__grid > li {
+    grid-column: span 4;
+  }
+
+  .board__grid > li:has(.board__tile[data-size="small"]) {
+    grid-column: span 3;
+  }
+
+  .board__grid > li:has(.board__tile[data-size="large"]) {
+    grid-column: span 6;
+  }
+}
+
+/* Below that there is only room for the size distinction to be a nuisance. */
+@media (max-width: 46rem) {
+  .board__grid > li {
+    grid-column: span 12;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board__tile-go {
+    transition: opacity var(--fast) var(--ease);
+    transform: none;
+  }
+
+  .board__tile:hover .board__tile-go,
+  .board__tile:focus-visible .board__tile-go {
+    transform: none;
+  }
+}

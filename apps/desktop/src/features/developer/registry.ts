@@ -33,6 +33,8 @@ export interface ToolDef {
    * the one you want by colour before reading a word.
    */
   tone: EventColour;
+  /** The same colour as a token name, for the tile it wears on the board. */
+  accent: string;
   /** Whether the work happens in Rust. Shown, because it explains the wait. */
   backend: "window" | "rust";
 }
@@ -44,6 +46,7 @@ export const TOOLS: ToolDef[] = [
     glyph: "{}",
     blurb: "Format and check. Says which line and column stopped it.",
     tone: "cyan",
+    accent: "accent",
     backend: "window",
   },
   {
@@ -52,6 +55,7 @@ export const TOOLS: ToolDef[] = [
     glyph: "≡",
     blurb: "Tidy it, and convert to JSON and back.",
     tone: "amber",
+    accent: "warn",
     backend: "rust",
   },
   {
@@ -60,6 +64,7 @@ export const TOOLS: ToolDef[] = [
     glyph: "±",
     blurb: "Compare two texts, line by line, with both line numbers.",
     tone: "mint",
+    accent: "mint",
     backend: "rust",
   },
   {
@@ -68,6 +73,7 @@ export const TOOLS: ToolDef[] = [
     glyph: "#",
     blurb: "MD5, SHA-1, SHA-256 and SHA-512, all at once.",
     tone: "violet",
+    accent: "violet",
     backend: "rust",
   },
   {
@@ -76,6 +82,7 @@ export const TOOLS: ToolDef[] = [
     glyph: "⊙",
     blurb: "Read what is inside a token. Never claims one is valid.",
     tone: "rose",
+    accent: "danger",
     backend: "window",
   },
   {
@@ -84,6 +91,7 @@ export const TOOLS: ToolDef[] = [
     glyph: "*",
     blurb: "Try a pattern against text, off the main thread.",
     tone: "azure",
+    accent: "accent-dim",
     backend: "window",
   },
 ];
