@@ -680,11 +680,100 @@ export interface Diff {
  * way a made-up inbox is; it is a wrong answer to the exact question the tool
  * was opened to answer.
  */
+/** One volume, as the machine reports it. */
+export interface Volume {
+  mount: string;
+  kind: string;
+  total: number;
+  available: number;
+}
+
+/** Everything about the machine, in one reading. */
+export interface Machine {
+  /** Null where the OS will not say — reported as unknown, never guessed. */
+  host: string | null;
+  os: string | null;
+  kernel: string | null;
+  cpu_brand: string;
+  cores: number;
+  /** Per core, 0–100, in the order the OS lists them. */
+  per_core: number[];
+  mem_used: number;
+  mem_total: number;
+  swap_used: number;
+  swap_total: number;
+  /** One, five and fifteen minutes. Zeroes on Windows, which has no such idea. */
+  load: [number, number, number];
+  uptime_s: number;
+  disks: Volume[];
+}
+
+export interface Proc {
+  pid: number;
+  name: string;
+  /** Across all cores, so a busy process on eight cores can read 400. */
+  cpu_pct: number;
+  mem: number;
+  started: number;
+  command: string;
+}
+
+export type ProcSort = "cpu" | "memory" | "name";
+
+export interface Lookup {
+  host: string;
+  addresses: string[];
+  took_ms: number;
+}
+
+export interface OpenPort {
+  port: number;
+  /** What conventionally listens there. A guess, and shown as one. */
+  likely: string | null;
+}
+
+export interface EnvVar {
+  name: string;
+  value: string;
+  /** Guessed from the name. The panel hides it behind a click. */
+  secret: boolean;
+}
+
+export interface HttpResponse {
+  status: number;
+  status_text: string;
+  headers: Record<string, string>;
+  body: string;
+  /** Bytes before truncation, so the size is the truth about the reply. */
+  size: number;
+  truncated: boolean;
+  took_ms: number;
+}
+
 export interface ToolsApi {
   hash(text: string): Promise<Hashes>;
   diff(before: string, after: string): Promise<Diff>;
   yamlToJson(text: string): Promise<string>;
   formatYaml(text: string): Promise<string>;
+  /** Processor, memory, disks and uptime, in one reading. */
+  machine(): Promise<Machine>;
+  /** Sorted and cut in Rust; the window names an order, never an expression. */
+  processes(sort: ProcSort, search: string): Promise<Proc[]>;
+  /** Whether the signal was delivered — not whether the process has gone. */
+  endProcess(pid: number): Promise<boolean>;
+  /** The system resolver, asked where a name points. Addresses only. */
+  resolve(host: string): Promise<Lookup>;
+  /** Which ports on **this** machine are listening. Loopback only. */
+  scanPorts(from: number, to: number): Promise<OpenPort[]>;
+  /** What a new terminal would inherit. Not a running shell's environment. */
+  environment(): Promise<EnvVar[]>;
+  /** One HTTP request. Checked in Rust before any of it is sent. */
+  request(
+    method: string,
+    url: string,
+    headers: [string, string][],
+    body: string | null,
+  ): Promise<HttpResponse>;
 }
 
 export interface Platform {

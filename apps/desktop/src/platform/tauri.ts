@@ -16,7 +16,13 @@ import type {
   GmailMailbox,
   GmailStatus,
   Diff,
+  EnvVar,
   Hashes,
+  HttpResponse,
+  Lookup,
+  Machine,
+  OpenPort,
+  Proc,
   SystemApi,
   ToolsApi,
   SystemReading,
@@ -232,6 +238,14 @@ export function createTauriPlatform(): Platform {
     diff: (before, after) => invoke<Diff>("tools_diff", { before, after }),
     yamlToJson: (text) => invoke<string>("tools_yaml_to_json", { text }),
     formatYaml: (text) => invoke<string>("tools_format_yaml", { text }),
+    machine: () => invoke<Machine>("tools_machine"),
+    processes: (sort, search) => invoke<Proc[]>("tools_processes", { sort, search }),
+    endProcess: (pid) => invoke<boolean>("tools_end_process", { pid }),
+    resolve: (host) => invoke<Lookup>("tools_resolve", { host }),
+    scanPorts: (from, to) => invoke<OpenPort[]>("tools_scan_ports", { from, to }),
+    environment: () => invoke<EnvVar[]>("tools_environment"),
+    request: (method, url, headers, body) =>
+      invoke<HttpResponse>("tools_request", { method, url, headers, body }),
   };
 
   const scrollback: ScrollbackApi = {

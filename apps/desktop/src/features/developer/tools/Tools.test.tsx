@@ -39,6 +39,15 @@ function withTools(over: Partial<Platform["tools"]> = {}): Platform {
       async formatYaml() {
         return "a: 1\n";
       },
+      // The machine-reading half of the surface. These panels have their own
+      // tests; here they only need to exist so the object is a whole one.
+      machine: base.tools.machine,
+      processes: base.tools.processes,
+      endProcess: base.tools.endProcess,
+      resolve: base.tools.resolve,
+      scanPorts: base.tools.scanPorts,
+      environment: base.tools.environment,
+      request: base.tools.request,
       ...over,
     },
   };

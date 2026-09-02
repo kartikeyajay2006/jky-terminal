@@ -806,6 +806,13 @@ export function createWebPlatform(): Platform {
     diff: needsDesktop,
     yamlToJson: needsDesktop,
     formatYaml: needsDesktop,
+    machine: needsDesktop,
+    processes: needsDesktop,
+    endProcess: needsDesktop,
+    resolve: needsDesktop,
+    scanPorts: needsDesktop,
+    environment: needsDesktop,
+    request: needsDesktop,
   };
 
   const scrollback: ScrollbackApi = {

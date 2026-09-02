@@ -1,7 +1,7 @@
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Developer } from "./Developer";
+import { Developer, DEV_GROUPS } from "./Developer";
 import { TOOLS, findTool } from "./registry";
 import { EVENT_COLOURS, __setPlatformForTests, createWebPlatform } from "../../platform";
 import { useNav } from "../../app/navStore";
@@ -22,10 +22,29 @@ describe("the tool registry", () => {
     }
   });
 
-  it("gives each tool its own colour from the theme's palette", () => {
-    const tones = TOOLS.map((t) => t.tone);
-    expect(new Set(tones).size).toBe(tones.length);
-    for (const tone of tones) expect(EVENT_COLOURS).toContain(tone);
+  /*
+   * Distinct within a group, not across all twelve.
+   *
+   * The palette has six event colours and there are twelve tools. Colour here
+   * tells a tile from the ones beside it, and the board groups them — so the
+   * rule is per group, the same conclusion the Apps registry reached when it
+   * ran out of hues.
+   */
+  it("gives each tool its own colour among the ones it sits with", () => {
+    for (const group of DEV_GROUPS) {
+      const tones = TOOLS.filter((t) => group.holds(t)).map((t) => t.tone);
+      expect(new Set(tones).size, `two tools in "${group.name}" share a colour: ${tones}`)
+        .toBe(tones.length);
+    }
+    for (const tool of TOOLS) expect(EVENT_COLOURS).toContain(tool.tone);
+  });
+
+  // Every tool has to land in a group, or the board would silently drop it.
+  it("puts every tool in exactly one group", () => {
+    for (const tool of TOOLS) {
+      const groups = DEV_GROUPS.filter((g) => g.holds(tool)).map((g) => g.name);
+      expect(groups, `${tool.name} is in ${groups.length} groups`).toHaveLength(1);
+    }
   });
 
   it("has no duplicate ids", () => {
@@ -141,28 +160,48 @@ describe("Developer", () => {
    *
    * The complaint that produced these was "I cannot understand how to use
    * this", and an empty box with a clever name is the reason. Each tool has
-   * to say what it is for, when you would reach for it, and offer something
-   * you can load and take apart — and a tool added later must too, which is
-   * what this test is for.
+   * to say what it is for and when you would reach for it — and a tool added
+   * later must too, which is what this test is for.
    */
-  it("gives every tool a use, a reason and examples to try", async () => {
+  it("gives every tool a use and a reason", async () => {
     const user = userEvent.setup();
 
     for (const tool of TOOLS) {
       const view = render(<Developer />);
       await open(user, tool.name);
 
-      const what = await screen.findByRole("region", { name: /examples/i });
-      expect(
-        within(what).getAllByRole("button").length,
-        `${tool.name} offers no examples`,
-      ).toBeGreaterThanOrEqual(2);
-
       // "Reach for it when…" — the sentence that says why the app has this.
       expect(
-        screen.getByText(/reach for it/i),
+        await screen.findByText(/reach for it/i),
         `${tool.name} never says when you would want it`,
       ).toBeInTheDocument();
+
+      view.unmount();
+      localStorage.clear();
+    }
+  });
+
+  /*
+   * Examples where there is something to put in.
+   *
+   * A tool you paste into opens empty and teaches nothing, so it carries
+   * examples. A tool that reads this machine opens showing the machine — it
+   * is already the example, and a button labelled "load an example computer"
+   * would be nonsense.
+   */
+  it("gives every tool that takes input something to try", async () => {
+    const user = userEvent.setup();
+    const readsTheMachine = ["monitor", "processes", "env"];
+
+    for (const tool of TOOLS.filter((t) => !readsTheMachine.includes(t.id))) {
+      const view = render(<Developer />);
+      await open(user, tool.name);
+
+      const examples = await screen.findByRole("region", { name: /examples/i });
+      expect(
+        within(examples).getAllByRole("button").length,
+        `${tool.name} offers no examples`,
+      ).toBeGreaterThanOrEqual(2);
 
       view.unmount();
       localStorage.clear();

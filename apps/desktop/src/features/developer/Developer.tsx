@@ -17,6 +17,12 @@ import { JsonTool } from "./tools/JsonTool";
 import { JwtTool } from "./tools/JwtTool";
 import { RegexTool } from "./tools/RegexTool";
 import { YamlTool } from "./tools/YamlTool";
+import { HttpTool } from "./tools/HttpTool";
+import { MonitorTool } from "./tools/MonitorTool";
+import { ProcessTool } from "./tools/ProcessTool";
+import { EnvTool } from "./tools/EnvTool";
+import { DnsTool } from "./tools/DnsTool";
+import { PortsTool } from "./tools/PortsTool";
 import { TOOLS, findTool, type ToolDef } from "./registry";
 import "./Developer.css";
 
@@ -34,8 +40,9 @@ export const DEV_KEY = "jky.developer.layout";
  * answer above the tile.
  */
 export const DEV_GROUPS: GroupSpec<ToolDef>[] = [
-  { name: "Answer as you type", holds: (tool) => tool.backend === "window" },
-  { name: "Run on a button", holds: (tool) => tool.backend === "rust" },
+  { name: "Text and data", holds: (tool) => tool.backend === "window" || tool.backend === "rust" },
+  { name: "This machine", holds: (tool) => tool.backend === "machine" },
+  { name: "The network", holds: (tool) => tool.backend === "network" },
 ];
 
 /**
@@ -60,6 +67,18 @@ function body(id: string) {
       return <JwtTool />;
     case "regex":
       return <RegexTool />;
+    case "http":
+      return <HttpTool />;
+    case "monitor":
+      return <MonitorTool />;
+    case "processes":
+      return <ProcessTool />;
+    case "env":
+      return <EnvTool />;
+    case "dns":
+      return <DnsTool />;
+    case "ports":
+      return <PortsTool />;
     default:
       return null;
   }
@@ -125,7 +144,15 @@ export function Developer() {
               ...entry,
               accent: entry.accent,
               // Where the work happens, which is what explains a pause.
-              badge: entry.backend === "rust" ? "runs in Rust" : undefined,
+              // Said on the tile because it is what changes: two of these
+              // leave the machine, and "no account, no key, no network"
+              // stopped being true of all of them the day one did.
+              badge:
+                entry.backend === "network"
+                  ? "leaves this machine"
+                  : entry.backend === "machine"
+                    ? "reads this machine"
+                    : undefined,
             }))}
             label="Developer Tools"
             groups={DEV_GROUPS}
@@ -139,7 +166,7 @@ export function Developer() {
                   <span className="board__eyebrow-sep" aria-hidden="true">
                     ·
                   </span>
-                  <span>no account, no key, no network</span>
+                  <span>no account, no key</span>
                   {hidden > 0 && (
                     <>
                       <span className="board__eyebrow-sep" aria-hidden="true">
@@ -151,9 +178,9 @@ export function Developer() {
                 </p>
                 <h1 className="board__title">Developer Tools</h1>
                 <p className="board__lede">
-                  Everything here is a function of what you paste into it. Nothing is sent
-                  anywhere, nothing is stored, and each one opens with a worked example you can
-                  load and take apart.
+                  Nothing here needs an account or a key, and each one opens with a worked
+                  example you can load and take apart. The tiles say which read this machine and
+                  which leave it — the rest never do either.
                 </p>
               </>
             )}

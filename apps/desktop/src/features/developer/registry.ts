@@ -35,8 +35,15 @@ export interface ToolDef {
   tone: EventColour;
   /** The same colour as a token name, for the tile it wears on the board. */
   accent: string;
-  /** Whether the work happens in Rust. Shown, because it explains the wait. */
-  backend: "window" | "rust";
+  /**
+   * Where the work happens, and what it touches.
+   *
+   * `window` answers as you type. `rust` waits for a button or a poll.
+   * `machine` reads the computer, and `network` leaves it — which is worth
+   * saying on a tile, because "no account, no key, no network" stopped being
+   * true of every tool the moment there was an HTTP client.
+   */
+  backend: "window" | "rust" | "machine" | "network";
 }
 
 export const TOOLS: ToolDef[] = [
@@ -93,6 +100,60 @@ export const TOOLS: ToolDef[] = [
     tone: "azure",
     accent: "accent-dim",
     backend: "window",
+  },
+  {
+    id: "http",
+    name: "HTTP",
+    glyph: "⇄",
+    blurb: "Send a request and read the whole reply — status, headers, timing.",
+    tone: "cyan",
+    accent: "accent",
+    backend: "network",
+  },
+  {
+    id: "monitor",
+    name: "System Monitor",
+    glyph: "◫",
+    blurb: "Processor, memory, disks and uptime, live.",
+    tone: "mint",
+    accent: "mint",
+    backend: "machine",
+  },
+  {
+    id: "processes",
+    name: "Processes",
+    glyph: "☰",
+    blurb: "What is running, what it is costing, and what it was started with.",
+    tone: "violet",
+    accent: "violet",
+    backend: "machine",
+  },
+  {
+    id: "env",
+    name: "Environment",
+    glyph: "$",
+    blurb: "What a new terminal inherits. Secrets hidden until you ask.",
+    tone: "amber",
+    accent: "warn",
+    backend: "machine",
+  },
+  {
+    id: "dns",
+    name: "DNS",
+    glyph: "◎",
+    blurb: "Where a name points from this machine, and how long it took.",
+    tone: "azure",
+    accent: "accent-dim",
+    backend: "network",
+  },
+  {
+    id: "ports",
+    name: "Ports",
+    glyph: "⋮",
+    blurb: "What is listening on this machine. Loopback only, on purpose.",
+    tone: "rose",
+    accent: "danger",
+    backend: "machine",
   },
 ];
 
