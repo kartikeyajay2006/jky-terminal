@@ -283,10 +283,30 @@ in front of you instead of freezing the window.
 | `#` | **Hash** | MD5, SHA-1, SHA-256 and SHA-512 at once |
 | `⊙` | **JWT** | Reads what is inside a token — and never claims one is valid |
 | `*` | **Regex** | Tries a pattern against text, off the main thread |
+| `⇄` | **HTTP** | Sends a request and shows the whole reply — status, headers, timing |
+| `◫` | **System Monitor** | Every core, both kinds of memory, every disk, live |
+| `☰` | **Processes** | What is running, what it costs, what it was started with |
+| `$` | **Environment** | What a new terminal inherits. Secrets hidden until you ask |
+| `◎` | **DNS** | Where a name points *from this machine* |
+| `⋮` | **Ports** | What is listening here. Loopback only, on purpose |
 
-That list is short on purpose. A Kubernetes or database tile would need a
-config file or a password, which is a different kind of promise, and a test
-enforces that a tool never asks for an account.
+None of them needs an account or a key. Six are pure computation, four read
+this machine, and two leave it — and the tiles say which, because "no account,
+no key, no network" stopped being true of all of them the moment one sent a
+request. A Kubernetes or database tile would need a config file or a password,
+which is a different kind of promise again, and is why it is not here.
+
+Three of them are worth naming for what they refuse to do:
+
+- **Ports has no host field.** Scanning a machine you do not own is a legal
+  question in several countries and a terms question on every cloud. With
+  nothing to type there is nothing to get wrong.
+- **Environment says it cannot change a terminal that is already open.**
+  Nothing outside a running process can, and "manage your environment
+  variables" is the promise every tool like this makes and none of them keeps.
+- **Ending a process says "asked it to stop", not "stopped it".** A process
+  may ignore the signal, and it is the only thing in this whole section that
+  changes the machine — so it asks first, and it goes in the audit log.
 
 Three of them are Rust — hashing, diffing and YAML each need a parser or an
 algorithm someone else wrote, and those are audited with the rest of the tree.
