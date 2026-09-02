@@ -639,6 +639,55 @@ export interface SystemApi {
   status(): Promise<SystemReading>;
 }
 
+/** One input, every digest. Lowercase hex. */
+export interface Hashes {
+  md5: string;
+  sha1: string;
+  sha256: string;
+  sha512: string;
+}
+
+/**
+ * One line of a diff.
+ *
+ * Both line numbers, because after the first change the two sides stop
+ * agreeing about what line anything is on. A line present on only one side
+ * has `null` for the other, which is the truth rather than a zero.
+ */
+export interface DiffLine {
+  /** `same`, `added` or `removed`. */
+  kind: string;
+  old: number | null;
+  new: number | null;
+  text: string;
+}
+
+export interface Diff {
+  lines: DiffLine[];
+  added: number;
+  removed: number;
+}
+
+/**
+ * The developer tools that need a dependency.
+ *
+ * The others — JSON, JWT decoding, regular expressions — are native to the
+ * window and instant there, so they are not here: a round trip would buy
+ * nothing and cost a frame.
+ *
+ * The browser build cannot do any of these, and says so rather than
+ * inventing an answer. A made-up hash is not an illustrative placeholder the
+ * way a made-up inbox is; it is a wrong answer to the exact question the tool
+ * was opened to answer.
+ */
+export interface ToolsApi {
+  hash(text: string): Promise<Hashes>;
+  diff(before: string, after: string): Promise<Diff>;
+  yamlToJson(text: string): Promise<string>;
+  jsonToYaml(text: string): Promise<string>;
+  formatYaml(text: string): Promise<string>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
@@ -653,6 +702,8 @@ export interface Platform {
   readonly browser: BrowserApi;
   /** What the Apps section needs fetched, since the window cannot fetch. */
   readonly apps: AppsApi;
+  /** Hashing, diffing and YAML — the tools that need a dependency. */
+  readonly tools: ToolsApi;
   /** Processor, memory, disk and network, for the status readout. */
   readonly system: SystemApi;
   /** What each terminal had on screen last time. */

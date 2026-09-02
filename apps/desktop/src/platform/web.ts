@@ -790,6 +790,25 @@ export function createWebPlatform(): Platform {
     },
   };
 
+  /*
+   * The browser build cannot hash, diff or parse YAML — those live in Rust.
+   *
+   * It says so rather than returning something plausible. A made-up inbox is
+   * an illustration; a made-up hash is a wrong answer to the exact question
+   * the tool was opened to ask, and someone would eventually trust it.
+   */
+  const needsDesktop = async (): Promise<never> => {
+    throw new Error("this tool runs in the desktop app");
+  };
+
+  const tools = {
+    hash: needsDesktop,
+    diff: needsDesktop,
+    yamlToJson: needsDesktop,
+    jsonToYaml: needsDesktop,
+    formatYaml: needsDesktop,
+  };
+
   const scrollback: ScrollbackApi = {
     async load(key) {
       return buffers.get(key) ?? "";
@@ -825,6 +844,7 @@ export function createWebPlatform(): Platform {
   return {
     kind: "web",
     system,
+    tools,
     vault,
     settings,
     pty,

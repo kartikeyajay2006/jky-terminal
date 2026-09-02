@@ -15,7 +15,10 @@ import type {
   GmailFull,
   GmailMailbox,
   GmailStatus,
+  Diff,
+  Hashes,
   SystemApi,
+  ToolsApi,
   SystemReading,
   GitHubSummary,
   NewsSource,
@@ -224,6 +227,14 @@ export function createTauriPlatform(): Platform {
     status: () => invoke<SystemReading>("system_status"),
   };
 
+  const tools: ToolsApi = {
+    hash: (text) => invoke<Hashes>("tools_hash", { text }),
+    diff: (before, after) => invoke<Diff>("tools_diff", { before, after }),
+    yamlToJson: (text) => invoke<string>("tools_yaml_to_json", { text }),
+    jsonToYaml: (text) => invoke<string>("tools_json_to_yaml", { text }),
+    formatYaml: (text) => invoke<string>("tools_format_yaml", { text }),
+  };
+
   const scrollback: ScrollbackApi = {
     load: (key) => invoke<string>("scrollback_load", { key }),
     save: (key, text) => invoke<void>("scrollback_save", { key, text }),
@@ -234,6 +245,7 @@ export function createTauriPlatform(): Platform {
   return {
     kind: "tauri",
     system,
+    tools,
     vault,
     settings,
     pty,

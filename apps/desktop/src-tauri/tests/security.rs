@@ -296,6 +296,17 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // AppState because two of those four are differences between
         // successive moments, not because it holds anything privileged.
         "system_status".to_string(),
+        // The developer tools that need a dependency: hashing, diffing and
+        // YAML. Every one is a function of its arguments — no network, no
+        // filesystem, no credential, nothing kept between calls — so the only
+        // thing the boundary adds is a bound on how much text the renderer
+        // may hand over. That bound is not politeness: hashing a hundred
+        // megabytes would block a worker thread for as long as it took.
+        "tools_diff".to_string(),
+        "tools_format_yaml".to_string(),
+        "tools_hash".to_string(),
+        "tools_json_to_yaml".to_string(),
+        "tools_yaml_to_json".to_string(),
         "vault_delete_secret".to_string(),
         "vault_has_secret".to_string(),
         "vault_list_providers".to_string(),

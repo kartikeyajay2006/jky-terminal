@@ -11,4 +11,5 @@ pub mod scrollback;
 pub mod settings;
 pub mod store;
 pub mod system;
+pub mod tools;
 pub mod vault;

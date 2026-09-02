@@ -22,10 +22,11 @@ const RUST_ROUTES = join(__dirname, "../../../../crates/jky-apps/src/routes.rs")
 const RUST_GITHUB = join(__dirname, "../../../../crates/jky-apps/src/github.rs");
 const RUST_GMAIL = join(__dirname, "../../../../crates/jky-apps/src/gmail.rs");
 const RUST_SYSTEM = join(__dirname, "../../../../crates/jky-system/src/lib.rs");
+const RUST_TOOLS = join(__dirname, "../../../../crates/jky-tools/src/lib.rs");
 
 /** Both modules concatenated: a struct is looked up by name across them. */
 function rustSource(): string {
-  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES, RUST_GITHUB, RUST_GMAIL, RUST_SYSTEM]
+  return [RUST_WEATHER, RUST_NEWS, RUST_PLACES, RUST_ROUTES, RUST_GITHUB, RUST_GMAIL, RUST_SYSTEM, RUST_TOOLS]
     .map((f) => readFileSync(f, "utf8"))
     .join("\n");
 }
@@ -172,6 +173,36 @@ describe("apps adapter parity", () => {
 
   it("names every route field the same way in TypeScript", () => {
     expect(fieldsOf("Route")).toEqual(["straight_m", "road_m", "duration_s"]);
+  });
+
+  describe("tools", () => {
+    it("names every hash field the same way in TypeScript", () => {
+      expect(fieldsOf("Hashes")).toEqual(["md5", "sha1", "sha256", "sha512"]);
+    });
+
+    it("names every diff field the same way in TypeScript", () => {
+      expect(fieldsOf("DiffLine")).toEqual(["kind", "old", "new", "text"]);
+      expect(fieldsOf("Diff")).toEqual(["lines", "added", "removed"]);
+    });
+
+    it("the mock offers the whole tools surface", () => {
+      for (const call of ["hash", "diff", "yamlToJson", "jsonToYaml", "formatYaml"] as const) {
+        expect(typeof web.tools[call], `tools.${call} is missing`).toBe("function");
+      }
+    });
+
+    /*
+     * The browser build refuses rather than inventing an answer.
+     *
+     * A made-up inbox is an illustration. A made-up hash is a wrong answer to
+     * the exact question the tool was opened to ask, and someone would
+     * eventually trust it.
+     */
+    it("says it cannot, rather than returning something plausible", async () => {
+      await expect(web.tools.hash("abc")).rejects.toThrow(/desktop app/i);
+      await expect(web.tools.diff("a", "b")).rejects.toThrow(/desktop app/i);
+      await expect(web.tools.yamlToJson("a: 1")).rejects.toThrow(/desktop app/i);
+    });
   });
 
   describe("system", () => {

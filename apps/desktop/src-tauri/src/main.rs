@@ -7,7 +7,7 @@ mod turn;
 mod state;
 
 use commands::{
-    advice, ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, system,
+    advice, ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, system, tools,
     vault,
 };
 use state::AppState;
@@ -32,6 +32,11 @@ fn main() {
             settings::settings_set_active_provider,
             settings::settings_set_terminal_start_dir,
             system::system_status,
+            tools::tools_diff,
+            tools::tools_format_yaml,
+            tools::tools_hash,
+            tools::tools_json_to_yaml,
+            tools::tools_yaml_to_json,
             pty::pty_spawn,
             pty::pty_attach,
             pty::pty_write,

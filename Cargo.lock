@@ -2071,6 +2071,7 @@ dependencies = [
  "jky-settings",
  "jky-store",
  "jky-system",
+ "jky-tools",
  "reqwest 0.12.28",
  "serde",
  "serde_json",
