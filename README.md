@@ -8,7 +8,7 @@ Built by [@kartikeyajay2006](https://github.com/kartikeyajay2006). MIT.
 
 [![CI](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
 ![Linux · macOS · Windows](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff)
-![Tests](https://img.shields.io/badge/tests-1688%20frontend%20%2B%20693%20Rust-3ddc97)
+![Tests](https://img.shields.io/badge/tests-1787%20frontend%20%2B%20694%20Rust-3ddc97)
 ![License](https://img.shields.io/badge/license-MIT-7c3aed)
 
 ---
@@ -44,7 +44,7 @@ comment:
 
 | | Section | |
 |---|---|---|
-| ❯ | **Terminal** | A real pty. Scrollback survives a restart. A failed command offers AI help — and costs nothing until you accept |
+| ❯ | **Terminal** | A real pty. **Any command can become an app.** Scrollback survives a restart |
 | ✦ | **Assistant** | Your key, in the OS keychain. Tools are gated; destructive ones need a click |
 | ⌂ | **Dashboard** | Notes, todos, calendar, reminders. On disk, yours, arrangeable |
 | ⌥ | **Developer** | Eleven tools. No account, no key |
@@ -55,6 +55,51 @@ Both boards — Apps and Developer — are the same grid, and **Edit layout** on
 either lets you drag, resize, pin, hide, duplicate and group the tiles.
 Nothing is lost by accident: removing a group keeps its contents, and even
 delete is undone by Restore.
+
+---
+
+## Every command can become an app
+
+A shell answers in text because a pipe is the only thing it can answer in. That
+has nothing to do with what the answer *is*: `df` reports how full four disks
+are, `docker ps` reports the state of five containers, and both are tables that
+were flattened on the way out.
+
+So the terminal reads the flattening back. Run a command; if its output has a
+shape, a panel appears under it.
+
+| Command | Becomes |
+|---|---|
+| `mkdir project` | the confirmation it never prints |
+| `ls -l` | a listing with kinds, sizes and dates |
+| `git status -s` | staged and unstaged, kept apart |
+| `git log` | a timeline |
+| `df -h` | bars, fullest disk first |
+| `ps aux` | a process table |
+| `docker ps` | containers, running and stopped |
+| anything JSON | laid out |
+
+**No model is involved.** These are parsers. A wrong table presented
+confidently is worse than a wall of text, because text is at least honestly
+text — so every recogniser refuses more than it accepts and shows nothing the
+moment the output stops looking like what it expects.
+
+Three rules make it safe to leave on:
+
+- **It never replaces the output.** The text stays exactly where it was, and
+  the panel can be dismissed. A terminal that swallowed what a command printed
+  would be unusable the first time it got something wrong — and it will.
+- **Actions type a command; nothing runs one.** A panel that could quietly
+  `docker stop` would be one you had to trust. This one only has to be read:
+  what it does is what you would have typed, and you still press Enter.
+- **A pipe means it declines.** `docker ps | grep api` prints grep's output,
+  and reading that as docker's would be confidently reading the wrong thing.
+
+It is checked against two real shell sessions — `zsh -i` and `bash -i` driven
+through a real pty, seven commands typed, everything recorded. Hand-written
+fixtures test what you imagined the output looks like; those test what it is.
+The first run found a `git log` line beginning with a stray keypad escape that
+silently cost one commit in three.
 
 ---
 
@@ -237,7 +282,7 @@ Every push runs, on **Linux, macOS and Windows** with `fail-fast: false`:
 
 | Job | What it proves |
 |---|---|
-| Frontend | typecheck, lint, 1688 tests |
+| Frontend | typecheck, lint, 1787 tests |
 | Native ×3 | `cargo test`, `clippy -D warnings`, and the shippable binary **links** |
 | Dependency audit | `pnpm audit` and `cargo audit`, failing on high or critical |
 | Security assertions | the command surface, the CSP, and no key in the bundle |
