@@ -726,12 +726,6 @@ export interface Lookup {
   took_ms: number;
 }
 
-export interface OpenPort {
-  port: number;
-  /** What conventionally listens there. A guess, and shown as one. */
-  likely: string | null;
-}
-
 export interface EnvVar {
   name: string;
   value: string;
@@ -763,8 +757,6 @@ export interface ToolsApi {
   endProcess(pid: number): Promise<boolean>;
   /** The system resolver, asked where a name points. Addresses only. */
   resolve(host: string): Promise<Lookup>;
-  /** Which ports on **this** machine are listening. Loopback only. */
-  scanPorts(from: number, to: number): Promise<OpenPort[]>;
   /** What a new terminal would inherit. Not a running shell's environment. */
   environment(): Promise<EnvVar[]>;
   /** One HTTP request. Checked in Rust before any of it is sent. */

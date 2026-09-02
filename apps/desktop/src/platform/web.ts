@@ -810,7 +810,6 @@ export function createWebPlatform(): Platform {
     processes: needsDesktop,
     endProcess: needsDesktop,
     resolve: needsDesktop,
-    scanPorts: needsDesktop,
     environment: needsDesktop,
     request: needsDesktop,
   };

@@ -345,12 +345,6 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // which question it asked. The hostname is validated before it
         // reaches the resolver.
         "tools_resolve".to_string(),
-        // Loopback only, and there is no host argument — the decision is in
-        // `jky-system`, so there is nothing here for the window to supply and
-        // nothing to get wrong. Scanning a machine you do not own is a legal
-        // question in several countries and a terms question on every cloud.
-        // The range is bounded because every port is a connection attempt.
-        "tools_scan_ports".to_string(),
         "tools_yaml_to_json".to_string(),
         "vault_delete_secret".to_string(),
         "vault_has_secret".to_string(),

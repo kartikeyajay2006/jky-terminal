@@ -21,7 +21,6 @@ import type {
   HttpResponse,
   Lookup,
   Machine,
-  OpenPort,
   Proc,
   SystemApi,
   ToolsApi,
@@ -242,7 +241,6 @@ export function createTauriPlatform(): Platform {
     processes: (sort, search) => invoke<Proc[]>("tools_processes", { sort, search }),
     endProcess: (pid) => invoke<boolean>("tools_end_process", { pid }),
     resolve: (host) => invoke<Lookup>("tools_resolve", { host }),
-    scanPorts: (from, to) => invoke<OpenPort[]>("tools_scan_ports", { from, to }),
     environment: () => invoke<EnvVar[]>("tools_environment"),
     request: (method, url, headers, body) =>
       invoke<HttpResponse>("tools_request", { method, url, headers, body }),

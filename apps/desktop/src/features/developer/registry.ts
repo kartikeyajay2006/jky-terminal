@@ -146,15 +146,6 @@ export const TOOLS: ToolDef[] = [
     accent: "accent-dim",
     backend: "network",
   },
-  {
-    id: "ports",
-    name: "Ports",
-    glyph: "⋮",
-    blurb: "What is listening on this machine. Loopback only, on purpose.",
-    tone: "rose",
-    accent: "danger",
-    backend: "machine",
-  },
 ];
 
 export function findTool(id: string): ToolDef | undefined {

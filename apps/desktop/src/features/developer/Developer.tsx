@@ -22,7 +22,6 @@ import { MonitorTool } from "./tools/MonitorTool";
 import { ProcessTool } from "./tools/ProcessTool";
 import { EnvTool } from "./tools/EnvTool";
 import { DnsTool } from "./tools/DnsTool";
-import { PortsTool } from "./tools/PortsTool";
 import { TOOLS, findTool, type ToolDef } from "./registry";
 import "./Developer.css";
 
@@ -77,8 +76,6 @@ function body(id: string) {
       return <EnvTool />;
     case "dns":
       return <DnsTool />;
-    case "ports":
-      return <PortsTool />;
     default:
       return null;
   }

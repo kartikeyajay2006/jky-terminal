@@ -39,7 +39,6 @@ fn main() {
             tools::tools_processes,
             tools::tools_request,
             tools::tools_resolve,
-            tools::tools_scan_ports,
             tools::tools_format_yaml,
             tools::tools_hash,
             tools::tools_yaml_to_json,

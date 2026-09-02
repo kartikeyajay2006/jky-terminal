@@ -876,8 +876,7 @@
 
 /* ---- dns ---- */
 
-.dns__list,
-.ports__list {
+.dns__list {
   list-style: none;
   margin: 0;
   padding: 0;
@@ -886,8 +885,7 @@
   overflow: hidden;
 }
 
-.dns__row,
-.ports__row {
+.dns__row {
   display: flex;
   align-items: baseline;
   gap: var(--s3);
@@ -896,29 +894,22 @@
   font-size: 12px;
 }
 
-.dns__row + .dns__row,
-.ports__row + .ports__row {
+.dns__row + .dns__row {
   border-top: 1px solid var(--line);
 }
 
-.dns__row code,
-.ports__num {
+.dns__row code {
   color: var(--text);
 }
 
 /* Which family — "it works on IPv4 and not IPv6" is the failure this tool is
    most often opened for. */
-.dns__kind,
-.ports__guess {
+.dns__kind {
   margin-left: auto;
   color: var(--text-dim);
   font-size: 11px;
 }
 
-.ports__num {
-  min-width: 5ch;
-  color: var(--app-accent);
-}
 
 /* ---- environment ---- */
 

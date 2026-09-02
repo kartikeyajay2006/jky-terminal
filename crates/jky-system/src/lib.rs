@@ -16,7 +16,6 @@
 //! the one you meant, ignoring loopback — is a plain function with a test.
 //! Only the reading itself needs hardware.
 
-use std::net::Ipv4Addr;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 
@@ -381,50 +380,6 @@ mod tests {
     #[test]
     fn refuses_to_look_up_something_that_is_not_a_name() {
         assert!(resolve("not a hostname").is_err());
-    }
-
-    // ---- ports ----
-
-    #[test]
-    fn guesses_at_the_ports_everyone_recognises() {
-        assert_eq!(likely_service(443), Some("https"));
-        assert_eq!(likely_service(5432), Some("postgres"));
-        assert_eq!(likely_service(11434), Some("ollama"));
-        assert_eq!(likely_service(54321), None, "a guess it does not have");
-    }
-
-    /*
-     * Every port is a connection attempt, so the range is bounded.
-     *
-     * An unbounded one is sixty-five thousand of them, which is a scan the
-     * machine notices and a wait nobody expected.
-     */
-    #[test]
-    fn refuses_a_range_it_should_not_scan() {
-        assert!(valid_range(1, MAX_PORTS + 10).is_err(), "unbounded");
-        assert!(valid_range(500, 400).is_err(), "backwards");
-        assert!(valid_range(0, 100).is_err(), "there is no port zero");
-        assert!(valid_range(8000, 8100).is_ok());
-    }
-
-    /*
-     * A listening socket is found; a port with nothing on it is not.
-     *
-     * Opened here rather than assuming something is already listening, so the
-     * test says something on a machine running nothing at all.
-     */
-    #[test]
-    fn finds_a_port_that_is_listening_and_not_one_that_is_not() {
-        let listener = std::net::TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("a port");
-        let port = listener.local_addr().unwrap().port();
-
-        let found = scan_local(port, port, Duration::from_millis(200)).expect("scan runs");
-        assert_eq!(found.len(), 1);
-        assert_eq!(found[0].port, port);
-
-        drop(listener);
-        let after = scan_local(port, port, Duration::from_millis(200)).expect("scan runs");
-        assert!(after.is_empty(), "a closed port answered");
     }
 
     // ---- the environment ----
@@ -850,91 +805,6 @@ pub fn resolve(host: &str) -> Result<Lookup, String> {
         addresses,
         took_ms: started.elapsed().as_millis() as u64,
     })
-}
-
-/// A port on this machine that answered.
-#[derive(Debug, Clone, Serialize, PartialEq)]
-pub struct OpenPort {
-    pub port: u16,
-    /// What usually listens there. A guess from the number, and labelled so.
-    pub likely: Option<String>,
-}
-
-/// The widest range worth scanning in one go.
-pub const MAX_PORTS: u16 = 4096;
-
-/// What is conventionally on a port. A guess, and the panel says so.
-pub fn likely_service(port: u16) -> Option<&'static str> {
-    Some(match port {
-        22 => "ssh",
-        25 => "smtp",
-        53 => "dns",
-        80 => "http",
-        111 => "rpcbind",
-        143 => "imap",
-        443 => "https",
-        445 => "smb",
-        631 => "cups",
-        1433 => "sql server",
-        1521 => "oracle",
-        2375 | 2376 => "docker",
-        3000 => "node dev server",
-        3306 => "mysql",
-        3389 => "rdp",
-        5000 => "flask / airplay",
-        5173 => "vite",
-        5432 => "postgres",
-        5900 => "vnc",
-        6379 => "redis",
-        8000 | 8080 | 8888 => "http (alternate)",
-        9000 => "php-fpm / minio",
-        9090 => "prometheus",
-        11434 => "ollama",
-        27017 => "mongodb",
-        _ => return None,
-    })
-}
-
-/// Whether a range is one this will scan.
-///
-/// Bounded because every port is a connection attempt, and an unbounded range
-/// is sixty-five thousand of them.
-pub fn valid_range(from: u16, to: u16) -> Result<(), String> {
-    if from == 0 || to == 0 {
-        return Err("ports start at 1".to_string());
-    }
-    if to < from {
-        return Err("the range ends before it starts".to_string());
-    }
-    if to - from >= MAX_PORTS {
-        return Err(format!("scan at most {MAX_PORTS} ports at a time"));
-    }
-    Ok(())
-}
-
-/// Which ports on **this machine** are listening.
-///
-/// Loopback only, and not as a limitation of the implementation. Scanning a
-/// host you do not own is a legal question in several countries and a terms
-/// question on every cloud, and this app ships under a real person's name. It
-/// answers "what is running on my own computer", which is the question anyone
-/// actually has while developing.
-pub fn scan_local(from: u16, to: u16, timeout: Duration) -> Result<Vec<OpenPort>, String> {
-    use std::net::{SocketAddr, TcpStream};
-
-    valid_range(from, to)?;
-
-    let mut open = Vec::new();
-    for port in from..=to {
-        let addr = SocketAddr::from((Ipv4Addr::LOCALHOST, port));
-        if TcpStream::connect_timeout(&addr, timeout).is_ok() {
-            open.push(OpenPort {
-                port,
-                likely: likely_service(port).map(str::to_string),
-            });
-        }
-    }
-    Ok(open)
 }
 
 // ---------------------------------------------------------------------------

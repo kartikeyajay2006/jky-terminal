@@ -85,7 +85,7 @@ mod tests {
 // The machine
 // ---------------------------------------------------------------------------
 
-use jky_system::{Lookup, Machine, OpenPort, Proc};
+use jky_system::{Lookup, Machine, Proc};
 use jky_audit::{AuditEvent, AuditKind};
 use tauri::State;
 
@@ -169,16 +169,6 @@ pub fn tools_end_process(state: State<'_, AppState>, pid: u32) -> Result<bool, S
 #[tauri::command]
 pub fn tools_resolve(host: String) -> Result<Lookup, String> {
     jky_system::resolve(&host)
-}
-
-/// Which ports on this machine are listening.
-///
-/// Loopback only, decided in `jky-system` and not negotiable from here: there
-/// is no host argument for the window to supply, so there is nothing to
-/// validate and nothing to get wrong.
-#[tauri::command]
-pub fn tools_scan_ports(from: u16, to: u16) -> Result<Vec<OpenPort>, String> {
-    jky_system::scan_local(from, to, std::time::Duration::from_millis(120))
 }
 
 #[tauri::command]
