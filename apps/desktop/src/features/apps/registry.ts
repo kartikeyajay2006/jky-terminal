@@ -53,16 +53,6 @@ export type AppAccent =
   /// brings none of its own to fight with them.
   | "text-muted";
 
-/**
- * Which half of the grid an app belongs to.
- *
- * `tool` is the developer tools: local by construction, needing no account
- * and no network, and a test enforces that. The distinction earns its keep by
- * being what the default grouping and the accent rule are both written
- * against.
- */
-export type AppSection = "app" | "tool";
-
 export interface AppDef {
   /** Stable slug. Reaches the palette, the switcher and iframe URLs. */
   id: string;
@@ -71,7 +61,6 @@ export interface AppDef {
   glyph: string;
   mode: RenderMode;
   auth: AuthKind;
-  section: AppSection;
   /**
    * The app's own colour. Colour is wayfinding here, not decoration: the same
    * hue marks the tile, the switcher row and the open panel, so you can learn
@@ -89,7 +78,6 @@ export const APPS: AppDef[] = [
     glyph: "🖩",
     mode: "local",
     auth: "none",
-    section: "app",
     accent: "violet",
     blurb: "Arithmetic, with the keyboard and the history kept.",
   },
@@ -99,7 +87,6 @@ export const APPS: AppDef[] = [
     glyph: "⏱",
     mode: "local",
     auth: "none",
-    section: "app",
     accent: "warn",
     blurb: "A countdown that keeps time by the clock, not by the frame.",
   },
@@ -109,7 +96,6 @@ export const APPS: AppDef[] = [
     glyph: "☀",
     mode: "data",
     auth: "none",
-    section: "app",
     accent: "accent",
     blurb: "Now and the days ahead, anywhere. No account needed.",
   },
@@ -119,7 +105,6 @@ export const APPS: AppDef[] = [
     glyph: "📰",
     mode: "data",
     auth: "none",
-    section: "app",
     accent: "magenta",
     blurb: "Front pages from real papers — The Hindu, TOI, BBC and more.",
   },
@@ -129,7 +114,6 @@ export const APPS: AppDef[] = [
     glyph: "🗺",
     mode: "frame",
     auth: "none",
-    section: "app",
     accent: "mint",
     blurb: "Look anywhere up, drawn by OpenStreetMap inside this window.",
   },
@@ -139,7 +123,6 @@ export const APPS: AppDef[] = [
     glyph: "◐",
     mode: "data",
     auth: "github",
-    section: "app",
     accent: "accent-dim",
     blurb: "Your repositories, issues and pull requests. Approved on your phone.",
   },
@@ -149,7 +132,6 @@ export const APPS: AppDef[] = [
     glyph: "✉",
     mode: "data",
     auth: "google",
-    section: "app",
     accent: "lime",
     blurb: "Read your inbox here. Read-only — nothing can be sent or deleted.",
   },
@@ -159,88 +141,10 @@ export const APPS: AppDef[] = [
     glyph: "🌐",
     mode: "frame",
     auth: "none",
-    section: "app",
     accent: "text-muted",
     blurb: "Private browsing in this window. Nothing is kept when you leave.",
   },
 ];
-
-/*
- * The developer tools.
- *
- * Six, and every one a function of what you paste into it: no account, no
- * network, nothing kept. That is why these six and not the other eighteen
- * anyone might want — a tile needing a Kubernetes config or a database
- * password is a different kind of promise, and this section does not make it.
- *
- * They reuse the accents the apps above use, which the registry test permits
- * within a section. Colour tells a tile from the ones beside it, and these
- * are never beside those.
- */
-const TOOLS: AppDef[] = [
-  {
-    id: "json",
-    name: "JSON Tool",
-    glyph: "{}",
-    mode: "local",
-    auth: "none",
-    section: "tool",
-    accent: "accent",
-    blurb: "Format, check and explore JSON. Says where it broke, not only that it did.",
-  },
-  {
-    id: "yaml",
-    name: "YAML Tool",
-    glyph: "\u2261",
-    mode: "data",
-    auth: "none",
-    section: "tool",
-    accent: "warn",
-    blurb: "Tidy YAML, and convert it to JSON and back.",
-  },
-  {
-    id: "diff",
-    name: "Diff Viewer",
-    glyph: "\u00b1",
-    mode: "data",
-    auth: "none",
-    section: "tool",
-    accent: "mint",
-    blurb: "Compare two pieces of text line by line, with both sets of line numbers.",
-  },
-  {
-    id: "hash",
-    name: "Hash Generator",
-    glyph: "#",
-    mode: "data",
-    auth: "none",
-    section: "tool",
-    accent: "violet",
-    blurb: "MD5, SHA-1, SHA-256 and SHA-512, all at once.",
-  },
-  {
-    id: "jwt",
-    name: "JWT Decoder",
-    glyph: "\u2299",
-    mode: "local",
-    auth: "none",
-    section: "tool",
-    accent: "magenta",
-    blurb: "Read what is inside a token. Decodes only \u2014 it never claims one is valid.",
-  },
-  {
-    id: "regex",
-    name: "Regex Tester",
-    glyph: "*",
-    mode: "local",
-    auth: "none",
-    section: "tool",
-    accent: "lime",
-    blurb: "Try a pattern against text. Runs off the main thread, so it cannot hang.",
-  },
-];
-
-APPS.push(...TOOLS);
 
 export function findApp(id: string): AppDef | undefined {
   return APPS.find((app) => app.id === id);

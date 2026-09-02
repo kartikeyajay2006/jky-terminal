@@ -46,23 +46,18 @@ describe("Apps", () => {
    * out by it — structure carrying something true rather than eight tiles in
    * an undifferentiated rack.
    */
-  it("separates the apps that need an account, and the tools from both", () => {
+  it("separates the apps that need an account from the ones that do not", () => {
     render(<Apps />);
-    const groups = {
-      ready: screen.getByRole("list", { name: /ready to use/i }),
-      accounts: screen.getByRole("list", { name: /your accounts/i }),
-      tools: screen.getByRole("list", { name: /developer tools/i }),
-    };
+    const ready = screen.getByRole("list", { name: /ready to use/i });
+    const accounts = screen.getByRole("list", { name: /your accounts/i });
 
     for (const app of APPS) {
-      const where =
-        app.section === "tool" ? groups.tools : app.auth === "none" ? groups.ready : groups.accounts;
+      const where = app.auth === "none" ? ready : accounts;
       expect(within(where).getByText(app.name), `${app.name} is in the wrong group`)
         .toBeInTheDocument();
     }
-    expect(within(groups.accounts).getByText("GitHub")).toBeInTheDocument();
-    expect(within(groups.accounts).getByText("Gmail")).toBeInTheDocument();
-    expect(within(groups.tools).getByText("JSON Tool")).toBeInTheDocument();
+    expect(within(accounts).getByText("GitHub")).toBeInTheDocument();
+    expect(within(accounts).getByText("Gmail")).toBeInTheDocument();
   });
 
   it("shows every app exactly once", () => {

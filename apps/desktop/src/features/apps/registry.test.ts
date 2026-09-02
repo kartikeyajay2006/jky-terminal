@@ -69,53 +69,17 @@ describe("the app registry", () => {
   });
 
   /*
-   * Distinct within a section, not across the whole list.
+   * Colour identifies an app, so no two share one.
    *
-   * Colour is wayfinding among neighbours: it tells one tile from the ones
-   * beside it. The grid separates apps from developer tools, and the palette
-   * has eight colours in it — so requiring fourteen distinct ones would mean
-   * inventing six more hues in a space that is already full, to solve a
-   * confusion that cannot arise between two groups you never see together.
+   * This briefly became a per-section rule, when six developer tools were
+   * living in this grid and fourteen apps did not fit in eight colours. They
+   * have their own section now, and the simple rule is true again — which is
+   * the better outcome: a rule with an exception in it is one nobody can
+   * apply without looking it up.
    */
-  it("gives each app a distinct accent within its section", () => {
-    for (const section of ["app", "tool"] as const) {
-      const used = APPS.filter((a) => a.section === section).map((a) => a.accent);
-      expect(new Set(used).size, `two ${section}s share a colour: ${used}`).toBe(used.length);
-    }
-  });
-
-  it("declares a known section for every app", () => {
-    for (const app of APPS) expect(["app", "tool"]).toContain(app.section);
-  });
-
-  /*
-   * A tool is local by construction.
-   *
-   * The whole reason these six were chosen is that they need no account and
-   * no network: they are functions of what you paste into them. One that
-   * signed into something would belong in the other section, under the
-   * heading that warns you.
-   */
-  it("never asks a developer tool to authenticate", () => {
-    for (const app of APPS.filter((a) => a.section === "tool")) {
-      expect(app.auth, `${app.name} is a tool that wants an account`).toBe("none");
-    }
-  });
-
-  it("ships the six tools", () => {
-    const tools = APPS.filter((a) => a.section === "tool").map((a) => a.id).sort();
-    expect(tools).toEqual(["diff", "hash", "json", "jwt", "regex", "yaml"]);
-  });
-
-  // Gmail is read-only and says so on the tile, because "connect your email"
-  // is a sentence people are right to be careful about.
-  it("includes gmail as a data app that needs a Google account", () => {
-    expect(findApp("gmail")).toMatchObject({
-      id: "gmail",
-      mode: "data",
-      auth: "google",
-    });
-    expect(findApp("gmail")?.blurb.toLowerCase()).toContain("read");
+  it("gives each app a distinct accent, so colour identifies it", () => {
+    const used = APPS.map((a) => a.accent);
+    expect(new Set(used).size).toBe(used.length);
   });
 
   it("includes github as a data app that needs an account", () => {

@@ -9,6 +9,7 @@ import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
 import { Apps } from "./features/apps/Apps";
+import { Developer } from "./features/developer/Developer";
 import { Games } from "./features/games/Games";
 import { useOpenGame } from "./features/games/openStore";
 import { useNav } from "./app/navStore";
@@ -165,6 +166,10 @@ export function App() {
           keep polling behind a section nobody is looking at, and a timer would
           keep counting where it cannot be seen. */}
       {section === "apps" && <Apps />}
+      {/* Unmounted on leaving like the rest: the regex tester owns a worker,
+          and one left running behind a section nobody is looking at is a
+          thread nobody can see. */}
+      {section === "developer" && <Developer />}
 
       {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
     </Shell>

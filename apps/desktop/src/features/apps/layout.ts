@@ -55,9 +55,8 @@ export const STORAGE_KEY = "jky.apps.layout";
  * considered arrangement rather than an empty editor.
  */
 export const DEFAULT_GROUPS: { name: string; holds: (app: AppDef) => boolean }[] = [
-  { name: "Ready to use", holds: (app) => app.section === "app" && app.auth === "none" },
-  { name: "Your accounts", holds: (app) => app.section === "app" && app.auth !== "none" },
-  { name: "Developer tools", holds: (app) => app.section === "tool" },
+  { name: "Ready to use", holds: (app) => app.auth === "none" },
+  { name: "Your accounts", holds: (app) => app.auth !== "none" },
 ];
 
 let counter = 0;

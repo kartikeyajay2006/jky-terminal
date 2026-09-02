@@ -4,6 +4,7 @@ import { THEMES, applyTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { useOpenGame } from "../games/openStore";
 import { GAMES } from "../games/Games";
 import { SECTIONS } from "../dashboard/Dashboard";
+import { TOOLS } from "../developer/registry";
 import { useDashboard } from "../dashboard/dashboardStore";
 import { runShellCommand } from "../terminal/runShellCommand";
 import { byReminderTime, type CommandResult } from "../terminal/shellCommand";
@@ -53,6 +54,7 @@ export function buildCommands(): PaletteCommand[] {
     { id: "terminal", label: "Terminal" },
     { id: "assistant", label: "Assistant" },
     { id: "games", label: "Games" },
+    { id: "developer", label: "Developer Tools" },
     { id: "settings", label: "Settings" },
   ];
   for (const s of sections) {
@@ -71,6 +73,17 @@ export function buildCommands(): PaletteCommand[] {
       label: `Dashboard · ${panel.label}`,
       group: "Go to",
       run: () => nav.go("dashboard", panel.id),
+    });
+  }
+
+  // --- one entry per tool, so "json" finds the JSON tool rather than only
+  // the section holding it ---
+  for (const tool of TOOLS) {
+    out.push({
+      id: `go:developer:${tool.id}`,
+      label: `Developer Tools · ${tool.name}`,
+      group: "Go to",
+      run: () => nav.go("developer", tool.id),
     });
   }
 

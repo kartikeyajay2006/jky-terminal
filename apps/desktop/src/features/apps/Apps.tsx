@@ -25,12 +25,6 @@ import { Calculator } from "./calculator/Calculator";
 import { Browser } from "./browser/Browser";
 import { GitHub } from "./github/GitHub";
 import { Gmail } from "./gmail/Gmail";
-import { DiffTool } from "./tools/DiffTool";
-import { HashTool } from "./tools/HashTool";
-import { JsonTool } from "./tools/JsonTool";
-import { JwtTool } from "./tools/JwtTool";
-import { RegexTool } from "./tools/RegexTool";
-import { YamlTool } from "./tools/YamlTool";
 import { MapApp } from "./map/Map";
 import { News } from "./news/News";
 import { Timer } from "./timer/Timer";
@@ -89,18 +83,6 @@ function appBody(id: string): ReactNode {
       return <GitHub />;
     case "gmail":
       return <Gmail />;
-    case "json":
-      return <JsonTool />;
-    case "yaml":
-      return <YamlTool />;
-    case "diff":
-      return <DiffTool />;
-    case "hash":
-      return <HashTool />;
-    case "jwt":
-      return <JwtTool />;
-    case "regex":
-      return <RegexTool />;
     case "browser":
       return <Browser />;
     default:

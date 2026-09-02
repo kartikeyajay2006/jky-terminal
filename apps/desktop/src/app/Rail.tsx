@@ -14,6 +14,7 @@ export const RAIL_ITEMS: RailItem[] = [
   { id: "assistant", label: "Assistant", glyph: "✦" },
   { id: "games", label: "Games", glyph: "◈" },
   { id: "apps", label: "Apps", glyph: "⊞" },
+  { id: "developer", label: "Developer", glyph: "⌥" },
 ];
 
 /// Settings sits apart from the workspace destinations, pinned to the bottom
