@@ -5,7 +5,7 @@ import { FailureHelp } from "./FailureHelp";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import type { Platform, ProviderStatus } from "../../platform/types";
 
-const FAILURE = { code: 128, command: "git push" };
+const FAILURE = { code: 128, cwd: "/repo", command: "git push" };
 const OUTPUT = "! [rejected]  main -> main (non-fast-forward)";
 
 const provider = (id: string, requiresKey: boolean, connected: boolean): ProviderStatus => ({

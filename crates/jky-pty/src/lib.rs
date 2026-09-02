@@ -8,7 +8,7 @@ mod start_dir;
 
 pub use commands::{CommandSpec, commands, parse_accent, render_commands};
 pub use integration::{
-    EXIT_PREFIX, install_shell_integration, integration_dir, integration_env,
+    DONE_PREFIX, install_shell_integration, integration_dir, integration_env,
 };
 pub use launcher::{ASK_OSC, LAUNCHER_NAMES, install_launchers, launcher_dir, path_with};
 pub use registry::PtyRegistry;

@@ -7,7 +7,7 @@ import {
   HELP_KINDS,
   helpRequest,
   usableProviders,
-  type CommandFailure,
+  type CommandDone,
   type HelpKind,
 } from "./commandFailure";
 
@@ -30,7 +30,7 @@ export function FailureHelp({
   recentOutput,
   onDismiss,
 }: {
-  failure: CommandFailure;
+  failure: CommandDone;
   /** The tail of what this terminal has on screen. Called only when asked. */
   recentOutput: () => string;
   onDismiss: () => void;

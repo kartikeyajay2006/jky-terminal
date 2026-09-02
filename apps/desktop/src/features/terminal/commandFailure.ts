@@ -20,7 +20,7 @@ import type { ProviderStatus } from "../../platform/types";
  */
 
 /** Marker the shell's prompt hook emits inside an OSC 1337 sequence. */
-export const EXIT_PREFIX = "JKYExit=";
+export const DONE_PREFIX = "JKYDone=";
 
 /** The longest command line kept. Shown in the panel and sent to the model. */
 const MAX_COMMAND = 256;
@@ -28,29 +28,37 @@ const MAX_COMMAND = 256;
 /** The most output sent with a request. */
 const MAX_OUTPUT = 700;
 
-export interface CommandFailure {
-  /** Never zero: success is not reported. */
+/**
+ * A command that finished.
+ *
+ * Every command, not only the ones that failed — see `jky-pty::integration`
+ * for why that changed. Two things read this: the offer of help under a
+ * broken command, and the panel that shows what a working one produced.
+ */
+export interface CommandDone {
   code: number;
+  /** Where it ran. `ls` here is a different answer from `ls` there. */
+  cwd: string;
   command: string;
 }
 
 /** What the shell hook builds, kept here so both ends agree. Used by tests. */
-export function encodeFailure(code: number, command: string): string {
-  const bytes = new TextEncoder().encode(`${code}\n${command}`);
-  return EXIT_PREFIX + btoa(String.fromCharCode(...bytes));
+export function encodeDone(code: number, cwd: string, command: string): string {
+  const bytes = new TextEncoder().encode(`${code}\n${cwd}\n${command}`);
+  return DONE_PREFIX + btoa(String.fromCharCode(...bytes));
 }
 
 /**
- * Read a failure out of an OSC payload, or null if it is not one of ours.
+ * Read a completion out of an OSC payload, or null if it is not one of ours.
  *
  * OSC 1337 is shared, application-defined space and other programs put their
  * own things in it, so anything unrecognised is left alone rather than
  * guessed at — consuming it would swallow another program's sequence.
  */
-export function decodeFailure(payload: string): CommandFailure | null {
-  if (!payload.startsWith(EXIT_PREFIX)) return null;
+export function decodeDone(payload: string): CommandDone | null {
+  if (!payload.startsWith(DONE_PREFIX)) return null;
 
-  const encoded = payload.slice(EXIT_PREFIX.length).trim();
+  const encoded = payload.slice(DONE_PREFIX.length).trim();
   if (!encoded) return null;
 
   try {
@@ -58,16 +66,20 @@ export function decodeFailure(payload: string): CommandFailure | null {
     const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
     const text = new TextDecoder().decode(bytes);
 
-    const newline = text.indexOf("\n");
-    if (newline === -1) return null;
+    // Exit code, working directory, command — and the command may itself
+    // contain newlines, so it takes everything after the second one.
+    const first = text.indexOf("\n");
+    if (first === -1) return null;
+    const second = text.indexOf("\n", first + 1);
+    if (second === -1) return null;
 
-    const code = Number(text.slice(0, newline).trim());
-    // A zero here means something other than our hook is emitting this.
-    if (!Number.isInteger(code) || code === 0) return null;
+    const code = Number(text.slice(0, first).trim());
+    if (!Number.isInteger(code)) return null;
 
     return {
       code,
-      command: text.slice(newline + 1).trim().slice(0, MAX_COMMAND),
+      cwd: text.slice(first + 1, second),
+      command: text.slice(second + 1).trim().slice(0, MAX_COMMAND),
     };
   } catch {
     return null;
@@ -129,7 +141,7 @@ export interface HelpRequest {
  */
 export function helpRequest(
   kind: HelpKind,
-  failure: CommandFailure,
+  failure: CommandDone,
   output: string,
 ): HelpRequest {
   const tail = outputTail(output, MAX_OUTPUT);
@@ -153,4 +165,41 @@ export function helpRequest(
  */
 export function usableProviders(all: ProviderStatus[]): ProviderStatus[] {
   return all.filter((p) => p.connected || !p.requiresKey);
+}
+
+/**
+ * A command's own output, taken from the lines the terminal drew.
+ *
+ * The region between two completion reports holds three things: the prompt,
+ * the command as it was typed, and then what the command printed. Only the
+ * third is the output, and the first two have to go — a prompt at the top of
+ * a table is a row that is not one.
+ *
+ * The command is found rather than assumed to be on the first line, because
+ * prompts wrap and so do long commands. Lines are accumulated until the text
+ * typed appears in them; whatever follows is the output.
+ *
+ * When the command cannot be found the whole region is returned rather than a
+ * guess at how much to drop. A recogniser handed a prompt line usually
+ * refuses — the header is not where it expects — and refusing is the safe
+ * direction. Dropping the wrong number of lines is not.
+ */
+export function outputOf(region: string[], command: string): string {
+  const needle = command.trim();
+  if (needle === "") return region.join("\n").trim();
+
+  let seen = "";
+  for (let i = 0; i < region.length; i += 1) {
+    seen += region[i];
+    if (seen.includes(needle)) {
+      return region
+        .slice(i + 1)
+        .join("\n")
+        .replace(/^\n+|\s+$/g, "");
+    }
+    // Bounded: only enough tail is kept to span a wrap of the command.
+    seen = seen.slice(-Math.max(needle.length * 2, 256));
+  }
+
+  return region.join("\n").trim();
 }

@@ -13,12 +13,21 @@ import { isAppShortcut } from "../../app/shortcuts";
 import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFont";
 import { copyText, readText } from "./clipboard";
 import { decodeCommand, renderResult } from "./shellCommand";
-import { decodeFailure, type CommandFailure } from "./commandFailure";
+import { decodeDone, outputOf, type CommandDone } from "./commandFailure";
+import type { Completion } from "./recognise";
 import { runShellCommand } from "./runShellCommand";
 import type { SearchHits } from "./TerminalSearch";
 
 /** What a mounted terminal lets the surrounding UI do to it. */
 export interface TerminalControls {
+  /**
+   * Put text on the command line, as if it had been typed.
+   *
+   * Typed, not run: no newline is sent, so the person reads what is about to
+   * happen and presses Enter themselves. That is what makes a panel offering
+   * `docker stop` something you check rather than something you trust.
+   */
+  type: (text: string) => void;
   /**
    * The tail of what is on screen, for a request that has been asked for.
    *
@@ -67,7 +76,15 @@ export function useXterm(
    * an xterm and a pty, and re-running it because a handler identity changed
    * would tear down the terminal under the user.
    */
-  onFailure?: (failure: CommandFailure) => void,
+  onFailure?: (failure: CommandDone) => void,
+  /**
+   * Called when any command finishes, with what it printed.
+   *
+   * Separate from `onFailure` because they answer different questions: one
+   * asks whether to offer help, the other whether the output can be shown as
+   * something better than text.
+   */
+  onDone?: (completion: Completion) => void,
 ): TerminalControls {
   const term = useRef<Xterm | null>(null);
   const searchAddon = useRef<SearchAddon | null>(null);
@@ -75,6 +92,16 @@ export function useXterm(
   const [hits, setHits] = useState<SearchHits>(NO_HITS);
   const failureHandler = useRef(onFailure);
   failureHandler.current = onFailure;
+  const doneHandler = useRef(onDone);
+  doneHandler.current = onDone;
+  /**
+   * The buffer line the last command's output began after.
+   *
+   * A command's own output is the region between the previous report and
+   * this one, so exactly one number has to be remembered — and remembering
+   * it here means never scanning the scrollback for where a command started.
+   */
+  const mark = useRef(0);
 
   useEffect(() => {
     const node = container.current;
@@ -186,11 +213,28 @@ export function useXterm(
         return true;
       }
 
-      // The shell's prompt hook, reporting a command that failed. Only
-      // failures are ever sent, so anything decoded here is one.
-      const failure = decodeFailure(payload);
-      if (failure) {
-        failureHandler.current?.(failure);
+      // The shell's prompt hook, reporting a finished command — every one of
+      // them, not only the ones that failed.
+      const done = decodeDone(payload);
+      if (done) {
+        const buffer = xterm.buffer.active;
+        const end = buffer.baseY + buffer.cursorY;
+
+        // Everything drawn since the last report: the prompt, the command as
+        // it was typed, and then whatever the command printed.
+        const region: string[] = [];
+        for (let y = mark.current; y < end; y += 1) {
+          region.push(buffer.getLine(y)?.translateToString(true) ?? "");
+        }
+        mark.current = end;
+
+        if (done.code !== 0) failureHandler.current?.(done);
+        doneHandler.current?.({
+          command: done.command,
+          code: done.code,
+          cwd: done.cwd,
+          output: outputOf(region, done.command),
+        });
         return true;
       }
 
@@ -378,6 +422,10 @@ export function useXterm(
         lastQuery.current = "";
         searchAddon.current?.clearDecorations();
         setHits(NO_HITS);
+      },
+      type: (text) => {
+        const id = ptyRef.current;
+        if (id) void getPlatform().pty.write(id, text);
       },
       selection: () => term.current?.getSelection() ?? "",
       /*

@@ -25,19 +25,36 @@ use std::path::{Path, PathBuf};
 
 use crate::ASK_OSC;
 
-/// Marker introducing an exit report inside an OSC 1337 sequence.
-pub const EXIT_PREFIX: &str = "JKYExit=";
+/// Marker introducing a completion report inside an OSC 1337 sequence.
+pub const DONE_PREFIX: &str = "JKYDone=";
 
 /// Where the zsh startup files that hand control back live.
 pub fn integration_dir(config_dir: &Path) -> PathBuf {
     config_dir.join("shell")
 }
 
-/// The shell fragment that reports a failure, shared by both shells.
+/// The shell fragment that reports a finished command, shared by both shells.
+///
+/// **Every command, not only the ones that failed.** That is a reversal, and
+/// a deliberate one. When the only consumer was the offer of help under a
+/// broken command, staying silent on success was right: a terminal writing an
+/// escape sequence after every successful command was paying constantly for
+/// the one case in fifty that needed it.
+///
+/// It is not right any more. A finished command is now the moment the
+/// terminal decides whether its output can be shown as something better than
+/// text — and a command that succeeded is exactly the interesting case, since
+/// `ls`, `git log` and `docker ps` do not fail. Reporting only failures would
+/// mean the feature could never see the commands it exists for.
 ///
 /// `command -v base64` is not caution for its own sake: a machine without it
-/// is one where this feature does not work, and it must not also be one where
-/// the prompt prints an error after every command.
+/// is one where this does not work, and it must not also be one where the
+/// prompt prints an error after every command.
+///
+/// The working directory travels with it. Several things the terminal can do
+/// with a finished command need to know where it ran — `ls` in one directory
+/// is a different answer from `ls` in another, and a path shown without the
+/// directory it is relative to is a path you cannot act on.
 ///
 /// The command text is base64 before it goes near an OSC sequence. A command
 /// line is arbitrary text — quotes, semicolons, newlines, and the BEL that
@@ -46,11 +63,11 @@ pub fn integration_dir(config_dir: &Path) -> PathBuf {
 /// stream this app parses.
 fn report(command_expr: &str) -> String {
     format!(
-        "if [ $__jky_status -ne 0 ] && command -v base64 >/dev/null 2>&1; then \
+        "if command -v base64 >/dev/null 2>&1; then \
 printf '\\033]{osc};{prefix}%s\\007' \
-\"$(printf '%s\\n%s' \"$__jky_status\" \"{command_expr}\" | base64 | tr -d '\\n')\"; fi",
+\"$(printf '%s\\n%s\\n%s' \"$__jky_status\" \"$PWD\" \"{command_expr}\" | base64 | tr -d '\\n')\"; fi",
         osc = ASK_OSC,
-        prefix = EXIT_PREFIX,
+        prefix = DONE_PREFIX,
     )
 }
 
@@ -200,22 +217,37 @@ mod tests {
     #[test]
     fn the_report_is_carried_on_the_channel_the_app_already_listens_to() {
         assert!(bash_hook().contains(&format!("]{}", crate::ASK_OSC)));
-        assert!(bash_hook().contains(EXIT_PREFIX));
+        assert!(bash_hook().contains(DONE_PREFIX));
     }
 
     /*
-     * Nothing is sent when a command succeeds.
+     * Every command is reported, including the ones that worked.
      *
-     * Not an optimisation. A terminal that emitted a sequence after every
-     * successful command would be writing into the stream constantly for the
-     * benefit of the one case in fifty where something failed — and any shell
-     * or multiplexer that did not understand it would show the escape.
+     * This used to be the opposite, with a good reason: a terminal writing an
+     * escape after every successful command paid constantly for the one case
+     * in fifty that failed. The reason stopped applying when a finished
+     * command became the moment the terminal decides whether its output can
+     * be shown as something better than text — `ls`, `git log` and `docker
+     * ps` do not fail, and reporting only failures would mean never seeing
+     * the commands the feature exists for.
      */
+    // Where it ran travels with it: `ls` in one directory is a different
+    // answer from `ls` in another.
     #[test]
-    fn a_command_that_worked_reports_nothing() {
+    fn carries_the_directory_the_command_ran_in() {
         for hook in [bash_hook(), zsh_hook()] {
-            assert!(hook.contains("-eq 0") || hook.contains("== 0") || hook.contains("-ne 0"),
-                    "no exit-code guard in: {hook}");
+            assert!(hook.contains("$PWD"), "no working directory in: {hook}");
+        }
+    }
+
+    #[test]
+    fn reports_a_command_that_worked_as_well_as_one_that_did_not() {
+        for hook in [bash_hook(), zsh_hook()] {
+            assert!(
+                !hook.contains("-ne 0"),
+                "still reporting only failures: {hook}"
+            );
+            assert!(hook.contains("$__jky_status"), "the status is not carried: {hook}");
         }
     }
 
