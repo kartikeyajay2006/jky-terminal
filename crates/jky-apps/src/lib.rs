@@ -13,6 +13,7 @@
 pub mod browser;
 pub mod feeds;
 pub mod github;
+pub mod http;
 pub mod gmail;
 pub mod net;
 pub mod oauth;

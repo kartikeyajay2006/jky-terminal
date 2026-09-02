@@ -303,8 +303,54 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // may hand over. That bound is not politeness: hashing a hundred
         // megabytes would block a worker thread for as long as it took.
         "tools_diff".to_string(),
+        // The one developer-tool command that changes anything, and the only
+        // one anywhere in this section that can. It refuses pid 0 and pid 1
+        // outright — 0 means "every process in my group" on Unix and 1 is
+        // init, so either takes the session or the machine with it — and it
+        // writes to the audit log, because ending a process is something
+        // someone should be able to find afterwards. The confirmation is in
+        // the window, since it is a question for a person and a backend has
+        // nobody to ask.
+        "tools_end_process".to_string(),
+        // This process's environment, which is what a new terminal inherits.
+        // Not a running shell's: nothing outside a process can change that.
+        // Values whose names suggest a secret arrive as they are and are
+        // hidden by the panel, because the alternative is a tool that will
+        // not show you your own environment.
+        "tools_environment".to_string(),
         "tools_format_yaml".to_string(),
         "tools_hash".to_string(),
+        // Processor, memory, disks, uptime. Facts about the computer, taking
+        // no argument and reading nothing belonging to anyone.
+        "tools_machine".to_string(),
+        // Every process this user can see, sorted and cut in Rust — cutting
+        // before sorting would return whatever booted earliest, and sending
+        // thousands over IPC so the window could sort them would be sending
+        // thousands over IPC. The sort order is chosen from a list, so the
+        // window names an order and never an expression.
+        "tools_processes".to_string(),
+        // One HTTP request, and the tool that could most easily become
+        // something else: a command that sends wherever it is told is the
+        // general-purpose fetcher `connect-src 'self'` exists to prevent. So
+        // the scheme is checked, the method is chosen from a fixed list,
+        // header names and values are validated — a value with a line break
+        // in it is how one header becomes two — and both bodies are capped.
+        // The rules live in `jky_apps::http` beside the sending, so a second
+        // caller cannot apply three of the four.
+        "tools_request".to_string(),
+        // The system resolver, asked the same question everything else on
+        // this machine asks it. Addresses only: MX and TXT mean speaking DNS
+        // directly and choosing a server to believe, and a tool showing some
+        // record types while omitting others is worse than one that says
+        // which question it asked. The hostname is validated before it
+        // reaches the resolver.
+        "tools_resolve".to_string(),
+        // Loopback only, and there is no host argument — the decision is in
+        // `jky-system`, so there is nothing here for the window to supply and
+        // nothing to get wrong. Scanning a machine you do not own is a legal
+        // question in several countries and a terms question on every cloud.
+        // The range is bounded because every port is a connection attempt.
+        "tools_scan_ports".to_string(),
         "tools_yaml_to_json".to_string(),
         "vault_delete_secret".to_string(),
         "vault_has_secret".to_string(),

@@ -80,3 +80,132 @@ mod tests {
         assert!(err.contains("line"), "the position was lost: {err}");
     }
 }
+
+// ---------------------------------------------------------------------------
+// The machine
+// ---------------------------------------------------------------------------
+
+use jky_system::{Lookup, Machine, OpenPort, Proc};
+use jky_audit::{AuditEvent, AuditKind};
+use tauri::State;
+
+use crate::state::AppState;
+
+#[tauri::command]
+pub fn tools_machine(state: State<'_, AppState>) -> Result<Machine, String> {
+    let mut sampler = state
+        .sampler
+        .lock()
+        .map_err(|_| "the system readings are unavailable".to_string())?;
+    Ok(sampler.machine())
+}
+
+/// Every process, arranged.
+///
+/// Sorted and filtered in Rust rather than in the window, because the list is
+/// cut to a few hundred and cutting before sorting would hand back whatever
+/// booted earliest. Sending thousands of processes over IPC so the window
+/// could sort them would also be sending thousands of processes over IPC.
+#[tauri::command]
+pub fn tools_processes(
+    state: State<'_, AppState>,
+    sort: String,
+    search: String,
+) -> Result<Vec<Proc>, String> {
+    let order = match sort.as_str() {
+        "cpu" => jky_system::ProcSort::Cpu,
+        "memory" => jky_system::ProcSort::Memory,
+        "name" => jky_system::ProcSort::Name,
+        other => return Err(format!("{other} is not an order this sorts by")),
+    };
+    if search.len() > 200 {
+        return Err("that search is too long".into());
+    }
+
+    let mut sampler = state
+        .sampler
+        .lock()
+        .map_err(|_| "the system readings are unavailable".to_string())?;
+    Ok(jky_system::arrange(
+        sampler.processes(),
+        order,
+        &search,
+        jky_system::MAX_PROCS,
+    ))
+}
+
+/// Ask a process to stop.
+///
+/// The one command in this file that changes anything, and the only one in
+/// the developer tools that can. It is audited for that reason: ending a
+/// process is the kind of thing someone should be able to find afterwards,
+/// and the log is where this app records what it did on the user's behalf.
+///
+/// The window confirms first. That gate is in the panel rather than here
+/// because it is a question for a person, and a backend that asked would have
+/// nobody to ask.
+#[tauri::command]
+pub fn tools_end_process(state: State<'_, AppState>, pid: u32) -> Result<bool, String> {
+    // The two pids that are never a mistake worth making. 0 means "every
+    // process in my group" on Unix, and 1 is init — ending either takes the
+    // session or the machine with it.
+    if pid <= 1 {
+        return Err("that is not a process this will end".into());
+    }
+
+    let mut sampler = state
+        .sampler
+        .lock()
+        .map_err(|_| "the system readings are unavailable".to_string())?;
+
+    let ended = sampler.end(pid);
+    let _ = state.audit.append(AuditEvent::new(
+        AuditKind::CommandRun,
+        &format!("ended process {pid}: {}", if ended { "signalled" } else { "not found" }),
+    ));
+    Ok(ended)
+}
+
+#[tauri::command]
+pub fn tools_resolve(host: String) -> Result<Lookup, String> {
+    jky_system::resolve(&host)
+}
+
+/// Which ports on this machine are listening.
+///
+/// Loopback only, decided in `jky-system` and not negotiable from here: there
+/// is no host argument for the window to supply, so there is nothing to
+/// validate and nothing to get wrong.
+#[tauri::command]
+pub fn tools_scan_ports(from: u16, to: u16) -> Result<Vec<OpenPort>, String> {
+    jky_system::scan_local(from, to, std::time::Duration::from_millis(120))
+}
+
+#[tauri::command]
+pub fn tools_environment() -> Vec<jky_system::EnvVar> {
+    jky_system::environment()
+}
+
+/// Send one HTTP request.
+///
+/// The checks are in `jky_apps::http` rather than here, so the rules about
+/// what may be sent live with the sending and cannot be half-applied by a
+/// second caller.
+#[tauri::command]
+pub async fn tools_request(
+    state: State<'_, AppState>,
+    method: String,
+    url: String,
+    headers: Vec<(String, String)>,
+    body: Option<String>,
+) -> Result<jky_apps::http::Response, String> {
+    let request = jky_apps::http::Request { method, url, headers, body };
+    jky_apps::http::check(&request)?;
+
+    let _ = state.audit.append(AuditEvent::new(
+        AuditKind::ProviderRequest,
+        &format!("http tool: {} {}", request.method, request.url),
+    ));
+
+    jky_apps::http::send(&state.http, request).await
+}
