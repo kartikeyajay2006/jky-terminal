@@ -344,3 +344,387 @@
   flex-direction: column;
   gap: var(--s2);
 }
+
+/* ---- what a command turned out to be ------------------------------------ */
+
+/*
+ * The panel under a recognised command.
+ *
+ * Under the output rather than in place of it. The text is still above,
+ * untouched, and this can be dismissed — a terminal that swallowed what a
+ * command printed would be unusable the first time it got something wrong.
+ *
+ * It shares the terminal's left edge and its monospace, so it reads as part
+ * of the session rather than as a dialog that arrived.
+ */
+.capp {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  max-height: 46vh;
+  margin: var(--s2) var(--s3) var(--s3);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(120deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
+    var(--surface);
+  animation: jky-rise var(--motion-normal) var(--ease) both;
+  overflow: hidden;
+}
+
+.capp__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  flex: none;
+  padding: var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+}
+
+/* A small square in the accent, so the panel is recognisable at a glance as
+   the terminal's own rather than as something that floated in. */
+.capp__mark {
+  align-self: center;
+  width: 6px;
+  height: 6px;
+  border-radius: 1px;
+  background: var(--accent);
+}
+
+.capp__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.capp__sub {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.capp__dismiss {
+  margin-left: auto;
+  padding: 0 var(--s2);
+  border: 0;
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.capp__dismiss:hover {
+  color: var(--text);
+}
+
+.capp__body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* ---- table ---- */
+
+.capp__table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.capp__table th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  text-align: left;
+  color: var(--text-dim);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.capp__table td {
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-muted);
+  vertical-align: top;
+}
+
+.capp__table td[data-mono] {
+  font-family: var(--font-mono);
+}
+
+.capp__table [data-align="right"] {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.capp__table tbody tr:hover td {
+  background: var(--surface-raised);
+}
+
+/*
+ * A row's state, marked down its left edge.
+ *
+ * The words are in the row as well — "Up 2 hours", "Exited (137)" — because
+ * colour alone would not carry it for anyone who cannot see the difference.
+ */
+.capp__table tbody tr[data-tone] td:first-child {
+  border-left: 2px solid transparent;
+}
+
+.capp__table tbody tr[data-tone="good"] td:first-child { border-left-color: var(--mint); }
+.capp__table tbody tr[data-tone="warn"] td:first-child { border-left-color: var(--warn); }
+.capp__table tbody tr[data-tone="bad"] td:first-child { border-left-color: var(--danger); }
+.capp__table tbody tr[data-tone="muted"] td:first-child { border-left-color: var(--line-strong); }
+
+/* Dropped first when the panel is narrow: the columns that identify a row
+   stay, and the ones that describe it go. */
+@media (max-width: 62rem) {
+  .capp__table [data-secondary] {
+    display: none;
+  }
+}
+
+/* ---- meters ---- */
+
+.capp__meters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+}
+
+.capp__meter {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--s1) var(--s3);
+  align-items: baseline;
+}
+
+.capp__meter-label {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.capp__meter-note {
+  color: var(--text-dim);
+  font-size: 10px;
+}
+
+.capp__meter-figure {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.capp__bar {
+  grid-column: 1 / -1;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--line);
+  overflow: hidden;
+}
+
+.capp__bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width 600ms var(--ease);
+}
+
+.capp__bar-fill[data-hot] {
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capp__bar-fill {
+    transition: none;
+  }
+}
+
+/* ---- timeline ---- */
+
+.capp__timeline {
+  list-style: none;
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * A line down the left, with a dot per commit.
+ *
+ * The line is drawn by the entry rather than by a container, so the last one
+ * can stop it — a timeline that continues past its final entry is drawing a
+ * history that is not there.
+ */
+.capp__entry {
+  position: relative;
+  padding: 0 0 var(--s4) var(--s5);
+  border-left: 1px solid var(--line);
+}
+
+.capp__entry:last-child {
+  border-left-color: transparent;
+  padding-bottom: 0;
+}
+
+.capp__dot {
+  position: absolute;
+  left: -4px;
+  top: 4px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+.capp__entry-title {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.capp__entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s3);
+  margin-top: 2px;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.capp__entry-body {
+  margin: var(--s2) 0 0;
+  max-width: 80ch;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+/* ---- facts ---- */
+
+.capp__facts {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.capp__fact {
+  display: grid;
+  grid-template-columns: 6rem minmax(0, 1fr);
+  gap: var(--s3);
+  align-items: baseline;
+}
+
+.capp__fact dt {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.capp__fact dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+/* ---- json ---- */
+
+.capp__json {
+  margin: 0;
+  padding: var(--s3) var(--s4);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* ---- actions ---- */
+
+.capp__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+  padding: var(--s3) var(--s4);
+  border-top: 1px solid var(--line);
+}
+
+.capp__action {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--ground);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition:
+    border-color var(--motion-quick) var(--ease),
+    color var(--motion-quick) var(--ease);
+}
+
+.capp__action:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.capp__action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+.capp__key {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  background: var(--surface-raised);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+/* Says what pressing one actually does, because "Restart" that types
+   `docker restart api` is a different promise from one that runs it. */
+.capp__hint {
+  margin-left: auto;
+  color: var(--text-dim);
+  font-size: 11px;
+}

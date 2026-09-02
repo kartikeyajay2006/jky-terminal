@@ -3,7 +3,9 @@ import { useXterm } from "./useXterm";
 import { TerminalSearch } from "./TerminalSearch";
 import { TerminalMenu, type MenuPoint } from "./TerminalMenu";
 import { FailureHelp } from "./FailureHelp";
-import type { CommandFailure } from "./commandFailure";
+import { CommandApp } from "./CommandApp";
+import { recognise, type Recognised } from "./recognise";
+import type { CommandDone } from "./commandFailure";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 
@@ -20,8 +22,19 @@ export function Terminal({ tabId }: TerminalProps) {
    * Replaced rather than queued: a second failure is the one you are looking
    * at, and a stack of offers under a terminal would be worse than none.
    */
-  const [failure, setFailure] = useState<CommandFailure | null>(null);
-  const term = useXterm(container, tabId, setFailure);
+  const [failure, setFailure] = useState<CommandDone | null>(null);
+
+  /*
+   * What the last command turned out to be, if it turned out to be anything.
+   *
+   * Replaced rather than stacked: a panel per command would bury the terminal
+   * under its own history, and the one you want is the one you just ran.
+   */
+  const [found, setFound] = useState<Recognised | null>(null);
+
+  const term = useXterm(container, tabId, setFailure, (completion) => {
+    setFound(recognise(completion));
+  });
 
   const [searching, setSearching] = useState(false);
   const [menuAt, setMenuAt] = useState<MenuPoint | null>(null);
@@ -84,6 +97,27 @@ export function Terminal({ tabId }: TerminalProps) {
           recentOutput={() => term.recentOutput()}
           onDismiss={() => {
             setFailure(null);
+            term.focus();
+          }}
+        />
+      )}
+
+      {/* What the command turned out to be. Under the output rather than in
+          place of it: the text is still above, untouched, and this can be
+          dismissed. A terminal that swallowed what a command printed would be
+          unusable the first time it got something wrong. */}
+      {found && (
+        <CommandApp
+          found={found}
+          onRun={(command) => {
+            // Typed, not run. The person still presses Enter, and sees
+            // exactly what they are about to run.
+            term.type(command);
+            setFound(null);
+            term.focus();
+          }}
+          onDismiss={() => {
+            setFound(null);
             term.focus();
           }}
         />
