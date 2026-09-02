@@ -46,8 +46,25 @@ function asObject(json: string, what: string): Record<string, unknown> {
   return parsed as Record<string, unknown>;
 }
 
+/**
+ * What people actually paste, reduced to the token in it.
+ *
+ * Three things arrive attached to a real token and none of them is part of
+ * it: the word `Bearer` (from a header, a curl command, a network tab), the
+ * quotes around it (from a JSON field), and whitespace (from anything that
+ * wrapped it). Base64url has no whitespace in its alphabet, so removing it
+ * cannot lose anything — and refusing all three with "a JWT has three parts"
+ * is technically true and useless.
+ */
+function justTheToken(raw: string): string {
+  return raw
+    .replace(/^\s*(?:authorization\s*:)?\s*bearer\s+/i, "")
+    .replace(/\s+/g, "")
+    .replace(/^["']|["']$/g, "");
+}
+
 export function decodeJwt(token: string): JwtResult {
-  const parts = token.trim().split(".");
+  const parts = justTheToken(token).split(".");
   if (parts.length !== 3) {
     return { ok: false, message: "a JWT has three parts separated by dots" };
   }

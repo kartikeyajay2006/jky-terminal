@@ -231,7 +231,6 @@ export function createTauriPlatform(): Platform {
     hash: (text) => invoke<Hashes>("tools_hash", { text }),
     diff: (before, after) => invoke<Diff>("tools_diff", { before, after }),
     yamlToJson: (text) => invoke<string>("tools_yaml_to_json", { text }),
-    jsonToYaml: (text) => invoke<string>("tools_json_to_yaml", { text }),
     formatYaml: (text) => invoke<string>("tools_format_yaml", { text }),
   };
 

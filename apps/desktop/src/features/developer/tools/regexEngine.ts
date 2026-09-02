@@ -74,3 +74,35 @@ function describe(found: RegExpExecArray): RegexMatch {
     named: { ...found.groups },
   };
 }
+
+/** A run of text, and whether the pattern matched it. */
+export interface Segment {
+  text: string;
+  hit: boolean;
+}
+
+/**
+ * The text, split into what matched and what did not.
+ *
+ * Seeing *where* a pattern matched is most of what a regex tester is for. A
+ * list of matched strings tells you what was found; it does not tell you that
+ * the pattern swallowed the comma as well, or stopped one character short of
+ * what you meant. The text with the matches marked in it does.
+ *
+ * A zero-width match is skipped: it has a position but no characters, and
+ * marking it would highlight the character after it, which did not match.
+ */
+export function segments(text: string, matches: RegexMatch[]): Segment[] {
+  const out: Segment[] = [];
+  let at = 0;
+
+  for (const match of matches) {
+    if (match.text === "" || match.index < at) continue;
+    if (match.index > at) out.push({ text: text.slice(at, match.index), hit: false });
+    out.push({ text: match.text, hit: true });
+    at = match.index + match.text.length;
+  }
+
+  if (at < text.length) out.push({ text: text.slice(at), hit: false });
+  return out;
+}

@@ -3,10 +3,9 @@ import { getPlatform } from "../../../platform";
 import { ToolFrame, ToolInput, ToolOutput } from "./Shared";
 import { Examples, WhatFor } from "./Examples";
 
-type Action = "tidy" | "toJson" | "toYaml";
+type Action = "toJson" | "toYaml";
 
 const LABELS: Record<Action, string> = {
-  tidy: "Tidy",
   toJson: "To JSON",
   toYaml: "To YAML",
 };
@@ -34,12 +33,13 @@ export function YamlTool() {
     setError(null);
     try {
       const tools = getPlatform().tools;
+      // Both directions read the input with the YAML parser, because YAML is
+      // a superset of JSON and so it reads both. The alternative was a
+      // separate JSON-only path, which meant "To YAML" refused the YAML in
+      // the box — a button that only worked if you had already converted the
+      // thing you were asking it to convert.
       const result =
-        action === "tidy"
-          ? await tools.formatYaml(text)
-          : action === "toJson"
-            ? await tools.yamlToJson(text)
-            : await tools.jsonToYaml(text);
+        action === "toJson" ? await tools.yamlToJson(text) : await tools.formatYaml(text);
       setOut(result);
     } catch (e) {
       setOut("");
@@ -50,7 +50,7 @@ export function YamlTool() {
   }
 
   return (
-    <ToolFrame hint="Reads the document, then writes it back — so the output is what the input meant.">
+    <ToolFrame hint="Reads the document, then writes it back — so the output is what the input meant. Paste YAML or JSON; both buttons take either.">
       <WhatFor>
         <p>
           Tidy a YAML file, or turn it into JSON and back — reading it through
@@ -80,6 +80,12 @@ export function YamlTool() {
             load: () => setText("country: NO\nenabled: yes\nversion: 1.10\n"),
           },
           {
+            label: "Some JSON",
+            shows: "the same data as YAML — the buttons take either format",
+            load: () =>
+              setText('{"name":"web","replicas":3,"ports":[8080,8443],"env":{"DEBUG":false}}'),
+          },
+          {
             label: "Broken indentation",
             shows: "the parse error, with the line it stopped on",
             load: () => setText("services:\n  web:\n    ports: [80\n  db:\n"),
@@ -101,7 +107,7 @@ export function YamlTool() {
             {LABELS[action]}
           </button>
         ))}
-        <span className="tl__note">To YAML takes JSON in.</span>
+        <span className="tl__note">Either button takes either format.</span>
       </div>
 
       <ToolOutput label="Result" text={out} error={error} />

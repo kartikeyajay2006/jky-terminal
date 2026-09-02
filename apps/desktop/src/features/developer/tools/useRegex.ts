@@ -59,9 +59,40 @@ export function useRegex(makeWorker: () => Worker = defaultWorker) {
       generation.current += 1;
       const mine = generation.current;
 
-      const next = makeWorker();
+      let next: Worker;
+      try {
+        next = makeWorker();
+      } catch (e) {
+        // A worker that cannot be created is not something to fall back from
+        // by running the pattern here: the whole reason for the worker is
+        // that a runaway cannot be stopped on this thread. Say so instead.
+        setResult({
+          ok: false,
+          message:
+            "this tool needs a background worker, and one could not be started: " +
+            (e instanceof Error ? e.message : String(e)),
+        });
+        setBusy(false);
+        return;
+      }
+
       worker.current = next;
       setBusy(true);
+
+      // A worker that fails to load its script reports it here rather than
+      // by never answering — otherwise the only symptom is the two-second
+      // timeout, which blames the pattern for something that is not its
+      // fault.
+      next.onerror = () => {
+        if (mine !== generation.current) return;
+        generation.current += 1;
+        stop();
+        setResult({
+          ok: false,
+          message: "the background worker failed to start, so patterns cannot be run here",
+        });
+        setBusy(false);
+      };
 
       next.onmessage = (event: MessageEvent<RegexResult>) => {
         if (mine !== generation.current) return;

@@ -71,6 +71,44 @@ describe("decodeJwt", () => {
   });
 });
 
+describe("what people actually paste", () => {
+  /*
+   * A token copied out of a header comes with the word in front of it.
+   *
+   * "Bearer eyJ…" is what is on the clipboard nine times out of ten — from a
+   * curl command, from a browser's network tab, from a log line. Refusing it
+   * with "a JWT has three parts" is technically true and useless.
+   */
+  it("takes a token with Bearer in front of it", () => {
+    expect(decodeJwt(`Bearer ${SAMPLE}`).ok).toBe(true);
+    expect(decodeJwt(`bearer ${SAMPLE}`).ok).toBe(true);
+    expect(decodeJwt(`Authorization: Bearer ${SAMPLE}`).ok).toBe(true);
+  });
+
+  /*
+   * A token copied from a wrapped display has newlines in it.
+   *
+   * Logs wrap, terminals wrap, JSON viewers wrap. The whitespace is an
+   * artefact of how it was shown, never part of the token — base64url has no
+   * whitespace in its alphabet at all, so removing it can lose nothing.
+   */
+  it("takes a token that was wrapped across lines", () => {
+    const wrapped = SAMPLE.slice(0, 20) + "\n  " + SAMPLE.slice(20);
+    expect(decodeJwt(wrapped).ok).toBe(true);
+  });
+
+  it("takes one wrapped in quotes, as a JSON field would be", () => {
+    expect(decodeJwt(`"${SAMPLE}"`).ok).toBe(true);
+  });
+
+  // Still refuses what is genuinely not a token.
+  it("does not become so forgiving that it accepts anything", () => {
+    for (const junk of ["Bearer", "Bearer nope", '""', "a.b", "...."]) {
+      expect(decodeJwt(junk).ok, `${junk} was accepted`).toBe(false);
+    }
+  });
+});
+
 describe("claimNote", () => {
   const now = Date.parse("2026-09-02T00:00:00Z") / 1000;
 

@@ -562,3 +562,46 @@
   overflow: hidden;
   clip-path: inset(50%);
 }
+
+/*
+ * The searched text, with the matches marked in it.
+ *
+ * The `mark` element rather than a span with a colour: it means "highlighted
+ * because it is relevant to what you asked", which is exactly this, and a
+ * screen reader can say so.
+ */
+.tl__marked {
+  margin: 0;
+  max-height: 30vh;
+  overflow: auto;
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--ground);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--text-dim);
+}
+
+.tl__hit {
+  padding: 1px 1px;
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--app-accent) 32%, transparent);
+  color: var(--text);
+}
+
+/* The section holds a tab strip plus every open tool, only one shown. */
+.dev-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.dev-shell > .dev {
+  flex: 1;
+  min-height: 0;
+}

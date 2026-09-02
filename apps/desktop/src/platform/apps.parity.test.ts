@@ -186,7 +186,7 @@ describe("apps adapter parity", () => {
     });
 
     it("the mock offers the whole tools surface", () => {
-      for (const call of ["hash", "diff", "yamlToJson", "jsonToYaml", "formatYaml"] as const) {
+      for (const call of ["hash", "diff", "yamlToJson", "formatYaml"] as const) {
         expect(typeof web.tools[call], `tools.${call} is missing`).toBe("function");
       }
     });

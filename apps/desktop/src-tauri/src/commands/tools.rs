@@ -42,12 +42,6 @@ pub fn tools_yaml_to_json(text: String) -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn tools_json_to_yaml(text: String) -> Result<String, String> {
-    bounded(&text)?;
-    jky_tools::json_to_yaml(&text).map_err(|e| e.to_string())
-}
-
-#[tauri::command]
 pub fn tools_format_yaml(text: String) -> Result<String, String> {
     bounded(&text)?;
     jky_tools::format_yaml(&text).map_err(|e| e.to_string())

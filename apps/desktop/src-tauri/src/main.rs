@@ -35,7 +35,6 @@ fn main() {
             tools::tools_diff,
             tools::tools_format_yaml,
             tools::tools_hash,
-            tools::tools_json_to_yaml,
             tools::tools_yaml_to_json,
             pty::pty_spawn,
             pty::pty_attach,

@@ -805,7 +805,6 @@ export function createWebPlatform(): Platform {
     hash: needsDesktop,
     diff: needsDesktop,
     yamlToJson: needsDesktop,
-    jsonToYaml: needsDesktop,
     formatYaml: needsDesktop,
   };
 

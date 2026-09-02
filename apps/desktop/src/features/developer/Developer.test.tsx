@@ -95,7 +95,7 @@ describe("Developer", () => {
    * A workbench that resets every time you glance at the terminal is one you
    * stop using for anything that takes two visits.
    */
-  it("comes back to the tool you were using", async () => {
+  it("comes back to the tools you had open", async () => {
     const user = userEvent.setup();
     const view = render(<Developer />);
     await open(user, "Diff");
@@ -106,8 +106,11 @@ describe("Developer", () => {
   });
 
   // A stored id from a version that had a tool this one does not.
-  it("shows the board when the stored tool is gone", () => {
-    localStorage.setItem("jky.developer.tool", '"a-tool-that-was-removed"');
+  it("shows the board when a stored tool is gone", () => {
+    localStorage.setItem(
+      "jky.developer.session",
+      JSON.stringify({ open: ["a-tool-that-was-removed"], active: "a-tool-that-was-removed" }),
+    );
     render(<Developer />);
     expect(screen.getByRole("region", { name: /developer tools/i })).toBeInTheDocument();
   });
@@ -177,6 +180,95 @@ describe("Developer", () => {
 
     const box = screen.getByRole("textbox", { name: /json/i }) as HTMLTextAreaElement;
     expect(box.value).toContain("users");
+  });
+
+  describe("more than one at a time", () => {
+    const tabs = () => screen.getByRole("tablist", { name: /open tools/i });
+
+    /*
+     * The same as Apps, and for the same reason: comparing two things is the
+     * ordinary case here. Formatting the JSON you are about to diff, hashing
+     * the file you are checking against a token — being sent back to the
+     * board between each is a step nobody asked for.
+     */
+    it("keeps the first tool open when a second is opened", async () => {
+      const user = userEvent.setup();
+      render(<Developer />);
+      await open(user, "JSON");
+      await user.click(screen.getByRole("button", { name: /all tools/i }));
+      await open(user, "Hash");
+
+      expect(within(tabs()).getByRole("tab", { name: /json/i })).toBeInTheDocument();
+      expect(within(tabs()).getByRole("tab", { name: /hash/i })).toBeInTheDocument();
+    });
+
+    it("switches between them by their tabs", async () => {
+      const user = userEvent.setup();
+      render(<Developer />);
+      await open(user, "JSON");
+      await user.click(screen.getByRole("button", { name: /all tools/i }));
+      await open(user, "Hash");
+
+      await user.click(within(tabs()).getByRole("tab", { name: /json/i }));
+      expect(screen.getByRole("textbox", { name: /json/i })).toBeInTheDocument();
+    });
+
+    /*
+     * What you typed is still there when you come back.
+     *
+     * The whole point of two being open: a tool that forgot its input on
+     * every switch would make the tabs decoration.
+     */
+    it("keeps what was typed in a tool you switched away from", async () => {
+      const user = userEvent.setup();
+      render(<Developer />);
+      await open(user, "JSON");
+      await user.click(screen.getByRole("textbox", { name: /json/i }));
+      await user.paste('{"kept":true}');
+
+      await user.click(screen.getByRole("button", { name: /all tools/i }));
+      await open(user, "Hash");
+      await user.click(within(tabs()).getByRole("tab", { name: /json/i }));
+
+      const box = screen.getByRole("textbox", { name: /json/i }) as HTMLTextAreaElement;
+      expect(box.value).toContain("kept");
+    });
+
+    it("closes one and stays in the other", async () => {
+      const user = userEvent.setup();
+      render(<Developer />);
+      await open(user, "JSON");
+      await user.click(screen.getByRole("button", { name: /all tools/i }));
+      await open(user, "Hash");
+
+      const tab = within(tabs()).getByRole("tab", { name: /json/i });
+      tab.focus();
+      await user.keyboard("{Delete}");
+
+      expect(within(tabs()).queryByRole("tab", { name: /json/i })).not.toBeInTheDocument();
+      expect(screen.getByRole("textbox", { name: /text/i })).toBeInTheDocument();
+    });
+
+    it("goes back to the board when the last one closes", async () => {
+      const user = userEvent.setup();
+      render(<Developer />);
+      await open(user, "JSON");
+
+      const tab = within(tabs()).getByRole("tab", { name: /json/i });
+      tab.focus();
+      await user.keyboard("{Delete}");
+
+      expect(screen.getByRole("region", { name: /developer tools/i })).toBeInTheDocument();
+    });
+
+    // Its own session, so closing a tool does not close an app.
+    it("keeps its open tools apart from the open apps", async () => {
+      const user = userEvent.setup();
+      render(<Developer />);
+      await open(user, "JSON");
+      expect(localStorage.getItem("jky.developer.session")).not.toBeNull();
+      expect(localStorage.getItem("jky.apps.session")).toBeNull();
+    });
   });
 
   // The palette can ask for a named tool; the request survives the switch.

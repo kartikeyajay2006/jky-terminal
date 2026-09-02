@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { TileBoard } from "../../components/TileBoard";
+import { TabStrip } from "../../components/TabStrip";
+import {
+  closeIn,
+  loadSession,
+  openIn,
+  saveSession,
+  showBoard,
+  type Session,
+} from "../../lib/boardSession";
 import { useNav } from "../../app/navStore";
 import type { GroupSpec } from "../../lib/tileLayout";
 import { DiffTool } from "./tools/DiffTool";
@@ -11,7 +20,7 @@ import { YamlTool } from "./tools/YamlTool";
 import { TOOLS, findTool, type ToolDef } from "./registry";
 import "./Developer.css";
 
-const TOOL_KEY = "jky.developer.tool";
+const SESSION_KEY = "jky.developer.session";
 
 /** Where this board keeps its arrangement. Its own key, not the Apps one. */
 export const DEV_KEY = "jky.developer.layout";
@@ -56,21 +65,6 @@ function body(id: string) {
   }
 }
 
-/** The tool showing when this last closed, if it still exists. */
-function remembered(): string | null {
-  try {
-    const raw = localStorage.getItem(TOOL_KEY);
-    if (raw) {
-      const id: unknown = JSON.parse(raw);
-      if (typeof id === "string" && findTool(id)) return id;
-    }
-  } catch {
-    // Unreadable storage, or an id from a version that had a tool this one
-    // does not. Either way, start at the board.
-  }
-  return null;
-}
-
 /**
  * The Developer Tools section.
  *
@@ -85,18 +79,18 @@ function remembered(): string | null {
  * two visits.
  */
 export function Developer() {
-  const [current, setCurrent] = useState<string | null>(remembered);
+  const [session, setSession] = useState<Session>(() =>
+    loadSession(SESSION_KEY, (id) => findTool(id) !== undefined),
+  );
 
   useEffect(() => {
-    try {
-      localStorage.setItem(TOOL_KEY, JSON.stringify(current));
-    } catch {
-      // Preference lost; the tools still work.
-    }
-  }, [current]);
+    saveSession(SESSION_KEY, session);
+  }, [session]);
+
+  const { open: openTools, active } = session;
 
   const open = useCallback((id: string) => {
-    if (findTool(id)) setCurrent(id);
+    if (findTool(id)) setSession((s) => openIn(s, id));
   }, []);
 
   // The palette can ask for a named tool. The request is left in the store
@@ -107,68 +101,100 @@ export function Developer() {
     if (wanted) open(wanted);
   }, [pending, open]);
 
-  const tool = current ? findTool(current) : undefined;
-
-  if (!tool) {
-    return (
-      <div className="dev">
-        <TileBoard
-          items={TOOLS.map((entry) => ({
-            ...entry,
-            accent: entry.accent,
-            // Where the work happens, which is what explains a pause.
-            badge: entry.backend === "rust" ? "runs in Rust" : undefined,
-          }))}
-          label="Developer Tools"
-          groups={DEV_GROUPS}
-          storageKey={DEV_KEY}
-          onOpen={open}
-          header={({ shown, hidden }) => (
-            <>
-              <p className="board__eyebrow">
-                <span>{shown} tools</span>
-                <span className="board__eyebrow-sep" aria-hidden="true">
-                  ·
-                </span>
-                <span>no account, no key, no network</span>
-                {hidden > 0 && (
-                  <>
-                    <span className="board__eyebrow-sep" aria-hidden="true">
-                      ·
-                    </span>
-                    <span>{hidden} hidden</span>
-                  </>
-                )}
-              </p>
-              <h1 className="board__title">Developer Tools</h1>
-              <p className="board__lede">
-                Everything here is a function of what you paste into it. Nothing is sent
-                anywhere, nothing is stored, and each one opens with a worked example you can
-                load and take apart.
-              </p>
-            </>
-          )}
-        />
-      </div>
-    );
-  }
+  const current = active ? findTool(active) : undefined;
 
   return (
-    <div className="dev dev--open" data-tone={tool.tone}>
-      <header className="dev__bar">
-        <button type="button" className="dev__back" onClick={() => setCurrent(null)}>
-          <span aria-hidden="true">←</span> All tools
-        </button>
-        <h1 className="dev__heading">
-          <span className="dev__heading-glyph" aria-hidden="true">
-            {tool.glyph}
-          </span>
-          {tool.name}
-        </h1>
-        <p className="dev__blurb">{tool.blurb}</p>
-      </header>
+    <div className="dev-shell">
+      <TabStrip
+        label="Open tools"
+        tabs={openTools.flatMap((id) => {
+          const tool = findTool(id);
+          return tool ? [{ id, name: tool.name, glyph: tool.glyph, accent: tool.accent }] : [];
+        })}
+        activeId={active}
+        onSelect={(id) => setSession((s) => ({ ...s, active: id }))}
+        onClose={(id) => setSession((s) => closeIn(s, id))}
+        onShowBoard={() => setSession(showBoard)}
+        addLabel="Open another tool"
+      />
 
-      <div className="dev__panel">{body(tool.id)}</div>
+      {!current && (
+        <div className="dev">
+          <TileBoard
+            items={TOOLS.map((entry) => ({
+              ...entry,
+              accent: entry.accent,
+              // Where the work happens, which is what explains a pause.
+              badge: entry.backend === "rust" ? "runs in Rust" : undefined,
+            }))}
+            label="Developer Tools"
+            groups={DEV_GROUPS}
+            storageKey={DEV_KEY}
+            openIds={openTools}
+            onOpen={open}
+            header={({ shown, hidden }) => (
+              <>
+                <p className="board__eyebrow">
+                  <span>{shown} tools</span>
+                  <span className="board__eyebrow-sep" aria-hidden="true">
+                    ·
+                  </span>
+                  <span>no account, no key, no network</span>
+                  {hidden > 0 && (
+                    <>
+                      <span className="board__eyebrow-sep" aria-hidden="true">
+                        ·
+                      </span>
+                      <span>{hidden} hidden</span>
+                    </>
+                  )}
+                </p>
+                <h1 className="board__title">Developer Tools</h1>
+                <p className="board__lede">
+                  Everything here is a function of what you paste into it. Nothing is sent
+                  anywhere, nothing is stored, and each one opens with a worked example you can
+                  load and take apart.
+                </p>
+              </>
+            )}
+          />
+        </div>
+      )}
+
+      {/* Every open tool stays mounted; only the active one is shown. Hiding
+          rather than unmounting is the whole point of two being open — what
+          you typed into one is still there when you come back to it. */}
+      {openTools.map((id) => {
+        const tool = findTool(id);
+        if (!tool) return null;
+        return (
+          <div
+            key={id}
+            className="dev dev--open"
+            hidden={active !== id}
+            data-tone={tool.tone}
+          >
+            <header className="dev__bar">
+              <button
+                type="button"
+                className="dev__back"
+                onClick={() => setSession(showBoard)}
+              >
+                <span aria-hidden="true">←</span> All tools
+              </button>
+              <h1 className="dev__heading">
+                <span className="dev__heading-glyph" aria-hidden="true">
+                  {tool.glyph}
+                </span>
+                {tool.name}
+              </h1>
+              <p className="dev__blurb">{tool.blurb}</p>
+            </header>
+
+            <div className="dev__panel">{body(tool.id)}</div>
+          </div>
+        );
+      })}
     </div>
   );
 }

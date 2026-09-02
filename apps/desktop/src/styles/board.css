@@ -426,3 +426,120 @@
     transform: none;
   }
 }
+
+/* ---- the tabs above an open board ---- */
+
+/* ---- open apps ---- */
+
+.board__tabstrip {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s1);
+  flex: none;
+  padding: var(--s2) var(--s3) 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--line);
+  background: var(--ground);
+}
+
+.board__tabs {
+  display: flex;
+  align-items: stretch;
+  gap: var(--s1);
+}
+
+.board__tab {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  flex: none;
+  padding: var(--s2) var(--s2) var(--s2) var(--s3);
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  color: var(--text-dim);
+  font: inherit;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.board__tab[aria-selected="true"] {
+  background: var(--surface);
+  border-color: var(--line);
+}
+
+/* The app's own colour along the top of its tab, so a strip reads as the same
+   five colours as the grid rather than five identical boxes. */
+
+.board__tab[aria-selected="true"]::before {
+  content: "";
+  position: absolute;
+  inset: -1px 0 auto 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--app-accent);
+}
+
+.board__tab[aria-selected="true"] {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.board__tab:hover {
+  color: var(--text);
+}
+
+.board__tab-glyph {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.board__tab-close {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 14px;
+  line-height: 1;
+}
+
+.board__tab-close:hover {
+  background: var(--line);
+  color: var(--danger);
+}
+
+.board__tab-add {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1;
+}
+
+.board__tab-add {
+  align-self: center;
+  margin-left: var(--s1);
+  border: 1px dashed var(--line-strong);
+}
+
+.board__tab-add:hover {
+  color: var(--text);
+  border-color: var(--text-dim);
+}
+
+.board__tab:focus-visible,
+.board__tab-add:focus-visible {
+  outline: none;
+  border-radius: 4px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--app-accent) 24%, transparent);
+}

@@ -2,7 +2,18 @@ import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { AppSwitcher } from "./AppSwitcher";
 import { APPS, findApp } from "./registry";
 import { TileBoard } from "../../components/TileBoard";
+import { TabStrip } from "../../components/TabStrip";
+import {
+  closeIn,
+  loadSession,
+  openIn,
+  saveSession,
+  showBoard,
+  type Session,
+} from "../../lib/boardSession";
 import { APP_GROUPS, APPS_KEY } from "./board";
+
+const SESSION_KEY = "jky.apps.session";
 import { Calculator } from "./calculator/Calculator";
 import { Browser } from "./browser/Browser";
 import { GitHub } from "./github/GitHub";
@@ -13,34 +24,6 @@ import { Timer } from "./timer/Timer";
 import { Weather } from "./weather/Weather";
 import { useNav } from "../../app/navStore";
 import "./Apps.css";
-
-/** Which apps are open, and which one is on screen. */
-interface Session {
-  open: string[];
-  /** Null means the grid is showing; the open apps stay open behind it. */
-  active: string | null;
-}
-
-const SESSION_KEY = "jky.apps.session";
-
-function loadSession(): Session {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (raw) {
-      const parsed: unknown = JSON.parse(raw);
-      if (typeof parsed === "object" && parsed !== null) {
-        // Filtered against the registry, so an app removed in a later version
-        // does not leave a tab that opens nothing.
-        const open = ((parsed as Session).open ?? []).filter((id) => findApp(id));
-        const active = (parsed as Session).active;
-        return { open, active: active && open.includes(active) ? active : null };
-      }
-    }
-  } catch {
-    // Storage throws in a private window; an empty session is a fine default.
-  }
-  return { open: [], active: null };
-}
 
 /**
  * The body of one app.
@@ -87,7 +70,9 @@ function appBody(id: string): ReactNode {
  * nothing runs while Apps is not the place you are.
  */
 export function Apps() {
-  const [session, setSession] = useState<Session>(loadSession);
+  const [session, setSession] = useState<Session>(() =>
+    loadSession(SESSION_KEY, (id) => findApp(id) !== undefined),
+  );
   const [switching, setSwitching] = useState(false);
 
   const { open, active } = session;
@@ -95,7 +80,7 @@ export function Apps() {
 
   useEffect(() => {
     try {
-      localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+      saveSession(SESSION_KEY, session);
     } catch {
       // Preference lost; the apps still work.
     }
@@ -103,15 +88,12 @@ export function Apps() {
 
   /** Open an app, or bring it forward when it already is. */
   const openApp = useCallback((id: string) => {
-    setSession((s) => ({
-      open: s.open.includes(id) ? s.open : [...s.open, id],
-      active: id,
-    }));
+    setSession((s) => openIn(s, id));
     setSwitching(false);
   }, []);
 
   const showGrid = useCallback(() => {
-    setSession((s) => ({ ...s, active: null }));
+    setSession(showBoard);
   }, []);
 
   // The palette can ask for a named app; the request is left in the store for
@@ -140,75 +122,23 @@ export function Apps() {
   }, [current]);
 
   function closeApp(id: string) {
-    setSession((s) => {
-      const open = s.open.filter((x) => x !== id);
-      if (s.active !== id) return { open, active: s.active };
-      // Closing what you are looking at moves to a neighbour rather than
-      // dropping you back to the grid with other apps still open.
-      const wasAt = s.open.indexOf(id);
-      const next = open[Math.min(wasAt, open.length - 1)] ?? null;
-      return { open, active: next };
-    });
+    setSession((s) => closeIn(s, id));
   }
 
   return (
     <div className="apps-shell">
-      {open.length > 0 && (
-        <div className="apps__tabstrip">
-          <div className="apps__tabs" role="tablist" aria-label="Open apps">
-            {open.map((id) => {
-              const app = findApp(id);
-              if (!app) return null;
-              return (
-                // A tablist may contain only role=tab elements — not a wrapper
-                // with a second button in it. So the close affordance lives
-                // inside the tab, the same deletable-tabs pattern the terminal
-                // tabs already follow: a decorative glyph for the mouse, and
-                // Delete/Backspace for the keyboard, which aria-keyshortcuts
-                // advertises to assistive technology.
-                <button
-                  key={id}
-                  type="button"
-                  role="tab"
-                  aria-selected={active === id}
-                  aria-keyshortcuts="Delete"
-                  className="apps__tab"
-                  style={{ ["--app-accent" as string]: `var(--${app.accent})` }}
-                  onClick={(e) => {
-                    if ((e.target as HTMLElement).dataset.close === "true") closeApp(id);
-                    else setSession((s) => ({ ...s, active: id }));
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Delete" || e.key === "Backspace") {
-                      e.preventDefault();
-                      closeApp(id);
-                    }
-                  }}
-                >
-                  <span className="apps__tab-glyph" aria-hidden="true">
-                    {app.glyph}
-                  </span>
-                  <span className="apps__tab-name">{app.name}</span>
-                  <span className="apps__tab-close" data-close="true" aria-hidden="true">
-                    ×
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            className="apps__tab-add"
-            // Not "All apps": the header already has one of those, and two
-            // controls with the same name is ambiguous to a screen reader as
-            // well as to a test.
-            aria-label="Open another app"
-            onClick={showGrid}
-          >
-            +
-          </button>
-        </div>
-      )}
+      <TabStrip
+        label="Open apps"
+        tabs={open.flatMap((id) => {
+          const app = findApp(id);
+          return app ? [{ id, name: app.name, glyph: app.glyph, accent: app.accent }] : [];
+        })}
+        activeId={active}
+        onSelect={(id) => setSession((s) => ({ ...s, active: id }))}
+        onClose={closeApp}
+        onShowBoard={showGrid}
+        addLabel="Open another app"
+      />
 
       {!current && <AppGrid onOpen={openApp} openIds={open} />}
 

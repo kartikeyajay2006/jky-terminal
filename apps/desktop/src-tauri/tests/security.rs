@@ -305,7 +305,6 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "tools_diff".to_string(),
         "tools_format_yaml".to_string(),
         "tools_hash".to_string(),
-        "tools_json_to_yaml".to_string(),
         "tools_yaml_to_json".to_string(),
         "vault_delete_secret".to_string(),
         "vault_has_secret".to_string(),
@@ -413,6 +412,39 @@ fn csp_connect_src_permits_no_external_origin() {
             "SECURITY: CSP connect-src allows '{token}'. The webview must not be able to \
              reach any external origin — that is what stops a compromised frontend from \
              exfiltrating the user's API key. See spec §4.2.2."
+        );
+    }
+}
+
+/*
+ * A worker may be loaded from this app and from nowhere else.
+ *
+ * The regex tester runs in one, which is the only way to stop a pattern that
+ * will not finish. `worker-src` is what permits that — and it has to be as
+ * narrow as `script-src`, because a worker is code and a worker from
+ * somewhere else is somebody else's code running with this app's origin.
+ */
+#[test]
+fn a_worker_may_only_come_from_this_app() {
+    let conf: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(crate_root().join("tauri.conf.json")).unwrap())
+            .expect("tauri.conf.json is valid JSON");
+    let csp = conf["app"]["security"]["csp"]
+        .as_str()
+        .expect("SECURITY: no CSP is configured");
+
+    let directive = csp
+        .split(';')
+        .map(str::trim)
+        .find(|d| d.starts_with("worker-src"))
+        .expect("SECURITY: CSP defines no worker-src, so a worker falls back to script-src");
+
+    const ALLOWED: &[&str] = &["worker-src", "'self'", "blob:"];
+    for token in directive.split_whitespace() {
+        assert!(
+            ALLOWED.contains(&token),
+            "SECURITY: CSP worker-src allows '{token}'. A worker is code, and one from \
+             anywhere but this app is somebody else's code running as this app."
         );
     }
 }

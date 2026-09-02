@@ -36,9 +36,6 @@ function withTools(over: Partial<Platform["tools"]> = {}): Platform {
       async yamlToJson() {
         return '{\n  "a": 1\n}';
       },
-      async jsonToYaml() {
-        return "a: 1\n";
-      },
       async formatYaml() {
         return "a: 1\n";
       },
@@ -233,11 +230,19 @@ describe("HashTool", () => {
 });
 
 describe("YamlTool", () => {
-  it("tidies what is typed", async () => {
+  /*
+   * Both buttons take either format.
+   *
+   * "To YAML" used to demand JSON, so with YAML in the box — which is what
+   * the tool is for — it answered "that is not valid JSON" every time. YAML
+   * is a superset of JSON, so one parser reads both and the question does not
+   * arise.
+   */
+  it("writes YAML back from YAML", async () => {
     const user = typist();
     render(<YamlTool />);
     await user.type(screen.getByRole("textbox", { name: /yaml/i }), "a:  1");
-    await user.click(screen.getByRole("button", { name: /tidy/i }));
+    await user.click(screen.getByRole("button", { name: /to yaml/i }));
 
     // Scoped to the output: the input box holds text of its own, and an
     // unscoped match would pass whether or not anything came back.
@@ -246,6 +251,15 @@ describe("YamlTool", () => {
     await waitFor(() =>
       expect(document.querySelector(".tl__out")?.textContent).toMatch(/a: 1/),
     );
+  });
+
+  it("writes YAML back from JSON, without being told which it is", async () => {
+    const user = typist();
+    render(<YamlTool />);
+    await user.click(screen.getByRole("textbox", { name: /yaml/i }));
+    await user.paste('{"a": 1}');
+    await user.click(screen.getByRole("button", { name: /to yaml/i }));
+    await waitFor(() => expect(document.querySelector(".tl__out")?.textContent).toMatch(/a: 1/));
   });
 
   it("converts to JSON", async () => {
@@ -267,7 +281,7 @@ describe("YamlTool", () => {
     const user = typist();
     render(<YamlTool />);
     await user.type(screen.getByRole("textbox", { name: /yaml/i }), "bad");
-    await user.click(screen.getByRole("button", { name: /tidy/i }));
+    await user.click(screen.getByRole("button", { name: /to yaml/i }));
     expect(await screen.findByRole("alert")).toHaveTextContent(/line 2/i);
   });
 });

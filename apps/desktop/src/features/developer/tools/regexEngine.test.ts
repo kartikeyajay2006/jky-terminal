@@ -1,5 +1,48 @@
 import { describe, expect, it } from "vitest";
-import { runRegex, FLAGS } from "./regexEngine";
+import { runRegex, segments, FLAGS } from "./regexEngine";
+
+describe("segments", () => {
+  /*
+   * Seeing where a pattern matched is most of what a regex tester is for.
+   *
+   * A list of matched strings tells you what was found; it does not tell you
+   * that the pattern swallowed the comma too, or stopped one character short.
+   * The text with the matches marked in it does.
+   */
+  it("splits the text into what matched and what did not", () => {
+    const out = segments("xabyab", [
+      { text: "ab", index: 1, groups: [], named: {} },
+      { text: "ab", index: 4, groups: [], named: {} },
+    ]);
+    expect(out).toEqual([
+      { text: "x", hit: false },
+      { text: "ab", hit: true },
+      { text: "y", hit: false },
+      { text: "ab", hit: true },
+    ]);
+  });
+
+  it("marks a match at the very start and the very end", () => {
+    expect(segments("ab", [{ text: "ab", index: 0, groups: [], named: {} }])).toEqual([
+      { text: "ab", hit: true },
+    ]);
+  });
+
+  it("leaves text alone when nothing matched", () => {
+    expect(segments("plain", [])).toEqual([{ text: "plain", hit: false }]);
+  });
+
+  it("has nothing to show for nothing", () => {
+    expect(segments("", [])).toEqual([]);
+  });
+
+  // An empty match has a position but no width; marking it would highlight
+  // the character after it, which did not match.
+  it("skips a match with no width", () => {
+    const out = segments("abc", [{ text: "", index: 1, groups: [], named: {} }]);
+    expect(out).toEqual([{ text: "abc", hit: false }]);
+  });
+});
 
 describe("runRegex", () => {
   it("finds every match, with where it was", () => {

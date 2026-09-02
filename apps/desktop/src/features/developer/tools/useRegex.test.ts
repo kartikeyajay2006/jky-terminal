@@ -7,6 +7,7 @@ import type { RegexResult } from "./regexEngine";
 class FakeWorker {
   static made: FakeWorker[] = [];
   onmessage: ((e: MessageEvent<RegexResult>) => void) | null = null;
+  onerror: ((e: unknown) => void) | null = null;
   posted: unknown[] = [];
   terminated = 0;
 
@@ -114,6 +115,39 @@ describe("useRegex", () => {
 
     unmount();
     expect(worker.terminated).toBe(1);
+  });
+
+  /*
+   * A worker that will not start is the tool's problem, not the pattern's.
+   *
+   * Without this the only symptom is the two-second timeout, whose message
+   * blames backtracking — sending someone to rewrite a pattern that was fine.
+   */
+  it("says so when no worker can be started", () => {
+    const { result } = renderHook(() =>
+      useRegex(() => {
+        throw new Error("blocked by the content security policy");
+      }),
+    );
+    act(() => result.current.run("a", "g", "aaa"));
+
+    expect(result.current.busy).toBe(false);
+    expect(result.current.result).toMatchObject({ ok: false });
+    if (result.current.result && !result.current.result.ok) {
+      expect(result.current.result.message).toMatch(/worker/i);
+      expect(result.current.result.message).not.toMatch(/backtrack|too long/i);
+    }
+  });
+
+  it("says so when a worker starts and then fails", () => {
+    const { result } = renderHook(() => useRegex(make));
+    act(() => result.current.run("a", "g", "aaa"));
+
+    const worker = newest() as unknown as { onerror: (e: unknown) => void };
+    act(() => worker.onerror(new Event("error")));
+
+    expect(result.current.busy).toBe(false);
+    expect(result.current.result).toMatchObject({ ok: false });
   });
 
   // Nothing typed is not a question, and asking it would flash a result.

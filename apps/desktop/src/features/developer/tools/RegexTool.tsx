@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ToolFrame, ToolInput } from "./Shared";
-import { FLAGS } from "./regexEngine";
+import { FLAGS, segments } from "./regexEngine";
 import { useRegex } from "./useRegex";
 import { Examples, WhatFor } from "./Examples";
 
@@ -63,6 +63,33 @@ export function RegexTool({ makeWorker }: { makeWorker?: () => Worker }) {
             },
           },
           {
+            label: "Only whole words",
+            shows: "why \\b matters — `cat` without matching `concatenate`",
+            load: () => {
+              setPattern("\\bcat\\b");
+              setFlags("g");
+              setText("A cat, a category, and concatenate walk into a bar. CAT shouts.");
+            },
+          },
+          {
+            label: "Ignore case",
+            shows: "the same pattern with and without the i flag",
+            load: () => {
+              setPattern("cat");
+              setFlags("gi");
+              setText("A cat, a Cat, and a CAT.");
+            },
+          },
+          {
+            label: "Across lines",
+            shows: "what ^ and $ mean once the m flag is on",
+            load: () => {
+              setPattern("^\\w+");
+              setFlags("gm");
+              setText("first line\nsecond line\nthird line");
+            },
+          },
+          {
             label: "One that never finishes",
             shows: "the runaway being stopped instead of freezing the window",
             load: () => {
@@ -92,6 +119,26 @@ export function RegexTool({ makeWorker }: { makeWorker?: () => Worker }) {
       </div>
 
       <ToolInput label="Text" value={text} onChange={setText} placeholder="Text to search…" />
+
+      {/* The text with the matches marked in it. A list of matched strings
+          says what was found; this says where — which is how you notice the
+          pattern swallowed the comma too, or stopped one character short. */}
+      {result?.ok && text !== "" && (
+        <div className="tl__field">
+          <span className="tl__label">In place</span>
+          <p className="tl__marked">
+            {segments(text, result.matches).map((piece, i) =>
+              piece.hit ? (
+                <mark key={i} className="tl__hit">
+                  {piece.text}
+                </mark>
+              ) : (
+                <span key={i}>{piece.text}</span>
+              ),
+            )}
+          </p>
+        </div>
+      )}
 
       {result && !result.ok && (
         <p className="tl__error" role="alert">

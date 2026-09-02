@@ -684,7 +684,6 @@ export interface ToolsApi {
   hash(text: string): Promise<Hashes>;
   diff(before: string, after: string): Promise<Diff>;
   yamlToJson(text: string): Promise<string>;
-  jsonToYaml(text: string): Promise<string>;
   formatYaml(text: string): Promise<string>;
 }
 
