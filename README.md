@@ -43,7 +43,7 @@ Six places to be, reachable from the rail or from `Ctrl+K`:
 | ❯ | **Terminal** | Real PTY shells in tabs, with find, links and history |
 | ✦ | **Assistant** | Streaming chat that can read your project and run commands |
 | ◈ | **Games** | An arcade: Dino Run, Snake, Tic Tac Toe, Flappy Bird |
-| ⊞ | **Apps** | Eight, in tabs: GitHub, Gmail, Browser, Weather, News, Map, Timer, Calculator |
+| ⊞ | **Apps** | Fourteen, in tabs: GitHub, Gmail, Browser, Weather, News, Map, Timer, Calculator, and six developer tools |
 | ⚙ | **Settings** | Themes, API keys, and the shell commands it installs |
 
 ---
@@ -265,7 +265,7 @@ already reacted is shorter than human reaction time.
 
 ### ⊞ Apps
 
-Eight apps, several open at once in tabs. They stay mounted while you switch,
+Fourteen apps, several open at once in tabs. They stay mounted while you switch,
 so a timer keeps counting while you read the news and a half-typed sum is
 still there when you come back. `Ctrl+Shift+A` moves between them.
 
@@ -333,6 +333,49 @@ An OAuth app ships with the build, so a new install signs in immediately
 without registering anything. A device-flow client id is public by design and
 has no secret beside it — which is why committing one is safe, and a test pins
 its shape so nothing secret-looking can be slipped in next to it.
+
+#### Developer tools
+
+Six, in a group of their own, and every one a function of what you paste into
+it: no account, no key, no network, nothing kept.
+
+| | Tool | What it does |
+|---|---|---|
+| `{}` | **JSON** | Formats and minifies as you type, and says which line and column stopped it |
+| `≡` | **YAML** | Tidies YAML and converts it to JSON and back |
+| `±` | **Diff** | Compares two texts line by line, with both sets of line numbers |
+| `#` | **Hash** | MD5, SHA-1, SHA-256 and SHA-512 at once |
+| `⊙` | **JWT** | Reads what is inside a token — and never claims one is valid |
+| `*` | **Regex** | Tries a pattern against text, off the main thread |
+
+That list is short on purpose. A Kubernetes or database tile would need a
+config file or a password, which is a different kind of promise, and a test
+enforces that a tool never asks for an account.
+
+Three of them are Rust — hashing, diffing and YAML each need a parser or an
+algorithm someone else wrote, and those are audited with the rest of the tree.
+The other three are TypeScript, because `JSON.parse`, `atob` and `RegExp` are
+already in the window and a round trip would cost a frame to buy nothing.
+
+Four things worth knowing:
+
+- **The JSON tool finds the error position itself.** Engines will not reliably
+  say — V8 gives `at position 12 (line 3 column 8)` for some failures and a
+  snippet with no position for others — so the document is bisected. The
+  obvious predicate for that is wrong: given `{`, V8 says *"Expected property
+  name or '}'"*, which reads like a syntax error and is nothing of the sort.
+  What separates a truncated document from a broken one is *where* it stopped.
+- **It warns when reformatting would change a number.** `JSON.parse` rounds
+  anything past 2^53, so a formatter that round-trips through it can hand back
+  a different id while claiming to have only reindented.
+- **The JWT tool decodes and never verifies.** That is the safety property,
+  not a limitation: it has no key, so it must not imply a token is good — and
+  `alg: none` is a real attack, where a decoder that implied validity would be
+  at its most dangerous.
+- **The regex tester runs in a worker so it can be killed.** `(a+)+$` against a
+  run of a's takes longer than the universe, and a regular expression cannot
+  be interrupted once started. Terminating the thread is the only way to stop
+  one, and on the main thread there is no thread to terminate.
 
 #### Gmail
 
@@ -534,6 +577,7 @@ jky-terminal/
    ├─ jky-ai/                 AIProvider, Anthropic, tool sandbox
    ├─ jky-store/              collections + capped scrollback
    ├─ jky-apps/               weather, news, places, routes, github, gmail, browser
+   ├─ jky-tools/              hashing, diffing, YAML
    ├─ jky-settings/           preferences
    └─ jky-audit/              local-only audit log
 ```
