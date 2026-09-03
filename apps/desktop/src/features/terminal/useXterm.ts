@@ -21,6 +21,19 @@ import type { SearchHits } from "./TerminalSearch";
 /** What a mounted terminal lets the surrounding UI do to it. */
 export interface TerminalControls {
   /**
+   * Let a panel take some keys before the shell is sent them.
+   *
+   * The only place they can be taken. xterm handles a key by calling
+   * `stopPropagation`, so a window listener never sees one while a terminal
+   * has focus — which is why the offer under a failed command could only be
+   * answered with the mouse, and why pressing 1 typed a 1 at the prompt.
+   *
+   * The handler returns whether it consumed the event. Null gives the keys
+   * back, and a panel must do that when it closes.
+   */
+  claimKeys: (handler: ((event: KeyboardEvent) => boolean) | null) => void;
+
+  /**
    * Put text on the command line, as if it had been typed.
    *
    * Typed, not run: no newline is sent, so the person reads what is about to
@@ -102,6 +115,8 @@ export function useXterm(
    * it here means never scanning the scrollback for where a command started.
    */
   const mark = useRef(0);
+  /** A panel's key handler, while one is open. See `claimKeys`. */
+  const keyClaim = useRef<((event: KeyboardEvent) => boolean) | null>(null);
 
   useEffect(() => {
     const node = container.current;
@@ -128,7 +143,12 @@ export function useXterm(
     // every app shortcut was dead while a terminal had focus — which is most
     // of the time. Returning false makes xterm leave the event alone entirely.
     xterm.attachCustomKeyEventHandler((event) => {
-      if (event.type === "keydown" && isAppShortcut(event)) return false;
+      if (event.type !== "keydown") return true;
+      if (isAppShortcut(event)) return false;
+      // A panel's own keys, taken before the shell is sent them. Returning
+      // false leaves the event alone entirely, so it still reaches the window
+      // — which is why the panels ignore anything coming from in here.
+      if (keyClaim.current?.(event)) return false;
       return true;
     });
 
@@ -422,6 +442,9 @@ export function useXterm(
         lastQuery.current = "";
         searchAddon.current?.clearDecorations();
         setHits(NO_HITS);
+      },
+      claimKeys: (handler) => {
+        keyClaim.current = handler;
       },
       type: (text) => {
         const id = ptyRef.current;

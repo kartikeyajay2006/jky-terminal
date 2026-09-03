@@ -29,11 +29,20 @@ export function FailureHelp({
   failure,
   recentOutput,
   onDismiss,
+  claimKeys,
 }: {
   failure: CommandDone;
   /** The tail of what this terminal has on screen. Called only when asked. */
   recentOutput: () => string;
   onDismiss: () => void;
+  /**
+   * Lends this panel the terminal's keyboard while it is open.
+   *
+   * Without it the number keys are unreachable: xterm calls
+   * `stopPropagation`, so a window listener never sees a key pressed while
+   * the terminal has focus — and pressing 1 typed a 1 at the prompt.
+   */
+  claimKeys?: (handler: ((event: KeyboardEvent) => boolean) | null) => void;
 }) {
   const [providers, setProviders] = useState<ProviderStatus[] | null>(null);
   const [answer, setAnswer] = useState<string | null>(null);
@@ -82,24 +91,49 @@ export function FailureHelp({
     [asking, canAsk, usable, failure, recentOutput],
   );
 
-  // The numbers beside each choice, and Escape, because the panel shows them
-  // and a terminal is a keyboard before it is anything else.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
+  /**
+   * The numbers beside each choice, and Escape.
+   *
+   * One decision, reached two ways. When the terminal has focus the key comes
+   * through `claimKeys` and is consumed there, so the shell never sees it.
+   * When focus is on the panel — after a click — it arrives on the window
+   * instead. Events from inside the terminal are ignored by the window
+   * listener, or one press would be answered twice, which for "Explain"
+   * means asking, and paying, twice.
+   */
+  const handleKey = useCallback(
+    (e: KeyboardEvent): boolean => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return false;
+
       if (e.key === "Escape" || e.key === "4") {
-        e.preventDefault();
         onDismiss();
-        return;
+        return true;
       }
       const chosen = HELP_KINDS.find((k) => k.key === e.key);
       if (chosen && canAsk) {
-        e.preventDefault();
         ask(chosen.id);
+        return true;
       }
+      return false;
+    },
+    [ask, canAsk, onDismiss],
+  );
+
+  useEffect(() => {
+    claimKeys?.(handleKey);
+    return () => claimKeys?.(null);
+  }, [claimKeys, handleKey]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (fromTerminal(e)) return;
+      const into = e.target as HTMLElement | null;
+      if (into && /^(input|textarea|select)$/i.test(into.tagName)) return;
+      if (handleKey(e)) e.preventDefault();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [ask, canAsk, onDismiss]);
+  }, [handleKey]);
 
   return (
     <div className="fail" role="group" aria-label="Command failed">
@@ -194,4 +228,15 @@ function Answer({ text }: { text: string }) {
       {shown}
     </pre>
   );
+}
+
+/**
+ * Whether a key came from inside the terminal.
+ *
+ * Those are consumed by the claim before they reach here. Handling one again
+ * on the window would answer a single press twice.
+ */
+export function fromTerminal(e: KeyboardEvent): boolean {
+  const target = e.target as HTMLElement | null;
+  return Boolean(target?.closest?.(".term"));
 }

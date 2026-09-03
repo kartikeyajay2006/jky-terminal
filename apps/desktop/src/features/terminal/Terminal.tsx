@@ -95,25 +95,30 @@ export function Terminal({ tabId }: TerminalProps) {
       {/* Under the terminal rather than inside it: the offer needs buttons and
           focus, and xterm draws characters. It sits in the same box so it
           reads as part of the output it is about. */}
-      {failure && (
+      {/* One panel at a time. Two stacked under a terminal would be two
+          things competing for the same number keys, and the one you wanted
+          would be a guess. A failure is the more urgent of the two. */}
+      {failure ? (
         <FailureHelp
           failure={failure}
           recentOutput={() => term.recentOutput()}
+          claimKeys={term.claimKeys}
           onDismiss={() => {
             setFailure(null);
             term.focus();
           }}
         />
-      )}
+      ) : null}
 
       {/* What the command turned out to be. Under the output rather than in
           place of it: the text is still above, untouched, and this can be
           dismissed. A terminal that swallowed what a command printed would be
           unusable the first time it got something wrong. */}
-      {found && (
+      {found && !failure && (
         <CommandApp
           found={found}
           command={ranCommand}
+          claimKeys={term.claimKeys}
           onRun={(command) => {
             // Typed, not run. The person still presses Enter, and sees
             // exactly what they are about to run.

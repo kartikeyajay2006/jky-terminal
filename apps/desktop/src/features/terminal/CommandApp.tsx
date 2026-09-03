@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { fromTerminal } from "./FailureHelp";
 import type { Chip, Column, Entry, Meter, Recognised, Row, View } from "./recognise";
 
 /**
@@ -23,6 +24,7 @@ export function CommandApp({
   command,
   onRun,
   onDismiss,
+  claimKeys,
 }: {
   found: Recognised;
   /** The command that produced it, shown so the panel is anchored to it. */
@@ -30,34 +32,54 @@ export function CommandApp({
   /** Types a command into the terminal. Does not execute it. */
   onRun: (command: string) => void;
   onDismiss: () => void;
+  /** Lends this panel the terminal's keyboard while it is open. */
+  claimKeys?: (handler: ((event: KeyboardEvent) => boolean) | null) => void;
 }) {
   const actions = found.actions ?? [];
   const [tall, setTall] = useState(false);
 
-  // The keys shown beside each action, and Escape — a terminal is a keyboard
-  // before it is anything else.
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      // Not while something is being typed into: a panel that swallowed "a"
-      // would make every input in it unusable.
-      const into = e.target as HTMLElement | null;
-      if (into && /^(input|textarea|select)$/i.test(into.tagName)) return;
+  /**
+   * The keys shown beside each action, and Escape.
+   *
+   * Reached two ways, as in `FailureHelp`: through the claim when the
+   * terminal has focus — the only place a key can be taken before the shell
+   * is sent it — and on the window when focus is on the panel itself.
+   */
+  const handleKey = useCallback(
+    (e: KeyboardEvent): boolean => {
+      if (e.metaKey || e.ctrlKey || e.altKey) return false;
 
       if (e.key === "Escape") {
-        e.preventDefault();
         onDismiss();
-        return;
+        return true;
       }
       const chosen = actions.find((a) => a.key === e.key);
       if (chosen) {
-        e.preventDefault();
         onRun(chosen.command);
+        return true;
       }
+      return false;
+    },
+    [actions, onRun, onDismiss],
+  );
+
+  useEffect(() => {
+    claimKeys?.(handleKey);
+    return () => claimKeys?.(null);
+  }, [claimKeys, handleKey]);
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (fromTerminal(e)) return;
+      // Not while something is being typed into: a panel that swallowed "a"
+      // would make every field in it unusable.
+      const into = e.target as HTMLElement | null;
+      if (into && /^(input|textarea|select)$/i.test(into.tagName)) return;
+      if (handleKey(e)) e.preventDefault();
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [actions, onRun, onDismiss]);
+  }, [handleKey]);
 
   return (
     <section

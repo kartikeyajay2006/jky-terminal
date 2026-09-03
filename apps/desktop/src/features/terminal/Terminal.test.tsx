@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { encodeDone } from "./commandFailure";
 
 const writes: string[] = [];
 const onDataHandlers: Array<(d: string) => void> = [];
@@ -26,6 +27,21 @@ vi.mock("@xterm/xterm", () => ({
     onSelectionChange() {
       return { dispose() {} };
     }
+    /*
+     * Enough of a buffer to read a command's output from.
+     *
+     * The real one is what the panel reads to find out what a command
+     * printed; here it is empty, which is the honest answer for a mock that
+     * draws nothing — a recogniser handed no output declines, and the tests
+     * that care about parsing use captured sessions instead.
+     */
+    buffer = {
+      active: {
+        baseY: 0,
+        cursorY: 0,
+        getLine: () => ({ translateToString: () => "" }),
+      },
+    };
     getSelection() {
       return "";
     }
@@ -287,6 +303,86 @@ describe("letting the app's shortcuts through", () => {
     expect(customKeyHandlers.length).toBeGreaterThan(0);
     return customKeyHandlers[customKeyHandlers.length - 1];
   }
+
+  /*
+   * A panel's number keys have to be taken before the shell sees them.
+   *
+   * xterm handles a key by calling stopPropagation — the comment on the test
+   * below says so, and it is why the offer under a failed command could only
+   * be answered with the mouse. The window listener never fired, because the
+   * event never reached the window. Pressing 1 typed a 1 at the prompt.
+   *
+   * So the panel claims its keys through xterm's own handler, which is the
+   * only place they can be intercepted before the shell is sent them.
+   */
+  it("takes a panel's keys before the shell sees them", async () => {
+    // With no provider there is nothing for 1 to 3 to do, and a digit that
+    // does nothing belongs to the shell — so the offer has to be a real one
+    // before it can claim them.
+    const base = createWebPlatform();
+    __setPlatformForTests({
+      ...base,
+      vault: {
+        ...base.vault,
+        async listProviders() {
+          return [
+            {
+              id: "anthropic",
+              displayName: "Anthropic",
+              tagline: "",
+              consoleUrl: "",
+              requiresKey: true,
+              keyPrefixes: [],
+              connected: true,
+              models: [],
+              defaultModel: "",
+              selectedModel: null,
+            },
+          ];
+        },
+      },
+    });
+
+    render(<Terminal tabId="tab-claim" />);
+    const handle = customKeyHandlers[customKeyHandlers.length - 1];
+
+    // Nothing open: a digit is just a digit and belongs to the shell.
+    expect(handle(new KeyboardEvent("keydown", { key: "1" }))).toBe(true);
+
+    // A command failed, so the offer appears and claims 1 to 4.
+    const report = encodeDone(127, "/repo", "gti status");
+    await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+    oscHandlers.get(1337)!(report);
+
+    // Waits for the offer to have something to offer: the provider list is
+    // fetched, so the buttons appear a tick after the panel does.
+    await screen.findByRole("button", { name: /explain/i });
+    for (const key of ["1", "2", "3", "4"]) {
+      expect(
+        handle(new KeyboardEvent("keydown", { key })),
+        `${key} reached the shell`,
+      ).toBe(false);
+    }
+    // Everything else still belongs to the shell.
+    expect(handle(new KeyboardEvent("keydown", { key: "5" }))).toBe(true);
+    expect(handle(new KeyboardEvent("keydown", { key: "l" }))).toBe(true);
+  });
+
+  // Claimed only while it is open: dismissing gives the digits back.
+  it("gives the keys back when the panel goes", async () => {
+    render(<Terminal tabId="tab-claim-2" />);
+    const handle = customKeyHandlers[customKeyHandlers.length - 1];
+
+    await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+    oscHandlers.get(1337)!(encodeDone(127, "/repo", "gti status"));
+    await screen.findByRole("group", { name: /command failed/i });
+    expect(handle(new KeyboardEvent("keydown", { key: "4" }))).toBe(false);
+
+    await waitFor(() =>
+      expect(screen.queryByRole("group", { name: /command failed/i })).not.toBeInTheDocument(),
+    );
+    expect(handle(new KeyboardEvent("keydown", { key: "1" }))).toBe(true);
+  });
 
   it("hands the app's shortcuts back rather than swallowing them", () => {
     // The bug this fixes: xterm handles a key by calling stopPropagation, so
