@@ -51,10 +51,15 @@ export function recogniseDf(c: Completion): Recognised | null {
   // to look for, and it is rarely the first line of the output.
   meters.sort((a, b) => b.used - a.used);
 
+  const tight = meters.filter((m) => m.used >= 85).length;
   return {
     kind: "df",
+    glyph: "\u25A5",
+    accent: "accent-dim",
     title: "Disks",
     subtitle: `${meters.length} mounted`,
+    // The one that is about to be a problem, said before the bars are read.
+    chips: tight > 0 ? [{ text: `${tight} nearly full`, tone: "bad" }] : undefined,
     view: { kind: "meters", meters },
   };
 }
@@ -110,10 +115,14 @@ export function recognisePs(c: Completion): Recognised | null {
 
   if (rows.length === 0) return null;
 
+  const busy = rows.filter((r) => r.tone === "warn").length;
   return {
     kind: "ps",
+    glyph: "\u2630",
+    accent: "magenta",
     title: "Processes",
     subtitle: `${rows.length} listed`,
+    chips: busy > 0 ? [{ text: `${busy} working hard`, tone: "warn" }] : undefined,
     view: {
       kind: "table",
       columns: [
@@ -188,15 +197,21 @@ export function recogniseDockerPs(c: Completion): Recognised | null {
   if (rows.length === 0) return null;
 
   const running = rows.filter((r) => r.tone === "good").length;
+  const stopped = rows.length - running;
   return {
     kind: "docker-ps",
+    glyph: "\u25A2",
+    accent: "lime",
     title: "Containers",
-    subtitle: `${running} of ${rows.length} running`,
+    chips: [
+      { text: `${running} running`, tone: "good" },
+      ...(stopped > 0 ? [{ text: `${stopped} stopped`, tone: "bad" as const }] : []),
+    ],
     view: {
       kind: "table",
       columns: [
         { key: "name", label: "Container", mono: true },
-        { key: "status", label: "Status" },
+        { key: "status", label: "Status", as: "status" },
         { key: "ports", label: "Ports", mono: true },
         { key: "image", label: "Image", mono: true, secondary: true },
       ],
@@ -237,6 +252,10 @@ export function recogniseJson(c: Completion): Recognised | null {
   const count = Array.isArray(value) ? value.length : Object.keys(value).length;
   return {
     kind: "json",
+    glyph: "{}",
+    // The generic one, and it wears the neutral: it recognises a shape rather
+    // than a command, so it has no subject to take a colour from.
+    accent: "text-muted",
     title: "JSON",
     subtitle: Array.isArray(value) ? `${count} items` : `${count} keys`,
     view: { kind: "json", text: laid },

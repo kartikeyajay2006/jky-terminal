@@ -354,71 +354,190 @@
  * untouched, and this can be dismissed — a terminal that swallowed what a
  * command printed would be unusable the first time it got something wrong.
  *
- * It shares the terminal's left edge and its monospace, so it reads as part
- * of the session rather than as a dialog that arrived.
+ * Every kind carries its own colour, set as `--capp-accent` from the
+ * registry, so `git log` is violet wherever it appears and `df` is azure. You
+ * know what a panel is before you have read its heading, which is the same
+ * wayfinding the Apps grid and the dashboard cards use.
  */
 .capp {
+  --capp-accent: var(--accent);
   flex: none;
   display: flex;
   flex-direction: column;
-  max-height: 46vh;
+  max-height: 42vh;
   margin: var(--s2) var(--s3) var(--s3);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line));
-  border-left: 2px solid var(--accent);
-  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--capp-accent) 26%, var(--line));
+  border-radius: var(--radius-lg);
   background:
-    linear-gradient(120deg, color-mix(in srgb, var(--accent) 8%, transparent), transparent 60%),
+    linear-gradient(
+      150deg,
+      color-mix(in srgb, var(--capp-accent) 9%, transparent),
+      transparent 45%
+    ),
     var(--surface);
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ground) 60%, transparent);
   animation: jky-rise var(--motion-normal) var(--ease) both;
   overflow: hidden;
+  transition: max-height var(--motion-normal) var(--ease);
 }
 
+/* `ps aux` is two hundred rows, and a panel fixed at half the window is one
+   you scroll rather than read. */
+.capp[data-tall] {
+  max-height: 78vh;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capp {
+    transition: none;
+  }
+}
+
+/*
+ * The head: what it is, how many, and what produced it.
+ *
+ * A grid rather than a flex row, so the command keeps its own column and the
+ * chips wrap under the title instead of shoving it about.
+ */
 .capp__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  grid-auto-flow: row;
+  align-items: center;
+  gap: var(--s2) var(--s3);
+  flex: none;
+  padding: var(--s3) var(--s3) var(--s3) var(--s4);
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--capp-accent) 6%, transparent);
+}
+
+/* The kind's mark: a tinted well, the way an app tile wears its glyph. */
+.capp__glyph {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  border: 1px solid color-mix(in srgb, var(--capp-accent) 35%, transparent);
+  background: color-mix(in srgb, var(--capp-accent) 14%, transparent);
+  color: var(--capp-accent);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1;
+}
+
+.capp__who {
   display: flex;
   align-items: baseline;
   gap: var(--s3);
-  flex: none;
-  padding: var(--s3) var(--s4);
-  border-bottom: 1px solid var(--line);
-}
-
-/* A small square in the accent, so the panel is recognisable at a glance as
-   the terminal's own rather than as something that floated in. */
-.capp__mark {
-  align-self: center;
-  width: 6px;
-  height: 6px;
-  border-radius: 1px;
-  background: var(--accent);
+  min-width: 0;
 }
 
 .capp__title {
   margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   color: var(--text);
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.02em;
+  letter-spacing: -0.01em;
 }
 
 .capp__sub {
   color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 11px;
+  white-space: nowrap;
 }
 
-.capp__dismiss {
-  margin-left: auto;
-  padding: 0 var(--s2);
-  border: 0;
+/* The counts, before the detail under them. */
+.capp__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.capp__chip {
+  --tone: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 2px var(--s2);
+  border: 1px solid color-mix(in srgb, var(--tone) 32%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  color: var(--tone);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  white-space: nowrap;
+}
+
+.capp__chip::before {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.capp__chip[data-tone="good"] { --tone: var(--mint); }
+.capp__chip[data-tone="warn"] { --tone: var(--warn); }
+.capp__chip[data-tone="bad"] { --tone: var(--danger); }
+.capp__chip[data-tone="muted"] { --tone: var(--text-dim); }
+
+/* What was typed, so the panel is anchored to it rather than floating. */
+.capp__command {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.capp__prompt {
+  color: var(--capp-accent);
+}
+
+.capp__tools {
+  display: flex;
+  gap: var(--s1);
+}
+
+.capp__icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--text-dim);
-  font-size: 16px;
+  font-family: var(--font-mono);
+  font-size: 13px;
   line-height: 1;
   cursor: pointer;
+  transition:
+    color var(--motion-quick) var(--ease),
+    border-color var(--motion-quick) var(--ease);
 }
 
-.capp__dismiss:hover {
+.capp__icon:hover {
+  border-color: var(--line-strong);
   color: var(--text);
+}
+
+.capp__icon:focus-visible {
+  outline: none;
+  border-color: var(--capp-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--capp-accent) 22%, transparent);
 }
 
 .capp__body {
@@ -453,13 +572,18 @@
 
 .capp__table td {
   padding: var(--s2) var(--s3);
-  border-bottom: 1px solid var(--line);
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent);
   color: var(--text-muted);
   vertical-align: top;
 }
 
+.capp__table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
 .capp__table td[data-mono] {
   font-family: var(--font-mono);
+  color: var(--text);
 }
 
 .capp__table [data-align="right"] {
@@ -468,23 +592,57 @@
 }
 
 .capp__table tbody tr:hover td {
-  background: var(--surface-raised);
+  background: color-mix(in srgb, var(--capp-accent) 7%, transparent);
 }
 
 /*
- * A row's state, marked down its left edge.
+ * A row's state as a dot in its own narrow column.
  *
  * The words are in the row as well — "Up 2 hours", "Exited (137)" — because
  * colour alone would not carry it for anyone who cannot see the difference.
+ * The dot is what makes a column of states rankable at a glance.
  */
-.capp__table tbody tr[data-tone] td:first-child {
-  border-left: 2px solid transparent;
+.capp__dot-head,
+.capp__dot-cell {
+  width: 20px;
+  padding-right: 0 !important;
 }
 
-.capp__table tbody tr[data-tone="good"] td:first-child { border-left-color: var(--mint); }
-.capp__table tbody tr[data-tone="warn"] td:first-child { border-left-color: var(--warn); }
-.capp__table tbody tr[data-tone="bad"] td:first-child { border-left-color: var(--danger); }
-.capp__table tbody tr[data-tone="muted"] td:first-child { border-left-color: var(--line-strong); }
+.capp__row-dot {
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: var(--line-strong);
+}
+
+.capp__table tr[data-tone="good"] .capp__row-dot { background: var(--mint); }
+.capp__table tr[data-tone="warn"] .capp__row-dot { background: var(--warn); }
+.capp__table tr[data-tone="bad"] .capp__row-dot { background: var(--danger); }
+
+/* A state reads faster as a marked thing than as a sentence in a column of
+   sentences. */
+.capp__status {
+  display: inline-block;
+  padding: 1px var(--s2);
+  border-radius: var(--radius-sm);
+  background: var(--surface-raised);
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.capp__table tr[data-tone="good"] .capp__status {
+  background: color-mix(in srgb, var(--mint) 14%, transparent);
+  color: var(--mint);
+}
+
+.capp__table tr[data-tone="bad"] .capp__status {
+  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--danger);
+}
 
 /* Dropped first when the panel is narrow: the columns that identify a row
    stay, and the ones that describe it go. */
@@ -499,18 +657,34 @@
 .capp__meters {
   display: flex;
   flex-direction: column;
-  gap: var(--s3);
-  padding: var(--s3) var(--s4);
+  gap: var(--s4);
+  padding: var(--s4);
 }
 
+/*
+ * A disk: name, a large percentage, the figures, and the bar.
+ *
+ * The percentage is the biggest thing in the row because ranking four disks
+ * is the entire reason anybody runs `df`.
+ */
 .capp__meter {
+  --tone: var(--capp-accent);
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--s1) var(--s3);
+  grid-template-areas:
+    "label pct"
+    "figure pct"
+    "bar bar";
   align-items: baseline;
+  gap: 2px var(--s4);
+}
+
+.capp__meter[data-hot] {
+  --tone: var(--danger);
 }
 
 .capp__meter-label {
+  grid-area: label;
   display: flex;
   align-items: baseline;
   gap: var(--s2);
@@ -520,7 +694,7 @@
   white-space: nowrap;
   color: var(--text);
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: 13px;
 }
 
 .capp__meter-note {
@@ -528,17 +702,28 @@
   font-size: 10px;
 }
 
+.capp__meter-pct {
+  grid-area: pct;
+  align-self: center;
+  color: var(--tone);
+  font-family: var(--font-mono);
+  font-size: 22px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  line-height: 1;
+}
+
 .capp__meter-figure {
-  color: var(--text-muted);
+  grid-area: figure;
+  color: var(--text-dim);
   font-family: var(--font-mono);
   font-size: 11px;
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
 }
 
 .capp__bar {
-  grid-column: 1 / -1;
-  height: 5px;
+  grid-area: bar;
+  height: 6px;
+  margin-top: var(--s2);
   border-radius: 999px;
   background: var(--line);
   overflow: hidden;
@@ -548,12 +733,8 @@
   display: block;
   height: 100%;
   border-radius: 999px;
-  background: var(--accent);
+  background: var(--tone);
   transition: width 600ms var(--ease);
-}
-
-.capp__bar-fill[data-hot] {
-  background: var(--danger);
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -567,17 +748,17 @@
 .capp__timeline {
   list-style: none;
   margin: 0;
-  padding: var(--s3) var(--s4);
+  padding: var(--s4);
   display: flex;
   flex-direction: column;
 }
 
 /*
- * A line down the left, with a dot per commit.
+ * A line down the left with a dot per commit.
  *
- * The line is drawn by the entry rather than by a container, so the last one
- * can stop it — a timeline that continues past its final entry is drawing a
- * history that is not there.
+ * The line belongs to the entry rather than to a container, so the last one
+ * can stop it — a timeline continuing past its final entry draws a history
+ * that is not there.
  */
 .capp__entry {
   position: relative;
@@ -593,27 +774,39 @@
 .capp__dot {
   position: absolute;
   left: -4px;
-  top: 4px;
+  top: 5px;
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: var(--accent);
+  background: var(--capp-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--capp-accent) 18%, transparent);
 }
 
 .capp__entry-title {
   display: block;
   color: var(--text);
   font-size: 13px;
+  line-height: 1.4;
 }
 
 .capp__entry-meta {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: var(--s3);
-  margin-top: 2px;
+  margin-top: var(--s1);
   color: var(--text-dim);
-  font-family: var(--font-mono);
   font-size: 11px;
+}
+
+/* The hash, as the thing you copy. */
+.capp__sha {
+  padding: 1px var(--s2);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--capp-accent) 12%, transparent);
+  color: var(--capp-accent);
+  font-family: var(--font-mono);
+  font-size: 10px;
 }
 
 .capp__entry-body {
@@ -628,11 +821,44 @@
 /* ---- facts ---- */
 
 .capp__facts {
+  padding: var(--s4);
+}
+
+/*
+ * The one thing worth reading, given the weight.
+ *
+ * `mkdir project_name` has a single answer and three supporting details, and
+ * a flat list of four would bury it.
+ */
+.capp__lead {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 0 0 var(--s3);
+}
+
+.capp__lead-label {
+  color: var(--text-dim);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.capp__lead-value {
+  overflow-wrap: anywhere;
+  color: var(--capp-accent);
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.capp__fact-list {
   margin: 0;
-  padding: var(--s3) var(--s4);
   display: flex;
   flex-direction: column;
   gap: var(--s2);
+  padding-top: var(--s3);
+  border-top: 1px solid var(--line);
 }
 
 .capp__fact {
@@ -653,7 +879,7 @@
   margin: 0;
   min-width: 0;
   overflow-wrap: anywhere;
-  color: var(--text);
+  color: var(--text-muted);
   font-family: var(--font-mono);
   font-size: 12px;
 }
@@ -662,7 +888,7 @@
 
 .capp__json {
   margin: 0;
-  padding: var(--s3) var(--s4);
+  padding: var(--s4);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
   color: var(--text-muted);
@@ -681,8 +907,15 @@
   flex: none;
   padding: var(--s3) var(--s4);
   border-top: 1px solid var(--line);
+  background: color-mix(in srgb, var(--capp-accent) 4%, transparent);
 }
 
+/*
+ * An action shows the command it will type.
+ *
+ * "Restart" that types `docker restart api` is a different promise from one
+ * that runs it, and the difference should not have to be taken on trust.
+ */
 .capp__action {
   display: flex;
   align-items: center;
@@ -700,13 +933,23 @@
 }
 
 .capp__action:hover {
-  border-color: var(--accent);
-  color: var(--accent);
+  border-color: var(--capp-accent);
+  color: var(--capp-accent);
 }
 
 .capp__action:focus-visible {
   outline: none;
-  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--capp-accent) 22%, transparent);
+}
+
+.capp__action-cmd {
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+
+.capp__action:hover .capp__action-cmd {
+  color: color-mix(in srgb, var(--capp-accent) 70%, var(--text-dim));
 }
 
 .capp__key {
@@ -721,10 +964,15 @@
   font-size: 10px;
 }
 
-/* Says what pressing one actually does, because "Restart" that types
-   `docker restart api` is a different promise from one that runs it. */
 .capp__hint {
   margin-left: auto;
   color: var(--text-dim);
   font-size: 11px;
+}
+
+/* Below this the head has no room for a command beside the chips. */
+@media (max-width: 52rem) {
+  .capp__command {
+    display: none;
+  }
 }

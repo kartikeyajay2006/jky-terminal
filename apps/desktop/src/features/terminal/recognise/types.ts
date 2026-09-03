@@ -42,6 +42,13 @@ export interface Column {
   key: string;
   label: string;
   align?: Align;
+  /**
+   * `status` draws the value as a pill in the row's colour.
+   *
+   * "Up 2 hours" and "Exited (137)" are states, and a state reads faster as a
+   * marked thing than as a sentence in a column of sentences.
+   */
+  as?: "status";
   /** Figures and paths line up only in a monospaced column. */
   mono?: boolean;
   /** Dropped first when there is not enough width. */
@@ -53,7 +60,7 @@ export interface Row {
   id: string;
   cells: Record<string, string>;
   /** Colours the row's marker. A fact about the row, not decoration. */
-  tone?: "good" | "warn" | "bad" | "muted";
+  tone?: Tone;
 }
 
 /** A meter is a proportion with a name — a disk, a quota, a budget. */
@@ -103,11 +110,37 @@ export interface Action {
   command: string;
 }
 
+export type Tone = "good" | "warn" | "bad" | "muted";
+
+/**
+ * A count worth seeing before the table under it.
+ *
+ * "2 of 3 running" is the answer to why anyone typed `docker ps`, and reading
+ * it off a table is work the panel can do first. Toned, because "1 stopped"
+ * and "2 running" are not the same kind of news.
+ */
+export interface Chip {
+  text: string;
+  tone?: Tone;
+}
+
 export interface Recognised {
   /** Which recogniser produced this. Used as a stable id, never shown. */
   kind: string;
+  /**
+   * A text glyph, and a theme token name for this kind's colour.
+   *
+   * Colour is wayfinding here as it is everywhere else in this app: `git log`
+   * is violet wherever it appears and `df` is azure, so you know what a panel
+   * is before you have read its heading. Never a literal colour — a hex here
+   * would be right in one theme and wrong in six.
+   */
+  glyph: string;
+  accent: string;
   title: string;
   subtitle?: string;
+  /** The counts, before the detail. */
+  chips?: Chip[];
   view: View;
   actions?: Action[];
 }

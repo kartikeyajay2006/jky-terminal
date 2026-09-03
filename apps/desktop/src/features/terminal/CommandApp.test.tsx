@@ -6,13 +6,19 @@ import type { Recognised } from "./recognise";
 
 const TABLE: Recognised = {
   kind: "docker-ps",
+  glyph: "\u25A2",
+  accent: "lime",
   title: "Containers",
   subtitle: "2 of 3 running",
+  chips: [
+    { text: "2 running", tone: "good" },
+    { text: "1 stopped", tone: "bad" },
+  ],
   view: {
     kind: "table",
     columns: [
       { key: "name", label: "Container", mono: true },
-      { key: "status", label: "Status" },
+      { key: "status", label: "Status", as: "status" },
       { key: "image", label: "Image", secondary: true },
     ],
     rows: [
@@ -35,6 +41,47 @@ describe("CommandApp", () => {
     show(TABLE);
     const panel = screen.getByRole("group", { name: /containers/i });
     expect(panel).toHaveTextContent("2 of 3 running");
+  });
+
+  /*
+   * The counts, before the table under them.
+   *
+   * "2 running, 1 stopped" is the answer to why anyone typed `docker ps`, and
+   * reading it off the rows is work the panel can do first.
+   */
+  it("says the counts before the detail", () => {
+    show(TABLE);
+    const panel = screen.getByRole("group", { name: /containers/i });
+    expect(panel).toHaveTextContent("2 running");
+    expect(panel).toHaveTextContent("1 stopped");
+  });
+
+  // The panel is anchored to what was typed rather than floating above it.
+  it("shows the command that produced it", () => {
+    render(<CommandApp found={TABLE} command="docker ps" onRun={() => {}} onDismiss={() => {}} />);
+    expect(screen.getByText("docker ps")).toBeInTheDocument();
+  });
+
+  /*
+   * `ps aux` is two hundred rows, and a panel fixed at half the window is a
+   * panel you scroll rather than read.
+   */
+  it("can be grown and shrunk again", async () => {
+    const user = userEvent.setup();
+    const { container } = show(TABLE);
+    const panel = container.querySelector(".capp")!;
+
+    expect(panel.hasAttribute("data-tall")).toBe(false);
+    await user.click(screen.getByRole("button", { name: /grow/i }));
+    expect(panel.hasAttribute("data-tall")).toBe(true);
+    await user.click(screen.getByRole("button", { name: /shrink/i }));
+    expect(panel.hasAttribute("data-tall")).toBe(false);
+  });
+
+  // The action says what it will type, so pressing it is never a surprise.
+  it("shows the command each action would type", () => {
+    show(TABLE);
+    expect(screen.getByText("docker ps -a")).toBeInTheDocument();
   });
 
   it("draws a table with its columns and rows", () => {
@@ -92,6 +139,8 @@ describe("CommandApp", () => {
   it("draws meters as proportions", () => {
     show({
       kind: "df",
+      glyph: "\u25A5",
+      accent: "accent-dim",
       title: "Disks",
       view: {
         kind: "meters",
@@ -109,6 +158,8 @@ describe("CommandApp", () => {
   it("draws a timeline", () => {
     show({
       kind: "git-log",
+      glyph: "\u25F7",
+      accent: "violet",
       title: "History",
       view: {
         kind: "timeline",
@@ -123,6 +174,8 @@ describe("CommandApp", () => {
   it("draws facts", () => {
     show({
       kind: "file-action",
+      glyph: "\u271A",
+      accent: "mint",
       title: "Created project_name",
       view: { kind: "facts", facts: [{ label: "In", value: "/home/me" }] },
     });
@@ -133,6 +186,8 @@ describe("CommandApp", () => {
   it("draws JSON as text, never as markup", () => {
     const { container } = show({
       kind: "json",
+      glyph: "{}",
+      accent: "text-muted",
       title: "JSON",
       view: { kind: "json", text: '{\n  "a": "<img src=x onerror=alert(1)>"\n}' },
     });
@@ -142,8 +197,16 @@ describe("CommandApp", () => {
 
   // A panel with no actions must not draw an empty row of buttons.
   it("shows no action bar when there is nothing to do", () => {
-    show({ kind: "json", title: "JSON", view: { kind: "json", text: "{}" } });
+    show({
+      kind: "json",
+      glyph: "{}",
+      accent: "text-muted",
+      title: "JSON",
+      view: { kind: "json", text: "{}" },
+    });
     const panel = screen.getByRole("group", { name: /json/i });
-    expect(within(panel).getAllByRole("button")).toHaveLength(1); // dismiss only
+    // Grow and dismiss, and nothing else: an empty action bar would be a row
+    // of nothing pretending there was something to do.
+    expect(within(panel).getAllByRole("button")).toHaveLength(2);
   });
 });

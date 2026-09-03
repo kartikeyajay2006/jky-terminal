@@ -169,7 +169,12 @@ describe("recogniseDockerPs", () => {
     const out = recogniseDockerPs(done("docker ps", PS))!;
     if (out.view.kind !== "table") return;
     expect(out.view.rows.map((r) => r.tone)).toEqual(["good", "good", "bad"]);
-    expect(out.subtitle).toBe("2 of 3 running");
+    // The counts are chips now: two facts rather than one sentence, so the
+    // one that is bad news can be coloured as such.
+    expect(out.chips).toEqual([
+      { text: "2 running", tone: "good" },
+      { text: "1 stopped", tone: "bad" },
+    ]);
   });
 
   /*

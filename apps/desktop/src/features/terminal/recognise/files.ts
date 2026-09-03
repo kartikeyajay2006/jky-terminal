@@ -58,9 +58,14 @@ export function recogniseFileAction(c: Completion): Recognised | null {
   // "3 directory" is the kind of wrong that makes a panel look automatic
   // rather than written, so the plural is spelled out per verb.
   const what = subjects.length === 1 ? subjects[0] : `${subjects.length} ${maker.plural}`;
+  const destructive = program === "rm" || program === "rmdir";
 
   return {
     kind: "file-action",
+    glyph: destructive ? "\u2716" : "\u271A",
+    // Making something and removing something are not the same news, and the
+    // panel should not congratulate you identically for both.
+    accent: destructive ? "warn" : "mint",
     title: `${maker.verb} ${what}`,
     subtitle: destination ? `into ${destination}` : c.cwd,
     view: { kind: "facts", facts },
@@ -140,10 +145,16 @@ export function recogniseLs(c: Completion): Recognised | null {
     // text alone than to show an empty table beside it.
     if (rows.length === 0) return null;
 
+    const dirs = rows.filter((r) => r.cells.kind === "dir").length;
     return {
       kind: "ls",
+      glyph: "\u25A4",
+      accent: "accent",
       title: where,
-      subtitle: `${rows.length} entries`,
+      chips: [
+        { text: `${dirs} directories`, tone: "good" },
+        { text: `${rows.length - dirs} files`, tone: "muted" },
+      ],
       view: {
         kind: "table",
         columns: [
@@ -168,6 +179,8 @@ export function recogniseLs(c: Completion): Recognised | null {
 
   return {
     kind: "ls",
+    glyph: "\u25A4",
+    accent: "accent",
     title: where,
     subtitle: `${names.length} entries`,
     view: {

@@ -31,9 +31,13 @@ export function Terminal({ tabId }: TerminalProps) {
    * under its own history, and the one you want is the one you just ran.
    */
   const [found, setFound] = useState<Recognised | null>(null);
+  /** Shown in the panel's head, so it is anchored to what was typed. */
+  const [ranCommand, setRanCommand] = useState("");
 
   const term = useXterm(container, tabId, setFailure, (completion) => {
-    setFound(recognise(completion));
+    const recognised = recognise(completion);
+    setFound(recognised);
+    if (recognised) setRanCommand(completion.command);
   });
 
   const [searching, setSearching] = useState(false);
@@ -109,6 +113,7 @@ export function Terminal({ tabId }: TerminalProps) {
       {found && (
         <CommandApp
           found={found}
+          command={ranCommand}
           onRun={(command) => {
             // Typed, not run. The person still presses Enter, and sees
             // exactly what they are about to run.

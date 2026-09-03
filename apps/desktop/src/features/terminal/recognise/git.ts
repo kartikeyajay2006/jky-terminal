@@ -65,10 +65,20 @@ export function recogniseGitStatus(c: Completion): Recognised | null {
   if (rows.length === 0) return null;
 
   const stagedCount = rows.filter((r) => r.cells.staged !== "").length;
+  const untracked = rows.filter((r) => r.cells.tree === "untracked").length;
+
   return {
     kind: "git-status",
+    glyph: "\u25C8",
+    accent: "warn",
     title: "Working tree",
-    subtitle: `${rows.length} changed · ${stagedCount} staged`,
+    // The counts people actually want off a status: what is ready to commit,
+    // what is not, and what git is not yet watching at all.
+    chips: [
+      { text: `${stagedCount} staged`, tone: "good" },
+      { text: `${rows.length - stagedCount - untracked} changed`, tone: "warn" },
+      ...(untracked > 0 ? [{ text: `${untracked} untracked`, tone: "muted" as const }] : []),
+    ],
     view: {
       kind: "table",
       columns: [
@@ -114,6 +124,8 @@ export function recogniseGitLog(c: Completion): Recognised | null {
 
   return {
     kind: "git-log",
+    glyph: "\u25F7",
+    accent: "violet",
     title: "History",
     subtitle: `${entries.length} commits`,
     view: { kind: "timeline", entries },

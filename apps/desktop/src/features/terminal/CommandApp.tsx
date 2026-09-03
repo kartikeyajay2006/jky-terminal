@@ -1,30 +1,38 @@
-import { useEffect } from "react";
-import type { Entry, Meter, Recognised, Row, Column, View } from "./recognise";
+import { useEffect, useState } from "react";
+import type { Chip, Column, Entry, Meter, Recognised, Row, View } from "./recognise";
 
 /**
  * What a command turned out to be.
  *
  * Appears under the terminal when a finished command's output was recognised
- * as something with a shape — a table, a set of proportions, a history. The
- * text output is untouched and still above it: this is an extra view of the
- * same thing, never a replacement, and it can be dismissed.
+ * as something with a shape. The text output is untouched and still above it:
+ * this is an extra view of the same thing, never a replacement, and it can be
+ * dismissed.
  *
  * Every action **types a command into the terminal**. Nothing here runs
  * anything on its own, which is the whole safety model — a panel that could
  * quietly `docker stop` would be one you had to trust, and this one only has
  * to be read. You still press Enter.
+ *
+ * Each kind carries its own colour and glyph, so a panel is recognisable
+ * before its heading is read. That is the same wayfinding the Apps grid and
+ * the dashboard cards use, and for the same reason.
  */
 export function CommandApp({
   found,
+  command,
   onRun,
   onDismiss,
 }: {
   found: Recognised;
+  /** The command that produced it, shown so the panel is anchored to it. */
+  command?: string;
   /** Types a command into the terminal. Does not execute it. */
   onRun: (command: string) => void;
   onDismiss: () => void;
 }) {
   const actions = found.actions ?? [];
+  const [tall, setTall] = useState(false);
 
   // The keys shown beside each action, and Escape — a terminal is a keyboard
   // before it is anything else.
@@ -52,14 +60,62 @@ export function CommandApp({
   }, [actions, onRun, onDismiss]);
 
   return (
-    <section className="capp" role="group" aria-label={found.title}>
+    <section
+      className="capp"
+      role="group"
+      aria-label={found.title}
+      data-tall={tall || undefined}
+      // Set as a variable rather than a class per kind, so a recogniser added
+      // later is a registry entry and never a new stylesheet rule.
+      style={{ ["--capp-accent" as string]: `var(--${found.accent})` }}
+    >
       <header className="capp__head">
-        <span className="capp__mark" aria-hidden="true" />
-        <h2 className="capp__title">{found.title}</h2>
-        {found.subtitle && <span className="capp__sub">{found.subtitle}</span>}
-        <button type="button" className="capp__dismiss" aria-label="Dismiss" onClick={onDismiss}>
-          ×
-        </button>
+        <span className="capp__glyph" aria-hidden="true">
+          {found.glyph}
+        </span>
+
+        <div className="capp__who">
+          <h2 className="capp__title">{found.title}</h2>
+          {found.subtitle && <span className="capp__sub">{found.subtitle}</span>}
+        </div>
+
+        {found.chips && found.chips.length > 0 && (
+          <div className="capp__chips">
+            {found.chips.map((chip: Chip) => (
+              <span key={chip.text} className="capp__chip" data-tone={chip.tone}>
+                {chip.text}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {/* The command that produced this, so the panel is anchored to what
+            you typed rather than floating above it. */}
+        {command && (
+          <code className="capp__command" title={command}>
+            <span className="capp__prompt" aria-hidden="true">
+              $
+            </span>
+            {command}
+          </code>
+        )}
+
+        {/* One cell, not two: the head declares four columns, and a fifth
+            child would be placed in an implicit column of its own. */}
+        <span className="capp__tools">
+          <button
+            type="button"
+            className="capp__icon"
+            aria-label={tall ? "Shrink" : "Grow"}
+            aria-pressed={tall}
+            onClick={() => setTall((on) => !on)}
+          >
+            {tall ? "\u2013" : "\u2922"}
+          </button>
+          <button type="button" className="capp__icon" aria-label="Dismiss" onClick={onDismiss}>
+            \u00d7
+          </button>
+        </span>
       </header>
 
       <div className="capp__body">
@@ -79,9 +135,10 @@ export function CommandApp({
                 {action.key}
               </span>
               {action.label}
+              <code className="capp__action-cmd">{action.command}</code>
             </button>
           ))}
-          <span className="capp__hint">Actions type the command — you still press Enter.</span>
+          <span className="capp__hint">These type the command — you still press Enter.</span>
         </footer>
       )}
     </section>
@@ -97,16 +154,7 @@ function Body({ view, title }: { view: View; title: string }) {
     case "timeline":
       return <Timeline entries={view.entries} />;
     case "facts":
-      return (
-        <dl className="capp__facts">
-          {view.facts.map((fact, i) => (
-            <div className="capp__fact" key={`${fact.label}-${i}`}>
-              <dt>{fact.label}</dt>
-              <dd>{fact.value}</dd>
-            </div>
-          ))}
-        </dl>
-      );
+      return <Facts facts={view.facts} />;
     case "json":
       // A `pre`, and never `dangerouslySetInnerHTML`. This text came out of a
       // command, which is to say from anywhere at all.
@@ -115,10 +163,15 @@ function Body({ view, title }: { view: View; title: string }) {
 }
 
 function Table({ columns, rows, title }: { columns: Column[]; rows: Row[]; title: string }) {
+  const toned = rows.some((row) => row.tone);
+
   return (
     <table className="capp__table" aria-label={title}>
       <thead>
         <tr>
+          {/* The dot column has no heading: it repeats what the status column
+              already says, and a screen reader should hear it once. */}
+          {toned && <th scope="col" className="capp__dot-head" />}
           {columns.map((column) => (
             <th
               key={column.key}
@@ -134,6 +187,11 @@ function Table({ columns, rows, title }: { columns: Column[]; rows: Row[]; title
       <tbody>
         {rows.map((row) => (
           <tr key={row.id} data-tone={row.tone}>
+            {toned && (
+              <td className="capp__dot-cell">
+                <span className="capp__row-dot" aria-hidden="true" />
+              </td>
+            )}
             {columns.map((column) => (
               <td
                 key={column.key}
@@ -141,7 +199,11 @@ function Table({ columns, rows, title }: { columns: Column[]; rows: Row[]; title
                 data-mono={column.mono || undefined}
                 data-secondary={column.secondary || undefined}
               >
-                {row.cells[column.key] ?? ""}
+                {column.as === "status" && row.cells[column.key] ? (
+                  <span className="capp__status">{row.cells[column.key]}</span>
+                ) : (
+                  (row.cells[column.key] ?? "")
+                )}
               </td>
             ))}
           </tr>
@@ -157,20 +219,19 @@ function Meters({ meters }: { meters: Meter[] }) {
       {meters.map((meter) => {
         const share = meter.total > 0 ? Math.min(100, (meter.used / meter.total) * 100) : 0;
         return (
-          <div className="capp__meter" key={meter.label}>
+          <div className="capp__meter" key={meter.label} data-hot={share >= 85 || undefined}>
             <span className="capp__meter-label">
               {meter.label}
               {meter.note && <span className="capp__meter-note">{meter.note}</span>}
             </span>
+            {/* The percentage large, because ranking four disks is the whole
+                reason anyone typed df. */}
+            <span className="capp__meter-pct">{Math.round(share)}%</span>
             <span className="capp__meter-figure">
-              {meter.usedText} / {meter.totalText} · {Math.round(share)}%
+              {meter.usedText} of {meter.totalText}
             </span>
             <span className="capp__bar" aria-hidden="true">
-              <span
-                className="capp__bar-fill"
-                style={{ width: `${share}%` }}
-                data-hot={share >= 85 || undefined}
-              />
+              <span className="capp__bar-fill" style={{ width: `${share}%` }} />
             </span>
           </div>
         );
@@ -182,18 +243,52 @@ function Meters({ meters }: { meters: Meter[] }) {
 function Timeline({ entries }: { entries: Entry[] }) {
   return (
     <ol className="capp__timeline">
-      {entries.map((entry) => (
-        <li className="capp__entry" key={entry.id}>
-          <span className="capp__dot" aria-hidden="true" />
-          <span className="capp__entry-title">{entry.title}</span>
-          <span className="capp__entry-meta">
-            {entry.meta.map((bit, i) => (
-              <span key={i}>{bit}</span>
-            ))}
-          </span>
-          {entry.body && <p className="capp__entry-body">{entry.body}</p>}
-        </li>
-      ))}
+      {entries.map((entry) => {
+        const [sha, ...rest] = entry.meta;
+        return (
+          <li className="capp__entry" key={entry.id}>
+            <span className="capp__dot" aria-hidden="true" />
+            <span className="capp__entry-title">{entry.title}</span>
+            <span className="capp__entry-meta">
+              {sha && <code className="capp__sha">{sha}</code>}
+              {rest.map((bit, i) => (
+                <span key={i}>{bit}</span>
+              ))}
+            </span>
+            {entry.body && <p className="capp__entry-body">{entry.body}</p>}
+          </li>
+        );
+      })}
     </ol>
+  );
+}
+
+/**
+ * Facts, with the first one given the weight it deserves.
+ *
+ * `mkdir project_name` has one thing worth reading and three worth having,
+ * and a flat list of four would bury it.
+ */
+function Facts({ facts }: { facts: { label: string; value: string }[] }) {
+  const [lead, ...rest] = facts;
+  return (
+    <div className="capp__facts">
+      {lead && (
+        <p className="capp__lead">
+          <span className="capp__lead-label">{lead.label}</span>
+          <span className="capp__lead-value">{lead.value}</span>
+        </p>
+      )}
+      {rest.length > 0 && (
+        <dl className="capp__fact-list">
+          {rest.map((fact, i) => (
+            <div className="capp__fact" key={`${fact.label}-${i}`}>
+              <dt>{fact.label}</dt>
+              <dd>{fact.value}</dd>
+            </div>
+          ))}
+        </dl>
+      )}
+    </div>
   );
 }
