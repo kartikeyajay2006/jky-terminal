@@ -100,20 +100,34 @@ export function CommandApp({
           </code>
         )}
 
-        {/* One cell, not two: the head declares four columns, and a fifth
-            child would be placed in an implicit column of its own. */}
+        {/*
+          One cell, not two: the head declares four columns, and a fifth child
+          would be placed in an implicit column of its own.
+
+          The glyphs are written as the characters they are. A `\u` escape is
+          processed inside a JavaScript string and *not* in JSX text, so one
+          written as text renders as the six characters you typed — which is
+          exactly what the dismiss button did until someone read it.
+        */}
         <span className="capp__tools">
           <button
             type="button"
             className="capp__icon"
             aria-label={tall ? "Shrink" : "Grow"}
+            title={tall ? "Shrink" : "Grow"}
             aria-pressed={tall}
             onClick={() => setTall((on) => !on)}
           >
-            {tall ? "\u2013" : "\u2922"}
+            {tall ? "⤡" : "⤢"}
           </button>
-          <button type="button" className="capp__icon" aria-label="Dismiss" onClick={onDismiss}>
-            \u00d7
+          <button
+            type="button"
+            className="capp__icon"
+            aria-label="Dismiss"
+            title="Dismiss (Esc)"
+            onClick={onDismiss}
+          >
+            ×
           </button>
         </span>
       </header>

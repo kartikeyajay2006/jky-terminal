@@ -69,7 +69,7 @@ export function recogniseGitStatus(c: Completion): Recognised | null {
 
   return {
     kind: "git-status",
-    glyph: "\u25C8",
+    glyph: "◈",
     accent: "warn",
     title: "Working tree",
     // The counts people actually want off a status: what is ready to commit,
@@ -124,7 +124,7 @@ export function recogniseGitLog(c: Completion): Recognised | null {
 
   return {
     kind: "git-log",
-    glyph: "\u25F7",
+    glyph: "◷",
     accent: "violet",
     title: "History",
     subtitle: `${entries.length} commits`,

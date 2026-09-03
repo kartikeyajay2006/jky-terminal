@@ -62,7 +62,7 @@ export function recogniseFileAction(c: Completion): Recognised | null {
 
   return {
     kind: "file-action",
-    glyph: destructive ? "\u2716" : "\u271A",
+    glyph: destructive ? "✖" : "✚",
     // Making something and removing something are not the same news, and the
     // panel should not congratulate you identically for both.
     accent: destructive ? "warn" : "mint",
@@ -148,7 +148,7 @@ export function recogniseLs(c: Completion): Recognised | null {
     const dirs = rows.filter((r) => r.cells.kind === "dir").length;
     return {
       kind: "ls",
-      glyph: "\u25A4",
+      glyph: "▤",
       accent: "accent",
       title: where,
       chips: [
@@ -179,7 +179,7 @@ export function recogniseLs(c: Completion): Recognised | null {
 
   return {
     kind: "ls",
-    glyph: "\u25A4",
+    glyph: "▤",
     accent: "accent",
     title: where,
     subtitle: `${names.length} entries`,

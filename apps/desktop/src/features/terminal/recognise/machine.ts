@@ -54,7 +54,7 @@ export function recogniseDf(c: Completion): Recognised | null {
   const tight = meters.filter((m) => m.used >= 85).length;
   return {
     kind: "df",
-    glyph: "\u25A5",
+    glyph: "▥",
     accent: "accent-dim",
     title: "Disks",
     subtitle: `${meters.length} mounted`,
@@ -118,7 +118,7 @@ export function recognisePs(c: Completion): Recognised | null {
   const busy = rows.filter((r) => r.tone === "warn").length;
   return {
     kind: "ps",
-    glyph: "\u2630",
+    glyph: "☰",
     accent: "magenta",
     title: "Processes",
     subtitle: `${rows.length} listed`,
@@ -200,7 +200,7 @@ export function recogniseDockerPs(c: Completion): Recognised | null {
   const stopped = rows.length - running;
   return {
     kind: "docker-ps",
-    glyph: "\u25A2",
+    glyph: "▢",
     accent: "lime",
     title: "Containers",
     chips: [
