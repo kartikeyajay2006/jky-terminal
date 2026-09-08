@@ -161,10 +161,17 @@ fn decode_rgba(bytes: &[u8]) -> Result<(usize, usize, Vec<u8>), CaptureError> {
     // different.
     let rgba = match info.color_type {
         png::ColorType::Rgba => buf,
-        png::ColorType::Rgb => buf
-            .chunks_exact(3)
-            .flat_map(|p| [p[0], p[1], p[2], 0xff])
-            .collect(),
+        png::ColorType::Rgb => {
+            // `as_chunks` rather than `chunks_exact(3)`: the chunk size is a
+            // constant, so the compiler can be told that once instead of the
+            // slice being re-checked on every step. Newer clippy lints the
+            // other spelling, and it is right to.
+            let (pixels, _rest) = buf.as_chunks::<3>();
+            pixels
+                .iter()
+                .flat_map(|p| [p[0], p[1], p[2], 0xff])
+                .collect()
+        }
         other => {
             return Err(CaptureError::Clipboard(format!(
                 "unsupported colour type {other:?}"
