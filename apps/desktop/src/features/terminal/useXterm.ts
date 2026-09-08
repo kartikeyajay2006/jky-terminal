@@ -14,6 +14,7 @@ import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFo
 import { copyText, readText } from "./clipboard";
 import { decodeCommand, renderResult } from "./shellCommand";
 import { decodeDone, outputOf, type CommandDone } from "./commandFailure";
+import { MarkTracker, parseMark } from "./marks";
 import type { Completion } from "./recognise";
 import { runShellCommand } from "./runShellCommand";
 import type { SearchHits } from "./TerminalSearch";
@@ -115,6 +116,9 @@ export function useXterm(
    * it here means never scanning the scrollback for where a command started.
    */
   const mark = useRef(0);
+  // Where the shell says each command began and ended. Separate from `mark`
+  // above, which is only ever "everything since the last report".
+  const marks = useRef(new MarkTracker());
   /** A panel's key handler, while one is open. See `claimKeys`. */
   const keyClaim = useRef<((event: KeyboardEvent) => boolean) | null>(null);
 
@@ -221,6 +225,30 @@ export function useXterm(
         magenta: tokens.getPropertyValue("--magenta"),
       },
     });
+    // The shell's semantic marks: where a prompt begins, where a command's
+    // output begins, and the status it ended with. This is a shared
+    // convention rather than something this app invented — see
+    // `crates/jky-pty/src/integration.rs`.
+    //
+    // Positions are recorded as xterm markers rather than plain line numbers.
+    // A number goes stale the moment scrollback overflows and the buffer
+    // shifts underneath it; a marker is moved by the terminal itself, so a
+    // jump still lands on the right line an hour later.
+    xterm.parser.registerOscHandler(133, (payload) => {
+      const parsed = parseMark(payload);
+      if (!parsed) return false;
+
+      const buffer = xterm.buffer.active;
+      const here = xterm.registerMarker(0) ?? { line: buffer.baseY + buffer.cursorY };
+      const now = Date.now();
+
+      if (parsed.kind === "prompt") marks.current.prompt(here, now);
+      else if (parsed.kind === "output") marks.current.output(here, now);
+      else marks.current.done(here, parsed.exitCode, now);
+
+      return true;
+    });
+
     // `jky ask <question>` in the shell emits OSC 1337 carrying a base64
     // question. Handling it here means the shell command needs no socket, no
     // port, and no knowledge of where the app is — the sequence simply rides
@@ -250,18 +278,36 @@ export function useXterm(
 
         // Everything drawn since the last report: the prompt, the command as
         // it was typed, and then whatever the command printed.
+        //
+        // `from` is held rather than read back off `mark` below, because the
+        // region's first line is this value and `mark` has moved on by then.
+        const from = mark.current;
         const region: string[] = [];
-        for (let y = mark.current; y < end; y += 1) {
+        for (let y = from; y < end; y += 1) {
           region.push(buffer.getLine(y)?.translateToString(true) ?? "");
         }
         mark.current = end;
+
+        // Where the output actually started, if the shell said so.
+        //
+        // `outputOf` finds the boundary by searching the region for the
+        // command's own text, which is a good guess that is wrong whenever a
+        // command prints something resembling itself — `grep`, `history`,
+        // `echo` — or whenever the prompt wrapped. The `C` mark is the shell
+        // stating the answer, so prefer it and keep the guess for shells that
+        // do not report one.
+        const started = marks.current.current?.output?.line ?? null;
+        const exact =
+          started !== null && started >= from && started <= end
+            ? region.slice(started - from)
+            : null;
 
         if (done.code !== 0) failureHandler.current?.(done);
         doneHandler.current?.({
           command: done.command,
           code: done.code,
           cwd: done.cwd,
-          output: outputOf(region, done.command),
+          output: exact ? exact.join("\n").replace(/^\n+|\s+$/g, "") : outputOf(region, done.command),
         });
         return true;
       }

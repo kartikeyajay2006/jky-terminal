@@ -28,6 +28,31 @@ use crate::ASK_OSC;
 /// Marker introducing a completion report inside an OSC 1337 sequence.
 pub const DONE_PREFIX: &str = "JKYDone=";
 
+/// The OSC carrying semantic prompt marks.
+///
+/// Unlike 1337, this one is not ours and the number is not a choice. OSC 133
+/// is the convention iTerm2, WezTerm, Kitty, Ghostty and Windows Terminal all
+/// already speak, so a shell configured for this app keeps working in those,
+/// and a shell configured for those keeps working here. Inventing a private
+/// sequence for a solved problem would make this app the odd one out in
+/// somebody's dotfiles, which is the surest way to be removed from them.
+///
+/// Four marks matter. `A` is where a prompt begins, `C` is where a command's
+/// output begins, and `D` carries the exit status. `B` — the boundary between
+/// the prompt and what the user typed — is deliberately not emitted: it has
+/// to live inside `PS1`, and rewriting somebody's prompt string risks their
+/// line wrapping for a mark none of the features here need.
+pub const MARK_OSC: u16 = 133;
+
+/// The OSC carrying the working directory.
+///
+/// Also a shared convention rather than an invention. The completion report
+/// already carries `$PWD`, but only once a command has finished — which is
+/// too late for the two things that need it most: a new split or tab opening
+/// where you already are, and a relative path in output being resolvable to a
+/// real file. This fires on every prompt, so the answer is always current.
+pub const CWD_OSC: u16 = 7;
+
 /// Where the zsh startup files that hand control back live.
 pub fn integration_dir(config_dir: &Path) -> PathBuf {
     config_dir.join("shell")
@@ -71,6 +96,63 @@ printf '\\033]{osc};{prefix}%s\\007' \
     )
 }
 
+/// The marks written before each prompt: the last command's status, where we
+/// are now, and the start of the prompt itself.
+///
+/// One `printf` rather than three. This runs before every prompt for
+/// everybody, so the difference between one write and three is paid all day.
+///
+/// `D` is emitted unconditionally, including on the very first prompt where no
+/// command has run and `$?` is whatever the startup files left behind. The
+/// alternative is a flag threaded through both shells to suppress one
+/// meaningless mark, and a consumer that sees `D` without a preceding `C`
+/// already knows to ignore it — the existing completion report has behaved
+/// this way since it was written.
+fn marks_before_prompt() -> String {
+    format!(
+        "printf '\\033]{mark};D;%s\\007\\033]{cwd};file://%s%s\\007\\033]{mark};A\\007' \
+\"$__jky_status\" \"${{HOSTNAME:-}}\" \"$PWD\"",
+        mark = MARK_OSC,
+        cwd = CWD_OSC,
+    )
+}
+
+/// The mark written when a command starts, before any of its output.
+///
+/// This is the one that earns the feature. Everything before it on screen is
+/// prompt and typed command; everything after it, until the next `D`, is
+/// output. Without it that boundary has to be guessed by searching the screen
+/// for the command's own text, which is wrong the moment a command prints
+/// something that looks like itself.
+pub fn mark_output_start() -> String {
+    format!("printf '\\033]{mark};C\\007'", mark = MARK_OSC)
+}
+
+/// What bash prints after reading a command and before running it.
+///
+/// `PS0` is the only hook bash offers at that moment. The alternative is a
+/// `DEBUG` trap, which fires for every line of every function and would make
+/// the terminal's idea of "output starts here" wrong in exactly the scripts
+/// where it matters most.
+///
+/// This is a prompt string rather than a command, so the escape is spelled the
+/// way bash expands prompts — `\e` and `\a` — and not as a `printf`.
+///
+/// `PS0` arrived in bash 4.4. macOS still ships bash 3.2, where this variable
+/// is simply ignored: no error, no mark, and the terminal falls back to
+/// locating output by searching for the command's own text. That is the same
+/// behaviour it had before any of this existed, which is the right way for a
+/// feature to be missing.
+pub fn bash_ps0(existing: Option<&str>) -> String {
+    let mark = format!("\\e]{};C\\a", MARK_OSC);
+    match existing.map(str::trim).filter(|e| !e.is_empty()) {
+        // Theirs first: PS0 is printed, and anything it prints belongs before
+        // the mark that says output has started.
+        Some(theirs) => format!("{theirs}{mark}"),
+        None => mark,
+    }
+}
+
 /// The hook bash runs before drawing each prompt.
 ///
 /// `history 1` is how bash is asked what just ran; `$_` holds the last
@@ -80,8 +162,9 @@ pub fn bash_hook() -> String {
     format!(
         "__jky_status=$?; \
 __jky_cmd=$(HISTTIMEFORMAT= history 1 2>/dev/null | sed 's/^ *[0-9]* *//'); \
-{}",
-        report("$__jky_cmd")
+{marks}; {report}",
+        marks = marks_before_prompt(),
+        report = report("$__jky_cmd"),
     )
 }
 
@@ -94,12 +177,16 @@ __jky_cmd=$(HISTTIMEFORMAT= history 1 2>/dev/null | sed 's/^ *[0-9]* *//'); \
 /// report arrived with a correct exit code and a blank command until this
 /// existed.
 pub fn zsh_preexec() -> String {
-    "__jky_cmd=$1".to_string()
+    format!("__jky_cmd=$1; {}", mark_output_start())
 }
 
 /// What zsh runs before drawing each prompt.
 pub fn zsh_hook() -> String {
-    format!("__jky_status=$?; {}", report("$__jky_cmd"))
+    format!(
+        "__jky_status=$?; {marks}; {report}",
+        marks = marks_before_prompt(),
+        report = report("$__jky_cmd"),
+    )
 }
 
 /// What `PROMPT_COMMAND` should be set to.
@@ -194,10 +281,16 @@ pub fn integration_env(
         .unwrap_or_default();
 
     match name {
-        "bash" => HashMap::from([(
-            "PROMPT_COMMAND".to_string(),
-            bash_prompt_command(std::env::var("PROMPT_COMMAND").ok().as_deref()),
-        )]),
+        "bash" => HashMap::from([
+            (
+                "PROMPT_COMMAND".to_string(),
+                bash_prompt_command(std::env::var("PROMPT_COMMAND").ok().as_deref()),
+            ),
+            (
+                "PS0".to_string(),
+                bash_ps0(std::env::var("PS0").ok().as_deref()),
+            ),
+        ]),
         "zsh" => HashMap::from([
             (
                 "ZDOTDIR".to_string(),
@@ -213,6 +306,111 @@ pub fn integration_env(
 mod tests {
     use super::*;
     use std::path::Path;
+
+    /// The four things a consumer needs to bound a command exactly.
+    #[test]
+    fn every_prompt_reports_status_directory_and_its_own_start() {
+        for hook in [bash_hook(), zsh_hook()] {
+            assert!(hook.contains(&format!("]{};D;%s", MARK_OSC)), "no exit mark: {hook}");
+            assert!(hook.contains(&format!("]{};file://", CWD_OSC)), "no cwd report: {hook}");
+            assert!(hook.contains(&format!("]{};A", MARK_OSC)), "no prompt mark: {hook}");
+        }
+    }
+
+    #[test]
+    fn zsh_marks_where_output_begins() {
+        // Without this the start of output is guessed by searching the screen
+        // for the command's own text.
+        assert!(zsh_preexec().contains(&format!("]{};C", MARK_OSC)));
+    }
+
+    #[test]
+    fn the_command_the_shell_remembered_still_travels() {
+        // The marks were added beside the existing report, not instead of it.
+        assert!(zsh_preexec().contains("__jky_cmd=$1"));
+        for hook in [bash_hook(), zsh_hook()] {
+            assert!(hook.contains(DONE_PREFIX), "the completion report went missing");
+        }
+    }
+
+    /// `B` is the one mark deliberately not emitted.
+    #[test]
+    fn nothing_rewrites_the_users_prompt_string() {
+        for hook in [bash_hook(), zsh_hook(), zsh_preexec()] {
+            assert!(!hook.contains("PS1"), "the prompt string must not be touched");
+            assert!(!hook.contains(&format!("]{};B", MARK_OSC)));
+        }
+    }
+
+    /// One write per prompt, not three.
+    #[test]
+    fn the_marks_cost_a_single_printf() {
+        assert_eq!(marks_before_prompt().matches("printf").count(), 1);
+    }
+
+    /// The fragment has to be valid shell, and it has to emit what it claims.
+    ///
+    /// This is the test that matters most in this file. The hook runs before
+    /// every prompt of every shell this app starts, so a syntax error here is
+    /// not a broken feature — it is an error message printed under every
+    /// command the user ever runs. Reading the string and asserting it
+    /// contains `]133;A` proves nothing about whether a shell can run it.
+    ///
+    /// Unix only: there is no `sh` to run it with on Windows, and the hook is
+    /// not installed there either.
+    #[cfg(unix)]
+    #[test]
+    fn a_real_shell_runs_the_hook_and_emits_the_marks() {
+        use std::process::Command;
+
+        for (shell, hook) in [("bash", bash_hook()), ("sh", zsh_hook())] {
+            // Skip rather than fail where the shell is absent; a runner
+            // without bash is a runner this cannot speak for.
+            if Command::new(shell).arg("-c").arg("exit 0").output().is_err() {
+                continue;
+            }
+
+            let script = format!("__jky_cmd='echo hi'; PWD=/tmp; {hook}");
+            let out = Command::new(shell)
+                .arg("-c")
+                .arg(&script)
+                .output()
+                .expect("the shell should run");
+
+            assert!(
+                out.status.success(),
+                "{shell} could not run the hook: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+            assert!(
+                String::from_utf8_lossy(&out.stderr).is_empty(),
+                "{shell} printed to stderr under the hook: {}",
+                String::from_utf8_lossy(&out.stderr)
+            );
+
+            let stdout = String::from_utf8_lossy(&out.stdout);
+            // The real bytes, with a real ESC, not the source's backslash-033.
+            assert!(stdout.contains("\u{1b}]133;D;"), "{shell}: no exit mark emitted");
+            assert!(stdout.contains("\u{1b}]7;file://"), "{shell}: no cwd reported");
+            assert!(stdout.contains("\u{1b}]133;A"), "{shell}: no prompt mark emitted");
+        }
+    }
+
+    /// The output mark, likewise run rather than merely read.
+    #[cfg(unix)]
+    #[test]
+    fn a_real_shell_runs_the_output_mark() {
+        use std::process::Command;
+
+        let out = Command::new("sh")
+            .arg("-c")
+            .arg(mark_output_start())
+            .output()
+            .expect("sh should run");
+
+        assert!(out.status.success());
+        assert_eq!(String::from_utf8_lossy(&out.stdout), "\u{1b}]133;C\u{7}");
+    }
 
     #[test]
     fn the_report_is_carried_on_the_channel_the_app_already_listens_to() {
