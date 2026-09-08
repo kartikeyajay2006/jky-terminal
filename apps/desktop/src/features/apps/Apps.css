@@ -1,4 +1,22 @@
+/*
+ * An opened app: a bar that stays, and a body that scrolls under it.
+ *
+ * The flex column is the whole point. `.apps__stage` below asks for
+ * `flex: 1; min-height: 0`, which bounds it to whatever the bar leaves and
+ * lets it scroll its own overflow. With no column here that request is inert,
+ * the stage grows to fit its content instead, and the `overflow: hidden` on
+ * this element then clips it — no scrollbar, no way down. That is exactly
+ * what happened when the tile grid moved to the shared `.board` and took the
+ * old base `.apps` rule, and its layout, with it.
+ *
+ * `overflow: hidden` stays deliberately: the stage scrolls, this frame never
+ * does, or the bar would scroll away with the body.
+ */
 .apps--open {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
   padding: 0;
   gap: 0;
   overflow: hidden;
