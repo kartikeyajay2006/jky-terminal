@@ -1,0 +1,16 @@
+[package]
+name = "jky-capture"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+# The clipboard is the one part of a capture that cannot be done with the
+# standard library. arboard carries the three platform implementations -
+# Win32, AppKit and wl-clipboard/X11 - behind one call.
+arboard = { version = "3", default-features = false, features = ["image-data", "wayland-data-control"] }
+# Decoding, not encoding: the window sends a PNG, and the clipboard wants raw
+# RGBA. A decoder alone is far smaller than the whole `image` crate.
+png = "0.17"
