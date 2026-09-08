@@ -11,6 +11,8 @@ thiserror.workspace = true
 # standard library. arboard carries the three platform implementations -
 # Win32, AppKit and wl-clipboard/X11 - behind one call.
 arboard = { version = "3", default-features = false, features = ["image-data", "wayland-data-control"] }
-# Decoding, not encoding: the window sends a PNG, and the clipboard wants raw
-# RGBA. A decoder alone is far smaller than the whole `image` crate.
+# Decoding, not encoding: the window sends a PNG and the clipboard wants raw
+# RGBA. This costs no extra build — arboard's image-data feature already pulls
+# `image`, which pulls `png` beneath it — and naming it directly is clearer
+# than reaching through a dependency's dependency for a decoder.
 png = "0.17"

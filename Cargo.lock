@@ -2185,6 +2185,7 @@ dependencies = [
  "jky-ai",
  "jky-apps",
  "jky-audit",
+ "jky-capture",
  "jky-pty",
  "jky-secrets",
  "jky-settings",

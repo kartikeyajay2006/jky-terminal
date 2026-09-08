@@ -768,6 +768,24 @@ export interface ToolsApi {
   ): Promise<HttpResponse>;
 }
 
+/**
+ * The camera.
+ *
+ * The window renders a picture of itself and hands over the bytes; where that
+ * picture goes is decided in Rust. Neither call names a destination, and
+ * neither hands anything back that the window could read — `save` returns the
+ * path only so it can be shown to the person who asked.
+ */
+export interface CaptureApi {
+  // The buffer type is pinned because a bare `Uint8Array` is generic over
+  // ArrayBufferLike, which includes SharedArrayBuffer - and a Blob will not
+  // take one of those. The capture always owns a plain ArrayBuffer.
+  /** Write a capture to the downloads folder. Resolves with where it landed. */
+  save(png: Uint8Array<ArrayBuffer>): Promise<string>;
+  /** Put a capture on the clipboard, writing nothing to disk. */
+  copy(png: Uint8Array<ArrayBuffer>): Promise<void>;
+}
+
 export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
@@ -788,6 +806,8 @@ export interface Platform {
   readonly system: SystemApi;
   /** What each terminal had on screen last time. */
   readonly scrollback: ScrollbackApi;
+  /** Saving or copying a picture of the window. */
+  readonly capture: CaptureApi;
   /** The shell commands JKY Terminal installs. */
   listCommands(): Promise<CommandSpec[]>;
   /**

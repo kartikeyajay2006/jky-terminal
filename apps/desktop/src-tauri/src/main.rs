@@ -7,8 +7,8 @@ mod turn;
 mod state;
 
 use commands::{
-    advice, ai, apps, browser, games, github, gmail, open, pty, scrollback, settings, store, system, tools,
-    vault,
+    advice, ai, apps, browser, capture, games, github, gmail, open, pty, scrollback, settings, store,
+    system, tools, vault,
 };
 use state::AppState;
 use tauri::Manager;
@@ -48,6 +48,8 @@ fn main() {
             pty::pty_resize,
             pty::pty_kill,
             pty::commands_list,
+            capture::capture_save,
+            capture::capture_copy,
             ai::ai_send,
             ai::ai_cancel,
             advice::ai_ask_once,

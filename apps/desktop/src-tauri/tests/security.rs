@@ -243,6 +243,19 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "browser_history".to_string(),
         "browser_open".to_string(),
         "browser_place".to_string(),
+        // The two ends of the camera. Both take PNG bytes the window has
+        // already rendered of itself, and neither takes a destination: the
+        // window says what to keep, Rust decides where it goes. That is what
+        // keeps `the_renderer_is_granted_no_filesystem_shell_or_network_capability`
+        // true while a screenshot still reaches the disk — a command that
+        // accepted a path would be an arbitrary file write wearing a camera.
+        //
+        // Neither returns bytes. `capture_save` returns the path it chose,
+        // which the window only displays; `capture_copy` returns nothing at
+        // all, because a command that could read the clipboard back would be a
+        // way to exfiltrate whatever the user last copied.
+        "capture_copy".to_string(),
+        "capture_save".to_string(),
         "commands_list".to_string(),
         // Takes four numbers the window already has and renders the listing
         // `jky games` prints. The path, the format and the set of valid game

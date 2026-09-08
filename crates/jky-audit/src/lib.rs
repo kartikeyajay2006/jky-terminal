@@ -38,6 +38,13 @@ pub enum AuditKind {
     AccountConnected,
     /// An account was unlinked and its token deleted.
     AccountDisconnected,
+    /// A picture of the window was taken, and where it went.
+    ///
+    /// A capture is one of the few things in this app that leaves it — onto
+    /// the disk, or onto a clipboard any other program can read. That makes it
+    /// worth a line, for the same reason a linked account is: the owner should
+    /// be able to see what left without having to ask the app.
+    Captured,
     /// A sign-in was started: a browser was opened at a provider's
     /// authorisation page.
     ///

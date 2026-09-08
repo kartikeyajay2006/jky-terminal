@@ -1,5 +1,6 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import type {
+  CaptureApi,
   GmailMessage,
   SystemReading,
   AppsApi,
@@ -846,8 +847,32 @@ export function createWebPlatform(): Platform {
     async history() {},
   };
 
+  /**
+   * The browser build has no disk and no clipboard of its own to speak for, so
+   * a capture is handed to the browser the way any download is. Copy uses the
+   * async clipboard API where the browser allows it, and says so plainly where
+   * it does not, rather than reporting a success that did not happen.
+   */
+  const capture: CaptureApi = {
+    async save(png: Uint8Array<ArrayBuffer>) {
+      const name = `jky-terminal-${new Date().toISOString().replace(/[:.]/g, "-")}.png`;
+      const url = URL.createObjectURL(new Blob([png], { type: "image/png" }));
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = name;
+      link.click();
+      URL.revokeObjectURL(url);
+      return name;
+    },
+    async copy(png: Uint8Array<ArrayBuffer>) {
+      const item = new ClipboardItem({ "image/png": new Blob([png], { type: "image/png" }) });
+      await navigator.clipboard.write([item]);
+    },
+  };
+
   return {
     kind: "web",
+    capture,
     system,
     tools,
     vault,

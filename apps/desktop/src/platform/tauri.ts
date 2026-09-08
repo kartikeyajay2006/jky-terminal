@@ -3,6 +3,7 @@ import { listen } from "@tauri-apps/api/event";
 import type {
   AppsApi,
   BrowserApi,
+  CaptureApi,
   NewsArticle,
   GitHubBranch,
   GitHubCommit,
@@ -176,6 +177,13 @@ export function createTauriPlatform(): Platform {
     ),
   };
 
+  const capture: CaptureApi = {
+    // Sent as a plain array: Tauri's IPC serialises a Uint8Array to JSON as an
+    // object keyed by index, which arrives in Rust as a map rather than bytes.
+    save: (png) => invoke<string>("capture_save", { png: Array.from(png) }),
+    copy: (png) => invoke<void>("capture_copy", { png: Array.from(png) }),
+  };
+
   const games: GamesApi = {
     publishScores: (scores: GameScore[]) =>
       invoke<void>("games_publish_scores", { scores }),
@@ -255,6 +263,7 @@ export function createTauriPlatform(): Platform {
 
   return {
     kind: "tauri",
+    capture,
     system,
     tools,
     vault,
