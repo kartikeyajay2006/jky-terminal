@@ -3,6 +3,7 @@ import { Rail } from "./Rail";
 import { StatusBar } from "./StatusBar";
 import { applyTheme, loadTheme, saveTheme, type ThemeId } from "./theme";
 import { Notifications } from "../features/notifications/Notifications";
+import { Camera } from "../features/capture/Camera";
 import "./Shell.css";
 
 interface ShellProps {
@@ -28,6 +29,7 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
       <Rail activeId={activeId} onSelect={onSelect ?? (() => {})} />
       <main className="shell__workspace">{children}</main>
       <StatusBar theme={theme} onThemeChange={changeTheme} shellName={shellLabel()} />
+      <Camera />
       <Notifications />
     </div>
   );

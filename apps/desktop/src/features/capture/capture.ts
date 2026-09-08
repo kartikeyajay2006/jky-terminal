@@ -15,7 +15,7 @@ import {
  * canvas drawing, so it is verified against WebKitGTK rather than in unit
  * tests.
  */
-export async function captureToPng(root: HTMLElement): Promise<Uint8Array> {
+export async function captureToPng(root: HTMLElement): Promise<Uint8Array<ArrayBuffer>> {
   const view = root.ownerDocument.defaultView;
   if (!view) throw new Error("the element is not in a rendered document");
 
@@ -73,7 +73,7 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-async function toPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {
+async function toPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array<ArrayBuffer>> {
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob((b) => resolve(b), "image/png"),
   );

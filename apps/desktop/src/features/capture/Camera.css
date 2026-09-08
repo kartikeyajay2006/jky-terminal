@@ -1,0 +1,117 @@
+/*
+ * The camera, and the choice it offers.
+ *
+ * It sits immediately left of the bell, in the same fixed corner and at the
+ * same size, because the two are the same kind of thing: a control that
+ * belongs to the window rather than to whatever section is open. The offset is
+ * the bell's width plus a gap, so the pair reads as one cluster instead of two
+ * things that happen to be near each other.
+ *
+ * Every colour here is a token. A literal would fail the lint that exists to
+ * keep the seven themes from having an eighth thing to disagree with.
+ */
+.shot {
+  position: fixed;
+  top: var(--s3);
+  right: calc(var(--s3) + 34px + var(--s2));
+  z-index: 40;
+}
+
+.shot__button {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--surface) 85%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  color: var(--text-muted);
+  box-shadow: 0 6px 20px rgb(0 0 0 / 30%);
+  transition: all var(--fast) var(--ease);
+}
+
+.shot__button:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.shot__button[aria-expanded="true"] {
+  color: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 0 18px var(--accent-glow);
+}
+
+/* Taking the picture is a quarter of a second of blocked main thread. Saying
+   so is the difference between "working" and "broken". */
+.shot__button[data-busy] {
+  color: var(--accent);
+  border-color: var(--accent);
+  animation: jky-pulse var(--motion-loop) var(--ease) infinite;
+}
+
+.shot__pop {
+  position: absolute;
+  top: calc(100% + var(--s2));
+  right: 0;
+  width: 244px;
+  padding: var(--s4);
+  display: grid;
+  gap: var(--s3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--surface-raised) 97%, transparent);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  box-shadow:
+    0 24px 56px rgb(0 0 0 / 62%),
+    0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
+  animation: jky-rise var(--motion-normal) var(--ease);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shot__pop {
+    animation: none;
+  }
+}
+
+.shot__head {
+  margin: 0;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.shot__actions {
+  display: flex;
+  gap: var(--s2);
+}
+
+.shot__actions .btn {
+  flex: 1;
+  justify-content: center;
+}
+
+.shot__hint,
+.shot__result {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--text-dim);
+  /* A saved path is long and has no spaces to break at. */
+  overflow-wrap: anywhere;
+}
+
+.shot__result {
+  color: var(--text);
+}
+
+.shot__result--bad {
+  color: var(--danger);
+}
