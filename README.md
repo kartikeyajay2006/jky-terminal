@@ -8,7 +8,7 @@ Built by [@kartikeyajay2006](https://github.com/kartikeyajay2006). MIT.
 
 [![CI](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
 ![Linux · macOS · Windows](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff)
-![Tests](https://img.shields.io/badge/tests-1787%20frontend%20%2B%20694%20Rust-3ddc97)
+![Tests](https://img.shields.io/badge/tests-1813%20frontend%20%2B%20701%20Rust-3ddc97)
 ![License](https://img.shields.io/badge/license-MIT-7c3aed)
 
 ---
@@ -170,6 +170,36 @@ command, it keeps nothing, and it opens `http` and `https` only.
 
 ---
 
+## Capture
+
+A camera beside the bell photographs the whole window — rail, status bar, tabs
+and whatever is open — and then asks what to do with it. **Save** writes
+`jky-terminal-2026-09-09-014210.png` to your downloads folder and tells you
+where it went. **Copy** puts it on the clipboard and leaves no file behind.
+
+The picture is taken when you press the button and the choice is offered
+afterwards, so the popover is never in the shot.
+
+It is the same code on all three platforms, which took some deciding. Tauri has
+no cross-platform way to photograph a webview, and the screen-capture crates
+that fill that gap document window capture as unreliable on Wayland — the
+default on current Fedora and Ubuntu. So the window renders a picture of
+itself: the tree is serialised into an SVG `foreignObject`, drawn to a canvas,
+and the live canvases are composited back on top, because a `<canvas>`
+serialises as an empty element and the terminal would otherwise arrive as a
+hole. Rust still performs every effect — it chooses the path and it owns the
+clipboard — so the window is granted no filesystem capability by this feature,
+and a test proves it.
+
+The reasoning, and the measurements behind it, are in
+[`docs/superpowers/specs/2026-09-09-capture-design.md`](docs/superpowers/specs/2026-09-09-capture-design.md).
+
+One honest caveat: on Wayland a clipboard is served by a live process, so a
+copied capture lasts as long as the app does. That is true of every Wayland
+application, and a clipboard manager solves it.
+
+---
+
 ## Themes and motion
 
 Seven themes. A literal hex in a component is a lint error, and a test
@@ -266,6 +296,7 @@ jky-terminal/
    ├─ jky-tools/              hashing, diffing, YAML
    ├─ jky-system/             processor, memory, disks, processes, DNS
    ├─ jky-settings/           preferences
+   ├─ jky-capture/            naming, saving and copying a screenshot
    └─ jky-audit/              local-only audit log
 ```
 
@@ -282,7 +313,7 @@ Every push runs, on **Linux, macOS and Windows** with `fail-fast: false`:
 
 | Job | What it proves |
 |---|---|
-| Frontend | typecheck, lint, 1787 tests |
+| Frontend | typecheck, lint, 1813 tests |
 | Native ×3 | `cargo test`, `clippy -D warnings`, and the shippable binary **links** |
 | Dependency audit | `pnpm audit` and `cargo audit`, failing on high or critical |
 | Security assertions | the command surface, the CSP, and no key in the bundle |
