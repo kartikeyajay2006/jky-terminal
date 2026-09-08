@@ -183,8 +183,16 @@ export function useXterm(
     // WebGL is the fast path but is unavailable on some drivers and in every
     // headless environment. Falling back to the DOM renderer is correct;
     // failing to start a terminal over it is not.
+    //
+    // The `true` is `preserveDrawingBuffer`, and it is what makes the terminal
+    // photographable. WebGL is otherwise free to discard a frame the moment it
+    // has been drawn, so reading the canvas afterwards — which is exactly what
+    // a capture does — finds a blank buffer and does not even throw about it.
+    // Measured on WebKitGTK 2.52.5: a 756x1037 terminal serialised to 4KB of
+    // transparent PNG. Keeping the buffer costs memory and a little fill rate;
+    // a camera that photographs everything except the terminal costs more.
     try {
-      xterm.loadAddon(new WebglAddon());
+      xterm.loadAddon(new WebglAddon(true));
     } catch {
       /* DOM renderer remains in use */
     }
