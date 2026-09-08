@@ -67,6 +67,28 @@ impl Watched {
     }
 }
 
+/// Does this bash understand `PS0`?
+///
+/// It arrived in bash 4.4. macOS still ships 3.2 — GPL v3 is why — so on a
+/// mac runner the output mark is genuinely absent and the terminal falls back
+/// to locating output by searching for the command. Asserting it there would
+/// be asserting something untrue of the platform rather than of the code.
+fn bash_marks_output() -> bool {
+    let out = match std::process::Command::new("bash")
+        .arg("-c")
+        .arg("echo ${BASH_VERSINFO[0]}.${BASH_VERSINFO[1]}")
+        .output()
+    {
+        Ok(o) => o,
+        Err(_) => return false,
+    };
+    let text = String::from_utf8_lossy(&out.stdout);
+    let mut parts = text.trim().split('.');
+    let major: u32 = parts.next().unwrap_or("0").parse().unwrap_or(0);
+    let minor: u32 = parts.next().unwrap_or("0").parse().unwrap_or(0);
+    major > 4 || (major == 4 && minor >= 4)
+}
+
 fn shell_on_path(name: &str) -> bool {
     std::process::Command::new(name)
         .arg("-c")
@@ -122,10 +144,17 @@ fn a_real_shell_emits_the_marks_through_a_real_pty() {
     let _ = session.kill();
     std::fs::remove_dir_all(&dir).ok();
 
+    // These three hold on every bash, of any age.
     assert!(seen.contains("\u{1b}]133;A"), "no prompt mark came back:\n{seen:?}");
-    assert!(seen.contains("\u{1b}]133;C"), "no output mark came back:\n{seen:?}");
     assert!(seen.contains("\u{1b}]133;D;"), "no exit mark came back:\n{seen:?}");
     assert!(seen.contains("\u{1b}]7;file://"), "no cwd report came back:\n{seen:?}");
+
+    if !bash_marks_output() {
+        // bash 3.2, as shipped on macOS. No PS0, so no output mark, and the
+        // terminal uses the older search. Everything above still held.
+        eprintln!("bash predates PS0; skipping the output-mark assertions");
+        return;
+    }
 
     // The ordering here is the entire argument for doing this at all.
     //
