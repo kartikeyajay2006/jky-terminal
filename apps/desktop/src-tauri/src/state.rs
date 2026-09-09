@@ -6,6 +6,7 @@ use std::sync::{Arc, Mutex};
 use jky_audit::AuditLog;
 use jky_history::History;
 use jky_keys::Keymap;
+use jky_remote::HostStore;
 use jky_pty::PtyRegistry;
 use jky_secrets::{KeyringStore, SecretStore};
 use jky_settings::SettingsStore;
@@ -65,6 +66,10 @@ pub struct AppState {
     /// but it is read in full on every search and so it is capped — which is
     /// neither rule the collections follow.
     pub history: Arc<History>,
+    /// The machines you have saved. Not the keychain: a hostname and an
+    /// account name are not secrets, and the things that are never come near
+    /// this app — connecting runs the `ssh` this machine already has.
+    pub hosts: Arc<HostStore>,
     /// The dashboard's notes, todos, events and reminders.
     pub store: Arc<Store>,
     pub ptys: Arc<PtyRegistry>,
@@ -102,6 +107,7 @@ impl AppState {
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
             keys: Arc::new(Keymap::new(config_dir.join("keymap.json"))),
             history: Arc::new(History::new(config_dir.join("history.jsonl"))),
+            hosts: Arc::new(HostStore::new(config_dir.join("hosts.json"))),
             store: Arc::new(Store::new(config_dir)),
             ptys: Arc::new(PtyRegistry::new()),
             config_dir: config_dir.to_path_buf(),

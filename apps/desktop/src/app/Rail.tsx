@@ -12,6 +12,7 @@ export const RAIL_ITEMS: RailItem[] = [
   { id: "dashboard", label: "Dashboard", glyph: "⌂" },
   { id: "terminal", label: "Terminal", glyph: "❯" },
   { id: "history", label: "History", glyph: "↺" },
+  { id: "remote", label: "Remote", glyph: "⇄" },
   { id: "assistant", label: "Assistant", glyph: "✦" },
   { id: "games", label: "Games", glyph: "◈" },
   { id: "apps", label: "Apps", glyph: "⊞" },

@@ -13,6 +13,7 @@ import { Apps } from "./features/apps/Apps";
 import { Developer } from "./features/developer/Developer";
 import { Games } from "./features/games/Games";
 import { History } from "./features/history/History";
+import { Remote } from "./features/remote/Remote";
 import { useOpenGame } from "./features/games/openStore";
 import { useNav } from "./app/navStore";
 import { Palette } from "./features/palette/Palette";
@@ -157,6 +158,7 @@ export function App() {
                 tabId={tab.id}
                 tree={tab.layout}
                 focused={tab.focusedPane}
+                remotes={tab.remotes}
                 live={tab.id === activeId && section === "terminal"}
               />
             </div>
@@ -177,6 +179,7 @@ export function App() {
           and a section nobody is looking at has no business reading the
           history file every time a key is pressed somewhere else. */}
       {section === "history" && <History />}
+      {section === "remote" && <Remote />}
       {section === "settings" && <Settings />}
       {section === "dashboard" && <Dashboard />}
       {section === "assistant" && <Assistant />}

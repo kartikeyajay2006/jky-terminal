@@ -121,6 +121,14 @@ export function useXterm(
    * something better than text.
    */
   onDone?: (completion: Completion) => void,
+  /**
+   * A saved host to open this terminal on, rather than a local shell.
+   *
+   * The id of a host, never a command line: the argument list is built in
+   * Rust from what was saved under that id, so nothing the window holds
+   * becomes a process argument.
+   */
+  host?: string,
 ): TerminalControls {
   const term = useRef<Xterm | null>(null);
   const searchAddon = useRef<SearchAddon | null>(null);
@@ -413,16 +421,22 @@ export function useXterm(
       // Greet before the shell speaks. Written into the pty stream rather
       // than overlaid, so it lives in the scrollback like a real MOTD, and
       // coloured from the live theme tokens so it follows the active theme.
-      xterm.write(banner);
+      if (!host) xterm.write(banner);
 
       // The same banner goes to the backend, which stores it so the
       // `jky-terminal` shell command can reprint exactly what was shown.
-      const id = await platform.pty.spawn(
-        xterm.cols,
-        xterm.rows,
-        banner,
-        tokens.getPropertyValue("--accent"),
-      );
+      // A remote terminal takes no banner and no accent: both are drawn by
+      // this machine's shell integration, and none of that exists at the
+      // other end. It is a terminal on somebody else's computer, which is
+      // exactly what it should look like.
+      const id = host
+        ? await platform.remote.spawn(host, xterm.cols, xterm.rows)
+        : await platform.pty.spawn(
+            xterm.cols,
+            xterm.rows,
+            banner,
+            tokens.getPropertyValue("--accent"),
+          );
       if (cancelled) {
         // StrictMode unmounted us mid-spawn. Kill it rather than leaking a
         // shell process for the lifetime of the app.

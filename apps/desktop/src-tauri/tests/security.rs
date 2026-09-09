@@ -313,6 +313,28 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // is decided in Rust, and the store applies the size cap. The widest
         // reach is saving a quarter-megabyte of the window's own output under
         // a name like `tab-3`.
+        // Terminals on other machines. `remote_spawn` is the command in this
+        // whole surface that most deserves a second look, because it starts a
+        // process — so note what it does not take: it takes a host *id*, and
+        // builds the argument list itself from what was saved under that id.
+        // There is no path here from a string in the window to a command
+        // line. The program is the literal `ssh`, found on PATH the way the
+        // shell finds it, never a configurable path.
+        //
+        // The argument list is the sharp edge and it is checked in
+        // `jky_remote::argv`, with its own tests: ssh takes its options as
+        // arguments, so an unchecked address is not a string but an option,
+        // and `-oProxyCommand=…` is a documented way to turn "connect to this
+        // host" into "run this on my laptop". Refused on save as well as on
+        // connect, so the two can never disagree.
+        //
+        // No credential passes through any of these. This app stores no SSH
+        // password and no key: connecting runs the ssh already on the
+        // machine, which uses the agent and config that already work.
+        "remote_forget".to_string(),
+        "remote_list".to_string(),
+        "remote_save".to_string(),
+        "remote_spawn".to_string(),
         "scrollback_forget".to_string(),
         "scrollback_load".to_string(),
         "scrollback_prune".to_string(),

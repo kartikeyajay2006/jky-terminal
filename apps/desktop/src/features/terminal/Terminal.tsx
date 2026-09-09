@@ -44,6 +44,13 @@ interface TerminalProps {
   onSplit?: (dir: Direction) => void;
   /** Close this pane. Absent when there is nothing above to close it. */
   onClosePane?: () => void;
+  /**
+   * A saved host to open this terminal on, rather than a local shell.
+   *
+   * An id, never a command line. Absent for every local terminal, which is
+   * most of them.
+   */
+  host?: string;
 }
 
 export function Terminal({
@@ -52,6 +59,7 @@ export function Terminal({
   showFocusRing = false,
   onSplit,
   onClosePane,
+  host,
 }: TerminalProps) {
   const container = useRef<HTMLDivElement>(null);
   /*
@@ -72,25 +80,36 @@ export function Terminal({
   /** Shown in the panel's head, so it is anchored to what was typed. */
   const [ranCommand, setRanCommand] = useState("");
 
-  const term = useXterm(container, paneId, setFailure, (completion) => {
-    // Every finished command goes to the history, whether or not anything on
-    // screen has a use for it. This is the only moment the app knows what was
-    // typed, where, and how it ended — the shell says so once and then the
-    // line is gone.
-    void getPlatform()
-      .history.record({
-        command: completion.command,
-        cwd: completion.cwd,
-        code: completion.code,
-        at: Date.now(),
-        session: paneId,
-      })
-      .catch(() => {});
+  const term = useXterm(
+    container,
+    paneId,
+    setFailure,
+    (completion) => {
+      // Every finished command goes to the history, whether or not anything
+      // on screen has a use for it. This is the only moment the app knows
+      // what was typed, where, and how it ended — the shell says so once and
+      // then the line is gone.
+      //
+      // `host` travels with it. A history that showed `rm -rf` run here and
+      // run on production identically would be one you could not re-run
+      // anything from.
+      void getPlatform()
+        .history.record({
+          command: completion.command,
+          cwd: completion.cwd,
+          code: completion.code,
+          at: Date.now(),
+          session: paneId,
+          host: host ?? null,
+        })
+        .catch(() => {});
 
-    const recognised = recognise(completion);
-    setFound(recognised);
-    if (recognised) setRanCommand(completion.command);
-  });
+      const recognised = recognise(completion);
+      setFound(recognised);
+      if (recognised) setRanCommand(completion.command);
+    },
+    host,
+  );
 
   // Hand the keyboard to whichever pane is focused. Done here rather than on
   // click alone because focus also moves by shortcut, and a pane that lit up

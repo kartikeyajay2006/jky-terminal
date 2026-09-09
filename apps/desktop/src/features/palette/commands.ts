@@ -54,6 +54,7 @@ export function buildCommands(): PaletteCommand[] {
     { id: "dashboard", label: "Dashboard" },
     { id: "terminal", label: "Terminal" },
     { id: "history", label: "History" },
+    { id: "remote", label: "Remote" },
     { id: "assistant", label: "Assistant" },
     { id: "games", label: "Games" },
     { id: "developer", label: "Developer Tools" },

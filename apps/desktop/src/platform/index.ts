@@ -27,6 +27,8 @@ export type {
   Platform,
   ProviderStatus,
   PtyApi,
+  RemoteApi,
+  RemoteHost,
   Reminder,
   ScrollbackApi,
   SettingsApi,

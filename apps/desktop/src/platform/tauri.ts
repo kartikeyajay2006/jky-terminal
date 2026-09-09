@@ -46,6 +46,8 @@ import type {
   ScrollbackApi,
   CompleteApi,
   Completions,
+  RemoteApi,
+  RemoteHost,
   HistoryApi,
   HistoryHit,
   Keyboard,
@@ -159,6 +161,23 @@ export function createTauriPlatform(): Platform {
   const complete: CompleteApi = {
     async suggest(line, cursor, cwd, limit) {
       return invoke<Completions>("complete_suggest", { line, cursor, cwd, limit });
+    },
+  };
+
+  const remote: RemoteApi = {
+    async list() {
+      return invoke<RemoteHost[]>("remote_list");
+    },
+    async save(host) {
+      return invoke<RemoteHost[]>("remote_save", { host });
+    },
+    async forget(id) {
+      return invoke<RemoteHost[]>("remote_forget", { id });
+    },
+    async spawn(id, cols, rows) {
+      // The clock is the window's, for the same reason the history search's
+      // is: it orders a list a person is looking at.
+      return invoke<string>("remote_spawn", { id, cols, rows, at: Date.now() });
     },
   };
 
@@ -330,6 +349,7 @@ export function createTauriPlatform(): Platform {
     keys,
     history,
     complete,
+    remote,
     pty,
     ai,
     store,

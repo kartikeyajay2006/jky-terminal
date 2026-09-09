@@ -2,6 +2,8 @@ import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import { DEFAULT_BINDINGS, conflictsIn } from "./keymap";
 import type {
   CompleteApi,
+  RemoteApi,
+  RemoteHost,
   HistoryApi,
   HistoryEntry,
   HistoryHit,
@@ -424,6 +426,72 @@ export function createWebPlatform(): Platform {
         .map((c) => ({ value: c, display: c, kind: "history" as const, detail: "", from: 0 }));
 
       return { start: wordStart, end: at, word: typed.slice(wordStart), items };
+    },
+  };
+
+  /*
+   * Saved machines, in memory.
+   *
+   * The same two refusals the Rust one makes — an address or a user that ssh
+   * would read as an option, and one carrying anything a shell would notice —
+   * because a browser build that let you save a host the desktop build will
+   * not connect to is a browser build that teaches the wrong thing. Connecting
+   * is the one part that cannot be faked: there is no process to start here,
+   * so it says so.
+   */
+  const hosts: RemoteHost[] = [];
+
+  const optionLike = (value: string) => value.trim().startsWith("-");
+  const addressOk = (value: string) => /^[A-Za-z0-9.\-_:%]+$/.test(value);
+  const userOk = (value: string) => /^[A-Za-z0-9.\-_\\]+$/.test(value);
+
+  function refuse(host: RemoteHost): string | null {
+    const address = host.address.trim();
+    if (!address) return "a host needs an address";
+    if (optionLike(address)) {
+      return `\`${address}\` cannot start with a dash. ssh would read it as an option rather ` +
+        "than a name, which is how a hostname becomes a command";
+    }
+    if (!addressOk(address)) return `\`address\` contains something that is not allowed in one`;
+
+    const user = host.user.trim();
+    if (user && optionLike(user)) return `\`${user}\` cannot start with a dash`;
+    if (user && !userOk(user)) return "`user` contains something that is not allowed in one";
+    if (host.port === 0) return "a port of 0 is not a port";
+    return null;
+  }
+
+  const byRecent = (list: RemoteHost[]) =>
+    [...list].sort(
+      (a, b) =>
+        b.last_used - a.last_used ||
+        (a.label || a.address).localeCompare(b.label || b.address),
+    );
+
+  const remote: RemoteApi = {
+    async list() {
+      return byRecent(hosts);
+    },
+    async save(host) {
+      const wrong = refuse(host);
+      if (wrong) throw new Error(wrong);
+
+      const at = hosts.findIndex((h) => h.id === host.id);
+      // Renaming a machine is not using it, so `last_used` survives an edit.
+      if (at === -1) hosts.push(host);
+      else hosts[at] = { ...host, last_used: hosts[at].last_used };
+      return byRecent(hosts);
+    },
+    async forget(id) {
+      const at = hosts.findIndex((h) => h.id === id);
+      if (at === -1) throw new Error("no host with that id");
+      hosts.splice(at, 1);
+      return byRecent(hosts);
+    },
+    async spawn() {
+      // The one thing a browser cannot do. Saying so is better than a fake
+      // shell pretending to be somebody's production machine.
+      throw new Error("connecting to another machine needs the desktop app");
     },
   };
 
@@ -1034,6 +1102,7 @@ export function createWebPlatform(): Platform {
     keys: keyboard,
     history,
     complete,
+    remote,
     pty,
     ai,
     store,

@@ -31,12 +31,22 @@ export interface Tab {
   layout: Pane;
   /** Which terminal in the tree has the keyboard. Always a leaf of `layout`. */
   focusedPane: string;
+  /**
+   * Panes that are on another machine, by saved host id.
+   *
+   * A map rather than a flag on the tab: splitting a remote terminal gives
+   * you a local one, which is what you want when you are looking at a server
+   * and need to check something here.
+   */
+  remotes: Record<string, string>;
 }
 
 interface TabState {
   tabs: Tab[];
   activeId: string | null;
   openTab: (kind: TabKind, title: string) => string;
+  /** A tab whose first terminal is on a saved host. */
+  openRemoteTab: (hostId: string, title: string) => string;
   closeTab: (id: string) => void;
   focusTab: (id: string) => void;
   nextTab: () => void;
@@ -121,7 +131,17 @@ function restore(): Pick<TabState, "tabs" | "activeId"> {
           ? t.focusedPane
           : leaves(layout)[0];
 
-      tabs.push({ id: t.id, kind: "terminal", title: t.title, layout, focusedPane: focused });
+      // Remote panes are deliberately not restored. Bringing the app back
+      // must not reconnect to somebody's production machine on its own —
+      // and the session on the other side is gone regardless.
+      tabs.push({
+        id: t.id,
+        kind: "terminal",
+        title: t.title,
+        layout,
+        focusedPane: focused,
+        remotes: {},
+      });
 
       // Keep the counter ahead of anything restored, or the next new tab
       // reuses an id and inherits a stranger's scrollback.
@@ -162,7 +182,27 @@ export const useTabs = create<TabState>((set, get) => ({
     set((s) => {
       // The first pane is named after the tab, so a tab that is never split
       // keeps the scrollback key it has always had.
-      const tabs = [...s.tabs, { id, kind, title, layout: leaf(id), focusedPane: id }];
+      const tabs = [...s.tabs, { id, kind, title, layout: leaf(id), focusedPane: id, remotes: {} }];
+      persist(tabs);
+      return { tabs, activeId: id };
+    });
+    return id;
+  },
+
+  openRemoteTab: (hostId, title) => {
+    const id = nextId();
+    set((s) => {
+      const tabs = [
+        ...s.tabs,
+        {
+          id,
+          kind: "terminal" as const,
+          title,
+          layout: leaf(id),
+          focusedPane: id,
+          remotes: { [id]: hostId },
+        },
+      ];
       persist(tabs);
       return { tabs, activeId: id };
     });
@@ -233,7 +273,10 @@ export const useTabs = create<TabState>((set, get) => ({
 
     void getPlatform().scrollback.forget(paneId).catch(() => {});
     const focused = focusAfterClose(tab.layout, paneId) ?? leaves(layout)[0];
-    const tabs = withTab(get().tabs, tabId, (t) => ({ ...t, layout, focusedPane: focused }));
+    const tabs = withTab(get().tabs, tabId, (t) => {
+      const { [paneId]: _gone, ...remotes } = t.remotes;
+      return { ...t, layout, focusedPane: focused, remotes };
+    });
     if (tabs) set({ tabs });
   },
 

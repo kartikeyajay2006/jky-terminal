@@ -8,6 +8,8 @@ interface PaneTreeProps {
   tabId: string;
   tree: Pane;
   focused: string;
+  /** Panes that are on another machine, by saved host id. Most are local. */
+  remotes?: Record<string, string>;
   /** False while this tab is hidden, so a background tab does not take keys. */
   live: boolean;
 }
@@ -23,7 +25,7 @@ const pct = (n: number) => `${n * 100}%`;
  * it. Nested boxes would move a `<Terminal>` on every split, React would
  * unmount it, and unmounting disposes the xterm display and kills the shell.
  */
-export function PaneTree({ tabId, tree, focused, live }: PaneTreeProps) {
+export function PaneTree({ tabId, tree, focused, remotes = {}, live }: PaneTreeProps) {
   const rects = layout(tree);
   const lines = dividers(tree);
   const focusPane = useTabs((s) => s.focusPane);
@@ -53,6 +55,7 @@ export function PaneTree({ tabId, tree, focused, live }: PaneTreeProps) {
             showFocusRing={!single}
             onSplit={(dir) => splitPane(tabId, rect.id, dir)}
             onClosePane={() => closePane(tabId, rect.id)}
+            host={remotes[rect.id]}
           />
         </div>
       ))}

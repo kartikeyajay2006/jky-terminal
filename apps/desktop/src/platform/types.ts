@@ -184,6 +184,47 @@ export interface CompleteApi {
   suggest(line: string, cursor: number, cwd: string, limit: number): Promise<Completions>;
 }
 
+/**
+ * A machine you can open a terminal on.
+ *
+ * Note what is absent: no password, and no key. This app stores neither and
+ * asks for neither — connecting runs the `ssh` your machine already has, so
+ * your agent, your `~/.ssh/config`, your `known_hosts` and your keys are the
+ * ones in use.
+ */
+export interface RemoteHost {
+  /** Stable across renames. */
+  id: string;
+  /** What to call it. The address stands in when empty. */
+  label: string;
+  /** A hostname, an address, or a name from `~/.ssh/config`. */
+  address: string;
+  /** Empty means whatever ssh would use on its own. */
+  user: string;
+  port?: number | null;
+  identity_file?: string | null;
+  jump?: string | null;
+  /** Milliseconds since the epoch, for ordering by last used. */
+  last_used: number;
+}
+
+/**
+ * Terminals on other machines.
+ *
+ * `spawn` takes a saved host's id and never a command line. That is the whole
+ * boundary: the argument list is built in Rust from what was saved, and an
+ * address that could be read as an ssh option is refused there — on save as
+ * well as on connect, so the two can never disagree.
+ */
+export interface RemoteApi {
+  list(): Promise<RemoteHost[]>;
+  /** Add or replace one. Rejects a host that could never connect. */
+  save(host: RemoteHost): Promise<RemoteHost[]>;
+  forget(id: string): Promise<RemoteHost[]>;
+  /** Open a pty running ssh. Resolves to a session id, like `pty.spawn`. */
+  spawn(id: string, cols: number, rows: number): Promise<string>;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
   setActiveProvider(provider: string): Promise<void>;
@@ -946,6 +987,8 @@ export interface Platform {
   readonly history: HistoryApi;
   /** What could come next on a command line. */
   readonly complete: CompleteApi;
+  /** Terminals on other machines. */
+  readonly remote: RemoteApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */
