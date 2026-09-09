@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
 import { useAsk } from "./app/askStore";
@@ -14,6 +14,7 @@ import { Developer } from "./features/developer/Developer";
 import { Games } from "./features/games/Games";
 import { History } from "./features/history/History";
 import { Remote } from "./features/remote/Remote";
+
 import { useOpenGame } from "./features/games/openStore";
 import { useNav } from "./app/navStore";
 import { Palette } from "./features/palette/Palette";
@@ -27,6 +28,19 @@ import "./styles/base.css";
 import "./styles/motion.css";
 import "./styles/controls.css";
 import "./styles/board.css";
+
+/**
+ * The editor, fetched when it is first opened.
+ *
+ * CodeMirror is about a third of a megabyte, and nobody who never opens the
+ * editor should download it — which is exactly the objection that kept an
+ * editor out of this app in the first place. Loaded this way it is a chunk of
+ * its own, and each language mode is another (see `editor/language.ts`), so
+ * the cost is paid by whoever asks for it and by nobody else.
+ */
+const Editor = lazy(async () => ({
+  default: (await import("./features/editor/Editor")).Editor,
+}));
 
 export function App() {
   const [section, setSection] = useState("terminal");
@@ -180,6 +194,16 @@ export function App() {
           history file every time a key is pressed somewhere else. */}
       {section === "history" && <History />}
       {section === "remote" && <Remote />}
+      {/* Unmounted on leaving: CodeMirror owns its own DOM and its own
+          listeners, and one left mounted behind a section nobody is looking
+          at is a document tree kept alive for nothing. Unsaved text lives in
+          this component, so leaving and coming back reopens from disk — the
+          honest behaviour for an editor that has not saved. */}
+      {section === "editor" && (
+        <Suspense fallback={<p className="workspace__empty">Opening the editor…</p>}>
+          <Editor />
+        </Suspense>
+      )}
       {section === "settings" && <Settings />}
       {section === "dashboard" && <Dashboard />}
       {section === "assistant" && <Assistant />}

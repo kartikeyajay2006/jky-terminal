@@ -17,14 +17,16 @@ import {
 } from "../terminal/termFont";
 import { PanelHead } from "./PanelHead";
 import { Keyboard } from "./Keyboard";
+import { WorkspacePanel } from "./WorkspacePanel";
 import { ProviderVault } from "./ProviderVault";
 import "./Settings.css";
 
-type Panel = "appearance" | "terminal" | "keyboard" | "providers" | "commands";
+type Panel = "appearance" | "terminal" | "editor" | "keyboard" | "providers" | "commands";
 
 const PANELS: Array<{ id: Panel; label: string; blurb: string }> = [
   { id: "appearance", label: "Appearance", blurb: "Theme and how the app looks" },
   { id: "terminal", label: "Terminal", blurb: "Font size and typeface" },
+  { id: "editor", label: "Editor", blurb: "The one folder the editor may open" },
   { id: "keyboard", label: "Keyboard", blurb: "What every shortcut is bound to" },
   { id: "providers", label: "Providers", blurb: "API keys and model selection" },
   { id: "commands", label: "Commands", blurb: "What you can type in a terminal" },
@@ -117,6 +119,8 @@ export function Settings() {
           </section>
         ) : panel === "terminal" ? (
           <TerminalSettings />
+        ) : panel === "editor" ? (
+          <WorkspacePanel />
         ) : panel === "keyboard" ? (
           <Keyboard />
         ) : panel === "commands" ? (

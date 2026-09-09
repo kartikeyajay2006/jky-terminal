@@ -270,6 +270,31 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // has not decided yet. It reads paths the shell reported rather than
         // paths the renderer chose, and answers with names, never contents.
         "complete_suggest".to_string(),
+        // The editor, and the widest thing in this list — so it is worth
+        // saying exactly how far it reaches and why that is as far as it
+        // goes.
+        //
+        // "let the window name a path" is arbitrary read and arbitrary write
+        // in one command, dressed as a feature, and it is the reason this app
+        // had no filesystem commands until it had an editor. So the window
+        // does not name a path. It names a *workspace-relative* one, and
+        // `jky_files` resolves it against a folder the person opened in
+        // Settings and refuses anything landing outside — checked after
+        // canonicalising, so `../` and a symlink pointing out of the tree are
+        // refused by the same rule rather than by a list of tricks somebody
+        // thought of. Both have tests.
+        //
+        // Nothing is reachable until `files_open_workspace` is called, which
+        // is a deliberate act by a person and not a default. The folder is
+        // re-resolved on every call rather than held, so one that was deleted
+        // or unplugged stops working instead of answering for a ghost. Reads
+        // are text-only and size-capped: an editor that silently rewrote the
+        // bytes it could not decode would corrupt the file on the next save.
+        "files_list".to_string(),
+        "files_open_workspace".to_string(),
+        "files_read".to_string(),
+        "files_workspace".to_string(),
+        "files_write".to_string(),
         "games_publish_scores".to_string(),
         // Every command that has run, and the four calls that read and change
         // it. This is the most sensitive thing in the store — a command line

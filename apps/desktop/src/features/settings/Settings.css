@@ -548,3 +548,37 @@
   color: var(--text);
   border-color: var(--accent-dim);
 }
+
+/* --- the editor panel ----------------------------------------------------- */
+
+.settings__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  flex-wrap: wrap;
+}
+
+.settings__label {
+  color: var(--text-muted);
+}
+
+.settings__input {
+  flex: 1;
+  min-width: 18rem;
+  font-family: var(--font-mono);
+  background: var(--ground);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s3);
+}
+
+.settings__input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.settings__blurb code {
+  font-family: var(--font-mono);
+  color: var(--text);
+}

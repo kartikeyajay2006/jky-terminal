@@ -46,6 +46,8 @@ import type {
   ScrollbackApi,
   CompleteApi,
   Completions,
+  FileEntry,
+  FilesApi,
   RemoteApi,
   RemoteHost,
   HistoryApi,
@@ -178,6 +180,24 @@ export function createTauriPlatform(): Platform {
       // The clock is the window's, for the same reason the history search's
       // is: it orders a list a person is looking at.
       return invoke<string>("remote_spawn", { id, cols, rows, at: Date.now() });
+    },
+  };
+
+  const files: FilesApi = {
+    async workspace() {
+      return (await invoke<{ root: string | null }>("files_workspace")).root;
+    },
+    async openWorkspace(dir) {
+      return (await invoke<{ root: string | null }>("files_open_workspace", { dir })).root;
+    },
+    async list(path) {
+      return invoke<FileEntry[]>("files_list", { path });
+    },
+    async read(path) {
+      return invoke<string>("files_read", { path });
+    },
+    async write(path, text) {
+      await invoke<void>("files_write", { path, text });
     },
   };
 
@@ -350,6 +370,7 @@ export function createTauriPlatform(): Platform {
     history,
     complete,
     remote,
+    files,
     pty,
     ai,
     store,

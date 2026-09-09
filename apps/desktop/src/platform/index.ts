@@ -15,6 +15,8 @@ export type {
   GameScore,
   CompleteApi,
   Completions,
+  FileEntry,
+  FilesApi,
   GamesApi,
   HistoryApi,
   HistoryEntry,

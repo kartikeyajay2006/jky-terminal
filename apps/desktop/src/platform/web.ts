@@ -2,6 +2,8 @@ import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import { DEFAULT_BINDINGS, conflictsIn } from "./keymap";
 import type {
   CompleteApi,
+  FileEntry,
+  FilesApi,
   RemoteApi,
   RemoteHost,
   HistoryApi,
@@ -492,6 +494,68 @@ export function createWebPlatform(): Platform {
       // The one thing a browser cannot do. Saying so is better than a fake
       // shell pretending to be somebody's production machine.
       throw new Error("connecting to another machine needs the desktop app");
+    },
+  };
+
+  /*
+   * A small in-memory tree, so the editor can be worked on in a browser.
+   *
+   * It is not a filesystem and does not pretend to be one: there is no real
+   * folder to open, so `openWorkspace` accepts whatever it is given and the
+   * tree below is what there is. The one rule it does keep is the one that
+   * matters — a path that climbs out is refused here too, so a bug in the
+   * window is caught in the build most people run the tests in.
+   */
+  const tree = new Map<string, string>([
+    ["README.md", "# Sample\n\nThe browser build has no filesystem.\n"],
+    ["src/main.ts", "export const hello = () => \"hi\";\n"],
+  ]);
+  let openFolder: string | null = null;
+
+  const escapes = (path: string) =>
+    path.startsWith("/") || path.split("/").some((part) => part === "..");
+
+  const files: FilesApi = {
+    async workspace() {
+      return openFolder;
+    },
+    async openWorkspace(dir) {
+      openFolder = dir.trim() ? dir.trim() : null;
+      return openFolder;
+    },
+    async list(path) {
+      if (openFolder === null) throw new Error("no folder is open. Choose one in Settings → Editor");
+      const prefix = path ? `${path.replace(/\/$/, "")}/` : "";
+      const seen = new Map<string, FileEntry>();
+
+      for (const full of tree.keys()) {
+        if (!full.startsWith(prefix)) continue;
+        const rest = full.slice(prefix.length);
+        const cut = rest.indexOf("/");
+        const name = cut === -1 ? rest : rest.slice(0, cut);
+        if (!name) continue;
+        seen.set(name, {
+          path: prefix + name,
+          name,
+          is_dir: cut !== -1,
+          size: cut === -1 ? (tree.get(full)?.length ?? 0) : 0,
+        });
+      }
+      return [...seen.values()].sort(
+        (a, b) => Number(b.is_dir) - Number(a.is_dir) || a.name.localeCompare(b.name),
+      );
+    },
+    async read(path) {
+      if (openFolder === null) throw new Error("no folder is open. Choose one in Settings → Editor");
+      if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);
+      const text = tree.get(path);
+      if (text === undefined) throw new Error(`could not read \`${path}\``);
+      return text;
+    },
+    async write(path, text) {
+      if (openFolder === null) throw new Error("no folder is open. Choose one in Settings → Editor");
+      if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);
+      tree.set(path, text);
     },
   };
 
@@ -1103,6 +1167,7 @@ export function createWebPlatform(): Platform {
     history,
     complete,
     remote,
+    files,
     pty,
     ai,
     store,

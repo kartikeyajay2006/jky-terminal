@@ -47,6 +47,7 @@ comment:
 | ❯ | **Terminal** | A real pty, split any way you like. **Any command can become an app.** Scrollback survives a restart |
 | ↺ | **History** | Every command you have ever run, searchable by half-remembered letters |
 | ⇄ | **Remote** | A terminal on another machine, over the `ssh` you already have |
+| ✎ | **Editor** | Files, inside one folder you opened and nowhere else |
 | ✦ | **Assistant** | Your key, in the OS keychain. Tools are gated; destructive ones need a click |
 | ⌂ | **Dashboard** | Notes, todos, calendar, reminders. On disk, yours, arrangeable |
 | ⌥ | **Developer** | Eleven tools. No account, no key |
@@ -125,6 +126,33 @@ expects and what a tree walk gets wrong.
 Each pane keeps its own scrollback across a restart, and closing one forgets
 only that one. Dividers are draggable, double-click to even them up, and
 focusable — arrows resize, so a layout can be built without a mouse.
+
+---
+
+## Editor
+
+CodeMirror 6, with the language loaded only when you open a file that needs
+it. Ctrl/Cmd+S saves; an unsaved file shows a dot.
+
+**It can reach one folder and nothing else.** You open that folder in
+Settings → Editor, and until you do, the editor can touch nothing at all.
+Every path the window sends is workspace-relative — it never names an
+absolute one — and Rust refuses anything that resolves outside, *after*
+canonicalising, so `../` and a symlink pointing out of the tree are refused by
+the same rule rather than by a list of tricks somebody thought of. Both have
+tests. The folder is re-resolved on every call, so one that was deleted or
+unplugged stops working rather than answering for a ghost.
+
+Reads are text-only and size-capped. An editor that silently rewrote the bytes
+it could not decode would corrupt the file on the next save, so a binary is
+refused rather than mangled.
+
+This is why the README used to say an editor was not here: Monaco is several
+megabytes that ship whether or not anyone opens it. CodeMirror, loaded as its
+own chunk with a chunk per language, adds **33 kB** to what everyone
+downloads. And the budget that argument rested on is now enforced —
+`pnpm run scan:bundle` fails the build if the entry bundle grows past it,
+because a sentence in a README is a promise with nothing keeping it.
 
 ---
 
@@ -480,8 +508,6 @@ Stated plainly, because a README that only lists what works is a sales page.
   terminal with your signature, and that is a different decision.
 - **Signing and auto-update.** The release pipeline works; certificates and an
   updater keypair do not exist yet. See [`docs/RELEASING.md`](docs/RELEASING.md).
-- **Editor tab.** Monaco is a multi-megabyte dependency and the bundle is
-  already at its budget; the notes editor covers the common case for now.
 - **Database tab.** v0.2.
 - **Plugins.** v0.3.
 - **Trending and Explore in the GitHub app.** GitHub publishes no API for

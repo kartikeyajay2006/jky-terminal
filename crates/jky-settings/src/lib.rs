@@ -35,6 +35,15 @@ pub struct Settings {
     #[serde(default)]
     pub terminal_start_dir: Option<String>,
 
+    /// The folder the editor may read and write inside.
+    ///
+    /// One folder, and nothing outside it. This is the only setting in the
+    /// app that widens what the window can reach, so it is a deliberate act
+    /// by the person rather than a default: absent means the editor has
+    /// nothing open and can touch nothing.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub workspace_dir: Option<String>,
+
     /// The GitHub OAuth app the device flow runs against.
     ///
     /// A client id, not a secret: the device flow has no client secret, and
@@ -123,6 +132,14 @@ impl SettingsStore {
         self.save(&s)
     }
 
+    /// Set the folder the editor may work inside, or close it with nothing.
+    pub fn set_workspace_dir(&self, dir: &str) -> Result<(), SettingsError> {
+        let mut s = self.load()?;
+        let trimmed = dir.trim();
+        s.workspace_dir = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
+        self.save(&s)
+    }
+
     /// Store the GitHub OAuth client id, or clear it when given nothing.
     ///
     /// Trimmed, because pasting from a browser brings whitespace with it and
@@ -163,6 +180,10 @@ impl SettingsStore {
 
     pub fn terminal_start_dir(&self) -> Result<Option<String>, SettingsError> {
         Ok(self.load()?.terminal_start_dir)
+    }
+
+    pub fn workspace_dir(&self) -> Result<Option<String>, SettingsError> {
+        Ok(self.load()?.workspace_dir)
     }
 }
 
@@ -404,5 +425,40 @@ mod google_client_id_tests {
         store.set_github_client_id("Iv23liABCDEF").unwrap();
         store.set_google_client_id("123-abc.apps.googleusercontent.com").unwrap();
         assert_eq!(store.github_client_id().unwrap().as_deref(), Some("Iv23liABCDEF"));
+    }
+}
+
+#[cfg(test)]
+mod workspace_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn store() -> (TempDir, SettingsStore) {
+        let dir = TempDir::new().unwrap();
+        let s = SettingsStore::new(dir.path().join("settings.json"));
+        (dir, s)
+    }
+
+    #[test]
+    fn no_workspace_until_somebody_opens_one() {
+        // The only setting that widens what the window can reach, so it is a
+        // deliberate act rather than a default.
+        let (_d, s) = store();
+        assert_eq!(s.workspace_dir().unwrap(), None);
+    }
+
+    #[test]
+    fn an_open_workspace_persists() {
+        let (_d, s) = store();
+        s.set_workspace_dir("~/projects/thing").unwrap();
+        assert_eq!(s.workspace_dir().unwrap().as_deref(), Some("~/projects/thing"));
+    }
+
+    #[test]
+    fn nothing_closes_it_again() {
+        let (_d, s) = store();
+        s.set_workspace_dir("~/projects/thing").unwrap();
+        s.set_workspace_dir("   ").unwrap();
+        assert_eq!(s.workspace_dir().unwrap(), None);
     }
 }

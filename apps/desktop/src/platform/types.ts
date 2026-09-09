@@ -225,6 +225,34 @@ export interface RemoteApi {
   spawn(id: string, cols: number, rows: number): Promise<string>;
 }
 
+/** One entry in the editor's file tree. */
+export interface FileEntry {
+  /** Workspace-relative, with `/` separators on every platform. */
+  path: string;
+  name: string;
+  is_dir: boolean;
+  size: number;
+}
+
+/**
+ * Files, inside one folder and nowhere else.
+ *
+ * Every path here is **workspace-relative**. The window never names an
+ * absolute one — the folder is chosen once, in Settings, and Rust refuses
+ * anything that resolves outside it. Until a folder is opened, nothing here
+ * can reach anything at all.
+ */
+export interface FilesApi {
+  /** The open folder, or null when there is none. */
+  workspace(): Promise<string | null>;
+  /** Open a folder, or close the open one with an empty string. */
+  openWorkspace(dir: string): Promise<string | null>;
+  /** One directory's contents. An empty path is the folder's root. */
+  list(path: string): Promise<FileEntry[]>;
+  read(path: string): Promise<string>;
+  write(path: string, text: string): Promise<void>;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
   setActiveProvider(provider: string): Promise<void>;
@@ -989,6 +1017,8 @@ export interface Platform {
   readonly complete: CompleteApi;
   /** Terminals on other machines. */
   readonly remote: RemoteApi;
+  /** Files, inside one folder the person opened and nowhere else. */
+  readonly files: FilesApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */
