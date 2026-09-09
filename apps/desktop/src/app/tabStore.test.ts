@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { useTabs } from "./tabStore";
+import { allPaneKeys, useTabs } from "./tabStore";
+import { leaves, type Pane } from "../features/terminal/panes/tree";
 
 const reset = () => useTabs.setState({ tabs: [], activeId: null });
 
@@ -94,5 +95,101 @@ describe("surviving a restart", () => {
     // The store itself reads this at module load; the guarantee under test is
     // that a bad value cannot make that throw.
     expect(useTabs.getState().tabs).toEqual([]);
+  });
+});
+
+describe("panes within a tab", () => {
+  beforeEach(reset);
+
+  const tabOf = (id: string) => useTabs.getState().tabs.find((t) => t.id === id)!;
+  const paneIds = (id: string) => leaves(tabOf(id).layout);
+
+  it("gives a new tab one pane named after the tab", () => {
+    // The scrollback key an unsplit tab has always used. Changing it would
+    // have emptied every terminal on the first run of the new build.
+    const id = useTabs.getState().openTab("terminal", "one");
+    expect(tabOf(id).layout).toEqual({ kind: "leaf", id });
+    expect(tabOf(id).focusedPane).toBe(id);
+  });
+
+  it("splits into two panes and focuses the new one", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+
+    const panes = paneIds(id);
+    expect(panes).toHaveLength(2);
+    expect(panes[0]).toBe(id);
+    expect(tabOf(id).focusedPane).toBe(panes[1]);
+  });
+
+  it("never reuses a pane id, so no terminal inherits another's output", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+    const first = tabOf(id).focusedPane;
+    useTabs.getState().splitPane(id, first, "column");
+    const second = tabOf(id).focusedPane;
+
+    expect(second).not.toBe(first);
+    expect(new Set(paneIds(id)).size).toBe(3);
+  });
+
+  it("ignores a split aimed at a pane in another tab", () => {
+    const a = useTabs.getState().openTab("terminal", "one");
+    const b = useTabs.getState().openTab("terminal", "two");
+    useTabs.getState().splitPane(a, b, "row");
+    expect(paneIds(a)).toHaveLength(1);
+  });
+
+  it("closes one pane and leaves the tab open", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+    const created = tabOf(id).focusedPane;
+
+    useTabs.getState().closePane(id, created);
+    expect(useTabs.getState().tabs).toHaveLength(1);
+    expect(paneIds(id)).toEqual([id]);
+    expect(tabOf(id).focusedPane).toBe(id);
+  });
+
+  it("closes the tab when its last pane goes", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().closePane(id, id);
+    expect(useTabs.getState().tabs).toEqual([]);
+    expect(useTabs.getState().activeId).toBeNull();
+  });
+
+  it("moves focus between panes by direction, and stops at the edge", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+    const right = tabOf(id).focusedPane;
+
+    useTabs.getState().movePaneFocus(id, "left");
+    expect(tabOf(id).focusedPane).toBe(id);
+
+    useTabs.getState().movePaneFocus(id, "left");
+    expect(tabOf(id).focusedPane).toBe(id);
+
+    useTabs.getState().movePaneFocus(id, "right");
+    expect(tabOf(id).focusedPane).toBe(right);
+  });
+
+  it("resizes one divider", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+    const split = tabOf(id).layout as Extract<Pane, { kind: "split" }>;
+
+    useTabs.getState().resizeSplit(id, split.id, 0.7);
+    expect((tabOf(id).layout as Extract<Pane, { kind: "split" }>).ratio).toBeCloseTo(0.7);
+  });
+
+  it("reports every pane across every tab, for the scrollback prune", () => {
+    const a = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(a, a, "row");
+    const b = useTabs.getState().openTab("terminal", "two");
+
+    const keys = allPaneKeys(useTabs.getState().tabs);
+    expect(keys).toHaveLength(3);
+    expect(keys).toContain(a);
+    expect(keys).toContain(b);
   });
 });

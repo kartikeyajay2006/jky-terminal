@@ -66,7 +66,8 @@ jky-terminal/
 │     │  │  ├─ assistant/       chat, streaming, tool cards
 │     │  │  ├─ editor/          Monaco
 │     │  │  ├─ dashboard/       calendar, notes, reminders, monitor
-│     │  │  ├─ palette/         command palette + omnibox
+│     │  │  ├─ palette/         command palette + omnibox 
+
 │     │  │  └─ settings/        keys, themes, audit log
 │     │  ├─ platform/           platform adapter (see §2.2)
 │     │  └─ styles/             tokens, theme definitions

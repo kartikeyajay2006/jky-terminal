@@ -9,6 +9,7 @@ import { useDashboard } from "../dashboard/dashboardStore";
 import { runShellCommand } from "../terminal/runShellCommand";
 import { byReminderTime, type CommandResult } from "../terminal/shellCommand";
 import type { GameId } from "../games/scores";
+import type { Direction } from "../terminal/panes/tree";
 
 export type PaletteGroup =
   | "Go to"
@@ -129,6 +130,40 @@ export function buildCommands(): PaletteCommand[] {
       const tabs = useTabs.getState();
       tabs.openTab("terminal", `Terminal ${tabs.tabs.length + 1}`);
       nav.go("terminal");
+    },
+  });
+
+  // The pane commands act on whichever terminal has the keyboard, so the
+  // palette can do everything the shortcuts do — which is what makes the
+  // shortcuts discoverable rather than folklore.
+  const splits: Array<{ id: string; label: string; hint: string; dir: Direction }> = [
+    { id: "term:split-right", label: "Split terminal right", hint: "Ctrl+Shift+D", dir: "row" },
+    { id: "term:split-down", label: "Split terminal down", hint: "Ctrl+Shift+E", dir: "column" },
+  ];
+  for (const split of splits) {
+    out.push({
+      id: split.id,
+      label: split.label,
+      group: "Terminal",
+      hint: split.hint,
+      run: () => {
+        const state = useTabs.getState();
+        const tab = state.tabs.find((t) => t.id === state.activeId);
+        if (!tab) return;
+        state.splitPane(tab.id, tab.focusedPane, split.dir);
+        nav.go("terminal");
+      },
+    });
+  }
+  out.push({
+    id: "term:close-pane",
+    label: "Close terminal pane",
+    group: "Terminal",
+    hint: "Ctrl+Shift+W",
+    run: () => {
+      const state = useTabs.getState();
+      const tab = state.tabs.find((t) => t.id === state.activeId);
+      if (tab) state.closePane(tab.id, tab.focusedPane);
     },
   });
   out.push({

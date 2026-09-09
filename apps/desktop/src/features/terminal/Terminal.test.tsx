@@ -126,12 +126,12 @@ describe("Terminal", () => {
   afterEach(() => __setPlatformForTests(null));
 
   it("renders a labelled terminal region", async () => {
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     expect(await screen.findByRole("application", { name: /terminal/i })).toBeInTheDocument();
   });
 
   it("greets with the JKY wordmark before the shell speaks", async () => {
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(writes.join("")).toContain("Infinite Possibilities."));
     expect(writes.join("")).toContain("\u2588");
   });
@@ -158,17 +158,17 @@ describe("Terminal", () => {
       },
     });
 
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(order).toEqual(["onData", "attach"]));
   });
 
   it("writes pty output into the terminal", async () => {
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(writes.join("")).toContain("jky $"));
   });
 
   it("forwards keystrokes to the pty", async () => {
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(onDataHandlers.length).toBeGreaterThan(0));
 
     writes.length = 0;
@@ -193,7 +193,7 @@ describe("Terminal", () => {
       },
     });
 
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(resizes.length).toBeGreaterThan(0));
     expect(resizes[0][1]).toBeGreaterThan(0);
     expect(resizes[0][2]).toBeGreaterThan(0);
@@ -202,7 +202,7 @@ describe("Terminal", () => {
   it("routes a jky ask escape sequence to the assistant", async () => {
     // The shell command emits OSC 1337 with a base64 question. The terminal
     // must consume it rather than printing it as stray characters.
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
 
     const encoded = btoa(String.fromCharCode(...new TextEncoder().encode("what does ls do")));
@@ -215,7 +215,7 @@ describe("Terminal", () => {
   it("leaves another application's OSC 1337 payload alone", async () => {
     // OSC 1337 is shared. Consuming payloads that are not ours would break
     // whatever else is using it.
-    render(<Terminal tabId="tab-1" />);
+    render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
 
     expect(oscHandlers.get(1337)!("CurrentDir=/home/x")).toBe(false);
@@ -223,7 +223,7 @@ describe("Terminal", () => {
   });
 
   it("disposes the terminal when the tab closes", async () => {
-    const { unmount } = render(<Terminal tabId="tab-1" />);
+    const { unmount } = render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(onDataHandlers.length).toBeGreaterThan(0));
     unmount();
     await waitFor(() => expect(disposed.count).toBe(1));
@@ -242,7 +242,7 @@ describe("scrollback across a restart", () => {
     await platform.scrollback.save("tab-7", "OLD SESSION OUTPUT");
     __setPlatformForTests(platform);
 
-    render(<Terminal tabId="tab-7" />);
+    render(<Terminal paneId="tab-7" />);
 
     await waitFor(() => {
       expect(writes.join("")).toContain("OLD SESSION OUTPUT");
@@ -254,7 +254,7 @@ describe("scrollback across a restart", () => {
   });
 
   it("starts clean when the tab has no history", async () => {
-    render(<Terminal tabId="tab-fresh" />);
+    render(<Terminal paneId="tab-fresh" />);
     await waitFor(() => expect(writes.join("")).toContain("Infinite"));
     expect(writes.join("")).not.toContain("OLD SESSION");
   });
@@ -263,7 +263,7 @@ describe("scrollback across a restart", () => {
     const platform = createWebPlatform();
     __setPlatformForTests(platform);
 
-    const { unmount } = render(<Terminal tabId="tab-8" />);
+    const { unmount } = render(<Terminal paneId="tab-8" />);
     await waitFor(() => expect(writes.join("")).toContain("Infinite"));
     unmount();
 
@@ -286,7 +286,7 @@ describe("scrollback across a restart", () => {
       },
     });
 
-    render(<Terminal tabId="tab-9" />);
+    render(<Terminal paneId="tab-9" />);
     await waitFor(() => expect(writes.join("")).toContain("Infinite"));
   });
 });
@@ -299,7 +299,7 @@ describe("letting the app's shortcuts through", () => {
   afterEach(() => __setPlatformForTests(null));
 
   function handler() {
-    render(<Terminal tabId="tab-keys" />);
+    render(<Terminal paneId="tab-keys" />);
     expect(customKeyHandlers.length).toBeGreaterThan(0);
     return customKeyHandlers[customKeyHandlers.length - 1];
   }
@@ -343,7 +343,7 @@ describe("letting the app's shortcuts through", () => {
       },
     });
 
-    render(<Terminal tabId="tab-claim" />);
+    render(<Terminal paneId="tab-claim" />);
     const handle = customKeyHandlers[customKeyHandlers.length - 1];
 
     // Nothing open: a digit is just a digit and belongs to the shell.
@@ -370,7 +370,7 @@ describe("letting the app's shortcuts through", () => {
 
   // Claimed only while it is open: dismissing gives the digits back.
   it("gives the keys back when the panel goes", async () => {
-    render(<Terminal tabId="tab-claim-2" />);
+    render(<Terminal paneId="tab-claim-2" />);
     const handle = customKeyHandlers[customKeyHandlers.length - 1];
 
     await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));

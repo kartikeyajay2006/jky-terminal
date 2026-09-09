@@ -6,16 +6,49 @@ import { FailureHelp } from "./FailureHelp";
 import { CommandApp } from "./CommandApp";
 import { recognise, type Recognised } from "./recognise";
 import type { CommandDone } from "./commandFailure";
+import type { Direction } from "./panes/tree";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 
 interface TerminalProps {
-  tabId: string;
+  /**
+   * The key this terminal's scrollback is saved under.
+   *
+   * Named for the pane rather than the tab because a tab holds several now.
+   * A tab's first pane is still named after the tab, so nothing moved on
+   * disk when splits arrived.
+   */
+  paneId: string;
+  /**
+   * Whether this pane has the keyboard.
+   *
+   * A tab may hold several terminals now, and only one of them may take a
+   * keystroke. Defaults to true so a terminal rendered on its own — which is
+   * what every test does — behaves the way it always has.
+   */
+  focused?: boolean;
+  /** Draw a border showing which pane is live. Off when a tab holds one. */
+  showFocusRing?: boolean;
+  /**
+   * Put another terminal beside this one.
+   *
+   * Passed in rather than read from the tab store so a terminal stays a
+   * terminal: it knows how to draw a shell, not which tab it is in. Absent
+   * in the tests, and the menu simply does not offer it.
+   */
+  onSplit?: (dir: Direction) => void;
+  /** Close this pane. Absent when there is nothing above to close it. */
+  onClosePane?: () => void;
 }
 
-export function Terminal({ tabId }: TerminalProps) {
+export function Terminal({
+  paneId,
+  focused = true,
+  showFocusRing = false,
+  onSplit,
+  onClosePane,
+}: TerminalProps) {
   const container = useRef<HTMLDivElement>(null);
-  // The tab id is the key its scrollback is saved under.
   /*
    * The last command that failed, if the shell reported one.
    *
@@ -34,11 +67,18 @@ export function Terminal({ tabId }: TerminalProps) {
   /** Shown in the panel's head, so it is anchored to what was typed. */
   const [ranCommand, setRanCommand] = useState("");
 
-  const term = useXterm(container, tabId, setFailure, (completion) => {
+  const term = useXterm(container, paneId, setFailure, (completion) => {
     const recognised = recognise(completion);
     setFound(recognised);
     if (recognised) setRanCommand(completion.command);
   });
+
+  // Hand the keyboard to whichever pane is focused. Done here rather than on
+  // click alone because focus also moves by shortcut, and a pane that lit up
+  // without taking keystrokes would be lying about where typing goes.
+  useEffect(() => {
+    if (focused) term.focus();
+  }, [focused, term]);
 
   const [searching, setSearching] = useState(false);
   const [menuAt, setMenuAt] = useState<MenuPoint | null>(null);
@@ -56,6 +96,10 @@ export function Terminal({ tabId }: TerminalProps) {
   // would be useless.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // Window listeners fire once per mounted terminal, and a tab may now
+      // hold several. Without this every pane in the tab opened its own find
+      // bar and pasted into its own shell.
+      if (!focused) return;
       const mod = e.ctrlKey || e.metaKey;
       if (mod && !e.shiftKey && e.key.toLowerCase() === "f") {
         e.preventDefault();
@@ -76,15 +120,15 @@ export function Terminal({ tabId }: TerminalProps) {
     }
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [term]);
+  }, [term, focused]);
 
   return (
-    <div className="term__wrap">
+    <div className="term__wrap" data-ring={showFocusRing ? "true" : undefined}>
       <div
         className="term"
         role="application"
         aria-label="Terminal"
-        data-tab-id={tabId}
+        data-pane-id={paneId}
         ref={container}
         onContextMenu={(e) => {
           e.preventDefault();
@@ -173,6 +217,29 @@ export function Terminal({ tabId }: TerminalProps) {
                 term.focus();
               },
             },
+            ...(onSplit
+              ? [
+                  {
+                    label: "Split right",
+                    hint: "Ctrl+Shift+D",
+                    run: () => onSplit("row"),
+                  },
+                  {
+                    label: "Split down",
+                    hint: "Ctrl+Shift+E",
+                    run: () => onSplit("column"),
+                  },
+                ]
+              : []),
+            ...(onClosePane
+              ? [
+                  {
+                    label: "Close pane",
+                    hint: "Ctrl+Shift+W",
+                    run: () => onClosePane(),
+                  },
+                ]
+              : []),
           ]}
         />
       )}

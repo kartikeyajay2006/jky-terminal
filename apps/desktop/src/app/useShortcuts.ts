@@ -1,6 +1,15 @@
 import { useEffect } from "react";
 import { useTabs } from "./tabStore";
 import { isAppShortcut } from "./shortcuts";
+import type { Side } from "../features/terminal/panes/tree";
+
+/** Which way each arrow moves the keyboard between panes. */
+const SIDES: Record<string, Side> = {
+  arrowleft: "left",
+  arrowright: "right",
+  arrowup: "up",
+  arrowdown: "down",
+};
 
 /**
  * Window-level shortcuts.
@@ -15,9 +24,41 @@ export function useShortcuts(): void {
       // custom key handler so the two cannot disagree about which keys get
       // through.
       if (!isAppShortcut(e)) return;
-      if (e.shiftKey) return;
 
-      const { openTab, closeTab, nextTab, focusTab, tabs, activeId } = useTabs.getState();
+      const state = useTabs.getState();
+      const { openTab, closeTab, nextTab, focusTab, tabs, activeId } = state;
+
+      // The shifted bindings act on one terminal inside the active tab.
+      // Copy and paste are shifted too, but they belong to the terminal that
+      // has focus and are handled there, so they are stepped over here.
+      if (e.shiftKey) {
+        if (!activeId) return;
+        const key = e.key.toLowerCase();
+        const tab = tabs.find((t) => t.id === activeId);
+        if (!tab) return;
+
+        switch (key) {
+          case "d":
+            e.preventDefault();
+            state.splitPane(activeId, tab.focusedPane, "row");
+            return;
+          case "e":
+            e.preventDefault();
+            state.splitPane(activeId, tab.focusedPane, "column");
+            return;
+          case "w":
+            e.preventDefault();
+            state.closePane(activeId, tab.focusedPane);
+            return;
+        }
+
+        const side = SIDES[key];
+        if (side) {
+          e.preventDefault();
+          state.movePaneFocus(activeId, side);
+        }
+        return;
+      }
 
       switch (e.key.toLowerCase()) {
         case "t":

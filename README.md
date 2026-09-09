@@ -44,7 +44,7 @@ comment:
 
 | | Section | |
 |---|---|---|
-| ❯ | **Terminal** | A real pty. **Any command can become an app.** Scrollback survives a restart |
+| ❯ | **Terminal** | A real pty, split any way you like. **Any command can become an app.** Scrollback survives a restart |
 | ✦ | **Assistant** | Your key, in the OS keychain. Tools are gated; destructive ones need a click |
 | ⌂ | **Dashboard** | Notes, todos, calendar, reminders. On disk, yours, arrangeable |
 | ⌥ | **Developer** | Eleven tools. No account, no key |
@@ -100,6 +100,29 @@ through a real pty, seven commands typed, everything recorded. Hand-written
 fixtures test what you imagined the output looks like; those test what it is.
 The first run found a `git log` line beginning with a stray keypad escape that
 silently cost one commit in three.
+
+---
+
+## Splits
+
+A tab holds as many terminals as you want, divided by lines you can drag.
+
+| | |
+|---|---|
+| `Ctrl+Shift+D` | split right |
+| `Ctrl+Shift+E` | split down |
+| `Ctrl+Shift+W` | close this pane |
+| `Ctrl+Shift+←↑↓→` | move between panes |
+
+Moving between panes is geometric, not structural: **right** means the pane
+drawn to the right, which is not always the one the layout tree calls a
+sibling. Split a tab right, then split the left half down, and *right* from
+either left-hand pane reaches the same right-hand one — which is what the eye
+expects and what a tree walk gets wrong.
+
+Each pane keeps its own scrollback across a restart, and closing one forgets
+only that one. Dividers are draggable, double-click to even them up, and
+focusable — arrows resize, so a layout can be built without a mouse.
 
 ---
 

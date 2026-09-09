@@ -3,7 +3,7 @@ import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
 import { useAsk } from "./app/askStore";
 import { useChat } from "./app/chatStore";
-import { useTabs } from "./app/tabStore";
+import { allPaneKeys, useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
 import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
@@ -15,7 +15,7 @@ import { useOpenGame } from "./features/games/openStore";
 import { useNav } from "./app/navStore";
 import { Palette } from "./features/palette/Palette";
 import { Settings } from "./features/settings/Settings";
-import { Terminal } from "./features/terminal/Terminal";
+import { PaneTree } from "./features/terminal/panes/PaneTree";
 import { getPlatform } from "./platform";
 import "./styles/tokens.css";
 import "./styles/themes.css";
@@ -48,7 +48,10 @@ export function App() {
   // A tab closed while the app was not running would otherwise leave its
   // scrollback on disk for ever.
   useEffect(() => {
-    const keys = useTabs.getState().tabs.map((t) => t.id);
+    // Every pane, not every tab: a split tab keeps one scrollback per
+    // terminal in it, and pruning by tab id alone would throw away the
+    // output of every pane but the first on each start.
+    const keys = allPaneKeys(useTabs.getState().tabs);
     void getPlatform().scrollback.prune(keys).catch(() => {});
   }, []);
 
@@ -141,7 +144,12 @@ export function App() {
         <div className="workspace__body">
           {tabs.map((tab) => (
             <div key={tab.id} className="workspace__pane" hidden={tab.id !== activeId}>
-              <Terminal tabId={tab.id} />
+              <PaneTree
+                tabId={tab.id}
+                tree={tab.layout}
+                focused={tab.focusedPane}
+                live={tab.id === activeId && section === "terminal"}
+              />
             </div>
           ))}
           {tabs.length === 0 && (
