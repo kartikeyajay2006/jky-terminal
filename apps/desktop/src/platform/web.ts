@@ -1,5 +1,8 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
+import { DEFAULT_BINDINGS, conflictsIn } from "./keymap";
 import type {
+  Keyboard,
+  KeysApi,
   CaptureApi,
   GmailMessage,
   SystemReading,
@@ -270,6 +273,61 @@ export function createWebPlatform(): Platform {
     },
     async setActiveProvider(provider) {
       if (!findProvider(provider)) throw new Error(`unknown provider '${provider}'`);
+    },
+  };
+
+  /*
+   * The keymap, in memory.
+   *
+   * It enforces the same two rules the Rust one does — a binding needs a
+   * modifier, and a chord another action holds is refused — because a browser
+   * build that let you bind a bare letter would teach a habit the desktop
+   * build then refuses.
+   */
+  const custom = new Map<string, string>();
+
+  function keyboardNow(): Keyboard {
+    const bindings = DEFAULT_BINDINGS.map((b) => ({
+      ...b,
+      chord: custom.get(b.action) ?? b.default_chord,
+      custom: custom.has(b.action),
+    }));
+    return { bindings, conflicts: conflictsIn(bindings) };
+  }
+
+  const keyboard: KeysApi = {
+    async list() {
+      return keyboardNow();
+    },
+    async bind(action, chord) {
+      const target = DEFAULT_BINDINGS.find((b) => b.action === action);
+      if (!target) throw new Error(`'${action}' is not something this app can do`);
+
+      const modified = /^(Ctrl|Alt)\+/.test(chord);
+      if (!modified) {
+        throw new Error(
+          `\`${chord}\` has no modifier. An unmodified key belongs to the shell, where every ` +
+            "keystroke means something",
+        );
+      }
+
+      const taken = keyboardNow().bindings.find(
+        (b) => b.action !== action && b.chord === chord,
+      );
+      if (taken) throw new Error(`${chord} is already ${taken.label}`);
+
+      // A binding equal to the default is an absence, not an entry.
+      if (chord === target.default_chord) custom.delete(action);
+      else custom.set(action, chord);
+      return keyboardNow();
+    },
+    async reset(action) {
+      custom.delete(action);
+      return keyboardNow();
+    },
+    async resetAll() {
+      custom.clear();
+      return keyboardNow();
     },
   };
 
@@ -877,6 +935,7 @@ export function createWebPlatform(): Platform {
     tools,
     vault,
     settings,
+    keys: keyboard,
     pty,
     ai,
     store,

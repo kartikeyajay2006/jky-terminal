@@ -460,3 +460,91 @@
 }
 
 /* The right-hand half of a field label: what the control is currently doing. */
+/* --- the keyboard panel --------------------------------------------------- */
+
+.settings__blurb {
+  color: var(--text-muted);
+  margin: 0 0 var(--s4);
+  max-width: 62ch;
+}
+
+.settings__note {
+  color: var(--warn);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: var(--s2) var(--s3);
+  margin: 0 0 var(--s4);
+}
+
+.keys__group {
+  margin-bottom: var(--s5);
+}
+
+.keys__group-name {
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+  margin: 0 0 var(--s2);
+}
+
+.keys__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.keys__row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s2) 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.keys__label {
+  flex: 1;
+}
+
+.keys__chord {
+  font-family: var(--font-mono);
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: var(--s1) var(--s3);
+  min-width: 15ch;
+  cursor: pointer;
+}
+
+/* Listening. The accent says the next keystroke goes here and nowhere else. */
+.keys__chord[data-capturing="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.keys__reset,
+.keys__reset-all {
+  background: none;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  padding: var(--s1) var(--s3);
+  cursor: pointer;
+}
+
+.keys__reset-all {
+  margin-top: var(--s3);
+}
+
+.keys__reset-all:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.keys__reset:hover,
+.keys__reset-all:not(:disabled):hover {
+  color: var(--text);
+  border-color: var(--accent-dim);
+}

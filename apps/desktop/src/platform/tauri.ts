@@ -44,6 +44,8 @@ import type {
   PtyApi,
   Reminder,
   ScrollbackApi,
+  Keyboard,
+  KeysApi,
   SettingsApi,
   StoreApi,
   Todo,
@@ -100,6 +102,21 @@ export function createTauriPlatform(): Platform {
     },
     async setActiveProvider(provider) {
       await invoke<void>("settings_set_active_provider", { provider });
+    },
+  };
+
+  const keys: KeysApi = {
+    async list() {
+      return invoke<Keyboard>("keys_list");
+    },
+    async bind(action, chord) {
+      return invoke<Keyboard>("keys_bind", { action, chord });
+    },
+    async reset(action) {
+      return invoke<Keyboard>("keys_reset", { action });
+    },
+    async resetAll() {
+      return invoke<Keyboard>("keys_reset_all");
     },
   };
 
@@ -268,6 +285,7 @@ export function createTauriPlatform(): Platform {
     tools,
     vault,
     settings,
+    keys,
     pty,
     ai,
     store,

@@ -7,6 +7,7 @@ import { CommandApp } from "./CommandApp";
 import { recognise, type Recognised } from "./recognise";
 import type { CommandDone } from "./commandFailure";
 import type { Direction } from "./panes/tree";
+import { actionFor, chordFor } from "../../app/keymapStore";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 
@@ -90,32 +91,33 @@ export function Terminal({
     term.focus();
   }, [term]);
 
-  // Ctrl/Cmd+F opens the find bar. Bound on the window rather than the
-  // terminal element because xterm swallows keystrokes aimed at the shell,
-  // and a find shortcut that only works when the terminal is *not* focused
-  // would be useless.
+  // Find, copy and paste. Bound on the window rather than the terminal
+  // element because xterm swallows keystrokes aimed at the shell, and a find
+  // shortcut that only works when the terminal is *not* focused would be
+  // useless. Which chord means which is the keymap's business, not this
+  // component's — so rebinding one actually rebinds it.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      // Window listeners fire once per mounted terminal, and a tab may now
-      // hold several. Without this every pane in the tab opened its own find
-      // bar and pasted into its own shell.
+      // Window listeners fire once per mounted terminal, and a tab may hold
+      // several. Without this every pane in the tab opened its own find bar
+      // and pasted into its own shell.
       if (!focused) return;
-      const mod = e.ctrlKey || e.metaKey;
-      if (mod && !e.shiftKey && e.key.toLowerCase() === "f") {
-        e.preventDefault();
-        setSearching(true);
-        return;
-      }
-      // Ctrl/Cmd+Shift+C and V, the terminal convention: the unshifted pair
-      // belong to the shell, where Ctrl+C is interrupt.
-      if (mod && e.shiftKey && e.key.toLowerCase() === "c") {
-        e.preventDefault();
-        void term.copySelection();
-        return;
-      }
-      if (mod && e.shiftKey && e.key.toLowerCase() === "v") {
-        e.preventDefault();
-        void term.paste();
+
+      switch (actionFor(e)) {
+        case "terminal-find":
+          e.preventDefault();
+          setSearching(true);
+          return;
+        // Copy and paste default to the shifted pair, the terminal
+        // convention: the unshifted ones belong to the shell, where Ctrl+C
+        // is interrupt.
+        case "terminal-copy":
+          e.preventDefault();
+          void term.copySelection();
+          return;
+        case "terminal-paste":
+          e.preventDefault();
+          void term.paste();
       }
     }
     window.addEventListener("keydown", onKeyDown);
@@ -194,7 +196,7 @@ export function Terminal({
           items={[
             {
               label: "Copy",
-              hint: "Ctrl+Shift+C",
+              hint: chordFor("terminal-copy"),
               // Nothing selected means nothing to copy, and an enabled item
               // that does nothing is worse than a greyed-out one.
               disabled: term.selection().length === 0,
@@ -202,12 +204,12 @@ export function Terminal({
             },
             {
               label: "Paste",
-              hint: "Ctrl+Shift+V",
+              hint: chordFor("terminal-paste"),
               run: () => void term.paste(),
             },
             {
               label: "Search",
-              hint: "Ctrl+F",
+              hint: chordFor("terminal-find"),
               run: () => setSearching(true),
             },
             {
@@ -221,12 +223,12 @@ export function Terminal({
               ? [
                   {
                     label: "Split right",
-                    hint: "Ctrl+Shift+D",
+                    hint: chordFor("pane-split-right"),
                     run: () => onSplit("row"),
                   },
                   {
                     label: "Split down",
-                    hint: "Ctrl+Shift+E",
+                    hint: chordFor("pane-split-down"),
                     run: () => onSplit("column"),
                   },
                 ]
@@ -235,7 +237,7 @@ export function Terminal({
               ? [
                   {
                     label: "Close pane",
-                    hint: "Ctrl+Shift+W",
+                    hint: chordFor("pane-close"),
                     run: () => onClosePane(),
                   },
                 ]

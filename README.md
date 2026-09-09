@@ -126,6 +126,31 @@ focusable — arrows resize, so a layout can be built without a mouse.
 
 ---
 
+## Every shortcut is yours
+
+Settings → **Keyboard** lists all of them and takes a new binding by
+listening: you choose a shortcut and press the keys you want. Typing
+`Ctrl+Shift+D` into a box would mean agreeing with the app about how a chord
+is spelled, and a mistake there is a shortcut that reads correctly and never
+fires.
+
+Two rules are enforced in Rust rather than in the panel, which is what makes
+them true of a hand-edited `keymap.json` as well:
+
+- **Every binding takes a modifier.** An unmodified key belongs to the shell,
+  where every keystroke means something.
+- **`Ctrl+C` and `Ctrl+D` cannot be taken.** Not a general reservation of
+  shell keys — this app already claims `Ctrl+K` and `Ctrl+W`, and pretending
+  otherwise would be theatre. These two are the pair that stop a terminal
+  being a terminal: without interrupt a runaway command cannot be stopped,
+  and without end-of-input a shell cannot be left.
+
+`Ctrl` means Cmd on a Mac, stored as one modifier rather than two, so a keymap
+made on a laptop means the same thing on a desktop. Only your changes are
+written down — a default improved in a later release still reaches you.
+
+---
+
 ## Developer tools
 
 | | Tool | | | Tool |

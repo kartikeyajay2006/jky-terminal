@@ -262,6 +262,19 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // ids all live in Rust, so the widest this can do is print a wrong
         // score. It reads nothing and returns nothing.
         "games_publish_scores".to_string(),
+        // What every shortcut is bound to, and the four calls that change it.
+        // The keymap is a table of action names and chords — no path, no
+        // command, nothing that runs. `keys_bind` is the only one that
+        // writes, and it writes to one file this app owns, under a name the
+        // window cannot choose: the action must be one of a fixed list and
+        // the chord must parse, so neither argument reaches the filesystem as
+        // text. Refusing an unmodified key is enforced here rather than in
+        // the panel, because a keymap that could bind a bare letter would
+        // take that letter away from every shell.
+        "keys_bind".to_string(),
+        "keys_list".to_string(),
+        "keys_reset".to_string(),
+        "keys_reset_all".to_string(),
         // Hands one validated http(s) URL to the OS opener. This is the only
         // place a string from the window becomes a process argument, so the
         // rule it is checked against is itself unit-tested: scheme allow-list,

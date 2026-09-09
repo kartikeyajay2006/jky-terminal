@@ -1,86 +1,90 @@
 import { useEffect } from "react";
 import { useTabs } from "./tabStore";
-import { isAppShortcut } from "./shortcuts";
+import { actionFor } from "./keymapStore";
 import type { Side } from "../features/terminal/panes/tree";
 
-/** Which way each arrow moves the keyboard between panes. */
+/** Which way each focus action moves the keyboard between panes. */
 const SIDES: Record<string, Side> = {
-  arrowleft: "left",
-  arrowright: "right",
-  arrowup: "up",
-  arrowdown: "down",
+  "pane-focus-left": "left",
+  "pane-focus-right": "right",
+  "pane-focus-up": "up",
+  "pane-focus-down": "down",
 };
 
 /**
  * Window-level shortcuts.
  *
- * Every binding requires a modifier. An unmodified key must reach the
- * terminal — a shell is the one place where every keystroke is meaningful.
+ * Which keystroke means what is not decided here any more — `jky-keys` owns
+ * that, and this asks it. What is decided here is what each action *does*,
+ * which is the part that belongs to the window.
+ *
+ * Every binding still requires a modifier, and that rule is enforced where
+ * bindings are made rather than here: an unmodified key must reach the
+ * terminal, because a shell is the one place where every keystroke is
+ * meaningful.
  */
 export function useShortcuts(): void {
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      // One definition of what the app claims, shared with the terminal's
-      // custom key handler so the two cannot disagree about which keys get
-      // through.
-      if (!isAppShortcut(e)) return;
-
+      const action = actionFor(e);
       const state = useTabs.getState();
       const { openTab, closeTab, nextTab, focusTab, tabs, activeId } = state;
+      const tab = tabs.find((t) => t.id === activeId);
 
-      // The shifted bindings act on one terminal inside the active tab.
-      // Copy and paste are shifted too, but they belong to the terminal that
-      // has focus and are handled there, so they are stepped over here.
-      if (e.shiftKey) {
-        if (!activeId) return;
-        const key = e.key.toLowerCase();
-        const tab = tabs.find((t) => t.id === activeId);
-        if (!tab) return;
-
-        switch (key) {
-          case "d":
-            e.preventDefault();
-            state.splitPane(activeId, tab.focusedPane, "row");
-            return;
-          case "e":
-            e.preventDefault();
-            state.splitPane(activeId, tab.focusedPane, "column");
-            return;
-          case "w":
-            e.preventDefault();
-            state.closePane(activeId, tab.focusedPane);
-            return;
-        }
-
-        const side = SIDES[key];
-        if (side) {
-          e.preventDefault();
-          state.movePaneFocus(activeId, side);
-        }
-        return;
-      }
-
-      switch (e.key.toLowerCase()) {
-        case "t":
+      switch (action) {
+        case null:
+          break;
+        case "tab-new":
           e.preventDefault();
           openTab("terminal", `Terminal ${tabs.length + 1}`);
           return;
-        case "w":
+        case "tab-close":
           if (activeId) {
             e.preventDefault();
             closeTab(activeId);
           }
           return;
-        case "tab":
+        case "tab-next":
           e.preventDefault();
           nextTab();
           return;
+        case "pane-split-right":
+          if (tab) {
+            e.preventDefault();
+            state.splitPane(tab.id, tab.focusedPane, "row");
+          }
+          return;
+        case "pane-split-down":
+          if (tab) {
+            e.preventDefault();
+            state.splitPane(tab.id, tab.focusedPane, "column");
+          }
+          return;
+        case "pane-close":
+          if (tab) {
+            e.preventDefault();
+            state.closePane(tab.id, tab.focusedPane);
+          }
+          return;
       }
 
-      // Ctrl/Cmd+1..9 jumps straight to a tab. An out-of-range number does
-      // nothing rather than clamping: jumping to a tab that is not there
-      // would be a surprise, doing nothing is not.
-      if (/^[1-9]$/.test(e.key)) {
+      const side = action ? SIDES[action] : undefined;
+      if (side && tab) {
+        e.preventDefault();
+        state.movePaneFocus(tab.id, side);
+        return;
+      }
+      // A bound chord that got this far belongs to a component rather than
+      // to the window — copy, paste and find are answered by the terminal
+      // that has focus, and must not be swallowed here.
+      if (action) return;
+
+      // Ctrl/Cmd+1..9 jumps straight to a tab. Not in the keymap: nine
+      // bindings that differ only by a digit would be nine rows of a settings
+      // table saying the same thing, and the digit *is* the meaning. An
+      // out-of-range number does nothing rather than clamping — jumping to a
+      // tab that is not there would be a surprise, doing nothing is not.
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && /^[1-9]$/.test(e.key)) {
         const target = tabs[Number(e.key) - 1];
         if (target) {
           e.preventDefault();

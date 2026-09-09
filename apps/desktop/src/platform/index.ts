@@ -6,6 +6,7 @@ export { EVENT_COLOURS } from "./types";
 export type {
   AiApi,
   AiMessage,
+  Binding,
   CaptureApi,
   CollectionApi,
   CommandSpec,
@@ -13,6 +14,9 @@ export type {
   EventColour,
   GameScore,
   GamesApi,
+  Keyboard,
+  KeysApi,
+  Conflict,
   Note,
   Platform,
   ProviderStatus,

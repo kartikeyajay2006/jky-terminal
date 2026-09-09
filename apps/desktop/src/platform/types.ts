@@ -34,6 +34,54 @@ export interface VaultApi {
   listProviders(): Promise<ProviderStatus[]>;
 }
 
+/**
+ * One shortcut, as the keymap reports it.
+ *
+ * `chord` is canonical — modifiers in a fixed order, `Ctrl` standing for
+ * Ctrl-or-Cmd, which is what every shortcut in this app has always accepted.
+ * Matching is done against this string, so the window never has to decide
+ * what a chord means; `jky-keys` already did.
+ */
+export interface Binding {
+  /** The action id, e.g. `pane-split-right`. */
+  action: string;
+  label: string;
+  /** Which part of the app it belongs to, for grouping in the panel. */
+  group: string;
+  chord: string;
+  default_chord: string;
+  custom: boolean;
+}
+
+/** A chord two actions both answer to. Only a hand-edited file can hold one. */
+export interface Conflict {
+  chord: string;
+  actions: string[];
+}
+
+export interface Keyboard {
+  bindings: Binding[];
+  conflicts: Conflict[];
+}
+
+/**
+ * What every key is bound to.
+ *
+ * Every call answers with the whole keyboard, so the panel cannot end up
+ * drawing a table that disagrees with the file — the same rule the dashboard
+ * collections follow, for the same reason.
+ *
+ * Nothing here presses a key. Rust decides what a chord *means*; the window
+ * looks up the meaning and does it.
+ */
+export interface KeysApi {
+  list(): Promise<Keyboard>;
+  /** Point one action at a chord. Rejects one another action already holds. */
+  bind(action: string, chord: string): Promise<Keyboard>;
+  reset(action: string): Promise<Keyboard>;
+  resetAll(): Promise<Keyboard>;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
   setActiveProvider(provider: string): Promise<void>;
@@ -790,6 +838,8 @@ export interface Platform {
   readonly kind: "web" | "tauri";
   readonly vault: VaultApi;
   readonly settings: SettingsApi;
+  /** What every shortcut is bound to. */
+  readonly keys: KeysApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */

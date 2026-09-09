@@ -5,6 +5,7 @@ import { useAsk } from "./app/askStore";
 import { useChat } from "./app/chatStore";
 import { allPaneKeys, useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
+import { actionFor, useKeymap } from "./app/keymapStore";
 import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
@@ -32,6 +33,13 @@ export function App() {
   const activeId = useTabs((s) => s.activeId);
 
   useShortcuts();
+
+  // What the keys are bound to, before anything can be pressed. The store
+  // starts on the defaults, so the gap before this lands is a window with
+  // working shortcuts rather than a window with none.
+  useEffect(() => {
+    void useKeymap.getState().load();
+  }, []);
 
   // Bring back conversations from the last run before anything renders them.
   useEffect(() => {
@@ -119,11 +127,11 @@ export function App() {
     if (pendingNav) setSection(pendingNav.section);
   }, [pendingNav]);
 
-  // Ctrl/Cmd+K, bound here rather than in useShortcuts because the palette is
-  // the one shortcut that has to work while a terminal has the keyboard.
+  // The palette, bound here rather than in useShortcuts because it is the one
+  // shortcut that has to work while a terminal has the keyboard.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "k") {
+      if (actionFor(e) === "palette-toggle") {
         e.preventDefault();
         setPaletteOpen((open) => !open);
       }
