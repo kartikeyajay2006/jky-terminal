@@ -53,6 +53,7 @@ export function buildCommands(): PaletteCommand[] {
   const sections: Array<{ id: string; label: string }> = [
     { id: "dashboard", label: "Dashboard" },
     { id: "terminal", label: "Terminal" },
+    { id: "history", label: "History" },
     { id: "assistant", label: "Assistant" },
     { id: "games", label: "Games" },
     { id: "developer", label: "Developer Tools" },

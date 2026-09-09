@@ -12,6 +12,7 @@ import { useDashboard } from "./features/dashboard/dashboardStore";
 import { Apps } from "./features/apps/Apps";
 import { Developer } from "./features/developer/Developer";
 import { Games } from "./features/games/Games";
+import { History } from "./features/history/History";
 import { useOpenGame } from "./features/games/openStore";
 import { useNav } from "./app/navStore";
 import { Palette } from "./features/palette/Palette";
@@ -172,6 +173,10 @@ export function App() {
       {/* These three keep their state in stores, so unmounting costs nothing
           and mounting them all at once would run four sets of effects on
           every start. */}
+      {/* Unmounted on leaving: it holds a search box and a debounce timer,
+          and a section nobody is looking at has no business reading the
+          history file every time a key is pressed somewhere else. */}
+      {section === "history" && <History />}
       {section === "settings" && <Settings />}
       {section === "dashboard" && <Dashboard />}
       {section === "assistant" && <Assistant />}

@@ -4,6 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use jky_audit::AuditLog;
+use jky_history::History;
 use jky_keys::Keymap;
 use jky_pty::PtyRegistry;
 use jky_secrets::{KeyringStore, SecretStore};
@@ -59,6 +60,11 @@ pub struct AppState {
     /// a keymap is a table people hand-edit, and burying it inside a file of
     /// unrelated preferences would make that harder than it needs to be.
     pub keys: Arc<Keymap>,
+    /// Every command that has run. Beside the dashboard's store rather than
+    /// in it: what was typed is the user's own and is never pruned by age,
+    /// but it is read in full on every search and so it is capped — which is
+    /// neither rule the collections follow.
+    pub history: Arc<History>,
     /// The dashboard's notes, todos, events and reminders.
     pub store: Arc<Store>,
     pub ptys: Arc<PtyRegistry>,
@@ -95,6 +101,7 @@ impl AppState {
             secrets: Arc::new(KeyringStore::new(KEYCHAIN_SERVICE)),
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
             keys: Arc::new(Keymap::new(config_dir.join("keymap.json"))),
+            history: Arc::new(History::new(config_dir.join("history.jsonl"))),
             store: Arc::new(Store::new(config_dir)),
             ptys: Arc::new(PtyRegistry::new()),
             config_dir: config_dir.to_path_buf(),

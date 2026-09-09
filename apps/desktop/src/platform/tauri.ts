@@ -44,6 +44,8 @@ import type {
   PtyApi,
   Reminder,
   ScrollbackApi,
+  HistoryApi,
+  HistoryHit,
   Keyboard,
   KeysApi,
   SettingsApi,
@@ -117,6 +119,38 @@ export function createTauriPlatform(): Platform {
     },
     async resetAll() {
       return invoke<Keyboard>("keys_reset_all");
+    },
+  };
+
+  const history: HistoryApi = {
+    async record(entry) {
+      await invoke<void>("history_record", {
+        command: entry.command,
+        cwd: entry.cwd,
+        code: entry.code,
+        at: entry.at,
+        session: entry.session,
+        host: entry.host ?? null,
+      });
+    },
+    async search(query) {
+      return invoke<HistoryHit[]>("history_search", {
+        text: query.text,
+        session: query.session ?? null,
+        cwd: query.cwd ?? null,
+        failedOnly: query.failedOnly ?? false,
+        limit: query.limit ?? 0,
+        // The clock is the window's, so a search ranks against the moment
+        // the person is looking rather than against whenever Rust last
+        // happened to ask the operating system.
+        now: Date.now(),
+      });
+    },
+    async forget(command) {
+      return invoke<number>("history_forget", { command });
+    },
+    async clear() {
+      await invoke<void>("history_clear");
     },
   };
 
@@ -286,6 +320,7 @@ export function createTauriPlatform(): Platform {
     vault,
     settings,
     keys,
+    history,
     pty,
     ai,
     store,

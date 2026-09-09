@@ -13,6 +13,7 @@ tauri = { version = "2", features = ["unstable"] }
 jky-secrets = { path = "../../../crates/jky-secrets" }
 jky-settings = { path = "../../../crates/jky-settings" }
 jky-keys = { path = "../../../crates/jky-keys" }
+jky-history = { path = "../../../crates/jky-history" }
 jky-store = { path = "../../../crates/jky-store" }
 jky-pty = { path = "../../../crates/jky-pty" }
 jky-ai = { path = "../../../crates/jky-ai" }

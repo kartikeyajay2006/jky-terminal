@@ -1,6 +1,9 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import { DEFAULT_BINDINGS, conflictsIn } from "./keymap";
 import type {
+  HistoryApi,
+  HistoryEntry,
+  HistoryHit,
   Keyboard,
   KeysApi,
   CaptureApi,
@@ -328,6 +331,69 @@ export function createWebPlatform(): Platform {
     async resetAll() {
       custom.clear();
       return keyboardNow();
+    },
+  };
+
+  /*
+   * Command history, in memory.
+   *
+   * The match is the same subsequence rule the Rust one uses, so `dkrps`
+   * finds `docker ps` here too. The *ranking* is not: tightness, frequency
+   * and recency are weighted in `jky-history`, tested against a hundred
+   * entries, and duplicating that arithmetic here would give two answers to
+   * one question. This orders by recency and says so.
+   */
+  const commands: HistoryEntry[] = [];
+
+  const subsequence = (haystack: string, needle: string): boolean => {
+    let at = 0;
+    for (const c of needle) {
+      at = haystack.indexOf(c, at) + 1;
+      if (at === 0) return false;
+    }
+    return true;
+  };
+
+  const history: HistoryApi = {
+    async record(entry) {
+      const command = entry.command.trim();
+      if (!command) return;
+      commands.push({ ...entry, command });
+    },
+    async search(query) {
+      const needle = query.text.trim().toLowerCase();
+      const seen = new Map<string, HistoryHit>();
+
+      // Newest first, keeping the first sighting of each command: a search
+      // that returned the same line forty times would bury everything else.
+      for (const entry of [...commands].reverse()) {
+        if (query.failedOnly && entry.code === 0) continue;
+        if (query.session && entry.session !== query.session) continue;
+        if (query.cwd && entry.cwd !== query.cwd) continue;
+        if (!subsequence(entry.command.toLowerCase(), needle)) continue;
+
+        const already = seen.get(entry.command);
+        if (already) already.count += 1;
+        else seen.set(entry.command, { ...entry, count: 1, last_at: entry.at });
+      }
+
+      // Every earlier run still counts, even one filtered out of the view:
+      // how often a command has run is a fact about the history.
+      for (const hit of seen.values()) {
+        hit.count = commands.filter((e) => e.command === hit.command).length;
+      }
+
+      return [...seen.values()].slice(0, query.limit && query.limit > 0 ? query.limit : 200);
+    },
+    async forget(command) {
+      const before = commands.length;
+      for (let i = commands.length - 1; i >= 0; i -= 1) {
+        if (commands[i].command === command) commands.splice(i, 1);
+      }
+      return before - commands.length;
+    },
+    async clear() {
+      commands.length = 0;
     },
   };
 
@@ -936,6 +1002,7 @@ export function createWebPlatform(): Platform {
     vault,
     settings,
     keys: keyboard,
+    history,
     pty,
     ai,
     store,

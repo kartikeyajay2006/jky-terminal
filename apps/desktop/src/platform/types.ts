@@ -82,6 +82,59 @@ export interface KeysApi {
   resetAll(): Promise<Keyboard>;
 }
 
+/**
+ * One command that ran, anywhere, at any time.
+ *
+ * Not scrollback: that is what a command *printed*, capped and rolling and
+ * kept per terminal. This is what was *typed* — small, yours, and the thing
+ * worth finding a month later.
+ */
+export interface HistoryEntry {
+  command: string;
+  /** Where it ran. `ls` here is a different answer from `ls` there. */
+  cwd: string;
+  /** Zero means it worked. The shell reports it; nothing is inferred. */
+  code: number;
+  /** Milliseconds since the epoch. */
+  at: number;
+  /** The pane it was typed in. */
+  session: string;
+  /** The machine it ran on: absent for this one, a host for an SSH session. */
+  host?: string | null;
+}
+
+/** One search result: the entry, plus why it is here. */
+export interface HistoryHit extends HistoryEntry {
+  /** How many times this exact command has been run, ever. */
+  count: number;
+  /** The most recent time it ran, which is not necessarily `at`. */
+  last_at: number;
+}
+
+export interface HistoryQuery {
+  /** Matched as a subsequence: `dkrps` finds `docker ps`. Empty means all. */
+  text: string;
+  session?: string | null;
+  cwd?: string | null;
+  failedOnly?: boolean;
+  limit?: number;
+}
+
+/**
+ * Every command you have run.
+ *
+ * Ranking lives in Rust, not here: tightness, frequency and recency are the
+ * kind of thing that has to be tested against a hundred entries, and a window
+ * that sorted its own results would have to be handed all of them to do it.
+ */
+export interface HistoryApi {
+  record(entry: HistoryEntry): Promise<void>;
+  search(query: HistoryQuery): Promise<HistoryHit[]>;
+  /** Forget every run of one command — not the row being looked at. */
+  forget(command: string): Promise<number>;
+  clear(): Promise<void>;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
   setActiveProvider(provider: string): Promise<void>;
@@ -840,6 +893,8 @@ export interface Platform {
   readonly settings: SettingsApi;
   /** What every shortcut is bound to. */
   readonly keys: KeysApi;
+  /** Every command that has run, and how to find it again. */
+  readonly history: HistoryApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */

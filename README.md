@@ -45,6 +45,7 @@ comment:
 | | Section | |
 |---|---|---|
 | ❯ | **Terminal** | A real pty, split any way you like. **Any command can become an app.** Scrollback survives a restart |
+| ↺ | **History** | Every command you have ever run, searchable by half-remembered letters |
 | ✦ | **Assistant** | Your key, in the OS keychain. Tools are gated; destructive ones need a click |
 | ⌂ | **Dashboard** | Notes, todos, calendar, reminders. On disk, yours, arrangeable |
 | ⌥ | **Developer** | Eleven tools. No account, no key |
@@ -123,6 +124,33 @@ expects and what a tree walk gets wrong.
 Each pane keeps its own scrollback across a restart, and closing one forgets
 only that one. Dividers are draggable, double-click to even them up, and
 focusable — arrows resize, so a layout can be built without a mouse.
+
+---
+
+## History
+
+Every command that finishes is recorded — what was typed, where it ran, and
+how it ended. The shell reports all three through the same hook the command
+panels use, so nothing is inferred from what is on screen.
+
+Search is a **subsequence** match, because that is how people remember a
+command: `dkrps` finds `docker ps`, and `gcm` finds `git commit -m`. Results
+are ranked by how tightly the query matched, how often the command has been
+run, and how recently — frequency damped by a logarithm, or an `ls` run five
+hundred times would outrank whatever you were actually looking for.
+
+A command appears once however many times it ran, with the count beside it.
+Forty identical lines would bury everything else you have ever typed.
+
+Choosing one **types it at the prompt**. It does not run it — the same rule
+the command panels follow, and the reason you can browse this without being
+careful. **Forget** removes every run of a command rather than the row you are
+looking at: someone deleting a line with a credential in it means all of them.
+
+This is not scrollback, and it is a different file. Scrollback is what a
+command *printed* — emitted rather than authored, capped and rolling, kept per
+terminal. This is what was *typed*: small, yours, and the thing worth finding
+a month later.
 
 ---
 

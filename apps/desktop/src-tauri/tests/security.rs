@@ -262,6 +262,18 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // ids all live in Rust, so the widest this can do is print a wrong
         // score. It reads nothing and returns nothing.
         "games_publish_scores".to_string(),
+        // Every command that has run, and the four calls that read and change
+        // it. This is the most sensitive thing in the store — a command line
+        // holds whatever someone typed on it, and people type secrets on
+        // command lines — so note what is absent: nothing here takes a path,
+        // and nothing sends anything anywhere. The file is one this app owns
+        // in its own config directory, and `history_forget` exists precisely
+        // so that a line with a credential in it can be taken back out, every
+        // occurrence of it, rather than only the row being looked at.
+        "history_clear".to_string(),
+        "history_forget".to_string(),
+        "history_record".to_string(),
+        "history_search".to_string(),
         // What every shortcut is bound to, and the four calls that change it.
         // The keymap is a table of action names and chords — no path, no
         // command, nothing that runs. `keys_bind` is the only one that

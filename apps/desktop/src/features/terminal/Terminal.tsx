@@ -8,6 +8,8 @@ import { recognise, type Recognised } from "./recognise";
 import type { CommandDone } from "./commandFailure";
 import type { Direction } from "./panes/tree";
 import { actionFor, chordFor } from "../../app/keymapStore";
+import { getPlatform } from "../../platform";
+import { TYPE_EVENT } from "./typeEvent";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 
@@ -69,6 +71,20 @@ export function Terminal({
   const [ranCommand, setRanCommand] = useState("");
 
   const term = useXterm(container, paneId, setFailure, (completion) => {
+    // Every finished command goes to the history, whether or not anything on
+    // screen has a use for it. This is the only moment the app knows what was
+    // typed, where, and how it ended — the shell says so once and then the
+    // line is gone.
+    void getPlatform()
+      .history.record({
+        command: completion.command,
+        cwd: completion.cwd,
+        code: completion.code,
+        at: Date.now(),
+        session: paneId,
+      })
+      .catch(() => {});
+
     const recognised = recognise(completion);
     setFound(recognised);
     if (recognised) setRanCommand(completion.command);
@@ -80,6 +96,21 @@ export function Terminal({
   useEffect(() => {
     if (focused) term.focus();
   }, [focused, term]);
+
+  // A command chosen somewhere else in the app — the history, for now —
+  // arriving at this prompt. Typed, never run: the person still presses
+  // Enter, which is the same rule the command panels follow and for the same
+  // reason.
+  useEffect(() => {
+    function onType(e: Event) {
+      const detail = (e as CustomEvent<{ pane: string; text: string }>).detail;
+      if (!detail || detail.pane !== paneId) return;
+      term.type(detail.text);
+      term.focus();
+    }
+    window.addEventListener(TYPE_EVENT, onType);
+    return () => window.removeEventListener(TYPE_EVENT, onType);
+  }, [paneId, term]);
 
   const [searching, setSearching] = useState(false);
   const [menuAt, setMenuAt] = useState<MenuPoint | null>(null);

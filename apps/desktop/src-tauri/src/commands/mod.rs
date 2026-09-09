@@ -5,6 +5,7 @@ pub mod browser;
 pub mod capture;
 pub mod games;
 pub mod github;
+pub mod history;
 pub mod keys;
 pub mod gmail;
 pub mod open;
