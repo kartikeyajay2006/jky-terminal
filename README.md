@@ -127,6 +127,41 @@ focusable — arrows resize, so a layout can be built without a mouse.
 
 ---
 
+## Completions
+
+Start typing and what could come next appears. <kbd>Tab</kbd> takes it,
+<kbd>↑</kbd><kbd>↓</kbd> choose, <kbd>Esc</kbd> dismisses.
+
+What is offered depends on where the cursor is, so a branch is never offered
+where a file belongs:
+
+| Where | What |
+|---|---|
+| the first word | programs on your `PATH`, then whole lines you have run before |
+| `git checkout ` | branches, read from `.git` rather than by running git |
+| `git add ` | files, because that is what `git add` takes |
+| `npm run ` | the scripts in `package.json`, with what each one runs |
+| `cd ` | directories, never a file |
+| `-` | that command's flags, with what each is for |
+| anything else | paths |
+
+**Nothing is run to find out what to offer.** Not the command being completed,
+not `git`, not `--help`. A completion engine that executed something would
+execute it on every keystroke, at a prompt where you have not decided yet.
+
+**Nothing is guessed.** A command the app was not told about gets paths and
+nothing else — no invented flags. A flag accepted with Tab is a flag nobody
+re-reads before pressing Enter, so a wrong one is worse than none. And a
+command your machine does not have is not described at all: offering
+`docker ps` where docker is not installed is offering something that cannot
+work.
+
+The prompt is read off the screen rather than accumulated from keystrokes. A
+model built from what you pressed goes wrong the first time you recall a line
+with the up arrow — and goes wrong silently.
+
+---
+
 ## History
 
 Every command that finishes is recorded — what was typed, where it ran, and

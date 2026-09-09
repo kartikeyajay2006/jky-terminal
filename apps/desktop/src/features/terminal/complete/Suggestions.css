@@ -1,0 +1,93 @@
+/*
+ * The completion list.
+ *
+ * Anchored to the bottom of the terminal rather than to the caret. Following
+ * the caret means measuring a cell in a canvas and re-measuring on every
+ * font change and resize, for a list that is read by moving your eyes rather
+ * than by being exactly where you left them.
+ */
+.suggest {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  background: var(--surface-raised);
+  border-top: 1px solid var(--line-strong);
+  box-shadow: 0 -8px 24px var(--accent-glow);
+}
+
+.suggest__list {
+  list-style: none;
+  margin: 0;
+  padding: var(--s1) 0;
+  max-height: 42vh;
+  overflow-y: auto;
+}
+
+.suggest__list:focus-visible {
+  outline: none;
+}
+
+.suggest__row {
+  display: grid;
+  grid-template-columns: 1.5ch 1fr auto auto;
+  align-items: baseline;
+  gap: var(--s3);
+  padding: var(--s1) var(--s3);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.suggest__row[data-selected="true"] {
+  background: var(--surface);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.suggest__glyph {
+  color: var(--text-dim);
+  text-align: center;
+}
+
+.suggest__value {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* The letters that matched. The whole reason the list is readable at speed. */
+.suggest__hit {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.suggest__detail {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 40ch;
+}
+
+.suggest__kind {
+  color: var(--text-dim);
+  font-size: 0.7rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.suggest__keys {
+  margin: 0;
+  padding: var(--s1) var(--s3);
+  border-top: 1px solid var(--line);
+  color: var(--text-dim);
+  font-size: 0.7rem;
+}
+
+.suggest__keys kbd {
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+}

@@ -7,8 +7,8 @@ mod turn;
 mod state;
 
 use commands::{
-    advice, ai, apps, browser, capture, games, github, gmail, history, keys, open, pty, scrollback,
-    settings, store, system, tools, vault,
+    advice, ai, apps, browser, capture, complete, games, github, gmail, history, keys, open, pty,
+    scrollback, settings, store, system, tools, vault,
 };
 use state::AppState;
 use tauri::Manager;
@@ -28,6 +28,7 @@ fn main() {
             vault::vault_has_secret,
             vault::vault_delete_secret,
             vault::vault_list_providers,
+            complete::complete_suggest,
             history::history_record,
             history::history_search,
             history::history_forget,

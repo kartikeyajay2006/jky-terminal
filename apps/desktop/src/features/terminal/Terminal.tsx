@@ -10,6 +10,8 @@ import type { Direction } from "./panes/tree";
 import { actionFor, chordFor } from "../../app/keymapStore";
 import { getPlatform } from "../../platform";
 import { TYPE_EVENT } from "./typeEvent";
+import { useCompletion } from "./complete/useCompletion";
+import { Suggestions } from "./complete/Suggestions";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 
@@ -115,6 +117,58 @@ export function Terminal({
   const [searching, setSearching] = useState(false);
   const [menuAt, setMenuAt] = useState<MenuPoint | null>(null);
 
+  /*
+   * What could come next on the prompt.
+   *
+   * Only the focused pane asks — a split tab would otherwise have every
+   * terminal in it polling its own prompt — and only while nothing else owns
+   * the keyboard. The offer under a failed command and the panel under a
+   * recognised one both claim number keys through the same channel this
+   * does, and two things claiming it is one of them silently losing.
+   */
+  const completion = useCompletion(term, focused && !searching && !failure && !found);
+
+  /*
+   * Take Tab and the arrows while the list is open.
+   *
+   * The only way to take them. xterm handles a key by calling
+   * `stopPropagation`, so a window listener never sees one while a terminal
+   * has focus — which is why this goes through `claimKeys` rather than
+   * through the usual shortcut path. The keys go straight back the moment
+   * the list closes, because Tab at a prompt belongs to the shell.
+   */
+  useEffect(() => {
+    // Nothing claimed when the list is shut, rather than claiming nothing:
+    // handing the keys back here would take them from whichever panel has
+    // them.
+    if (!completion.open) return;
+
+    term.claimKeys((event) => {
+      if (event.type !== "keydown") return false;
+
+      switch (event.key) {
+        case "Tab":
+          completion.accept();
+          return true;
+        case "ArrowDown":
+          completion.move(1);
+          return true;
+        case "ArrowUp":
+          completion.move(-1);
+          return true;
+        case "Escape":
+          completion.dismiss();
+          return true;
+        default:
+          // Everything else reaches the shell, including Enter. A list open
+          // over a finished command must not swallow the Enter that runs it.
+          return false;
+      }
+    });
+
+    return () => term.claimKeys(null);
+  }, [completion, term]);
+
   const closeSearch = useCallback(() => {
     setSearching(false);
     term.clearSearch();
@@ -207,6 +261,20 @@ export function Terminal({
             setFound(null);
             term.focus();
           }}
+        />
+      )}
+
+      {/* Under the terminal, over its last rows. Anchored to the box rather
+          than to the caret: following the caret means measuring a cell in a
+          canvas and re-measuring it on every font change and resize, for a
+          list that is read by moving your eyes anyway. */}
+      {completion.open && (
+        <Suggestions
+          items={completion.items}
+          index={completion.index}
+          word={completion.word}
+          onAccept={completion.accept}
+          onSelect={completion.select}
         />
       )}
 

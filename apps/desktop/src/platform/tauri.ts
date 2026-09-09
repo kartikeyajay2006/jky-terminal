@@ -44,6 +44,8 @@ import type {
   PtyApi,
   Reminder,
   ScrollbackApi,
+  CompleteApi,
+  Completions,
   HistoryApi,
   HistoryHit,
   Keyboard,
@@ -151,6 +153,12 @@ export function createTauriPlatform(): Platform {
     },
     async clear() {
       await invoke<void>("history_clear");
+    },
+  };
+
+  const complete: CompleteApi = {
+    async suggest(line, cursor, cwd, limit) {
+      return invoke<Completions>("complete_suggest", { line, cursor, cwd, limit });
     },
   };
 
@@ -321,6 +329,7 @@ export function createTauriPlatform(): Platform {
     settings,
     keys,
     history,
+    complete,
     pty,
     ai,
     store,

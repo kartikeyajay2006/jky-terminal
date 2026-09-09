@@ -261,6 +261,15 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // `jky games` prints. The path, the format and the set of valid game
         // ids all live in Rust, so the widest this can do is print a wrong
         // score. It reads nothing and returns nothing.
+        // What could come next on a command line. It reads directories, PATH
+        // and a repository's refs, and it runs nothing — not the command
+        // being completed, not `git`, not `--help`. That is the whole reason
+        // it is one command rather than a general "ask the shell": a
+        // completion engine that executed anything to find out what to offer
+        // would execute it on every keystroke, at a prompt where the person
+        // has not decided yet. It reads paths the shell reported rather than
+        // paths the renderer chose, and answers with names, never contents.
+        "complete_suggest".to_string(),
         "games_publish_scores".to_string(),
         // Every command that has run, and the four calls that read and change
         // it. This is the most sensitive thing in the store — a command line

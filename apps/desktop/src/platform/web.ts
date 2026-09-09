@@ -1,6 +1,7 @@
 import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import { DEFAULT_BINDINGS, conflictsIn } from "./keymap";
 import type {
+  CompleteApi,
   HistoryApi,
   HistoryEntry,
   HistoryHit,
@@ -394,6 +395,35 @@ export function createWebPlatform(): Platform {
     },
     async clear() {
       commands.length = 0;
+    },
+  };
+
+  /*
+   * Completions, in the browser.
+   *
+   * There is no filesystem here and no PATH, so the only source that can
+   * honestly answer is the history this build already keeps. It offers whole
+   * lines and nothing else rather than inventing a directory listing: a made
+   * up path is not an illustrative placeholder the way a made up inbox is —
+   * it is a wrong answer to the exact question that was asked.
+   */
+  const complete: CompleteApi = {
+    async suggest(line, cursor, _cwd, limit) {
+      const at = Math.max(0, Math.min(cursor, line.length));
+      const typed = line.slice(0, at);
+      const wordStart = typed.lastIndexOf(" ") + 1;
+
+      const seen = new Set<string>();
+      const items = commands
+        .map((entry) => entry.command)
+        .reverse()
+        .filter((c) => c.toLowerCase().startsWith(typed.trim().toLowerCase()))
+        .filter((c) => typed.trim().length > 0 && c.length > typed.length)
+        .filter((c) => (seen.has(c) ? false : seen.add(c)))
+        .slice(0, limit > 0 ? limit : 40)
+        .map((c) => ({ value: c, display: c, kind: "history" as const, detail: "", from: 0 }));
+
+      return { start: wordStart, end: at, word: typed.slice(wordStart), items };
     },
   };
 
@@ -1003,6 +1033,7 @@ export function createWebPlatform(): Platform {
     settings,
     keys: keyboard,
     history,
+    complete,
     pty,
     ai,
     store,

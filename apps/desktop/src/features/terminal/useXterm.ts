@@ -60,6 +60,28 @@ export interface TerminalControls {
   paste: () => Promise<boolean>;
   clear: () => void;
   focus: () => void;
+
+  /**
+   * What is typed at the prompt right now, and where the cursor is in it.
+   *
+   * Read off the screen rather than accumulated from keystrokes. A model
+   * built from what the user pressed goes wrong the first time they recall a
+   * line with the up arrow, or the shell rewrites the line itself — and it
+   * goes wrong silently, offering completions for a command that is no
+   * longer there. The screen is the truth.
+   *
+   * Null when the prompt's own width is not yet known: see `promptCol`.
+   */
+  promptInput: () => { line: string; cursor: number } | null;
+  /** Where the shell last said it was, for completing a path. */
+  cwd: () => string;
+  /**
+   * Replace part of what is typed.
+   *
+   * Sent as backspaces and then text, because that is all a pty accepts —
+   * there is no way to hand a shell a new line except by typing it.
+   */
+  replaceRange: (from: number, to: number, text: string) => void;
 }
 
 const NO_HITS: SearchHits = { current: 0, total: 0 };
@@ -119,6 +141,19 @@ export function useXterm(
   // Where the shell says each command began and ended. Separate from `mark`
   // above, which is only ever "everything since the last report".
   const marks = useRef(new MarkTracker());
+
+  /**
+   * How wide the prompt is, in columns.
+   *
+   * The shell reports where a prompt *begins* (OSC 133 `A`) but not where it
+   * ends — `B` would have to live inside PS1, and rewriting somebody's prompt
+   * string risks their line wrapping. So it is measured instead: at the first
+   * keystroke after a prompt mark, the cursor is sitting exactly at the end
+   * of the prompt. Null until then, and completions wait rather than guess.
+   */
+  const promptCol = useRef<number | null>(null);
+  /** Where the shell last said it was. Reported on every prompt, via OSC 7. */
+  const cwd = useRef("");
   /** A panel's key handler, while one is open. See `claimKeys`. */
   const keyClaim = useRef<((event: KeyboardEvent) => boolean) | null>(null);
 
@@ -234,6 +269,20 @@ export function useXterm(
     // A number goes stale the moment scrollback overflows and the buffer
     // shifts underneath it; a marker is moved by the terminal itself, so a
     // jump still lands on the right line an hour later.
+    // The working directory, on every prompt. A shared convention rather
+    // than an invention — see `crates/jky-pty/src/integration.rs`. The
+    // completion engine needs it before a command has finished, which is the
+    // one thing the completion report cannot provide.
+    xterm.parser.registerOscHandler(7, (payload) => {
+      // `file://host/path`. The host is whatever the shell felt like saying
+      // and is not checked: a path is all that is wanted, and refusing one
+      // because the hostname looked odd would break completions on every
+      // machine with an unusual `hostname`.
+      const path = payload.replace(/^file:\/\/[^/]*/, "");
+      if (path.startsWith("/")) cwd.current = decodeURIComponent(path);
+      return true;
+    });
+
     xterm.parser.registerOscHandler(133, (payload) => {
       const parsed = parseMark(payload);
       if (!parsed) return false;
@@ -241,6 +290,10 @@ export function useXterm(
       const buffer = xterm.buffer.active;
       const here = xterm.registerMarker(0) ?? { line: buffer.baseY + buffer.cursorY };
       const now = Date.now();
+
+      // A fresh prompt: its width is not known again until something is
+      // typed at it.
+      if (parsed.kind === "prompt") promptCol.current = null;
 
       if (parsed.kind === "prompt") marks.current.prompt(here, now);
       else if (parsed.kind === "output") marks.current.output(here, now);
@@ -383,7 +436,14 @@ export function useXterm(
       // prompt the moment output starts flowing, and attaching before the
       // listener existed is what made the first prompt disappear.
       unlisten = await platform.pty.onData(id, (chunk) => xterm.write(chunk));
-      xterm.onData((data) => void platform.pty.write(id, data));
+      xterm.onData((data) => {
+        // The first keystroke after a prompt is the one moment the cursor is
+        // known to be sitting exactly at the end of the prompt. Measured
+        // here, once, and used from then on to tell the prompt apart from
+        // what has been typed at it.
+        if (promptCol.current === null) promptCol.current = xterm.buffer.active.cursorX;
+        void platform.pty.write(id, data);
+      });
       await platform.pty.attach(id);
 
       // Push the settled size, unconditionally.
@@ -538,6 +598,37 @@ export function useXterm(
       },
       clear: () => term.current?.clear(),
       focus: () => term.current?.focus(),
+
+      promptInput: () => {
+        const xterm = term.current;
+        const start = promptCol.current;
+        if (!xterm || start === null) return null;
+
+        const buffer = xterm.buffer.active;
+        const row = buffer.getLine(buffer.baseY + buffer.cursorY);
+        if (!row) return null;
+
+        // Only the cursor's own row. A command long enough to wrap is read
+        // as its last line, which completes the word being typed correctly
+        // and loses the earlier context — a smaller wrong answer than
+        // stitching rows together and mistaking a hard newline for a soft
+        // one.
+        const text = row.translateToString(true);
+        if (buffer.cursorX < start) return null;
+
+        return { line: text.slice(start, buffer.cursorX), cursor: buffer.cursorX - start };
+      },
+
+      cwd: () => cwd.current,
+
+      replaceRange: (from, to, text) => {
+        const id = ptyRef.current;
+        if (!id) return;
+        // Backspaces and then text. There is no way to hand a shell a new
+        // line except by typing it, and DEL is what a shell reads as one.
+        const back = "\x7f".repeat(Math.max(0, to - from));
+        void getPlatform().pty.write(id, back + text);
+      },
     };
   }
 

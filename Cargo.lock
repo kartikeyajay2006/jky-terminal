@@ -2131,6 +2131,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "jky-complete"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "jky-history"
 version = "0.1.0"
 dependencies = [
@@ -2205,6 +2215,7 @@ dependencies = [
  "jky-apps",
  "jky-audit",
  "jky-capture",
+ "jky-complete",
  "jky-history",
  "jky-keys",
  "jky-pty",

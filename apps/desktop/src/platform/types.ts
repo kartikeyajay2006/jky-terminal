@@ -135,6 +135,55 @@ export interface HistoryApi {
   clear(): Promise<void>;
 }
 
+/** Where a suggestion came from, so the list can say. */
+export type SuggestionKind =
+  | "directory"
+  | "file"
+  | "executable"
+  | "flag"
+  | "branch"
+  | "script"
+  | "history";
+
+export interface Suggestion {
+  /** The text that replaces what was typed. */
+  value: string;
+  /** What to show. A path shows only its last part. */
+  display: string;
+  kind: SuggestionKind;
+  /** A word or two of context. Empty when there is nothing worth saying. */
+  detail: string;
+  /**
+   * Byte offset this suggestion replaces from.
+   *
+   * Almost always the word being typed. A whole command line recalled from
+   * history replaces the whole command — `docker r` completed to
+   * `docker run …` must not become `docker docker run …`.
+   */
+  from: number;
+}
+
+export interface Completions {
+  /** Where the word being completed begins. */
+  start: number;
+  /** Where it ends — the cursor. */
+  end: number;
+  word: string;
+  items: Suggestion[];
+}
+
+/**
+ * What could come next on a command line.
+ *
+ * Reads directories, `PATH` and a repository's refs. It runs nothing — not
+ * the command being completed, not `git`, not `--help`. A completion engine
+ * that executed anything to find out what to offer would execute it on every
+ * keystroke, at a prompt where the person has not decided yet.
+ */
+export interface CompleteApi {
+  suggest(line: string, cursor: number, cwd: string, limit: number): Promise<Completions>;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
   setActiveProvider(provider: string): Promise<void>;
@@ -895,6 +944,8 @@ export interface Platform {
   readonly keys: KeysApi;
   /** Every command that has run, and how to find it again. */
   readonly history: HistoryApi;
+  /** What could come next on a command line. */
+  readonly complete: CompleteApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */
