@@ -5,38 +5,10 @@
   min-height: 0;
 }
 
-/* Nothing open yet. A column rather than the two-pane grid. */
-.editor--closed {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--s3);
-  padding: var(--s6);
-}
-
-.editor__title {
-  margin: 0;
-  font-size: 1.4rem;
-}
-
-.editor__blurb {
-  margin: 0;
-  color: var(--text-muted);
-  max-width: 56ch;
-}
-
-.editor__blurb--quiet {
-  color: var(--text-dim);
-}
-
+/* Nothing open yet: the ordinary board every section uses, rather than the
+   two-pane grid there is nothing to fill. */
 .editor__open {
-  margin-top: var(--s2);
-  background: none;
-  border: 1px solid var(--accent-dim);
-  border-radius: var(--radius);
-  color: var(--accent);
-  padding: var(--s2) var(--s4);
-  cursor: pointer;
+  align-self: flex-start;
 }
 
 .editor__tree {
@@ -121,6 +93,9 @@
   overflow-x: auto;
   border-bottom: 1px solid var(--line);
   flex: 0 0 auto;
+  /* Stops short of the camera and the notification tray, which are pinned
+     over this corner. */
+  padding-right: var(--chrome-inset);
 }
 
 .editor__tab {

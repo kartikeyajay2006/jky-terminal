@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { allPaneKeys, useTabs } from "./tabStore";
+import { allPaneKeys, readTabs, useTabs } from "./tabStore";
 import { leaves, type Pane } from "../features/terminal/panes/tree";
 
 const reset = () => useTabs.setState({ tabs: [], activeId: null });
@@ -191,5 +191,51 @@ describe("panes within a tab", () => {
     expect(keys).toHaveLength(3);
     expect(keys).toContain(a);
     expect(keys).toContain(b);
+  });
+});
+
+describe("coming back from last time", () => {
+  it("brings a tab back as one terminal, not as the splits it had", () => {
+    // A restored pane is not a restored session — the shell that was in it is
+    // gone and a fresh one starts. So a tab that was split three ways would
+    // reopen as three empty prompts nobody asked for.
+    localStorage.setItem(
+      "jky.tabs",
+      JSON.stringify([
+        {
+          id: "tab-90",
+          kind: "terminal",
+          title: "one",
+          focusedPane: "pane-4",
+          layout: {
+            kind: "split",
+            id: "split-1",
+            dir: "row",
+            ratio: 0.5,
+            a: { kind: "leaf", id: "tab-90" },
+            b: { kind: "leaf", id: "pane-4" },
+          },
+        },
+      ]),
+    );
+
+    const restored = readTabs();
+    expect(restored.tabs).toHaveLength(1);
+    expect(leaves(restored.tabs[0].layout)).toEqual(["tab-90"]);
+    expect(restored.tabs[0].focusedPane).toBe("tab-90");
+  });
+
+  it("keeps a tab that was never split exactly as it was", () => {
+    localStorage.setItem(
+      "jky.tabs",
+      JSON.stringify([{ id: "tab-91", kind: "terminal", title: "one" }]),
+    );
+    const restored = readTabs();
+    expect(leaves(restored.tabs[0].layout)).toEqual(["tab-91"]);
+  });
+
+  it("starts fresh rather than throwing when storage holds nonsense", () => {
+    localStorage.setItem("jky.tabs", "{ not json");
+    expect(readTabs()).toEqual({ tabs: [], activeId: null });
   });
 });

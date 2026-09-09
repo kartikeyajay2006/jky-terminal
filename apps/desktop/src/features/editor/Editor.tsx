@@ -107,21 +107,26 @@ export function Editor() {
 
   if (root === null) {
     return (
-      <div className="editor editor--closed">
-        <h1 className="editor__title">Editor</h1>
-        <p className="editor__blurb">
-          No folder is open. Choose one in <b>Settings → Editor</b>.
-        </p>
-        <p className="editor__blurb editor__blurb--quiet">
-          The editor can read and write inside that one folder and nowhere
-          else. Until you open one it can reach nothing at all.
-        </p>
+      <div className="board editor--closed">
+        <header className="board__head">
+          <p className="board__eyebrow">
+            <span>nothing open</span>
+          </p>
+          <h1 className="board__title">Editor</h1>
+          <p className="board__lede">
+            The editor reads and writes inside one folder and nowhere else.
+            Anything resolving outside it is refused — including a{" "}
+            <code>..</code> and a symlink pointing out of the tree. Until you
+            open one, it can reach nothing at all.
+          </p>
+        </header>
+
         <button
           type="button"
-          className="editor__open"
+          className="btn btn--primary editor__open"
           onClick={() => useNav.getState().go("settings", "editor")}
         >
-          Open Settings
+          Choose a folder
         </button>
       </div>
     );

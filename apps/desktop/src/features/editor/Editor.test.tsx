@@ -47,8 +47,9 @@ describe("the editor", () => {
 
   it("can reach nothing until a folder is opened, and says so", async () => {
     render(<Editor />);
-    expect(await screen.findByText(/No folder is open/)).toBeInTheDocument();
+    expect(await screen.findByText("nothing open")).toBeInTheDocument();
     expect(screen.getByText(/reach nothing at all/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Choose a folder" })).toBeInTheDocument();
   });
 
   it("lists the folder once one is open", async () => {

@@ -316,7 +316,9 @@
   display: flex;
   align-items: stretch;
   gap: var(--s1);
-  padding: var(--s2) var(--s2) 0;
+  /* Stops short of the camera and the notification tray, which are pinned
+     over this corner: with enough tabs open the last one ran under them. */
+  padding: var(--s2) var(--chrome-inset) 0 var(--s2);
   border-bottom: 1px solid var(--line);
   background: var(--surface);
   overflow-x: auto;

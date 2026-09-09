@@ -78,29 +78,36 @@ export function Remote() {
   }
 
   return (
-    <div className="remote">
-      <header className="remote__head">
-        <h1 className="remote__title">Remote</h1>
-        <button type="button" className="remote__add" onClick={() => setEditing(blank())}>
-          + Add host
-        </button>
+    <div className="board remote">
+      <header className="board__head">
+        <p className="board__eyebrow">
+          {busy ? (
+            <span>reading…</span>
+          ) : (
+            <span>
+              <b>{hosts.length}</b> {hosts.length === 1 ? "host" : "hosts"}
+            </span>
+          )}
+        </p>
+        <h1 className="board__title">Remote</h1>
+        <p className="board__lede">
+          Opens a terminal over the <code>ssh</code> already on this machine,
+          so your agent, <code>~/.ssh/config</code>, <code>known_hosts</code>{" "}
+          and keys are the ones in use. No password or key is stored here, and
+          none is asked for.
+        </p>
       </header>
 
-      <p className="remote__blurb">
-        Opens a terminal over the <code>ssh</code> already on this machine, so
-        your agent, <code>~/.ssh/config</code>, <code>known_hosts</code> and
-        keys are the ones in use. No password or key is stored here, and none
-        is asked for.
-      </p>
-
       {error && (
-        <p className="remote__error" role="alert">
+        <p className="hint hint--warn" role="alert">
           {error}
         </p>
       )}
 
       {!busy && hosts.length === 0 && !editing && (
-        <p className="remote__empty">No hosts yet.</p>
+        <p className="remote__empty">
+          No hosts yet. Add one and it opens in a terminal tab of its own.
+        </p>
       )}
 
       <ul className="remote__list">
@@ -134,6 +141,12 @@ export function Remote() {
           </li>
         ))}
       </ul>
+
+      {!editing && (
+        <button type="button" className="btn remote__add" onClick={() => setEditing(blank())}>
+          + Add host
+        </button>
+      )}
 
       {editing && (
         <HostForm
@@ -171,8 +184,9 @@ function HostForm({
       }}
     >
       <label className="remote__field">
-        <span>Name</span>
+        <span className="field__label">Name</span>
         <input
+          className="input"
           value={draft.label}
           placeholder="production"
           onChange={(e) => set({ label: e.target.value })}
@@ -180,8 +194,9 @@ function HostForm({
       </label>
 
       <label className="remote__field">
-        <span>Address</span>
+        <span className="field__label">Address</span>
         <input
+          className="input"
           required
           value={draft.address}
           placeholder="example.com, or a name from ~/.ssh/config"
@@ -190,8 +205,9 @@ function HostForm({
       </label>
 
       <label className="remote__field">
-        <span>User</span>
+        <span className="field__label">User</span>
         <input
+          className="input"
           value={draft.user}
           placeholder="whatever ssh would use"
           onChange={(e) => set({ user: e.target.value })}
@@ -199,8 +215,9 @@ function HostForm({
       </label>
 
       <label className="remote__field">
-        <span>Port</span>
+        <span className="field__label">Port</span>
         <input
+          className="input"
           type="number"
           min={1}
           max={65535}
@@ -213,8 +230,9 @@ function HostForm({
       </label>
 
       <label className="remote__field">
-        <span>Key file</span>
+        <span className="field__label">Key file</span>
         <input
+          className="input"
           value={draft.identity_file ?? ""}
           placeholder="only when the agent is not enough"
           onChange={(e) => set({ identity_file: e.target.value || null })}
@@ -222,8 +240,9 @@ function HostForm({
       </label>
 
       <label className="remote__field">
-        <span>Via</span>
+        <span className="field__label">Via</span>
         <input
+          className="input"
           value={draft.jump ?? ""}
           placeholder="bastion.example.com"
           onChange={(e) => set({ jump: e.target.value || null })}
@@ -231,10 +250,10 @@ function HostForm({
       </label>
 
       <div className="remote__actions">
-        <button type="submit" className="remote__save">
+        <button type="submit" className="btn btn--primary">
           Save
         </button>
-        <button type="button" className="remote__cancel" onClick={onCancel}>
+        <button type="button" className="btn" onClick={onCancel}>
           Cancel
         </button>
       </div>

@@ -1,43 +1,7 @@
+/* The frame comes from `.board`, which every top-level section uses. What is
+   here is only what is particular to a list of machines. */
 .remote {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 0;
-  padding: var(--s5);
-  gap: var(--s3);
-  overflow-y: auto;
-}
-
-.remote__head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--s3);
-}
-
-.remote__title {
-  margin: 0;
-  font-size: 1.4rem;
-}
-
-.remote__blurb {
-  margin: 0;
-  color: var(--text-muted);
-  max-width: 68ch;
-}
-
-.remote__blurb code {
-  font-family: var(--font-mono);
-  color: var(--text);
-}
-
-.remote__error {
-  margin: 0;
-  color: var(--danger);
-  background: var(--surface-raised);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: var(--s2) var(--s3);
+  gap: var(--s4);
 }
 
 .remote__empty {
@@ -45,18 +9,35 @@
   color: var(--text-dim);
 }
 
+.remote__add {
+  justify-self: start;
+  align-self: flex-start;
+}
+
 .remote__list {
   list-style: none;
   margin: 0;
   padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
 }
 
 .remote__row {
   display: grid;
-  grid-template-columns: 1fr auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto;
   align-items: center;
   gap: var(--s3);
-  border-bottom: 1px solid var(--line);
+  padding-right: var(--s2);
+  background: var(--surface);
+}
+
+.remote__row + .remote__row {
+  border-top: 1px solid var(--line);
+}
+
+.remote__row:hover {
+  background: var(--surface-raised);
 }
 
 .remote__connect {
@@ -86,29 +67,20 @@
   color: var(--text-dim);
 }
 
-.remote__add,
-.remote__edit,
-.remote__save,
-.remote__cancel {
+.remote__edit {
   background: none;
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  color: var(--text-muted);
-  padding: var(--s1) var(--s3);
+  border: 0;
+  color: var(--text-dim);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: var(--s1) var(--s2);
   cursor: pointer;
 }
 
-.remote__save {
-  border-color: var(--accent-dim);
-  color: var(--accent);
-}
-
-.remote__add:hover,
 .remote__edit:hover,
-.remote__save:hover,
-.remote__cancel:hover {
-  color: var(--text);
-  border-color: var(--accent-dim);
+.remote__edit:focus-visible {
+  color: var(--accent);
 }
 
 .remote__forget {
@@ -127,38 +99,20 @@
 
 .remote__form {
   display: grid;
-  gap: var(--s3);
+  gap: var(--s4);
   max-width: 46rem;
-  margin-top: var(--s3);
-  padding: var(--s4);
+  padding: var(--s5);
   background: var(--surface);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
+  animation: jky-rise var(--motion-normal) var(--ease) both;
 }
 
 .remote__field {
   display: grid;
-  grid-template-columns: 8rem 1fr;
+  grid-template-columns: 7rem minmax(0, 1fr);
   align-items: center;
   gap: var(--s3);
-}
-
-.remote__field span {
-  color: var(--text-muted);
-}
-
-.remote__field input {
-  font-family: var(--font-mono);
-  background: var(--ground);
-  color: var(--text);
-  border: 1px solid var(--line-strong);
-  border-radius: var(--radius);
-  padding: var(--s2) var(--s3);
-}
-
-.remote__field input:focus-visible {
-  outline: none;
-  border-color: var(--accent);
 }
 
 .remote__actions {

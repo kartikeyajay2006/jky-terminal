@@ -29,27 +29,35 @@ export function Keyboard() {
   const changed = bindings.filter((b) => b.custom).length;
 
   return (
-    <section aria-labelledby="keyboard-heading">
+    <section className="panel" aria-labelledby="keyboard-heading">
       <PanelHead
         where="Keyboard"
         headingId="keyboard-heading"
-        status={changed === 0 ? "all default" : `${changed} changed`}
+        status={
+          changed === 0 ? (
+            "all default"
+          ) : (
+            <>
+              <b>{changed}</b> changed
+            </>
+          )
+        }
       />
 
-      <p className="settings__blurb">
+      <p className="hint">
         Choose a shortcut and press the keys you want. Every binding needs
         Ctrl, Cmd or Alt — an unmodified key belongs to the shell, where every
         keystroke means something.
       </p>
 
       {error && (
-        <p className="settings__note" role="status">
+        <p className="hint hint--warn" role="status">
           The saved keymap could not be read, so these are the defaults. {error}
         </p>
       )}
 
       {conflicts.length > 0 && (
-        <p className="settings__note" role="alert">
+        <p className="hint hint--warn" role="alert">
           {conflicts
             .map((c) => `${c.chord} runs both ${c.actions.join(" and ")}`)
             .join("; ")}
@@ -58,14 +66,14 @@ export function Keyboard() {
       )}
 
       {refused && (
-        <p className="settings__note" role="alert">
+        <p className="hint hint--warn" role="alert">
           {refused}
         </p>
       )}
 
       {groups.map(([group, rows]) => (
-        <div key={group} className="keys__group">
-          <h3 className="keys__group-name">{group}</h3>
+        <div key={group} className="field">
+          <span className="field__label">{group}</span>
           <ul className="keys__list">
             {rows.map((binding) => (
               <li key={binding.action} className="keys__row">
@@ -99,7 +107,7 @@ export function Keyboard() {
 
       <button
         type="button"
-        className="keys__reset-all"
+        className="btn keys__reset-all"
         disabled={changed === 0}
         onClick={() => {
           setRefused(null);

@@ -69,11 +69,32 @@ export function History() {
   }
 
   return (
-    <div className="history">
-      <header className="history__head">
-        <h1 className="history__title">History</h1>
-        <p className="history__count">
-          {busy ? "reading…" : `${hits.length} commands · ${total} runs`}
+    <div className="board history">
+      {/* The board head every top-level section wears: an eyebrow that counts
+          what is here, the name, and a line saying what it is for. The count
+          sits on the left rather than the right because the camera and the
+          notification tray are pinned to the top-right corner of the window,
+          and anything put there is read through them. */}
+      <header className="board__head">
+        <p className="board__eyebrow">
+          {busy ? (
+            <span>reading…</span>
+          ) : (
+            <>
+              <span>
+                <b>{hits.length}</b> commands
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>{total} runs</span>
+            </>
+          )}
+        </p>
+        <h1 className="board__title">History</h1>
+        <p className="board__lede">
+          Every command you have run, on this machine and on any you connected
+          to. Type the letters you remember — <code>dkrps</code> finds{" "}
+          <code>docker ps</code>. Choosing one puts it on the prompt; it does
+          not run it.
         </p>
       </header>
 

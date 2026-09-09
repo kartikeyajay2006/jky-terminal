@@ -106,7 +106,7 @@ function advanceCounters(pane: Pane): void {
  * with one leaf named after the tab, which is exactly where its scrollback
  * already is: upgrading must not cost anyone their output.
  */
-function restore(): Pick<TabState, "tabs" | "activeId"> {
+export function readTabs(): Pick<TabState, "tabs" | "activeId"> {
   try {
     const raw = localStorage.getItem(TABS_KEY);
     if (!raw) return { tabs: [], activeId: null };
@@ -123,13 +123,17 @@ function restore(): Pick<TabState, "tabs" | "activeId"> {
       if (typeof t.id !== "string" || t.kind !== "terminal") continue;
       if (typeof t.title !== "string") continue;
 
-      const layout = parsePane(t.layout) ?? leaf(t.id);
-      advanceCounters(layout);
-
-      const focused =
-        typeof t.focusedPane === "string" && hasLeaf(layout, t.focusedPane)
-          ? t.focusedPane
-          : leaves(layout)[0];
+      // Splits are not brought back, deliberately.
+      //
+      // A restored pane is not a restored session: the shell that was in it
+      // is gone, and what comes back is a fresh one. So a tab that was split
+      // three ways reopens as three empty prompts nobody asked for, which is
+      // a layout to dismantle rather than a workspace to return to. A tab
+      // comes back as one terminal — the thing it started as.
+      const saved = parsePane(t.layout);
+      if (saved) advanceCounters(saved);
+      const layout = leaf(t.id);
+      const focused = t.id;
 
       // Remote panes are deliberately not restored. Bringing the app back
       // must not reconnect to somebody's production machine on its own —
@@ -175,7 +179,7 @@ function withTab(tabs: Tab[], tabId: string, change: (tab: Tab) => Tab): Tab[] |
 }
 
 export const useTabs = create<TabState>((set, get) => ({
-  ...restore(),
+  ...readTabs(),
 
   openTab: (kind, title) => {
     const id = nextId();

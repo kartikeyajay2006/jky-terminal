@@ -64,6 +64,14 @@
   --s7: 48px;
   --s8: 64px;
 
+  /* How much of the top-right corner is spoken for.
+     The camera and the notification tray are pinned there, over whatever a
+     section draws. Anything that runs the full width of the window has to
+     stop short of them or it is read through two buttons — which is what
+     happened to the History count before this existed. Two 34px buttons and
+     the three gaps around them. */
+  --chrome-inset: 100px;
+
   --radius: 6px;
   --radius-lg: 10px;
 
