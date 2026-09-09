@@ -4,6 +4,10 @@ import type {
   CompleteApi,
   FileEntry,
   FilesApi,
+  Folder,
+  SavedWorkspace,
+  WorkspaceApi,
+  Workspaces,
   RemoteApi,
   RemoteHost,
   HistoryApi,
@@ -500,31 +504,61 @@ export function createWebPlatform(): Platform {
   /*
    * A small in-memory tree, so the editor can be worked on in a browser.
    *
-   * It is not a filesystem and does not pretend to be one: there is no real
-   * folder to open, so `openWorkspace` accepts whatever it is given and the
-   * tree below is what there is. The one rule it does keep is the one that
-   * matters — a path that climbs out is refused here too, so a bug in the
-   * window is caught in the build most people run the tests in.
+   * Not a filesystem and not pretending to be one: `openFolder` accepts what
+   * it is given and the tree below is what there is. The rules it does keep
+   * are the two that matter — a path that climbs out is refused, and a root
+   * that was never opened is not readable — so a bug in the window is caught
+   * in the build most of the tests run in.
    */
-  const tree = new Map<string, string>([
-    ["README.md", "# Sample\n\nThe browser build has no filesystem.\n"],
-    ["src/main.ts", "export const hello = () => \"hi\";\n"],
+  const trees = new Map<string, Map<string, string>>([
+    [
+      "/tmp/sample",
+      new Map([
+        ["README.md", "# Sample\n\nThe browser build has no filesystem.\n"],
+        ["src/main.ts", 'export const hello = () => "hi";\n'],
+      ]),
+    ],
+    ["/tmp/other", new Map([["notes.txt", "second folder\n"]])],
   ]);
-  let openFolder: string | null = null;
+  const openFolders: string[] = [];
 
   const escapes = (path: string) =>
     path.startsWith("/") || path.split("/").some((part) => part === "..");
 
+  const nameOf = (dir: string) =>
+    dir.replace(/[/\\]+$/, "").split(/[/\\]/).pop() || dir;
+
+  const folderList = (): Folder[] =>
+    openFolders.map((root) => ({ root, name: nameOf(root), available: trees.has(root) }));
+
+  /** The tree for a root, refusing one nobody opened. */
+  function treeOf(root: string): Map<string, string> {
+    if (!openFolders.includes(root)) {
+      throw new Error("no folder is open. Open one in the Editor");
+    }
+    const tree = trees.get(root);
+    if (!tree) throw new Error(`could not read \`${root}\``);
+    return tree;
+  }
+
   const files: FilesApi = {
-    async workspace() {
-      return openFolder;
+    async folders() {
+      return folderList();
     },
-    async openWorkspace(dir) {
-      openFolder = dir.trim() ? dir.trim() : null;
-      return openFolder;
+    async openFolder(dir) {
+      const trimmed = dir.trim();
+      if (!trimmed) return folderList();
+      if (!trees.has(trimmed)) throw new Error(`could not read \`${trimmed}\``);
+      if (!openFolders.includes(trimmed)) openFolders.push(trimmed);
+      return folderList();
     },
-    async list(path) {
-      if (openFolder === null) throw new Error("no folder is open. Choose one in Settings → Editor");
+    async closeFolder(dir) {
+      const at = openFolders.indexOf(dir);
+      if (at !== -1) openFolders.splice(at, 1);
+      return folderList();
+    },
+    async list(root, path) {
+      const tree = treeOf(root);
       const prefix = path ? `${path.replace(/\/$/, "")}/` : "";
       const seen = new Map<string, FileEntry>();
 
@@ -545,17 +579,77 @@ export function createWebPlatform(): Platform {
         (a, b) => Number(b.is_dir) - Number(a.is_dir) || a.name.localeCompare(b.name),
       );
     },
-    async read(path) {
-      if (openFolder === null) throw new Error("no folder is open. Choose one in Settings → Editor");
+    async read(root, path) {
+      const tree = treeOf(root);
       if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);
       const text = tree.get(path);
       if (text === undefined) throw new Error(`could not read \`${path}\``);
       return text;
     },
-    async write(path, text) {
-      if (openFolder === null) throw new Error("no folder is open. Choose one in Settings → Editor");
+    async write(root, path, text) {
+      const tree = treeOf(root);
       if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);
       tree.set(path, text);
+    },
+  };
+
+  /*
+   * Saved workspaces, in memory.
+   *
+   * Switching does here what it does in Rust: replaces the open folders with
+   * the ones the workspace names, and reports rather than deletes any that
+   * are not there.
+   */
+  const saved: SavedWorkspace[] = [];
+  let activeWorkspace: string | null = null;
+
+  const byRecentWorkspace = (): Workspaces => ({
+    workspaces: [...saved].sort(
+      (a, b) => b.last_used - a.last_used || a.name.localeCompare(b.name),
+    ),
+    active: activeWorkspace,
+  });
+
+  const workspaces: WorkspaceApi = {
+    async list() {
+      return byRecentWorkspace();
+    },
+    async save(workspace) {
+      const name = workspace.name.trim();
+      if (!name) throw new Error("a workspace needs a name");
+      if (saved.some((w) => w.id !== workspace.id && w.name.toLowerCase() === name.toLowerCase())) {
+        throw new Error(`\`${name}\` is already the name of a workspace`);
+      }
+
+      const at = saved.findIndex((w) => w.id === workspace.id);
+      // Editing is not using, so `last_used` survives a rename.
+      if (at === -1) saved.push({ ...workspace, name });
+      else saved[at] = { ...workspace, name, last_used: saved[at].last_used };
+      return byRecentWorkspace();
+    },
+    async forget(id) {
+      const at = saved.findIndex((w) => w.id === id);
+      if (at === -1) throw new Error("no workspace with that id");
+      saved.splice(at, 1);
+      if (activeWorkspace === id) activeWorkspace = null;
+      return byRecentWorkspace();
+    },
+    async activate(id) {
+      const found = saved.find((w) => w.id === id);
+      if (!found) throw new Error("no workspace with that id");
+      found.last_used = Date.now();
+      activeWorkspace = id;
+
+      const missing = found.folders.filter((f) => !trees.has(f));
+      openFolders.length = 0;
+      for (const folder of found.folders) {
+        if (trees.has(folder)) openFolders.push(folder);
+      }
+      return { workspace: found, folders: [...openFolders], missing };
+    },
+    async leave() {
+      activeWorkspace = null;
+      return byRecentWorkspace();
     },
   };
 
@@ -1168,6 +1262,7 @@ export function createWebPlatform(): Platform {
     complete,
     remote,
     files,
+    workspaces,
     pty,
     ai,
     store,

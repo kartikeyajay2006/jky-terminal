@@ -284,16 +284,25 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // refused by the same rule rather than by a list of tricks somebody
         // thought of. Both have tests.
         //
-        // Nothing is reachable until `files_open_workspace` is called, which
-        // is a deliberate act by a person and not a default. The folder is
+        // Several folders may be open at once, so the boundary has two
+        // halves and both are checked on every call. The outer one is here:
+        // the `root` named must be a folder the person actually opened,
+        // matched against settings — without it a window could name any
+        // directory on the machine and this would open it, and one open
+        // project would make every other one reachable. The inner one is
+        // `Workspace::resolve` above. There is a test for each.
+        //
+        // Nothing is reachable until `files_open_folder` is called, which is
+        // a deliberate act by a person and not a default. Folders are
         // re-resolved on every call rather than held, so one that was deleted
         // or unplugged stops working instead of answering for a ghost. Reads
         // are text-only and size-capped: an editor that silently rewrote the
         // bytes it could not decode would corrupt the file on the next save.
+        "files_close_folder".to_string(),
+        "files_folders".to_string(),
         "files_list".to_string(),
-        "files_open_workspace".to_string(),
+        "files_open_folder".to_string(),
         "files_read".to_string(),
-        "files_workspace".to_string(),
         "files_write".to_string(),
         "games_publish_scores".to_string(),
         // Every command that has run, and the four calls that read and change
@@ -444,6 +453,26 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "vault_has_secret".to_string(),
         "vault_list_providers".to_string(),
         "vault_set_secret".to_string(),
+        // What you are working on, saved under a name: which folders, where
+        // terminals start, which machine.
+        //
+        // A workspace is a wish and not a capability, which is the whole
+        // reason it is safe to keep in a file people hand-edit. It *names*
+        // folders; `workspace_activate` writes those names into the editor's
+        // open list, and every read after that still goes through
+        // `files_read`, which checks the root is one that was opened and
+        // refuses anything resolving outside it. Naming a folder here grants
+        // nothing that opening it by hand would not.
+        //
+        // `workspace_activate` is the only one that changes anything beyond
+        // this file, and what it changes is two settings. It starts no
+        // process: the terminals a workspace asks for are opened by the
+        // window through `pty_spawn`, the same call it already makes.
+        "workspace_activate".to_string(),
+        "workspace_forget".to_string(),
+        "workspace_leave".to_string(),
+        "workspace_list".to_string(),
+        "workspace_save".to_string(),
     ];
 
     assert_eq!(

@@ -225,6 +225,16 @@ export interface RemoteApi {
   spawn(id: string, cols: number, rows: number): Promise<string>;
 }
 
+/** One folder the editor has open. */
+export interface Folder {
+  /** The folder as it was configured. This is its identity in every call. */
+  root: string;
+  /** Its last part, for the tree's heading. */
+  name: string;
+  /** Whether it can still be read. A drive can be unplugged. */
+  available: boolean;
+}
+
 /** One entry in the editor's file tree. */
 export interface FileEntry {
   /** Workspace-relative, with `/` separators on every platform. */
@@ -243,14 +253,72 @@ export interface FileEntry {
  * can reach anything at all.
  */
 export interface FilesApi {
-  /** The open folder, or null when there is none. */
-  workspace(): Promise<string | null>;
-  /** Open a folder, or close the open one with an empty string. */
-  openWorkspace(dir: string): Promise<string | null>;
-  /** One directory's contents. An empty path is the folder's root. */
-  list(path: string): Promise<FileEntry[]>;
-  read(path: string): Promise<string>;
-  write(path: string, text: string): Promise<void>;
+  /** Every folder the editor has open. Empty until somebody opens one. */
+  folders(): Promise<Folder[]>;
+  /** Open one more folder. */
+  openFolder(dir: string): Promise<Folder[]>;
+  /** Close one, leaving the others open. */
+  closeFolder(dir: string): Promise<Folder[]>;
+  /** One directory's contents. An empty path is that folder's own root. */
+  list(root: string, path: string): Promise<FileEntry[]>;
+  read(root: string, path: string): Promise<string>;
+  write(root: string, path: string, text: string): Promise<void>;
+}
+
+/**
+ * What you are working on, saved under a name.
+ *
+ * Not a folder and not a window: the answer to "put me back where I was on
+ * that project" — which folders the editor had open, where terminals start,
+ * how many, and which machine if any.
+ */
+export interface SavedWorkspace {
+  /** Stable across renames. */
+  id: string;
+  name: string;
+  /** Folders for the editor to open, as typed. */
+  folders: string[];
+  /** Where new terminals start. Absent leaves the setting alone. */
+  terminal_dir?: string | null;
+  /** How many terminals to open. Zero leaves the terminals alone. */
+  terminals: number;
+  /** A saved host to open a terminal on, by its id in `RemoteApi`. */
+  host?: string | null;
+  /** A line about what this is for. */
+  note: string;
+  last_used: number;
+}
+
+export interface Workspaces {
+  workspaces: SavedWorkspace[];
+  /** The one in use. Null means what is open was arranged by hand. */
+  active: string | null;
+}
+
+/** What switching to a workspace actually did. */
+export interface WorkspaceApplied {
+  workspace: SavedWorkspace;
+  /** The folders now open in the editor. */
+  folders: string[];
+  /** Folders it named that are not there. Reported, never deleted. */
+  missing: string[];
+}
+
+/**
+ * Saved project setups.
+ *
+ * A workspace names folders; it does not grant them. Opening one goes through
+ * the same checks as opening a folder by hand, so a hand-edited file is a
+ * wish rather than a way to read the machine.
+ */
+export interface WorkspaceApi {
+  list(): Promise<Workspaces>;
+  save(workspace: SavedWorkspace): Promise<Workspaces>;
+  forget(id: string): Promise<Workspaces>;
+  /** Switch. Replaces the open folders with the ones it names. */
+  activate(id: string): Promise<WorkspaceApplied>;
+  /** Stop being in one. Does not close what is open. */
+  leave(): Promise<Workspaces>;
 }
 
 export interface SettingsApi {
@@ -1017,8 +1085,10 @@ export interface Platform {
   readonly complete: CompleteApi;
   /** Terminals on other machines. */
   readonly remote: RemoteApi;
-  /** Files, inside one folder the person opened and nowhere else. */
+  /** Files, inside folders the person opened and nowhere else. */
   readonly files: FilesApi;
+  /** Saved project setups. */
+  readonly workspaces: WorkspaceApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */

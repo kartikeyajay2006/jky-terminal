@@ -7,6 +7,7 @@ use jky_audit::AuditLog;
 use jky_history::History;
 use jky_keys::Keymap;
 use jky_remote::HostStore;
+use jky_workspace::WorkspaceStore;
 use jky_pty::PtyRegistry;
 use jky_secrets::{KeyringStore, SecretStore};
 use jky_settings::SettingsStore;
@@ -70,6 +71,10 @@ pub struct AppState {
     /// account name are not secrets, and the things that are never come near
     /// this app — connecting runs the `ssh` this machine already has.
     pub hosts: Arc<HostStore>,
+    /// What you are working on, saved under a name. Not a capability: a
+    /// workspace names folders, and opening one goes through the same checks
+    /// as opening one by hand.
+    pub workspaces: Arc<WorkspaceStore>,
     /// The dashboard's notes, todos, events and reminders.
     pub store: Arc<Store>,
     pub ptys: Arc<PtyRegistry>,
@@ -108,6 +113,7 @@ impl AppState {
             keys: Arc::new(Keymap::new(config_dir.join("keymap.json"))),
             history: Arc::new(History::new(config_dir.join("history.jsonl"))),
             hosts: Arc::new(HostStore::new(config_dir.join("hosts.json"))),
+            workspaces: Arc::new(WorkspaceStore::new(config_dir.join("workspaces.json"))),
             store: Arc::new(Store::new(config_dir)),
             ptys: Arc::new(PtyRegistry::new()),
             config_dir: config_dir.to_path_buf(),

@@ -47,7 +47,8 @@ comment:
 | ❯ | **Terminal** | A real pty, split any way you like. **Any command can become an app.** Scrollback survives a restart |
 | ↺ | **History** | Every command you have ever run, searchable by half-remembered letters |
 | ⇄ | **Remote** | A terminal on another machine, over the `ssh` you already have |
-| ✎ | **Editor** | Files, inside one folder you opened and nowhere else |
+| ✎ | **Editor** | Files, inside the folders you opened and nowhere else |
+| ▦ | **Workspaces** | What you are working on, saved under a name |
 | ✦ | **Assistant** | Your key, in the OS keychain. Tools are gated; destructive ones need a click |
 | ⌂ | **Dashboard** | Notes, todos, calendar, reminders. On disk, yours, arrangeable |
 | ⌥ | **Developer** | Eleven tools. No account, no key |
@@ -134,14 +135,26 @@ focusable — arrows resize, so a layout can be built without a mouse.
 CodeMirror 6, with the language loaded only when you open a file that needs
 it. Ctrl/Cmd+S saves; an unsaved file shows a dot.
 
-**It can reach one folder and nothing else.** You open that folder in
-Settings → Editor, and until you do, the editor can touch nothing at all.
-Every path the window sends is workspace-relative — it never names an
-absolute one — and Rust refuses anything that resolves outside, *after*
+Folders are opened **in the editor**, not in Settings — choosing what to work
+on is the work, and a round trip to a settings screen and back is not. Several
+can be open at once, each with its own tree, and files from any of them open
+side by side.
+
+Closing a file with changes **asks**: Save, Discard, or Cancel. Three answers
+because there are three things you might mean, and a two-button version makes
+one of them unreachable. Escape and clicking away both mean Cancel, so a stray
+keystroke never costs anything, and a save that fails leaves the file open —
+closing it anyway would be discarding under another name.
+
+**It can reach the folders you opened and nothing else.** Every path the window
+sends is relative to one of them; it never names an absolute one. The boundary
+has two halves and both are checked on every call: the root must be a folder
+you actually opened, and the path must resolve inside it — checked *after*
 canonicalising, so `../` and a symlink pointing out of the tree are refused by
-the same rule rather than by a list of tricks somebody thought of. Both have
-tests. The folder is re-resolved on every call, so one that was deleted or
-unplugged stops working rather than answering for a ghost.
+the same rule rather than by a list of tricks somebody thought of. There is a
+test for each. Folders are re-resolved per call, so one that was deleted or
+unplugged stops working rather than answering for a ghost, and it is shown as
+**missing** rather than quietly dropped.
 
 Reads are text-only and size-capped. An editor that silently rewrote the bytes
 it could not decode would corrupt the file on the next save, so a binary is
@@ -153,6 +166,31 @@ own chunk with a chunk per language, adds **33 kB** to what everyone
 downloads. And the budget that argument rested on is now enforced —
 `pnpm run scan:bundle` fails the build if the entry bundle grows past it,
 because a sentence in a README is a promise with nothing keeping it.
+
+---
+
+## Workspaces
+
+A workspace is not a folder and not a window. It is the answer to *put me back
+where I was on that project*: which folders the editor opens, where terminals
+start and how many, and which machine, if any. Switching applies all of it at
+once and lands you in it.
+
+**Save what is open** makes one out of what you have already arranged, which is
+how most of them get made — the arrangement exists, and naming it is the only
+step left.
+
+Switching **replaces** the open folders rather than adding to them. A workspace
+is where you were, not where you were plus the last project. A folder it names
+that is not there is reported and **kept**: a drive that is unplugged is a
+folder that comes back, and quietly editing your workspace to remove it would
+lose the setup you saved.
+
+A workspace *names* things; it does not grant them. Opening its folders goes
+through exactly the checks that opening one by hand does, so the file — which
+is plain JSON you can edit — is a wish rather than a way to read the machine.
+The same reasoning bounds how many terminals one can ask for: not a limit of
+the terminal, a bound on what one click can do.
 
 ---
 

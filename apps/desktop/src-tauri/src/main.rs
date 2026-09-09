@@ -8,7 +8,7 @@ mod state;
 
 use commands::{
     advice, ai, apps, browser, capture, complete, files, games, github, gmail, history, keys, open,
-    pty, remote, scrollback, settings, store, system, tools, vault,
+    pty, remote, scrollback, settings, store, system, tools, vault, workspace,
 };
 use state::AppState;
 use tauri::Manager;
@@ -29,8 +29,14 @@ fn main() {
             vault::vault_delete_secret,
             vault::vault_list_providers,
             complete::complete_suggest,
-            files::files_workspace,
-            files::files_open_workspace,
+            workspace::workspace_list,
+            workspace::workspace_save,
+            workspace::workspace_forget,
+            workspace::workspace_activate,
+            workspace::workspace_leave,
+            files::files_folders,
+            files::files_open_folder,
+            files::files_close_folder,
             files::files_list,
             files::files_read,
             files::files_write,

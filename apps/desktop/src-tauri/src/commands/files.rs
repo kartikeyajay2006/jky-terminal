@@ -6,11 +6,16 @@ use tauri::State;
 
 use crate::state::AppState;
 
-/// What the editor is allowed to see, and where.
-#[derive(Debug, Serialize)]
-pub struct WorkspaceInfo {
-    /// The folder, as it will be shown. Absent means nothing is open.
-    pub root: Option<String>,
+/// One folder the editor has open.
+#[derive(Debug, Clone, Serialize)]
+pub struct Folder {
+    /// The folder as it was configured — `~` and all. This is its identity:
+    /// every later call names it exactly as it was handed over.
+    pub root: String,
+    /// The last part of it, for the tree's heading.
+    pub name: String,
+    /// Whether it can still be read. A drive can be unplugged.
+    pub available: bool,
 }
 
 // --- logic, unit-testable without Tauri -------------------------------------
@@ -24,67 +29,123 @@ fn expand(dir: &str) -> std::path::PathBuf {
     }
 }
 
-/// The workspace, when one is open and still exists.
-///
-/// Resolved on every call rather than held. A folder that was deleted, or
-/// renamed, or on a drive that has been unplugged must stop working — and a
-/// `Workspace` built once at startup would keep answering for a path that is
-/// no longer there.
-pub(crate) fn workspace(settings: &SettingsStore) -> Result<Workspace, String> {
-    let configured = settings.workspace_dir().map_err(|e| e.to_string())?;
-    let dir = configured.ok_or_else(|| FileError::NoRoot.to_string())?;
-    Workspace::new(expand(&dir)).map_err(|e| e.to_string())
+fn display_name(dir: &str) -> String {
+    dir.trim_end_matches(['/', '\\'])
+        .rsplit(['/', '\\'])
+        .next()
+        .filter(|part| !part.is_empty())
+        .unwrap_or(dir)
+        .to_string()
 }
 
-pub(crate) fn open_logic(settings: &SettingsStore, dir: &str) -> Result<WorkspaceInfo, String> {
-    // Checked before it is stored, so a folder that cannot be opened is
-    // refused while the person is still looking at the field.
-    if !dir.trim().is_empty() {
-        Workspace::new(expand(dir.trim())).map_err(|e| e.to_string())?;
+/// Whether a folder could be opened, without opening it.
+///
+/// Used when switching workspace, to tell a folder that is merely closed
+/// from one that is gone. It resolves a path and asks the filesystem; it
+/// grants nothing, and a `true` here still has to pass every check in
+/// `workspace` before anything is read.
+pub(crate) fn folder_exists(dir: &str) -> bool {
+    Workspace::new(expand(dir)).is_ok()
+}
+
+pub(crate) fn folders_logic(settings: &SettingsStore) -> Result<Vec<Folder>, String> {
+    Ok(settings
+        .editor_folders()
+        .map_err(|e| e.to_string())?
+        .into_iter()
+        .map(|root| Folder {
+            name: display_name(&root),
+            available: Workspace::new(expand(&root)).is_ok(),
+            root,
+        })
+        .collect())
+}
+
+/// The workspace for one open folder.
+///
+/// The root has to be one the person opened, checked against settings on
+/// every call. That is the outer half of the boundary: without it, a window
+/// could name any folder on the machine and this would happily open it —
+/// which is the whole thing the inner half, `Workspace::resolve`, exists
+/// downstream of.
+///
+/// Resolved per call rather than held. A folder that was deleted, renamed, or
+/// on a drive that has been unplugged must stop working, and a `Workspace`
+/// built once at startup would keep answering for a path that is no longer
+/// there.
+pub(crate) fn workspace(settings: &SettingsStore, root: &str) -> Result<Workspace, String> {
+    let open = settings.editor_folders().map_err(|e| e.to_string())?;
+    if !open.iter().any(|f| f == root) {
+        return Err(FileError::NoRoot.to_string());
     }
-    settings.set_workspace_dir(dir).map_err(|e| e.to_string())?;
-    Ok(WorkspaceInfo { root: settings.workspace_dir().map_err(|e| e.to_string())? })
+    Workspace::new(expand(root)).map_err(|e| e.to_string())
+}
+
+pub(crate) fn open_logic(settings: &SettingsStore, dir: &str) -> Result<Vec<Folder>, String> {
+    let trimmed = dir.trim();
+    if !trimmed.is_empty() {
+        // Checked before it is stored, so a folder that cannot be opened is
+        // refused while the person is still looking at the field.
+        Workspace::new(expand(trimmed)).map_err(|e| e.to_string())?;
+        settings.open_editor_folder(trimmed).map_err(|e| e.to_string())?;
+    }
+    folders_logic(settings)
+}
+
+pub(crate) fn close_logic(settings: &SettingsStore, dir: &str) -> Result<Vec<Folder>, String> {
+    settings.close_editor_folder(dir).map_err(|e| e.to_string())?;
+    folders_logic(settings)
 }
 
 // --- IPC surface ------------------------------------------------------------
 
-/// Which folder the editor has open, if any.
+/// Which folders the editor has open.
 #[tauri::command]
-pub fn files_workspace(state: State<'_, AppState>) -> Result<WorkspaceInfo, String> {
-    Ok(WorkspaceInfo {
-        root: state.settings.workspace_dir().map_err(|e| e.to_string())?,
-    })
+pub fn files_folders(state: State<'_, AppState>) -> Result<Vec<Folder>, String> {
+    folders_logic(state.settings.as_ref())
 }
 
-/// Open a folder, or close the one that is open.
+/// Open one more folder.
 #[tauri::command]
-pub fn files_open_workspace(
-    state: State<'_, AppState>,
-    dir: String,
-) -> Result<WorkspaceInfo, String> {
+pub fn files_open_folder(state: State<'_, AppState>, dir: String) -> Result<Vec<Folder>, String> {
     open_logic(state.settings.as_ref(), &dir)
 }
 
-/// What is in one directory of the open folder. An empty path is its root.
+/// Close one folder, leaving the others open.
 #[tauri::command]
-pub fn files_list(state: State<'_, AppState>, path: String) -> Result<Vec<Entry>, String> {
-    workspace(state.settings.as_ref())?.list(&path).map_err(|e| e.to_string())
+pub fn files_close_folder(state: State<'_, AppState>, dir: String) -> Result<Vec<Folder>, String> {
+    close_logic(state.settings.as_ref(), &dir)
+}
+
+/// What is in one directory of an open folder. An empty path is its root.
+#[tauri::command]
+pub fn files_list(
+    state: State<'_, AppState>,
+    root: String,
+    path: String,
+) -> Result<Vec<Entry>, String> {
+    workspace(state.settings.as_ref(), &root)?.list(&path).map_err(|e| e.to_string())
 }
 
 /// One file's text.
 #[tauri::command]
-pub fn files_read(state: State<'_, AppState>, path: String) -> Result<String, String> {
-    workspace(state.settings.as_ref())?.read(&path).map_err(|e| e.to_string())
+pub fn files_read(
+    state: State<'_, AppState>,
+    root: String,
+    path: String,
+) -> Result<String, String> {
+    workspace(state.settings.as_ref(), &root)?.read(&path).map_err(|e| e.to_string())
 }
 
 /// Write one file, in place.
 #[tauri::command]
 pub fn files_write(
     state: State<'_, AppState>,
+    root: String,
     path: String,
     text: String,
 ) -> Result<(), String> {
-    workspace(state.settings.as_ref())?.write(&path, &text).map_err(|e| e.to_string())
+    workspace(state.settings.as_ref(), &root)?.write(&path, &text).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
@@ -100,53 +161,98 @@ mod tests {
         (config, project, settings)
     }
 
+    fn path_of(d: &TempDir) -> String {
+        d.path().to_string_lossy().to_string()
+    }
+
     #[test]
     fn nothing_is_reachable_until_a_folder_is_opened() {
         // The editor starts able to touch nothing at all.
-        let (_c, _p, settings) = setup();
-        let message = workspace(&settings).unwrap_err();
+        let (_c, p, settings) = setup();
+        let message = workspace(&settings, &path_of(&p)).unwrap_err();
         assert!(message.contains("no folder is open"), "{message}");
     }
 
     #[test]
     fn opening_a_folder_makes_its_files_readable() {
         let (_c, p, settings) = setup();
-        open_logic(&settings, &p.path().to_string_lossy()).unwrap();
-        assert_eq!(workspace(&settings).unwrap().read("README.md").unwrap(), "hello\n");
+        open_logic(&settings, &path_of(&p)).unwrap();
+        assert_eq!(workspace(&settings, &path_of(&p)).unwrap().read("README.md").unwrap(), "hello\n");
+    }
+
+    #[test]
+    fn several_folders_are_open_at_once_and_each_reads_its_own() {
+        let (_c, one, settings) = setup();
+        let two = TempDir::new().unwrap();
+        std::fs::write(two.path().join("other.md"), "second\n").unwrap();
+
+        open_logic(&settings, &path_of(&one)).unwrap();
+        let folders = open_logic(&settings, &path_of(&two)).unwrap();
+        assert_eq!(folders.len(), 2);
+
+        assert_eq!(workspace(&settings, &path_of(&one)).unwrap().read("README.md").unwrap(), "hello\n");
+        assert_eq!(workspace(&settings, &path_of(&two)).unwrap().read("other.md").unwrap(), "second\n");
+    }
+
+    #[test]
+    fn one_open_folder_does_not_make_another_reachable() {
+        // The outer half of the boundary: a root has to be one the person
+        // opened, not merely a path that exists.
+        let (_c, one, settings) = setup();
+        let secret = TempDir::new().unwrap();
+        std::fs::write(secret.path().join("secret"), "s3kr1t\n").unwrap();
+
+        open_logic(&settings, &path_of(&one)).unwrap();
+        assert!(workspace(&settings, &path_of(&secret)).is_err());
+    }
+
+    #[test]
+    fn closing_one_folder_leaves_the_others_readable() {
+        let (_c, one, settings) = setup();
+        let two = TempDir::new().unwrap();
+        std::fs::write(two.path().join("other.md"), "second\n").unwrap();
+        open_logic(&settings, &path_of(&one)).unwrap();
+        open_logic(&settings, &path_of(&two)).unwrap();
+
+        close_logic(&settings, &path_of(&one)).unwrap();
+        assert!(workspace(&settings, &path_of(&one)).is_err());
+        assert!(workspace(&settings, &path_of(&two)).is_ok());
     }
 
     #[test]
     fn a_folder_that_is_not_there_is_refused_before_it_is_stored() {
-        // Refused while the person is still looking at the field.
         let (_c, _p, settings) = setup();
         assert!(open_logic(&settings, "/definitely/not/here").is_err());
-        assert_eq!(settings.workspace_dir().unwrap(), None);
+        assert!(folders_logic(&settings).unwrap().is_empty());
     }
 
     #[test]
-    fn closing_the_folder_takes_the_reach_away_again() {
+    fn a_folder_that_has_gone_is_listed_as_unavailable_rather_than_hidden() {
+        // Hiding it would look like somebody's project had been forgotten.
         let (_c, p, settings) = setup();
-        open_logic(&settings, &p.path().to_string_lossy()).unwrap();
-        open_logic(&settings, "").unwrap();
-        assert!(workspace(&settings).is_err());
-    }
-
-    #[test]
-    fn a_folder_that_has_gone_stops_working_rather_than_answering_for_a_ghost() {
-        // Resolved per call for exactly this: a Workspace built once at
-        // startup would keep answering for a path that is no longer there.
-        let (_c, p, settings) = setup();
-        let path = p.path().to_string_lossy().to_string();
+        let path = path_of(&p);
         open_logic(&settings, &path).unwrap();
         drop(p);
-        assert!(workspace(&settings).is_err());
+
+        let folders = folders_logic(&settings).unwrap();
+        assert_eq!(folders.len(), 1);
+        assert!(!folders[0].available);
+        assert!(workspace(&settings, &path).is_err());
     }
 
     #[test]
-    fn nothing_outside_the_open_folder_is_reachable() {
+    fn a_folder_is_named_by_its_last_part() {
         let (_c, p, settings) = setup();
-        open_logic(&settings, &p.path().to_string_lossy()).unwrap();
-        let w = workspace(&settings).unwrap();
+        open_logic(&settings, &path_of(&p)).unwrap();
+        let expected = p.path().file_name().unwrap().to_string_lossy().to_string();
+        assert_eq!(folders_logic(&settings).unwrap()[0].name, expected);
+    }
+
+    #[test]
+    fn nothing_outside_an_open_folder_is_reachable() {
+        let (_c, p, settings) = setup();
+        open_logic(&settings, &path_of(&p)).unwrap();
+        let w = workspace(&settings, &path_of(&p)).unwrap();
 
         assert!(w.read("../../../etc/passwd").is_err());
         assert!(w.read("/etc/passwd").is_err());

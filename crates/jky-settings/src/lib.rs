@@ -35,12 +35,21 @@ pub struct Settings {
     #[serde(default)]
     pub terminal_start_dir: Option<String>,
 
-    /// The folder the editor may read and write inside.
+    /// The folders the editor may read and write inside.
     ///
-    /// One folder, and nothing outside it. This is the only setting in the
-    /// app that widens what the window can reach, so it is a deliberate act
-    /// by the person rather than a default: absent means the editor has
-    /// nothing open and can touch nothing.
+    /// These are the only settings in the app that widen what the window can
+    /// reach, so opening one is a deliberate act by the person rather than a
+    /// default: an empty list means the editor has nothing open and can touch
+    /// nothing. Several may be open at once, and nothing outside any of them
+    /// is reachable.
+    #[serde(default)]
+    pub editor_folders: Vec<String>,
+
+    /// What `editor_folders` used to be, when only one could be open.
+    ///
+    /// Read on load and folded into the list, then never written again. A
+    /// field kept only to migrate is worth more than a release that silently
+    /// closes the folder somebody had open.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub workspace_dir: Option<String>,
 
@@ -132,12 +141,52 @@ impl SettingsStore {
         self.save(&s)
     }
 
-    /// Set the folder the editor may work inside, or close it with nothing.
-    pub fn set_workspace_dir(&self, dir: &str) -> Result<(), SettingsError> {
-        let mut s = self.load()?;
+    /// Open one more folder for the editor.
+    ///
+    /// Opening one that is already open is not an error and does not add it
+    /// twice — it is what happens when somebody reopens a project they
+    /// already had.
+    pub fn open_editor_folder(&self, dir: &str) -> Result<Vec<String>, SettingsError> {
         let trimmed = dir.trim();
-        s.workspace_dir = if trimmed.is_empty() { None } else { Some(trimmed.to_string()) };
-        self.save(&s)
+        if trimmed.is_empty() {
+            return self.editor_folders();
+        }
+        let mut s = self.load()?;
+        let mut folders = folders_of(&s);
+        if !folders.iter().any(|f| f == trimmed) {
+            folders.push(trimmed.to_string());
+        }
+        s.editor_folders = folders.clone();
+        s.workspace_dir = None;
+        self.save(&s)?;
+        Ok(folders)
+    }
+
+    /// Close one folder. Closing one that is not open changes nothing.
+    pub fn close_editor_folder(&self, dir: &str) -> Result<Vec<String>, SettingsError> {
+        let mut s = self.load()?;
+        let mut folders = folders_of(&s);
+        folders.retain(|f| f != dir.trim());
+        s.editor_folders = folders.clone();
+        s.workspace_dir = None;
+        self.save(&s)?;
+        Ok(folders)
+    }
+
+    /// Replace the whole list, which is what activating a workspace does.
+    pub fn set_editor_folders(&self, folders: &[String]) -> Result<Vec<String>, SettingsError> {
+        let mut s = self.load()?;
+        let mut kept: Vec<String> = Vec::new();
+        for folder in folders {
+            let trimmed = folder.trim();
+            if !trimmed.is_empty() && !kept.iter().any(|f| f == trimmed) {
+                kept.push(trimmed.to_string());
+            }
+        }
+        s.editor_folders = kept.clone();
+        s.workspace_dir = None;
+        self.save(&s)?;
+        Ok(kept)
     }
 
     /// Store the GitHub OAuth client id, or clear it when given nothing.
@@ -182,9 +231,21 @@ impl SettingsStore {
         Ok(self.load()?.terminal_start_dir)
     }
 
-    pub fn workspace_dir(&self) -> Result<Option<String>, SettingsError> {
-        Ok(self.load()?.workspace_dir)
+    /// Every folder the editor has open, oldest first.
+    pub fn editor_folders(&self) -> Result<Vec<String>, SettingsError> {
+        Ok(folders_of(&self.load()?))
     }
+}
+
+/// The open folders, taking the pre-migration single folder into account.
+fn folders_of(s: &Settings) -> Vec<String> {
+    let mut folders = s.editor_folders.clone();
+    if let Some(old) = s.workspace_dir.as_deref().map(str::trim).filter(|d| !d.is_empty()) {
+        if !folders.iter().any(|f| f == old) {
+            folders.insert(0, old.to_string());
+        }
+    }
+    folders
 }
 
 #[cfg(test)]
@@ -429,7 +490,7 @@ mod google_client_id_tests {
 }
 
 #[cfg(test)]
-mod workspace_tests {
+mod editor_folder_tests {
     use super::*;
     use tempfile::TempDir;
 
@@ -440,25 +501,85 @@ mod workspace_tests {
     }
 
     #[test]
-    fn no_workspace_until_somebody_opens_one() {
-        // The only setting that widens what the window can reach, so it is a
-        // deliberate act rather than a default.
+    fn nothing_is_open_until_somebody_opens_something() {
+        // These are the settings that widen what the window can reach, so an
+        // empty list is the starting point rather than a default folder.
         let (_d, s) = store();
-        assert_eq!(s.workspace_dir().unwrap(), None);
+        assert_eq!(s.editor_folders().unwrap(), Vec::<String>::new());
     }
 
     #[test]
-    fn an_open_workspace_persists() {
+    fn folders_open_and_stay_open() {
         let (_d, s) = store();
-        s.set_workspace_dir("~/projects/thing").unwrap();
-        assert_eq!(s.workspace_dir().unwrap().as_deref(), Some("~/projects/thing"));
+        s.open_editor_folder("~/one").unwrap();
+        s.open_editor_folder("~/two").unwrap();
+        assert_eq!(s.editor_folders().unwrap(), ["~/one", "~/two"]);
     }
 
     #[test]
-    fn nothing_closes_it_again() {
+    fn opening_one_that_is_already_open_does_not_add_it_twice() {
+        // Which is what happens when somebody reopens a project they had.
         let (_d, s) = store();
-        s.set_workspace_dir("~/projects/thing").unwrap();
-        s.set_workspace_dir("   ").unwrap();
-        assert_eq!(s.workspace_dir().unwrap(), None);
+        s.open_editor_folder("~/one").unwrap();
+        s.open_editor_folder("~/one").unwrap();
+        assert_eq!(s.editor_folders().unwrap(), ["~/one"]);
+    }
+
+    #[test]
+    fn closing_one_leaves_the_others() {
+        let (_d, s) = store();
+        s.open_editor_folder("~/one").unwrap();
+        s.open_editor_folder("~/two").unwrap();
+        s.close_editor_folder("~/one").unwrap();
+        assert_eq!(s.editor_folders().unwrap(), ["~/two"]);
+    }
+
+    #[test]
+    fn closing_one_that_is_not_open_changes_nothing() {
+        let (_d, s) = store();
+        s.open_editor_folder("~/one").unwrap();
+        assert_eq!(s.close_editor_folder("~/nope").unwrap(), ["~/one"]);
+    }
+
+    #[test]
+    fn setting_the_whole_list_replaces_it_and_drops_repeats() {
+        // What activating a workspace does.
+        let (_d, s) = store();
+        s.open_editor_folder("~/old").unwrap();
+        let set = s
+            .set_editor_folders(&["~/a".into(), "~/b".into(), "~/a".into(), "  ".into()])
+            .unwrap();
+        assert_eq!(set, ["~/a", "~/b"]);
+        assert_eq!(s.editor_folders().unwrap(), ["~/a", "~/b"]);
+    }
+
+    #[test]
+    fn a_folder_saved_before_several_were_possible_still_opens() {
+        // A release that silently closed the folder somebody had open would
+        // be a release that lost their work for them.
+        let (d, s) = store();
+        std::fs::write(
+            d.path().join("settings.json"),
+            r#"{"workspace_dir": "~/legacy"}"#,
+        )
+        .unwrap();
+
+        assert_eq!(s.editor_folders().unwrap(), ["~/legacy"]);
+    }
+
+    #[test]
+    fn the_migrated_folder_is_written_into_the_list_and_not_kept_twice() {
+        let (d, s) = store();
+        std::fs::write(d.path().join("settings.json"), r#"{"workspace_dir": "~/legacy"}"#).unwrap();
+
+        s.open_editor_folder("~/new").unwrap();
+        assert_eq!(s.editor_folders().unwrap(), ["~/legacy", "~/new"]);
+        assert_eq!(s.load().unwrap().workspace_dir, None);
+    }
+
+    #[test]
+    fn an_empty_folder_is_ignored_rather_than_opened() {
+        let (_d, s) = store();
+        assert_eq!(s.open_editor_folder("   ").unwrap(), Vec::<String>::new());
     }
 }

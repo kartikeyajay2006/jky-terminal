@@ -16,19 +16,72 @@
   overflow-y: auto;
   padding: var(--s3) var(--s2);
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
 }
 
-.editor__root {
-  margin: 0 0 var(--s2);
+.editor__opener {
+  padding: 0 var(--s1);
+}
+
+/* In the tree the field shares a narrow column, so the button sits under it
+   rather than beside it. */
+.editor__opener--tight .picker__row {
+  flex-wrap: wrap;
+}
+
+.editor__opener--tight .input {
+  font-size: 12px;
+  padding: var(--s2);
+}
+
+.editor__folder {
+  display: grid;
+  gap: var(--s1);
+}
+
+.editor__folder-head {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
   padding: 0 var(--s2);
+}
+
+/* The folder's own name, as a heading over its tree. */
+.editor__folder-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
   color: var(--text-dim);
-  font-family: var(--font-mono);
-  font-size: 0.7rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  direction: rtl;
-  text-align: left;
+}
+
+/* A folder that cannot be read. Said rather than hidden: hiding it would
+   look like the project had been forgotten. */
+.editor__gone {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--warn);
+}
+
+.editor__folder-close {
+  background: none;
+  border: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 var(--s1);
+}
+
+.editor__folder-close:hover,
+.editor__folder-close:focus-visible {
+  color: var(--danger);
 }
 
 .editor__list {
@@ -123,6 +176,17 @@
 .editor__dot {
   color: var(--accent);
   font-size: 0.6rem;
+}
+
+/* How much is unsaved, across every open file. */
+.editor__unsaved {
+  margin-left: auto;
+  align-self: center;
+  padding: 0 var(--s3);
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .editor__close {

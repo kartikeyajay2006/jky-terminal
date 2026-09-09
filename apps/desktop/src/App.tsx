@@ -14,6 +14,7 @@ import { Developer } from "./features/developer/Developer";
 import { Games } from "./features/games/Games";
 import { History } from "./features/history/History";
 import { Remote } from "./features/remote/Remote";
+import { Workspaces } from "./features/workspace/Workspaces";
 
 import { useOpenGame } from "./features/games/openStore";
 import { useNav } from "./app/navStore";
@@ -194,6 +195,7 @@ export function App() {
           history file every time a key is pressed somewhere else. */}
       {section === "history" && <History />}
       {section === "remote" && <Remote />}
+      {section === "workspaces" && <Workspaces />}
       {/* Unmounted on leaving: CodeMirror owns its own DOM and its own
           listeners, and one left mounted behind a section nobody is looking
           at is a document tree kept alive for nothing. Unsaved text lives in

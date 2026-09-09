@@ -1,0 +1,48 @@
+/*
+ * The question you cannot walk past.
+ *
+ * Over everything, including the terminal, because losing unsaved work is
+ * the one thing the app must never do quietly.
+ */
+.unsaved {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--ground) 72%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.unsaved__box {
+  width: min(30rem, calc(100vw - var(--s6)));
+  padding: var(--s5);
+  display: grid;
+  gap: var(--s3);
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 24px 64px color-mix(in srgb, var(--ground) 70%, transparent);
+  animation: jky-rise var(--motion-normal) var(--ease) both;
+}
+
+.unsaved__title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.unsaved__body {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.unsaved__actions {
+  display: flex;
+  gap: var(--s2);
+  justify-content: flex-end;
+  margin-top: var(--s2);
+}

@@ -48,6 +48,10 @@ import type {
   Completions,
   FileEntry,
   FilesApi,
+  Folder,
+  WorkspaceApi,
+  WorkspaceApplied,
+  Workspaces,
   RemoteApi,
   RemoteHost,
   HistoryApi,
@@ -184,20 +188,43 @@ export function createTauriPlatform(): Platform {
   };
 
   const files: FilesApi = {
-    async workspace() {
-      return (await invoke<{ root: string | null }>("files_workspace")).root;
+    async folders() {
+      return invoke<Folder[]>("files_folders");
     },
-    async openWorkspace(dir) {
-      return (await invoke<{ root: string | null }>("files_open_workspace", { dir })).root;
+    async openFolder(dir) {
+      return invoke<Folder[]>("files_open_folder", { dir });
     },
-    async list(path) {
-      return invoke<FileEntry[]>("files_list", { path });
+    async closeFolder(dir) {
+      return invoke<Folder[]>("files_close_folder", { dir });
     },
-    async read(path) {
-      return invoke<string>("files_read", { path });
+    async list(root, path) {
+      return invoke<FileEntry[]>("files_list", { root, path });
     },
-    async write(path, text) {
-      await invoke<void>("files_write", { path, text });
+    async read(root, path) {
+      return invoke<string>("files_read", { root, path });
+    },
+    async write(root, path, text) {
+      await invoke<void>("files_write", { root, path, text });
+    },
+  };
+
+  const workspaces: WorkspaceApi = {
+    async list() {
+      return invoke<Workspaces>("workspace_list");
+    },
+    async save(workspace) {
+      return invoke<Workspaces>("workspace_save", { workspace });
+    },
+    async forget(id) {
+      return invoke<Workspaces>("workspace_forget", { id });
+    },
+    async activate(id) {
+      // The clock is the window's, as everywhere else: it orders a list a
+      // person is looking at.
+      return invoke<WorkspaceApplied>("workspace_activate", { id, at: Date.now() });
+    },
+    async leave() {
+      return invoke<Workspaces>("workspace_leave");
     },
   };
 
@@ -371,6 +398,7 @@ export function createTauriPlatform(): Platform {
     complete,
     remote,
     files,
+    workspaces,
     pty,
     ai,
     store,
