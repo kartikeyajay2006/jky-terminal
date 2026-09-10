@@ -239,3 +239,38 @@ describe("coming back from last time", () => {
     expect(readTabs()).toEqual({ tabs: [], activeId: null });
   });
 });
+
+describe("moving a terminal within its tab", () => {
+  beforeEach(reset);
+
+  const tabOf = (id: string) => useTabs.getState().tabs.find((t) => t.id === id)!;
+
+  it("exchanges two panes without disturbing either shell", () => {
+    // Ids swap, the tree keeps its shape, and nothing unmounts — which is
+    // what lets this happen to a terminal with a command running in it.
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+    const created = tabOf(id).focusedPane;
+
+    useTabs.getState().swapPanes(id, id, created);
+    expect(leaves(tabOf(id).layout)).toEqual([created, id]);
+  });
+
+  it("keeps the keyboard on the terminal you moved, not on where it was", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+    const created = tabOf(id).focusedPane;
+
+    useTabs.getState().swapPanes(id, id, created);
+    expect(tabOf(id).focusedPane).toBe(created);
+  });
+
+  it("ignores a swap naming a pane that is not in the tab", () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+    useTabs.getState().splitPane(id, id, "row");
+    const before = leaves(tabOf(id).layout);
+
+    useTabs.getState().swapPanes(id, id, "pane-999");
+    expect(leaves(tabOf(id).layout)).toEqual(before);
+  });
+});

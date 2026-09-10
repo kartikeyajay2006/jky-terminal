@@ -107,10 +107,22 @@ export function Workspaces() {
         if (host) tabs.openRemoteTab(host.id, host.label || host.address);
       }
 
+      // Say what actually happened, including the parts that did not. A
+      // start directory that quietly fell back to home is the failure this
+      // whole path exists to make visible.
+      const trouble = [
+        ...applied.missing.map((f) => `folder not there: ${f}`),
+        ...(applied.terminal_dir_missing
+          ? [`terminals could not start in ${applied.workspace.terminal_dir}`]
+          : []),
+      ];
+
       setNote(
-        applied.missing.length > 0
-          ? `Opened ${applied.workspace.name}. Not there: ${applied.missing.join(", ")}`
-          : `Opened ${applied.workspace.name}`,
+        trouble.length > 0
+          ? `Opened ${applied.workspace.name} — ${trouble.join("; ")}`
+          : applied.terminal_dir
+            ? `Opened ${applied.workspace.name}. New terminals start in ${applied.terminal_dir}`
+            : `Opened ${applied.workspace.name}`,
       );
       setError(null);
 
@@ -221,20 +233,31 @@ export function Workspaces() {
                 )}
               </span>
               {workspace.note && <span className="wsp__note">{workspace.note}</span>}
+              {/* What it holds, as chips: the reason you would pick this one,
+                  readable without going in. A glyph per kind so the shape of
+                  a workspace is recognisable before the words are read. */}
               <span className="wsp__what">
-                <span>
+                <span className="wsp__chip" data-kind="folders">
+                  <b aria-hidden="true">▤</b>
                   {workspace.folders.length}{" "}
                   {workspace.folders.length === 1 ? "folder" : "folders"}
                 </span>
                 {workspace.terminals > 0 && (
-                  <span>
+                  <span className="wsp__chip" data-kind="terminals">
+                    <b aria-hidden="true">❯</b>
                     {workspace.terminals}{" "}
                     {workspace.terminals === 1 ? "terminal" : "terminals"}
                   </span>
                 )}
-                {workspace.terminal_dir && <span>starts in {workspace.terminal_dir}</span>}
+                {workspace.terminal_dir && (
+                  <span className="wsp__chip" data-kind="dir" title={workspace.terminal_dir}>
+                    <b aria-hidden="true">↳</b>
+                    {workspace.terminal_dir.replace(/^.*[/\\]/, "") || workspace.terminal_dir}
+                  </span>
+                )}
                 {workspace.host && (
-                  <span className="wsp__host">
+                  <span className="wsp__chip" data-kind="host">
+                    <b aria-hidden="true">⇄</b>
                     {hosts.find((h) => h.id === workspace.host)?.label ??
                       hosts.find((h) => h.id === workspace.host)?.address ??
                       "a saved host"}

@@ -126,9 +126,19 @@ sibling. Split a tab right, then split the left half down, and *right* from
 either left-hand pane reaches the same right-hand one — which is what the eye
 expects and what a tree walk gets wrong.
 
+**Resize** by dragging the line between two terminals — fifteen pixels of grab
+area for two of drawn line, because a target you have to aim at is a target you
+miss. Double-click evens them up. The dividers are focusable too, so arrows
+resize and a layout can be built without a mouse at all.
+
+**Move one** by holding <kbd>Ctrl</kbd> and dragging it onto another: the two
+exchange places. Held with Ctrl because an unmodified drag inside a terminal is
+a text selection and always has been. Only the leaves swap — the shape of the
+layout does not change, nothing is re-parented, and no shell is disturbed, so
+this is safe to do to a terminal with something running in it.
+
 Each pane keeps its own scrollback across a restart, and closing one forgets
-only that one. Dividers are draggable, double-click to even them up, and
-focusable — arrows resize, so a layout can be built without a mouse.
+only that one.
 
 ---
 
@@ -187,6 +197,12 @@ is where you were, not where you were plus the last project. A folder it names
 that is not there is reported and **kept**: a drive that is unplugged is a
 folder that comes back, and quietly editing your workspace to remove it would
 lose the setup you saved.
+
+A start directory that is not there is **said**, not silently ignored. A pty
+falls back to your home directory when a configured directory is missing —
+right for spawning, useless as feedback — so it is checked when you set it and
+again when you switch, and the switch tells you which part of it could not
+happen.
 
 A workspace *names* things; it does not grant them. Opening its folders goes
 through exactly the checks that opening one by hand does, so the file — which

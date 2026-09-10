@@ -10,6 +10,7 @@ import {
   parsePane,
   setRatio,
   splitLeaf,
+  swapLeaves,
   type Direction,
   type Pane,
   type Side,
@@ -58,6 +59,8 @@ interface TabState {
   /** Move focus one pane in a direction. Does nothing at the edge. */
   movePaneFocus: (tabId: string, side: Side) => void;
   resizeSplit: (tabId: string, splitId: string, ratio: number) => void;
+  /** Exchange two terminals' places within a tab. */
+  swapPanes: (tabId: string, a: string, b: string) => void;
 }
 
 const TABS_KEY = "jky.tabs";
@@ -299,6 +302,17 @@ export const useTabs = create<TabState>((set, get) => ({
     // side would move the keyboard somewhere nobody was looking.
     if (!target) return;
     get().focusPane(tabId, target);
+  },
+
+  swapPanes: (tabId, a, b) => {
+    const tabs = withTab(get().tabs, tabId, (tab) => ({
+      ...tab,
+      layout: swapLeaves(tab.layout, a, b),
+      // Focus follows the terminal, not the position: you dragged this one
+      // somewhere, and it is still the one you were working in.
+      focusedPane: tab.focusedPane,
+    }));
+    if (tabs) set({ tabs });
   },
 
   resizeSplit: (tabId, splitId, ratio) => {

@@ -673,7 +673,19 @@ export function createWebPlatform(): Platform {
       for (const folder of found.folders) {
         if (trees.has(folder)) openFolders.push(folder);
       }
-      return { workspace: found, folders: [...openFolders], missing };
+
+      // The start directory is checked the way a folder is: applying one that
+      // is not there would open every terminal in the wrong place silently.
+      const wanted = found.terminal_dir?.trim() || null;
+      const dirMissing = wanted !== null && !trees.has(wanted);
+
+      return {
+        workspace: found,
+        folders: [...openFolders],
+        missing,
+        terminal_dir: dirMissing ? null : wanted,
+        terminal_dir_missing: dirMissing,
+      };
     },
     async leave() {
       activeWorkspace = null;

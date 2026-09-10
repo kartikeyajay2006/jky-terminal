@@ -14,6 +14,7 @@ import {
   parsePane,
   setRatio,
   splitLeaf,
+  swapLeaves,
   type Pane,
 } from "./tree";
 
@@ -203,5 +204,44 @@ describe("dividers", () => {
     const deep = splitLeaf(tee(), "b", "d", "row", "s3");
     expect(dividers(deep)).toHaveLength(3);
     expect(countLeaves(deep)).toBe(4);
+  });
+});
+
+describe("exchanging two terminals", () => {
+  it("puts each where the other was", () => {
+    const split = splitLeaf(leaf("a"), "a", "b", "row", "s1");
+    expect(leaves(swapLeaves(split, "a", "b"))).toEqual(["b", "a"]);
+  });
+
+  it("changes the shape of the tree not at all", () => {
+    // Which is what makes it safe to do to a running terminal: nothing is
+    // created, destroyed or re-parented, so no shell is disturbed.
+    const before = tee();
+    const after = swapLeaves(before, "a", "b");
+
+    expect(dividers(after).map((d) => ({ id: d.id, dir: d.dir, ratio: d.ratio }))).toEqual(
+      dividers(before).map((d) => ({ id: d.id, dir: d.dir, ratio: d.ratio })),
+    );
+    expect(countLeaves(after)).toBe(countLeaves(before));
+  });
+
+  it("exchanges two that are nowhere near each other in the tree", () => {
+    expect(leaves(swapLeaves(tee(), "c", "b"))).toEqual(["a", "b", "c"]);
+  });
+
+  it("does nothing when a pane is asked to swap with itself", () => {
+    const before = tee();
+    expect(swapLeaves(before, "a", "a")).toBe(before);
+  });
+
+  it("does nothing when either pane is not in the tree", () => {
+    const before = tee();
+    expect(swapLeaves(before, "a", "zz")).toBe(before);
+    expect(swapLeaves(before, "zz", "a")).toBe(before);
+  });
+
+  it("comes back to where it started when done twice", () => {
+    const before = tee();
+    expect(swapLeaves(swapLeaves(before, "a", "b"), "a", "b")).toEqual(before);
   });
 });

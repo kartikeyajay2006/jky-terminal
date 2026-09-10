@@ -302,6 +302,10 @@ export interface WorkspaceApplied {
   folders: string[];
   /** Folders it named that are not there. Reported, never deleted. */
   missing: string[];
+  /** Where new terminals will start now, if the workspace named somewhere. */
+  terminal_dir?: string | null;
+  /** Set when it named a start directory that is not there. */
+  terminal_dir_missing: boolean;
 }
 
 /**

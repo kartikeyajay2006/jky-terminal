@@ -104,6 +104,30 @@ export function closeLeaf(pane: Pane, id: string): Pane | null {
   return { ...pane, a, b };
 }
 
+/**
+ * Exchange two terminals' places.
+ *
+ * The leaves swap ids; the shape of the tree does not change at all. That is
+ * what makes it safe to do to a running terminal — nothing is created,
+ * destroyed or re-parented, so no shell is disturbed and no scrollback moves.
+ * The pane you were looking at is simply somewhere else now.
+ */
+export function swapLeaves(pane: Pane, a: string, b: string): Pane {
+  if (a === b) return pane;
+  if (!hasLeaf(pane, a) || !hasLeaf(pane, b)) return pane;
+
+  const exchange = (node: Pane): Pane => {
+    if (node.kind === "leaf") {
+      if (node.id === a) return leaf(b);
+      if (node.id === b) return leaf(a);
+      return node;
+    }
+    return { ...node, a: exchange(node.a), b: exchange(node.b) };
+  };
+
+  return exchange(pane);
+}
+
 /** Move one divider. The ratio is clamped, so a pane cannot be dragged away. */
 export function setRatio(pane: Pane, splitId: string, ratio: number): Pane {
   if (pane.kind === "leaf") return pane;

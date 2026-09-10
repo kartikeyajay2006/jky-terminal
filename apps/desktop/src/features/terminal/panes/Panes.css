@@ -28,8 +28,10 @@
 /*
  * The line itself.
  *
- * Two pixels wide and eight to grab: a target you have to aim at is a target
- * you miss, and a divider is dragged far more often than it is looked at.
+ * Two pixels drawn and fourteen to grab: a target you have to aim at is a
+ * target you miss, and a divider is dragged far more often than it is looked
+ * at. The cursor changes over the whole grab area, which is the only thing
+ * that tells anyone it can be dragged at all.
  */
 .panes__splitter {
   position: absolute;
@@ -49,25 +51,63 @@
 }
 
 .panes__splitter[data-dir="row"] {
-  width: 9px;
-  transform: translateX(-4px);
+  width: 15px;
+  transform: translateX(-7px);
   cursor: col-resize;
 }
 
 .panes__splitter[data-dir="row"]::after {
-  left: 4px;
-  right: 4px;
+  left: 7px;
+  right: 7px;
 }
 
 .panes__splitter[data-dir="column"] {
-  height: 9px;
-  transform: translateY(-4px);
+  height: 15px;
+  transform: translateY(-7px);
   cursor: row-resize;
 }
 
 .panes__splitter[data-dir="column"]::after {
-  top: 4px;
-  bottom: 4px;
+  top: 7px;
+  bottom: 7px;
+}
+
+/*
+ * A grip, shown on hover.
+ *
+ * The line alone says "two things meet here"; three dots say "and you can
+ * move it". Drawn on the divider rather than between the panes so it cannot
+ * cover a character of either.
+ */
+.panes__splitter::before {
+  content: "";
+  position: absolute;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0;
+  transition: opacity var(--fast) var(--ease);
+}
+
+.panes__splitter[data-dir="row"]::before {
+  left: 6px;
+  right: 6px;
+  top: 50%;
+  height: 26px;
+  margin-top: -13px;
+}
+
+.panes__splitter[data-dir="column"]::before {
+  top: 6px;
+  bottom: 6px;
+  left: 50%;
+  width: 26px;
+  margin-left: -13px;
+}
+
+.panes__splitter:hover::before,
+.panes__splitter:focus-visible::before,
+.panes__splitter[data-dragging="true"]::before {
+  opacity: 1;
 }
 
 .panes__splitter:hover::after,
@@ -100,4 +140,40 @@
   .panes__splitter::after {
     transition: none;
   }
+}
+
+/* ---- moving a terminal ---------------------------------------------------- */
+
+/* The one being carried. Dimmed, so the eye follows the gap it leaves. */
+.panes__pane[data-dragging="true"] {
+  opacity: 0.55;
+}
+
+/* Where it would land. */
+.panes__pane[data-over="true"] .term__wrap {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+
+/* While a move is in progress nothing inside a pane should be selectable or
+   clickable — the gesture belongs to the layout, not to the terminal. */
+.panes[data-moving="true"] .panes__pane * {
+  pointer-events: none;
+  user-select: none;
+}
+
+.panes__hint {
+  position: absolute;
+  left: 50%;
+  bottom: var(--s4);
+  transform: translateX(-50%);
+  z-index: 4;
+  margin: 0;
+  padding: var(--s2) var(--s4);
+  border-radius: var(--radius);
+  background: var(--surface-raised);
+  border: 1px solid var(--accent-dim);
+  color: var(--text);
+  font-size: 12px;
+  white-space: nowrap;
+  pointer-events: none;
 }

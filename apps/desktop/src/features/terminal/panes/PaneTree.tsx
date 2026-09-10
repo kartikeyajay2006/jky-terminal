@@ -31,20 +31,85 @@ export function PaneTree({ tabId, tree, focused, remotes = {}, live }: PaneTreeP
   const focusPane = useTabs((s) => s.focusPane);
   const splitPane = useTabs((s) => s.splitPane);
   const closePane = useTabs((s) => s.closePane);
+  const swapPanes = useTabs((s) => s.swapPanes);
   const single = rects.length === 1;
 
+  /*
+   * Dragging one terminal onto another exchanges them.
+   *
+   * Held with Ctrl, because an unmodified drag inside a terminal is a
+   * selection and always has been — taking it would break selecting text,
+   * which is the thing people do in a terminal most.
+   *
+   * Tracked here rather than with the HTML drag API: a drag that starts
+   * inside an xterm canvas never produces a dragstart, and a drag image of a
+   * terminal is not something anybody wants to look at.
+   */
+  const [dragging, setDragging] = useState<string | null>(null);
+  const [over, setOver] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!dragging) return;
+
+    function paneUnder(x: number, y: number): string | null {
+      const found = document
+        .elementsFromPoint(x, y)
+        .find((el) => el instanceof HTMLElement && el.dataset.paneId);
+      return found instanceof HTMLElement ? (found.dataset.paneId ?? null) : null;
+    }
+
+    function onMove(e: PointerEvent) {
+      const under = paneUnder(e.clientX, e.clientY);
+      setOver(under && under !== dragging ? under : null);
+    }
+    function onUp(e: PointerEvent) {
+      const under = paneUnder(e.clientX, e.clientY);
+      if (under && under !== dragging) swapPanes(tabId, dragging!, under);
+      setDragging(null);
+      setOver(null);
+    }
+    // Ctrl let go mid-drag means the gesture was abandoned, not completed.
+    function onKeyUp(e: KeyboardEvent) {
+      if (e.key === "Control" || e.key === "Meta") {
+        setDragging(null);
+        setOver(null);
+      }
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    window.addEventListener("keyup", onKeyUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      window.removeEventListener("keyup", onKeyUp);
+    };
+  }, [dragging, swapPanes, tabId]);
+
   return (
-    <div className="panes">
+    <div className="panes" data-moving={dragging ? "true" : undefined}>
       {rects.map((rect) => (
         <div
           key={rect.id}
           className="panes__pane"
           data-pane-id={rect.id}
           data-focused={live && rect.id === focused ? "true" : undefined}
+          data-dragging={dragging === rect.id ? "true" : undefined}
+          data-over={over === rect.id ? "true" : undefined}
           style={{ left: pct(rect.x), top: pct(rect.y), width: pct(rect.w), height: pct(rect.h) }}
           // Focus follows the click, so the pane you typed into is the pane
           // you clicked. Capture, because xterm stops the event on its way up.
-          onMouseDownCapture={() => focusPane(tabId, rect.id)}
+          onMouseDownCapture={(e) => {
+            focusPane(tabId, rect.id);
+            // Ctrl-drag begins a move. Prevented so xterm does not also start
+            // selecting text under the pointer.
+            if (!single && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              setDragging(rect.id);
+            }
+          }}
         >
           <Terminal
             paneId={rect.id}
@@ -63,6 +128,14 @@ export function PaneTree({ tabId, tree, focused, remotes = {}, live }: PaneTreeP
       {lines.map((line) => (
         <Splitter key={line.id} tabId={tabId} line={line} />
       ))}
+
+      {/* Said only while it is happening, and only once: a hint that lives on
+          screen permanently is a hint nobody reads. */}
+      {dragging && (
+        <p className="panes__hint" role="status">
+          Drop on another terminal to swap them
+        </p>
+      )}
     </div>
   );
 }

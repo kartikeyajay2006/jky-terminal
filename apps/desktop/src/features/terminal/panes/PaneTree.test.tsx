@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useTabs } from "../../../app/tabStore";
@@ -112,5 +112,124 @@ describe("PaneTree", () => {
 
     await user.click(container.querySelectorAll<HTMLElement>(".panes__pane")[0]);
     expect(useTabs.getState().tabs[0].focusedPane).toBe(panes[0]);
+  });
+});
+
+/*
+ * A pointer event carrying coordinates.
+ *
+ * jsdom implements no PointerEvent, so `fireEvent.pointerMove` produces a
+ * plain Event with no clientX on it — and the drag arithmetic quietly
+ * becomes NaN. A MouseEvent has the coordinates and the same type name,
+ * which is all the listener reads.
+ */
+const pointer = (type: string, x: number, y: number) =>
+  fireEvent(window, new MouseEvent(type, { clientX: x, clientY: y, bubbles: true }));
+
+describe("resizing and moving", () => {
+  beforeEach(() => {
+    useTabs.setState({ tabs: [], activeId: null });
+  });
+
+  it("drags a divider with the pointer", async () => {
+    const { tabId, panes } = openSplitTab();
+    const { container } = render(
+      <PaneTree tabId={tabId} tree={treeOf(tabId)} focused={panes[0]} live />,
+    );
+
+    const separator = container.querySelector<HTMLElement>(".panes__splitter")!;
+    // jsdom has no layout, so the box the drag measures against is stubbed.
+    const surface = container.querySelector<HTMLElement>(".panes")!;
+    surface.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 1000, height: 500 }) as DOMRect;
+
+    fireEvent.pointerDown(separator);
+    pointer("pointermove", 750, 250);
+    pointer("pointerup", 750, 250);
+
+    const split = treeOf(tabId) as Extract<Pane, { kind: "split" }>;
+    expect(split.ratio).toBeCloseTo(0.75, 2);
+  });
+
+  it("keeps dragging when the pointer outruns the divider", () => {
+    // A two-pixel target and a fast hand: the drag is tracked on the window,
+    // so leaving the divider does not drop it.
+    const { tabId, panes } = openSplitTab();
+    const { container } = render(
+      <PaneTree tabId={tabId} tree={treeOf(tabId)} focused={panes[0]} live />,
+    );
+
+    const separator = container.querySelector<HTMLElement>(".panes__splitter")!;
+    const surface = container.querySelector<HTMLElement>(".panes")!;
+    surface.getBoundingClientRect = () =>
+      ({ left: 0, top: 0, width: 1000, height: 500 }) as DOMRect;
+
+    fireEvent.pointerDown(separator);
+    // Far outside the 15px grab area, and vertically off it entirely.
+    pointer("pointermove", 300, 480);
+    pointer("pointerup", 300, 480);
+
+    expect((treeOf(tabId) as Extract<Pane, { kind: "split" }>).ratio).toBeCloseTo(0.3, 2);
+  });
+
+  it("swaps two terminals when one is Ctrl-dragged onto the other", () => {
+    const { tabId, panes } = openSplitTab();
+    const { container } = render(
+      <PaneTree tabId={tabId} tree={treeOf(tabId)} focused={panes[0]} live />,
+    );
+
+    const boxes = container.querySelectorAll<HTMLElement>(".panes__pane");
+    // elementsFromPoint has no meaning without layout, so the drop target is
+    // named directly — the geometry is xterm's problem, not this component's.
+    document.elementsFromPoint = () => [boxes[1]];
+
+    fireEvent.mouseDown(boxes[0], { ctrlKey: true });
+    pointer("pointermove", 800, 100);
+    pointer("pointerup", 800, 100);
+
+    expect(leaves(useTabs.getState().tabs[0].layout)).toEqual([panes[1], panes[0]]);
+  });
+
+  it("does not start a move on a plain drag, which is a text selection", () => {
+    const { tabId, panes } = openSplitTab();
+    const { container } = render(
+      <PaneTree tabId={tabId} tree={treeOf(tabId)} focused={panes[0]} live />,
+    );
+
+    const boxes = container.querySelectorAll<HTMLElement>(".panes__pane");
+    document.elementsFromPoint = () => [boxes[1]];
+
+    fireEvent.mouseDown(boxes[0]);
+    pointer("pointerup", 800, 100);
+
+    expect(leaves(useTabs.getState().tabs[0].layout)).toEqual(panes);
+  });
+
+  it("abandons the move when Ctrl is let go", () => {
+    const { tabId, panes } = openSplitTab();
+    const { container } = render(
+      <PaneTree tabId={tabId} tree={treeOf(tabId)} focused={panes[0]} live />,
+    );
+
+    const boxes = container.querySelectorAll<HTMLElement>(".panes__pane");
+    document.elementsFromPoint = () => [boxes[1]];
+
+    fireEvent.mouseDown(boxes[0], { ctrlKey: true });
+    fireEvent.keyUp(window, { key: "Control" });
+    pointer("pointerup", 800, 100);
+
+    expect(leaves(useTabs.getState().tabs[0].layout)).toEqual(panes);
+  });
+
+  it("offers no move at all when a tab holds one terminal", () => {
+    useTabs.setState({ tabs: [], activeId: null });
+    const tabId = useTabs.getState().openTab("terminal", "one");
+    const { container } = render(
+      <PaneTree tabId={tabId} tree={treeOf(tabId)} focused={tabId} live />,
+    );
+
+    const box = container.querySelector<HTMLElement>(".panes__pane")!;
+    fireEvent.mouseDown(box, { ctrlKey: true });
+    expect(container.querySelector(".panes__hint")).toBeNull();
   });
 });

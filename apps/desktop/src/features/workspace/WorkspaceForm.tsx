@@ -1,5 +1,5 @@
 import { useState } from "react";
-import type { RemoteHost, SavedWorkspace } from "../../platform";
+import { getPlatform, type RemoteHost, type SavedWorkspace } from "../../platform";
 import { FolderPicker } from "../../components/FolderPicker";
 import { Select } from "../../components/Select";
 
@@ -25,6 +25,7 @@ export function WorkspaceForm({
   onCancel: () => void;
 }) {
   const [draft, setDraft] = useState(workspace);
+  const [dirError, setDirError] = useState<string | null>(null);
   const set = (patch: Partial<SavedWorkspace>) => setDraft((d) => ({ ...d, ...patch }));
 
   function addFolder(dir: string) {
@@ -32,6 +33,37 @@ export function WorkspaceForm({
     // folder you had forgotten was in the list.
     if (draft.folders.includes(dir)) return;
     set({ folders: [...draft.folders, dir] });
+  }
+
+  /**
+   * Take a start directory only if it is really there.
+   *
+   * Checked here rather than on switching, because a directory that is not
+   * there does not fail loudly later — the pty falls back to home, and every
+   * terminal opens in the wrong place with nothing saying why. This is the
+   * moment the person is looking at the field.
+   */
+  async function setStartDir(dir: string) {
+    // Asked of the completion engine, which only ever offers directories that
+    // are really there — so a path it does not come back with is a path that
+    // is not there. A trailing slash is how it spells a directory; both
+    // spellings mean the same place.
+    const line = `cd ${dir}`;
+    const found = await getPlatform()
+      .complete.suggest(line, line.length, "/", 40)
+      .catch(() => null);
+
+    const wanted = dir.replace(/\/$/, "");
+    // Null means the engine could not answer, which is not evidence of
+    // absence: taking the path is better than refusing one that is fine.
+    const exists = found === null || found.items.some((i) => i.value.replace(/\/$/, "") === wanted);
+
+    if (!exists) {
+      setDirError(`\`${dir}\` is not a folder — terminals would start in your home instead`);
+      return;
+    }
+    setDirError(null);
+    set({ terminal_dir: dir });
   }
 
   return (
@@ -134,9 +166,15 @@ export function WorkspaceForm({
           <FolderPicker
             action="Set"
             placeholder="Leave empty for wherever they would anyway..."
-            onChoose={(dir) => set({ terminal_dir: dir })}
+            onChoose={setStartDir}
+            error={dirError}
           />
         )}
+        <p className="field__note">
+          Applies to terminals opened after you switch. A shell already running
+          keeps the directory it is in — nothing outside a process can change
+          that.
+        </p>
       </div>
 
       {hosts.length > 0 && (

@@ -56,9 +56,17 @@ describe("the workspaces section", () => {
 
     expect(await screen.findByText("jky-terminal")).toBeInTheDocument();
     expect(screen.getByText("the repo")).toBeInTheDocument();
-    expect(screen.getByText("1 folder")).toBeInTheDocument();
-    expect(screen.getByText("2 terminals")).toBeInTheDocument();
-    expect(screen.getByText("starts in /tmp/sample")).toBeInTheDocument();
+
+    // The chips carry a glyph beside the words, so the text is read off the
+    // whole chip rather than off a bare text node.
+    const chips = screen
+      .getByRole("button", { name: /Switch to jky-terminal/ })
+      .querySelectorAll(".wsp__chip");
+    const said = [...chips].map((c) => c.textContent);
+    expect(said.some((t) => t?.includes("1 folder"))).toBe(true);
+    expect(said.some((t) => t?.includes("2 terminals"))).toBe(true);
+    // The start directory shows its last part; the whole path is the title.
+    expect(said.some((t) => t?.includes("sample"))).toBe(true);
   });
 
   it("creates one, and refuses a name another already has", async () => {
@@ -168,7 +176,7 @@ describe("the workspaces section", () => {
     render(<Workspaces />);
 
     await user.click(await screen.findByRole("button", { name: "Switch to one" }));
-    expect(await screen.findByRole("status")).toHaveTextContent("Not there: /tmp/gone");
+    expect(await screen.findByRole("status")).toHaveTextContent("folder not there: /tmp/gone");
 
     const saved = await getPlatform().workspaces.list();
     expect(saved.workspaces[0].folders).toEqual(["/tmp/sample", "/tmp/gone"]);
@@ -208,6 +216,35 @@ describe("the workspaces section", () => {
 
     await user.click(await screen.findByRole("button", { name: "Forget one" }));
     await waitFor(() => expect(screen.queryByText("one")).toBeNull());
+  });
+
+  it("says a start directory that is not there rather than starting in home", async () => {
+    // The failure this whole path exists to make visible: resolve_start_dir
+    // falls back to home, so a wrong directory opens every terminal in the
+    // wrong place with nothing on screen saying why.
+    await getPlatform().workspaces.save(
+      project("w1", "one", { terminal_dir: "/tmp/gone" }),
+    );
+    const user = userEvent.setup();
+    render(<Workspaces />);
+
+    await user.click(await screen.findByRole("button", { name: "Switch to one" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "terminals could not start in /tmp/gone",
+    );
+  });
+
+  it("says where terminals will start when the directory is really there", async () => {
+    await getPlatform().workspaces.save(
+      project("w1", "one", { terminal_dir: "/tmp/sample" }),
+    );
+    const user = userEvent.setup();
+    render(<Workspaces />);
+
+    await user.click(await screen.findByRole("button", { name: "Switch to one" }));
+    expect(await screen.findByRole("status")).toHaveTextContent(
+      "New terminals start in /tmp/sample",
+    );
   });
 
   it("reports a failure to read rather than looking empty", async () => {

@@ -23,6 +23,16 @@ pub struct Applied {
     /// comes back, and quietly editing somebody's workspace to remove it
     /// would lose the setup they saved.
     pub missing: Vec<String>,
+    /// Where new terminals will start, once this workspace is on.
+    ///
+    /// None when the workspace named none. Reported so the window can say it,
+    /// because a start directory that silently did nothing is the failure
+    /// this field exists to make impossible: `resolve_start_dir` falls back to
+    /// home when a configured directory is not there, which is right for
+    /// spawning and useless as feedback.
+    pub terminal_dir: Option<String>,
+    /// Set when the workspace named a start directory that is not there.
+    pub terminal_dir_missing: bool,
 }
 
 // --- logic, unit-testable without Tauri -------------------------------------
@@ -57,13 +67,28 @@ pub(crate) fn activate_logic(
 
     let folders = settings.set_editor_folders(&found).map_err(|e| e.to_string())?;
 
-    if let Some(dir) = workspace.terminal_dir.as_deref() {
-        // A failure here costs the start directory and not the switch: the
-        // folders are already open and undoing them would be worse.
-        let _ = settings.set_terminal_start_dir(dir);
+    // The start directory is checked the same way a folder is, and for the
+    // same reason: `resolve_start_dir` falls back to home when a configured
+    // directory is not there, so a wrong one would leave every terminal
+    // opening in the wrong place with nothing on screen saying why.
+    let wanted = workspace.terminal_dir.as_deref().map(str::trim).filter(|d| !d.is_empty());
+    let terminal_dir_missing = wanted.is_some_and(|dir| !exists(dir));
+
+    if let Some(dir) = wanted {
+        if !terminal_dir_missing {
+            // A failure here costs the start directory and not the switch:
+            // the folders are already open and undoing them would be worse.
+            let _ = settings.set_terminal_start_dir(dir);
+        }
     }
 
-    Ok(Applied { workspace, folders, missing })
+    Ok(Applied {
+        terminal_dir: wanted.filter(|_| !terminal_dir_missing).map(str::to_string),
+        terminal_dir_missing,
+        workspace,
+        folders,
+        missing,
+    })
 }
 
 // --- IPC surface ------------------------------------------------------------
@@ -179,6 +204,51 @@ mod tests {
         assert_eq!(applied.missing, ["~/gone"]);
         // Still in the workspace, ready for the drive to come back.
         assert_eq!(w.get("w1").unwrap().folders, ["~/here", "~/gone"]);
+    }
+
+    #[test]
+    fn a_start_directory_that_is_not_there_is_reported_rather_than_applied() {
+        // `resolve_start_dir` falls back to home for a directory that is not
+        // there, so applying a wrong one would open every terminal in the
+        // wrong place with nothing saying why.
+        let (_d, w, s) = setup();
+        s.set_terminal_start_dir("~/mine").unwrap();
+
+        let mut project = workspace("w1", "one");
+        project.terminal_dir = Some("~/gone".into());
+        save_logic(&w, project).unwrap();
+
+        let applied = activate_logic(&w, &s, "w1", 1, |f| f != "~/gone").unwrap();
+        assert!(applied.terminal_dir_missing);
+        assert_eq!(applied.terminal_dir, None);
+        // Untouched, rather than pointed somewhere that does not exist.
+        assert_eq!(s.terminal_start_dir().unwrap().as_deref(), Some("~/mine"));
+        // And still in the workspace, ready for the drive to come back.
+        assert_eq!(w.get("w1").unwrap().terminal_dir.as_deref(), Some("~/gone"));
+    }
+
+    #[test]
+    fn switching_says_where_terminals_will_start() {
+        let (_d, w, s) = setup();
+        let mut project = workspace("w1", "one");
+        project.terminal_dir = Some("~/Desktop/thing".into());
+        save_logic(&w, project).unwrap();
+
+        let applied = activate_logic(&w, &s, "w1", 1, ALL_THERE).unwrap();
+        assert_eq!(applied.terminal_dir.as_deref(), Some("~/Desktop/thing"));
+        assert!(!applied.terminal_dir_missing);
+    }
+
+    #[test]
+    fn a_blank_start_directory_is_no_start_directory() {
+        let (_d, w, s) = setup();
+        let mut project = workspace("w1", "one");
+        project.terminal_dir = Some("   ".into());
+        save_logic(&w, project).unwrap();
+
+        let applied = activate_logic(&w, &s, "w1", 1, ALL_THERE).unwrap();
+        assert_eq!(applied.terminal_dir, None);
+        assert!(!applied.terminal_dir_missing);
     }
 
     #[test]
