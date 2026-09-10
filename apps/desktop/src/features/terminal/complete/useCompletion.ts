@@ -26,8 +26,15 @@ export interface CompletionState {
 }
 
 export interface Completion extends CompletionState {
-  /** Take the selected suggestion, or the one given. */
-  accept: (item?: Suggestion) => void;
+  /**
+   * Take the selected suggestion, or the one given.
+   *
+   * Answers whether it actually put anything on the prompt. False means the
+   * suggestion was already what is typed, and the caller should let the
+   * keystroke through — an Enter that took a completion changing nothing
+   * would be an Enter that did nothing at all.
+   */
+  accept: (item?: Suggestion) => boolean;
   dismiss: () => void;
   move: (delta: number) => void;
   select: (index: number) => void;
@@ -54,6 +61,17 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
   const muted = useRef<string | null>(null);
   /** Rising number, so a slow answer cannot overwrite a newer one. */
   const turn = useRef(0);
+
+  /**
+   * What is on screen, readable without a state updater.
+   *
+   * `accept` writes to the pty, and doing that inside `setState` meant React
+   * ran it twice under StrictMode — which sent the completion to the shell
+   * twice. A side effect belongs outside the updater; this is how it reads
+   * the current selection from there.
+   */
+  const view = useRef(state);
+  view.current = state;
 
   const close = useCallback(() => {
     setState((s) => (s.open || s.items.length > 0 ? { ...s, open: false, items: [] } : s));
@@ -110,22 +128,31 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
 
   const accept = useCallback(
     (item?: Suggestion) => {
-      setState((s) => {
-        const chosen = item ?? s.items[s.index];
-        if (!chosen) return s;
+      const chosen = item ?? view.current.items[view.current.index];
+      if (!chosen) return false;
 
-        const at = term.promptInput();
-        if (at) term.replaceRange(chosen.from, at.cursor, chosen.value);
+      const at = term.promptInput();
+      if (!at) return false;
 
-        // Forget what was asked, so the next poll sees the accepted text as
-        // a change and offers what can follow it — which is what makes Tab
-        // twice walk down a directory tree.
-        asked.current = "";
-        return { ...s, open: false, items: [] };
-      });
+      // Already typed. Nothing to put on the prompt, and saying so lets the
+      // caller give the keystroke back to the shell.
+      const replacing = at.line.slice(chosen.from, at.cursor);
+      if (replacing === chosen.value) {
+        close();
+        return false;
+      }
+
+      term.replaceRange(chosen.from, at.cursor, chosen.value);
+
+      // Forget what was asked, so the next poll sees the accepted text as a
+      // change and offers what can follow it — which is what makes Tab twice
+      // walk down a directory tree.
+      asked.current = "";
+      setState((s) => ({ ...s, open: false, items: [] }));
       term.focus();
+      return true;
     },
-    [term],
+    [term, close],
   );
 
   const dismiss = useCallback(() => {

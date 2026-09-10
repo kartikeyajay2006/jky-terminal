@@ -169,6 +169,15 @@ export function Terminal({
         case "Tab":
           completion.accept();
           return true;
+        // Enter takes the highlighted one and puts it on the prompt; the
+        // Enter after that runs it. Two presses, because a completion you
+        // cannot read before it runs is a completion you have to undo.
+        //
+        // It gives the key back when accepting would change nothing — the
+        // suggestion is already what is typed — so Enter over a finished
+        // command still runs it rather than doing nothing.
+        case "Enter":
+          return completion.accept();
         case "ArrowDown":
           completion.move(1);
           return true;

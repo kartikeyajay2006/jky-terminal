@@ -165,6 +165,87 @@ describe("using a completion", () => {
     expect(result.current.open).toBe(false);
   });
 
+  it("writes what was chosen once, not twice", async () => {
+    // The side effect used to live inside a setState updater, and React runs
+    // those twice under StrictMode — which sent the completion to the shell
+    // twice.
+    vi.spyOn(getPlatform().complete, "suggest").mockResolvedValue({
+      start: 4,
+      end: 6,
+      word: "ma",
+      items: [suggestion("main.rs", 4)],
+    });
+
+    const { term, state } = fakeTerm("cat ma");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await waitFor(() => expect(result.current.open).toBe(true));
+
+    act(() => {
+      result.current.accept();
+    });
+    expect(state.replaced).toEqual([[4, 6, "main.rs"]]);
+  });
+
+  it("says it took the suggestion, so Enter knows not to reach the shell", async () => {
+    vi.spyOn(getPlatform().complete, "suggest").mockResolvedValue({
+      start: 4,
+      end: 6,
+      word: "ma",
+      items: [suggestion("main.rs", 4)],
+    });
+
+    const { term } = fakeTerm("cat ma");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await waitFor(() => expect(result.current.open).toBe(true));
+
+    let took: boolean | undefined;
+    act(() => {
+      took = result.current.accept();
+    });
+    expect(took).toBe(true);
+  });
+
+  it("gives the key back when the suggestion is already what is typed", async () => {
+    // Otherwise Enter over a finished command takes a completion that changes
+    // nothing, and the command never runs.
+    vi.spyOn(getPlatform().complete, "suggest").mockResolvedValue({
+      start: 0,
+      end: 2,
+      word: "ls",
+      items: [suggestion("ls", 0)],
+    });
+
+    const { term, state } = fakeTerm("ls");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await waitFor(() => expect(result.current.open).toBe(true));
+
+    let took: boolean | undefined;
+    act(() => {
+      took = result.current.accept();
+    });
+    expect(took).toBe(false);
+    expect(state.replaced).toEqual([]);
+  });
+
+  it("takes the highlighted one after the arrows have moved", async () => {
+    vi.spyOn(getPlatform().complete, "suggest").mockResolvedValue({
+      start: 4,
+      end: 5,
+      word: "m",
+      items: [suggestion("main.rs", 4), suggestion("makefile", 4)],
+    });
+
+    const { term, state } = fakeTerm("cat m");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await waitFor(() => expect(result.current.open).toBe(true));
+
+    act(() => result.current.move(1));
+    act(() => {
+      result.current.accept();
+    });
+    expect(state.replaced).toEqual([[4, 5, "makefile"]]);
+  });
+
   it("walks the list and wraps at both ends", async () => {
     vi.spyOn(getPlatform().complete, "suggest").mockResolvedValue({
       start: 0,

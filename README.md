@@ -227,8 +227,16 @@ must not reconnect to somebody's production machine on its own.
 
 ## Completions
 
-Start typing and what could come next appears. <kbd>Tab</kbd> takes it,
-<kbd>↑</kbd><kbd>↓</kbd> choose, <kbd>Esc</kbd> dismisses.
+Start typing and what could come next appears. <kbd>↑</kbd><kbd>↓</kbd> or the
+mouse choose one; <kbd>Tab</kbd>, <kbd>Enter</kbd> or a click puts it **on the
+prompt**; <kbd>Enter</kbd> again runs it. <kbd>Esc</kbd> dismisses.
+
+Two presses, not one. A completion that ran the moment you picked it would be
+one you had to undo rather than read — and the same rule the command panels
+follow: what happens is what you would have typed, and you still press Enter.
+When the highlighted suggestion is already what is on the prompt there is
+nothing to put there, so <kbd>Enter</kbd> goes to the shell and runs the
+command instead of doing nothing.
 
 What is offered depends on where the cursor is, so a branch is never offered
 where a file belongs:

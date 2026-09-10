@@ -93,9 +93,10 @@ describe("the completion list", () => {
     expect(document.activeElement).toBe(document.body);
   });
 
-  it("says which keys work", () => {
+  it("says which keys work, including the two Enters", () => {
     draw([item("a")]);
     expect(screen.getByText("Tab")).toBeInTheDocument();
+    expect(screen.getAllByText("Enter")).toHaveLength(2);
     expect(screen.getByText("Esc")).toBeInTheDocument();
   });
 });

@@ -93,7 +93,8 @@ export function Suggestions({ items, index, word, onAccept, onSelect }: Suggesti
         ))}
       </ul>
       <p className="suggest__keys" aria-hidden="true">
-        <kbd>Tab</kbd> accept · <kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>Esc</kbd> dismiss
+        <kbd>↑</kbd><kbd>↓</kbd> choose · <kbd>Tab</kbd> or <kbd>Enter</kbd> puts it on the
+        prompt · <kbd>Enter</kbd> again runs it · <kbd>Esc</kbd> dismiss
       </p>
     </div>
   );
