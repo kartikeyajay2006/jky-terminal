@@ -4,6 +4,7 @@ import type {
   CompleteApi,
   FileEntry,
   FilesApi,
+  LifecycleApi,
   Folder,
   SavedWorkspace,
   WorkspaceApi,
@@ -570,6 +571,41 @@ export function createWebPlatform(): Platform {
   }
 
   const files: FilesApi = {
+    async create(root, path, folder) {
+      const tree = treeOf(root);
+      if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);
+      const name = path.replace(/\/+$/, "").split("/").pop() ?? "";
+      if (!name.trim()) throw new Error("a name cannot be empty");
+      if (tree.has(path)) throw new Error(`\`${path}\` is already there`);
+      // A directory has no entry of its own here; it exists because a file
+      // under it does. A new empty one is remembered by a marker so the tree
+      // can show it before anything is put in.
+      tree.set(folder ? `${path}/.keep` : path, "");
+    },
+    async rename(root, from, to) {
+      const tree = treeOf(root);
+      if (escapes(from) || escapes(to)) throw new Error("outside the open folder");
+      const text = tree.get(from);
+      if (text === undefined) throw new Error(`could not read \`${from}\``);
+      if (tree.has(to)) throw new Error(`\`${to}\` is already there`);
+      tree.delete(from);
+      tree.set(to, text);
+    },
+    async remove(root, path) {
+      const tree = treeOf(root);
+      if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);
+      if (tree.has(path)) {
+        tree.delete(path);
+        return;
+      }
+      // A directory: refused unless nothing is under it, the way Rust does.
+      const prefix = `${path.replace(/\/+$/, "")}/`;
+      const under = [...tree.keys()].filter((k) => k.startsWith(prefix));
+      const real = under.filter((k) => !k.endsWith("/.keep"));
+      if (real.length > 0) throw new Error(`\`${path}\` is not empty`);
+      if (under.length === 0) throw new Error(`could not read \`${path}\``);
+      for (const key of under) tree.delete(key);
+    },
     async folders() {
       return folderList();
     },
@@ -690,6 +726,29 @@ export function createWebPlatform(): Platform {
     async leave() {
       activeWorkspace = null;
       return byRecentWorkspace();
+    },
+  };
+
+  /*
+   * The window's life, in a browser.
+   *
+   * `beforeunload` is the nearest thing a page has to being asked whether it
+   * may close, and it is deliberately not the same: a browser shows its own
+   * wording and a page cannot replace it. So the handler's answer only
+   * decides whether to ask at all.
+   */
+  const lifecycle: LifecycleApi = {
+    async onCloseRequested(handler) {
+      const onBefore = (e: BeforeUnloadEvent) => {
+        if (handler()) return;
+        e.preventDefault();
+      };
+      window.addEventListener("beforeunload", onBefore);
+      return () => window.removeEventListener("beforeunload", onBefore);
+    },
+    async close() {
+      // A page cannot close itself unless it opened itself, and pretending
+      // otherwise would be worse than doing nothing.
     },
   };
 
@@ -1303,6 +1362,7 @@ export function createWebPlatform(): Platform {
     remote,
     files,
     workspaces,
+    lifecycle,
     pty,
     ai,
     store,

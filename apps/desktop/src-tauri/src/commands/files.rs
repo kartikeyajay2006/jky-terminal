@@ -148,6 +148,51 @@ pub fn files_write(
     workspace(state.settings.as_ref(), &root)?.write(&path, &text).map_err(|e| e.to_string())
 }
 
+/// Make a new, empty file, or a new directory.
+///
+/// Refuses one that is already there rather than truncating it: "new file"
+/// and "erase this file" are different requests, and a name typed by accident
+/// into the first must never perform the second.
+#[tauri::command]
+pub fn files_create(
+    state: State<'_, AppState>,
+    root: String,
+    path: String,
+    folder: bool,
+) -> Result<(), String> {
+    let workspace = workspace(state.settings.as_ref(), &root)?;
+    if folder {
+        workspace.create_dir(&path).map_err(|e| e.to_string())
+    } else {
+        workspace.create_file(&path).map_err(|e| e.to_string())
+    }
+}
+
+/// Rename or move, inside one open folder.
+///
+/// Both ends are resolved and both must land inside it, so a rename is not a
+/// way out of the tree — which is the obvious thing to try once reading and
+/// writing are both fenced.
+#[tauri::command]
+pub fn files_rename(
+    state: State<'_, AppState>,
+    root: String,
+    from: String,
+    to: String,
+) -> Result<(), String> {
+    workspace(state.settings.as_ref(), &root)?.rename(&from, &to).map_err(|e| e.to_string())
+}
+
+/// Delete one file, or one directory with nothing in it.
+#[tauri::command]
+pub fn files_delete(
+    state: State<'_, AppState>,
+    root: String,
+    path: String,
+) -> Result<(), String> {
+    workspace(state.settings.as_ref(), &root)?.delete(&path).map_err(|e| e.to_string())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

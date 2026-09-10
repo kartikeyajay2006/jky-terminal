@@ -225,3 +225,38 @@
   padding: var(--s6);
   color: var(--text-dim);
 }
+
+/* Making and renaming things in the tree. */
+
+.editor__folder-act {
+  background: none;
+  border: 0;
+  color: var(--text-dim);
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 2px;
+  font-size: 12px;
+}
+
+.editor__folder-act:hover,
+.editor__folder-act:focus-visible {
+  color: var(--accent);
+}
+
+/* Named where the thing will appear, rather than in a box in the middle of
+   the screen: a name is one word, and a dialog for one word is a dialog you
+   have to dismiss. */
+.editor__name {
+  width: 100%;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  background: var(--ground);
+  color: var(--text);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 2px var(--s2);
+}
+
+.editor__name:focus-visible {
+  outline: none;
+}

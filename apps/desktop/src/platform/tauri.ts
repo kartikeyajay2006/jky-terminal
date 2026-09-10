@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type {
   AppsApi,
   BrowserApi,
@@ -49,6 +50,7 @@ import type {
   FileEntry,
   FilesApi,
   Folder,
+  LifecycleApi,
   WorkspaceApi,
   WorkspaceApplied,
   Workspaces,
@@ -187,7 +189,35 @@ export function createTauriPlatform(): Platform {
     },
   };
 
+  const lifecycle: LifecycleApi = {
+    async onCloseRequested(handler) {
+      const window = getCurrentWindow();
+      const stop = await window.onCloseRequested(async (event) => {
+        // Always prevented first, then let through — a close cannot be
+        // un-prevented once it has happened, and the handler may want to ask
+        // a question before answering.
+        event.preventDefault();
+        if (handler()) await window.destroy();
+      });
+      return stop;
+    },
+    async close() {
+      // `destroy` rather than `close`: `close` fires the request again and
+      // would be caught by the very guard that is letting it through.
+      await getCurrentWindow().destroy();
+    },
+  };
+
   const files: FilesApi = {
+    async create(root, path, folder) {
+      await invoke<void>("files_create", { root, path, folder });
+    },
+    async rename(root, from, to) {
+      await invoke<void>("files_rename", { root, from, to });
+    },
+    async remove(root, path) {
+      await invoke<void>("files_delete", { root, path });
+    },
     async folders() {
       return invoke<Folder[]>("files_folders");
     },
@@ -399,6 +429,7 @@ export function createTauriPlatform(): Platform {
     remote,
     files,
     workspaces,
+    lifecycle,
     pty,
     ai,
     store,

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
 import { useAsk } from "./app/askStore";
@@ -14,6 +14,8 @@ import { Developer } from "./features/developer/Developer";
 import { Games } from "./features/games/Games";
 import { History } from "./features/history/History";
 import { Remote } from "./features/remote/Remote";
+import { UnsavedDialog, type Answer } from "./features/editor/UnsavedDialog";
+import { idOf, isDirty, unsavedCount, useEditor } from "./features/editor/editorStore";
 import { Workspaces } from "./features/workspace/Workspaces";
 
 import { useOpenGame } from "./features/games/openStore";
@@ -50,6 +52,54 @@ export function App() {
   const activeId = useTabs((s) => s.activeId);
 
   useShortcuts();
+
+  /*
+   * Nothing unsaved leaves without being asked about.
+   *
+   * The editor is unmounted whenever you are looking at something else, so
+   * this cannot live there: the window can be closed from any section, and
+   * from the terminal the editor does not exist to object. The files
+   * themselves live in `editorStore`, which is why there is anything to ask
+   * about at all.
+   */
+  const [quitting, setQuitting] = useState(false);
+  useEffect(() => {
+    let stop: (() => void) | undefined;
+
+    void getPlatform()
+      .lifecycle.onCloseRequested(() => {
+        // Nothing to lose, so nothing to ask. `lifecycle.close` goes round
+        // this guard rather than through it, so the answer never has to be
+        // remembered.
+        if (unsavedCount() === 0) return true;
+        setQuitting(true);
+        return false;
+      })
+      .then((off) => {
+        stop = off;
+      })
+      .catch(() => {});
+
+    return () => stop?.();
+  }, []);
+
+  const leave = useCallback(async (answer: Answer) => {
+    setQuitting(false);
+    if (answer === "cancel") return;
+
+    if (answer === "save") {
+      // Everything, then out. One that will not save keeps the window open
+      // and says so rather than being lost on the way past.
+      const editor = useEditor.getState();
+      for (const file of editor.open.filter(isDirty)) {
+        if (!(await useEditor.getState().save(idOf(file)))) {
+          setSection("editor");
+          return;
+        }
+      }
+    }
+    await getPlatform().lifecycle.close();
+  }, []);
 
   // What the keys are bound to, before anything can be pressed. The store
   // starts on the defaults, so the gap before this lands is a window with
@@ -223,6 +273,16 @@ export function App() {
       {section === "developer" && <Developer />}
 
       {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
+
+      {quitting && (
+        <UnsavedDialog
+          title={`${unsavedCount()} unsaved ${unsavedCount() === 1 ? "file" : "files"}`}
+          body="Closing now throws away everything that is not on disk."
+          saveLabel="Save all and quit"
+          discardLabel="Quit anyway"
+          onAnswer={(answer) => void leave(answer)}
+        />
+      )}
     </Shell>
   );
 }

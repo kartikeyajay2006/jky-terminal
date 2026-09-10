@@ -253,6 +253,12 @@ export interface FileEntry {
  * can reach anything at all.
  */
 export interface FilesApi {
+  /** Make an empty file, or a directory. Refuses a name already taken. */
+  create(root: string, path: string, folder: boolean): Promise<void>;
+  /** Rename or move, inside one open folder. */
+  rename(root: string, from: string, to: string): Promise<void>;
+  /** Delete a file, or a directory with nothing in it. */
+  remove(root: string, path: string): Promise<void>;
   /** Every folder the editor has open. Empty until somebody opens one. */
   folders(): Promise<Folder[]>;
   /** Open one more folder. */
@@ -323,6 +329,26 @@ export interface WorkspaceApi {
   activate(id: string): Promise<WorkspaceApplied>;
   /** Stop being in one. Does not close what is open. */
   leave(): Promise<Workspaces>;
+}
+
+/**
+ * The window's own life.
+ *
+ * One capability and one reason: unsaved work. Everything else about the
+ * window belongs to the operating system, and an app that asked to manage its
+ * own frame would be an app reimplementing a title bar.
+ */
+export interface LifecycleApi {
+  /**
+   * Be told before the window closes.
+   *
+   * The handler answers whether closing may go ahead. Returning false stops
+   * it — the app is then expected to ask the person something and call
+   * `close` if they say yes. Resolves to a function that stops listening.
+   */
+  onCloseRequested(handler: () => boolean): Promise<() => void>;
+  /** Close for real, past the guard. */
+  close(): Promise<void>;
 }
 
 export interface SettingsApi {
@@ -1093,6 +1119,8 @@ export interface Platform {
   readonly files: FilesApi;
   /** Saved project setups. */
   readonly workspaces: WorkspaceApi;
+  /** Being told before the window closes, so unsaved work can be rescued. */
+  readonly lifecycle: LifecycleApi;
   readonly pty: PtyApi;
   readonly ai: AiApi;
   /** Notes, todos, events and reminders. Nothing here is ever pruned. */

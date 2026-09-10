@@ -299,10 +299,26 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // are text-only and size-capped: an editor that silently rewrote the
         // bytes it could not decode would corrupt the file on the next save.
         "files_close_folder".to_string(),
+        // Making, moving and removing, which is the half of an editor that
+        // was missing — you could change a file but not create one. They pass
+        // through exactly the two checks reading and writing do, and add
+        // three rules of their own, each with a test: creating refuses a name
+        // that is already taken rather than truncating it, renaming refuses a
+        // target that is already taken rather than destroying it, and
+        // deleting refuses a directory with anything in it. There is no undo
+        // and no wastebasket here, and the shell is right there for anyone
+        // who really means it.
+        //
+        // Delete and the source of a rename resolve the entry without
+        // following its last part, so removing a symlink takes the link and
+        // never what it points at.
+        "files_create".to_string(),
+        "files_delete".to_string(),
         "files_folders".to_string(),
         "files_list".to_string(),
         "files_open_folder".to_string(),
         "files_read".to_string(),
+        "files_rename".to_string(),
         "files_write".to_string(),
         "games_publish_scores".to_string(),
         // Every command that has run, and the four calls that read and change
@@ -656,6 +672,48 @@ fn the_renderer_is_granted_no_filesystem_shell_or_network_capability() {
             );
         }
     }
+}
+
+/// Every capability the renderer is granted, named.
+///
+/// The prefix rule above catches the three obvious ways to hand the window
+/// the machine. This catches the fourth: quietly adding a fourth entry that
+/// is none of those and still widens what a compromised frontend can do. The
+/// list was one line for the app's whole life, and the moment it stopped
+/// being one line is the moment it needed pinning.
+#[test]
+fn the_capabilities_granted_are_exactly_these() {
+    let path = crate_root().join("capabilities/default.json");
+    let raw = fs::read_to_string(&path).expect("capabilities/default.json is readable");
+    let conf: serde_json::Value = serde_json::from_str(&raw).expect("valid JSON");
+
+    let granted: Vec<String> = conf["permissions"]
+        .as_array()
+        .expect("capabilities file declares a permissions array")
+        .iter()
+        .map(|p| p.as_str().unwrap_or_default().to_string())
+        .collect();
+
+    let expected = vec![
+        // Tauri's own baseline: events, the webview's own window metadata,
+        // and the IPC plumbing every command rides on. It grants no
+        // filesystem, no shell and no network.
+        "core:default".to_string(),
+        // Ending this app's own window, and nothing else. It exists because
+        // the editor holds unsaved work: closing is intercepted so the person
+        // can be asked, and "quit anyway" then has to actually quit. `close`
+        // cannot do it — it raises the same close request the guard is
+        // letting through, so the window would ask again for ever.
+        "core:window:allow-destroy".to_string(),
+    ];
+
+    assert_eq!(
+        granted, expected,
+        "SECURITY: the capabilities granted to the renderer changed. Each one widens what a \
+         compromised frontend can reach without going through a reviewed command, so this list \
+         is pinned. If you are adding one deliberately, update this test in the same commit and \
+         say why in the message."
+    );
 }
 
 /// `frame-src` is pinned the same way `connect-src` is, and for a related

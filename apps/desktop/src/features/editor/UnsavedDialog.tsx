@@ -17,9 +17,19 @@ export type Answer = "save" | "discard" | "cancel";
  */
 export function UnsavedDialog({
   name,
+  title,
+  body,
+  saveLabel = "Save",
+  discardLabel = "Discard",
   onAnswer,
 }: {
-  name: string;
+  /** The file, when it is about one. */
+  name?: string;
+  /** Overrides the heading, for the question asked when quitting. */
+  title?: string;
+  body?: string;
+  saveLabel?: string;
+  discardLabel?: string;
   onAnswer: (answer: Answer) => void;
 }) {
   const save = useRef<HTMLButtonElement>(null);
@@ -57,11 +67,11 @@ export function UnsavedDialog({
         aria-describedby="unsaved-body"
       >
         <h2 className="unsaved__title" id="unsaved-title">
-          Save changes to {name.split("/").pop()}?
+          {title ?? `Save changes to ${name?.split("/").pop()}?`}
         </h2>
         <p className="unsaved__body" id="unsaved-body">
-          It has changes that are not on disk. Closing without saving throws
-          them away.
+          {body ??
+            "It has changes that are not on disk. Closing without saving throws them away."}
         </p>
 
         <div className="unsaved__actions">
@@ -71,10 +81,10 @@ export function UnsavedDialog({
             className="btn btn--primary"
             onClick={() => onAnswer("save")}
           >
-            Save
+            {saveLabel}
           </button>
           <button type="button" className="btn btn--danger" onClick={() => onAnswer("discard")}>
-            Discard
+            {discardLabel}
           </button>
           <button type="button" className="btn" onClick={() => onAnswer("cancel")}>
             Cancel

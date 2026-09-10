@@ -18,6 +18,7 @@ export type {
   FileEntry,
   FilesApi,
   Folder,
+  LifecycleApi,
   SavedWorkspace,
   WorkspaceApi,
   WorkspaceApplied,

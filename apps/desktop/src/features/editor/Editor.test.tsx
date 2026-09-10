@@ -1,8 +1,9 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { Editor } from "./Editor";
 import { getPlatform } from "../../platform";
+import { useEditor } from "./editorStore";
 
 /*
  * CodeMirror draws into a real contenteditable and measures it, which jsdom
@@ -39,6 +40,9 @@ vi.mock("./CodeMirror", () => ({
 async function closeEverything() {
   const files = getPlatform().files;
   for (const folder of await files.folders()) await files.closeFolder(folder.root);
+  // Open files outlive the component now — that is the point of them being in
+  // a store — so a test has to put them back as well as the folders.
+  useEditor.setState({ open: [], active: null, error: null });
 }
 
 const openSample = () => getPlatform().files.openFolder("/tmp/sample");
@@ -252,5 +256,120 @@ describe("closing a file with changes in it", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("read-only");
     expect(screen.getByLabelText("unsaved changes")).toBeInTheDocument();
+  });
+});
+
+describe("making, renaming and removing", () => {
+  beforeEach(async () => {
+    await closeEverything();
+    await openSample();
+    vi.restoreAllMocks();
+  });
+
+  /**
+   * Right-click a tree entry and pick something from the menu.
+   *
+   * Scoped to the tree: the open-file tabs and the stand-in editor's own
+   * Save button both carry the file's name too.
+   */
+  async function menu(user: ReturnType<typeof userEvent.setup>, entry: RegExp, item: string) {
+    const tree = within(screen.getByLabelText("Files"));
+    fireEvent.contextMenu(await tree.findByRole("button", { name: entry }));
+    // The menu's rows are menuitems, not buttons — it is the same component
+    // the terminal's right-click menu uses.
+    await user.click(await screen.findByRole("menuitem", { name: new RegExp(`^${item}`) }));
+  }
+
+  it("makes a new file and opens it, because that is why you made it", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await screen.findByRole("button", { name: /README\.md/ });
+
+    await user.click(screen.getByRole("button", { name: "New file in sample" }));
+    await user.type(screen.getByLabelText("new file"), "notes.md{Enter}");
+
+    expect(await screen.findByLabelText("Editing notes.md")).toBeInTheDocument();
+  });
+
+  it("makes a new folder without opening anything", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await screen.findByRole("button", { name: /README\.md/ });
+
+    await user.click(screen.getByRole("button", { name: "New folder in sample" }));
+    await user.type(screen.getByLabelText("new folder"), "docs{Enter}");
+
+    expect(await screen.findByRole("button", { name: /docs/ })).toBeInTheDocument();
+    expect(screen.queryByRole("tab")).toBeNull();
+  });
+
+  it("refuses a name that is already taken rather than erasing it", async () => {
+    // "New file" and "erase this file" are different requests.
+    const user = userEvent.setup();
+    render(<Editor />);
+    await screen.findByRole("button", { name: /README\.md/ });
+
+    await user.click(screen.getByRole("button", { name: "New file in sample" }));
+    await user.type(screen.getByLabelText("new file"), "README.md{Enter}");
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("already there");
+    // Still there, and still whatever it was — refusing is the whole point.
+    const before = await getPlatform().files.read("/tmp/sample", "README.md");
+    expect(before.length).toBeGreaterThan(0);
+  });
+
+  it("abandons a name on Escape", async () => {
+    const user = userEvent.setup();
+    render(<Editor />);
+    await screen.findByRole("button", { name: /README\.md/ });
+
+    await user.click(screen.getByRole("button", { name: "New file in sample" }));
+    await user.type(screen.getByLabelText("new file"), "gone.md{Escape}");
+
+    expect(screen.queryByLabelText("new file")).toBeNull();
+    await expect(getPlatform().files.read("/tmp/sample", "gone.md")).rejects.toThrow();
+  });
+
+  it("renames a file, and the tab follows it", async () => {
+    // On a file this test made: the in-memory tree the browser build keeps is
+    // shared, and a test that renamed a fixture would break the next one.
+    await getPlatform().files.create("/tmp/sample", "before.md", false);
+    const user = userEvent.setup();
+    render(<Editor />);
+
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /before\.md/ }));
+    await screen.findByLabelText("Editing before.md");
+
+    await menu(user, /before\.md/, "Rename");
+    await user.clear(screen.getByLabelText("name"));
+    await user.type(screen.getByLabelText("name"), "after.md{Enter}");
+
+    expect(await screen.findByLabelText("Editing after.md")).toBeInTheDocument();
+  });
+
+  it("deletes a file and closes the tab it was in", async () => {
+    await getPlatform().files.create("/tmp/sample", "doomed.md", false);
+    const user = userEvent.setup();
+    render(<Editor />);
+
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /doomed\.md/ }));
+    await screen.findByLabelText("Editing doomed.md");
+
+    await menu(user, /doomed\.md/, "Delete");
+    await waitFor(() => expect(screen.queryByRole("tab")).toBeNull());
+    await expect(getPlatform().files.read("/tmp/sample", "doomed.md")).rejects.toThrow();
+  });
+
+  it("says a directory with something in it cannot be deleted", async () => {
+    // No undo and no wastebasket, so a tree does not go on one click.
+    await getPlatform().files.create("/tmp/sample", "full/thing.txt", false);
+    const user = userEvent.setup();
+    render(<Editor />);
+    await screen.findByRole("button", { name: /full/ });
+
+    await menu(user, /full/, "Delete");
+    expect(await screen.findByRole("alert")).toHaveTextContent("not empty");
   });
 });

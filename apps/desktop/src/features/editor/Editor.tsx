@@ -3,21 +3,19 @@ import { getPlatform, type FileEntry, type Folder } from "../../platform";
 import { CodeMirror } from "./CodeMirror";
 import { FolderPicker } from "../../components/FolderPicker";
 import { UnsavedDialog, type Answer } from "./UnsavedDialog";
+import { TerminalMenu, type MenuPoint } from "../terminal/TerminalMenu";
+import { idOf, isDirty, keyOf, useEditor, type OpenFile } from "./editorStore";
 import "./Editor.css";
 
-/** One file open in the editor. */
-interface OpenFile {
-  /** Which folder it came from. Two folders may hold the same relative path. */
+/** What the rename prompt is asking about. */
+interface Renaming {
   root: string;
   path: string;
-  /** As it was read, so "changed" is a comparison rather than a guess. */
-  saved: string;
-  text: string;
+  /** The new name, as typed. Starts as the old one. */
+  draft: string;
+  /** True while making something that does not exist yet. */
+  creating: false | "file" | "folder";
 }
-
-/** A file's identity across folders. */
-const keyOf = (root: string, path: string) => `${root} ${path}`;
-const idOf = (file: OpenFile) => keyOf(file.root, file.path);
 
 /**
  * Files, inside the folders you opened and nowhere else.
@@ -26,33 +24,45 @@ const idOf = (file: OpenFile) => keyOf(file.root, file.path);
  * work on is the work — sending someone to a settings screen and back to see
  * a file is a round trip for something that is one field.
  *
- * Several folders can be open at once and several files from any of them.
- * Closing a file with changes asks; it never discards silently, and it never
- * refuses to close either, because a file you cannot close is worse than one
- * you lost.
+ * Which files are open lives in `editorStore` rather than here: this
+ * component is unmounted whenever you look at anything else, and when the
+ * text lived here too, a trip to the terminal threw away everything unsaved.
  */
 export function Editor() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [tree, setTree] = useState<Record<string, FileEntry[]>>({});
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const [open, setOpen] = useState<OpenFile[]>([]);
-  const [active, setActive] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [note, setNote] = useState<string | null>(null);
   const [openError, setOpenError] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
+  const [menuAt, setMenuAt] = useState<(MenuPoint & { root: string; entry: FileEntry }) | null>(
+    null,
+  );
+  const [renaming, setRenaming] = useState<Renaming | null>(null);
   /** The file being closed, waiting on an answer. */
   const [asking, setAsking] = useState<OpenFile | null>(null);
   const [busy, setBusy] = useState(true);
+
+  const open = useEditor((s) => s.open);
+  const active = useEditor((s) => s.active);
+  const error = useEditor((s) => s.error);
 
   const loadDir = useCallback(async (root: string, path: string) => {
     try {
       const entries = await getPlatform().files.list(root, path);
       setTree((t) => ({ ...t, [keyOf(root, path)]: entries }));
-      setError(null);
+      useEditor.getState().clearError();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      useEditor.setState({ error: e instanceof Error ? e.message : String(e) });
     }
   }, []);
+
+  /** Read one directory again, after something in it changed. */
+  const refresh = useCallback(
+    async (root: string, path: string) => {
+      await loadDir(root, path);
+    },
+    [loadDir],
+  );
 
   const loadFolders = useCallback(async () => {
     try {
@@ -61,9 +71,8 @@ export function Editor() {
       for (const folder of found) {
         if (folder.available) await loadDir(folder.root, "");
       }
-      setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      useEditor.setState({ error: e instanceof Error ? e.message : String(e) });
     } finally {
       setBusy(false);
     }
@@ -90,64 +99,71 @@ export function Editor() {
       setFolders(await getPlatform().files.closeFolder(root));
       // Files from it go with it. They cannot be saved any more, and leaving
       // a tab that fails on save would be worse than closing it.
-      setOpen((files) => {
-        const rest = files.filter((f) => f.root !== root);
-        if (rest.every((f) => idOf(f) !== active)) {
-          setActive(rest.length > 0 ? idOf(rest[rest.length - 1]) : null);
-        }
-        return rest;
-      });
+      useEditor.getState().dropFolder(root);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      useEditor.setState({ error: e instanceof Error ? e.message : String(e) });
     }
   }
 
-  async function openFile(root: string, path: string) {
-    const already = open.find((f) => f.root === root && f.path === path);
-    if (already) {
-      setActive(idOf(already));
+  /** The directory a new thing would go in, given what is selected. */
+  function parentOf(entry: FileEntry | null): string {
+    if (!entry) return "";
+    if (entry.is_dir) return entry.path;
+    const at = entry.path.lastIndexOf("/");
+    return at === -1 ? "" : entry.path.slice(0, at);
+  }
+
+  async function commitName() {
+    if (!renaming) return;
+    const { root, path, draft, creating } = renaming;
+    const name = draft.trim();
+    if (!name) {
+      setRenaming(null);
       return;
     }
-    try {
-      const text = await getPlatform().files.read(root, path);
-      setOpen((files) => [...files, { root, path, saved: text, text }]);
-      setActive(keyOf(root, path));
-      setError(null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }
 
-  async function save(file: OpenFile): Promise<boolean> {
-    try {
-      await getPlatform().files.write(file.root, file.path, file.text);
-      // What is on disk is now what is on screen, so the dot goes out.
-      setOpen((files) =>
-        files.map((f) => (idOf(f) === idOf(file) ? { ...f, saved: f.text } : f)),
-      );
-      setNote(`Saved ${file.path}`);
-      setError(null);
-      return true;
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-      return false;
-    }
-  }
+    const target = path ? `${path}/${name}` : name;
+    const files = getPlatform().files;
 
-  function drop(file: OpenFile) {
-    setOpen((files) => {
-      const rest = files.filter((f) => idOf(f) !== idOf(file));
-      if (active === idOf(file)) {
-        setActive(rest.length > 0 ? idOf(rest[rest.length - 1]) : null);
+    try {
+      if (creating) {
+        await files.create(root, target, creating === "folder");
+        setNote(`Made ${target}`);
+        await refresh(root, path);
+        if (creating === "file") await useEditor.getState().openFile(root, target);
+      } else {
+        const holder = parentOf({ path, name: "", is_dir: false, size: 0 });
+        const to = holder ? `${holder}/${name}` : name;
+        await files.rename(root, path, to);
+        useEditor.getState().renamed(root, path, to);
+        setNote(`Renamed to ${name}`);
+        await refresh(root, holder);
       }
-      return rest;
-    });
+      setRenaming(null);
+      useEditor.getState().clearError();
+    } catch (e) {
+      useEditor.setState({ error: e instanceof Error ? e.message : String(e) });
+      setRenaming(null);
+    }
+  }
+
+  async function remove(root: string, entry: FileEntry) {
+    try {
+      await getPlatform().files.remove(root, entry.path);
+      useEditor.getState().drop(keyOf(root, entry.path));
+      setNote(`Deleted ${entry.name}`);
+      const at = entry.path.lastIndexOf("/");
+      await refresh(root, at === -1 ? "" : entry.path.slice(0, at));
+      useEditor.getState().clearError();
+    } catch (e) {
+      useEditor.setState({ error: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   /** Close a file, asking first when there is something to lose. */
   function close(file: OpenFile) {
-    if (file.text === file.saved) {
-      drop(file);
+    if (!isDirty(file)) {
+      useEditor.getState().drop(idOf(file));
       return;
     }
     setAsking(file);
@@ -159,17 +175,16 @@ export function Editor() {
     if (!file || answer === "cancel") return;
 
     if (answer === "discard") {
-      drop(file);
+      useEditor.getState().drop(idOf(file));
       return;
     }
     // Saved, then closed — and left open if the save failed, because closing
     // it anyway would be discarding under another name.
-    if (await save(file)) drop(file);
+    if (await useEditor.getState().save(idOf(file))) useEditor.getState().drop(idOf(file));
   }
 
   const current = open.find((f) => idOf(f) === active) ?? null;
-  const dirty = (file: OpenFile) => file.text !== file.saved;
-  const unsaved = open.filter(dirty).length;
+  const unsaved = open.filter(isDirty).length;
 
   if (!busy && folders.length === 0) {
     return (
@@ -223,6 +238,32 @@ export function Editor() {
                   missing
                 </span>
               )}
+              {folder.available && (
+                <>
+                  <button
+                    type="button"
+                    className="editor__folder-act"
+                    aria-label={`New file in ${folder.name}`}
+                    title="New file"
+                    onClick={() =>
+                      setRenaming({ root: folder.root, path: "", draft: "", creating: "file" })
+                    }
+                  >
+                    +
+                  </button>
+                  <button
+                    type="button"
+                    className="editor__folder-act"
+                    aria-label={`New folder in ${folder.name}`}
+                    title="New folder"
+                    onClick={() =>
+                      setRenaming({ root: folder.root, path: "", draft: "", creating: "folder" })
+                    }
+                  >
+                    &#9723;
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 className="editor__folder-close"
@@ -233,6 +274,20 @@ export function Editor() {
               </button>
             </header>
 
+            {/* Naming something new, at the top of the folder it goes in. An
+                inline field rather than a dialog: a name is one word, and a
+                box in the middle of the screen for one word is a box you
+                have to dismiss. */}
+            {renaming?.creating && renaming.root === folder.root && renaming.path === "" && (
+              <NameField
+                value={renaming.draft}
+                placeholder={renaming.creating === "folder" ? "new folder" : "new file"}
+                onChange={(draft) => setRenaming({ ...renaming, draft })}
+                onCommit={() => void commitName()}
+                onCancel={() => setRenaming(null)}
+              />
+            )}
+
             {folder.available && (
               <Tree
                 root={folder.root}
@@ -240,6 +295,10 @@ export function Editor() {
                 tree={tree}
                 expanded={expanded}
                 active={active}
+                renaming={renaming}
+                onRenameChange={(draft) => renaming && setRenaming({ ...renaming, draft })}
+                onRenameCommit={() => void commitName()}
+                onRenameCancel={() => setRenaming(null)}
                 onToggle={async (entry) => {
                   const id = keyOf(folder.root, entry.path);
                   const next = new Set(expanded);
@@ -251,7 +310,8 @@ export function Editor() {
                   }
                   setExpanded(next);
                 }}
-                onOpen={(path) => void openFile(folder.root, path)}
+                onOpen={(path) => void useEditor.getState().openFile(folder.root, path)}
+                onMenu={(point, entry) => setMenuAt({ ...point, root: folder.root, entry })}
               />
             )}
           </section>
@@ -271,7 +331,7 @@ export function Editor() {
               title={`${file.root}/${file.path}`}
               onClick={(e) => {
                 if ((e.target as HTMLElement).dataset.close === "true") close(file);
-                else setActive(idOf(file));
+                else useEditor.getState().focus(idOf(file));
               }}
               onKeyDown={(e) => {
                 if (e.key === "Delete" || e.key === "Backspace") {
@@ -283,7 +343,7 @@ export function Editor() {
               <span className="editor__tab-name">{file.path.split("/").pop()}</span>
               {/* A dot rather than a word: it has to be readable at a glance
                   across a row of tabs, and "modified" is not. */}
-              {dirty(file) && (
+              {isDirty(file) && (
                 <span className="editor__dot" aria-label="unsaved changes">
                   &bull;
                 </span>
@@ -318,21 +378,107 @@ export function Editor() {
             initial={current.saved}
             onChange={(text) => {
               setNote(null);
-              setOpen((files) =>
-                files.map((f) => (idOf(f) === idOf(current) ? { ...f, text } : f)),
-              );
+              useEditor.getState().edit(idOf(current), text);
             }}
-            onSave={() => void save(current)}
+            onSave={() => void useEditor.getState().save(idOf(current))}
           />
         ) : (
           <p className="editor__empty">Choose a file on the left.</p>
         )}
       </div>
 
+      {menuAt && (
+        <TerminalMenu
+          at={{ x: menuAt.x, y: menuAt.y }}
+          onClose={() => setMenuAt(null)}
+          items={[
+            {
+              label: "New file",
+              run: () =>
+                setRenaming({
+                  root: menuAt.root,
+                  path: parentOf(menuAt.entry),
+                  draft: "",
+                  creating: "file",
+                }),
+            },
+            {
+              label: "New folder",
+              run: () =>
+                setRenaming({
+                  root: menuAt.root,
+                  path: parentOf(menuAt.entry),
+                  draft: "",
+                  creating: "folder",
+                }),
+            },
+            {
+              label: "Rename",
+              run: () =>
+                setRenaming({
+                  root: menuAt.root,
+                  path: menuAt.entry.path,
+                  draft: menuAt.entry.name,
+                  creating: false,
+                }),
+            },
+            {
+              label: "Delete",
+              // A directory with anything in it is refused in Rust; saying so
+              // here as well means the item is never a click that fails.
+              hint: menuAt.entry.is_dir ? "if empty" : undefined,
+              run: () => void remove(menuAt.root, menuAt.entry),
+            },
+          ]}
+        />
+      )}
+
       {asking && (
         <UnsavedDialog name={asking.path} onAnswer={(answer) => void answered(answer)} />
       )}
     </div>
+  );
+}
+
+/**
+ * A field for naming something, in the tree where it will appear.
+ *
+ * Enter takes it, Escape abandons it, and leaving it does too — an inline
+ * field that stayed behind after you clicked away would be a thing to tidy up.
+ */
+function NameField({
+  value,
+  placeholder,
+  onChange,
+  onCommit,
+  onCancel,
+}: {
+  value: string;
+  placeholder: string;
+  onChange: (value: string) => void;
+  onCommit: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <input
+      className="editor__name"
+      autoFocus
+      aria-label={placeholder}
+      placeholder={placeholder}
+      value={value}
+      spellCheck={false}
+      onChange={(e) => onChange(e.target.value)}
+      onBlur={onCancel}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onCommit();
+        } else if (e.key === "Escape") {
+          e.preventDefault();
+          onCancel();
+        }
+      }}
+    />
   );
 }
 
@@ -342,16 +488,26 @@ function Tree({
   tree,
   expanded,
   active,
+  renaming,
   onToggle,
   onOpen,
+  onMenu,
+  onRenameChange,
+  onRenameCommit,
+  onRenameCancel,
 }: {
   root: string;
   path: string;
   tree: Record<string, FileEntry[]>;
   expanded: Set<string>;
   active: string | null;
+  renaming: Renaming | null;
   onToggle: (entry: FileEntry) => void;
   onOpen: (path: string) => void;
+  onMenu: (point: MenuPoint, entry: FileEntry) => void;
+  onRenameChange: (value: string) => void;
+  onRenameCommit: () => void;
+  onRenameCancel: () => void;
 }) {
   const entries = tree[keyOf(root, path)];
   if (!entries) return null;
@@ -360,31 +516,71 @@ function Tree({
     <ul className="editor__list">
       {entries.map((entry) => {
         const id = keyOf(root, entry.path);
+        const isRenaming =
+          renaming !== null &&
+          !renaming.creating &&
+          renaming.root === root &&
+          renaming.path === entry.path;
+        const isCreatingHere =
+          renaming !== null &&
+          renaming.creating !== false &&
+          renaming.root === root &&
+          renaming.path === entry.path;
+
         return (
           <li key={id}>
-            <button
-              type="button"
-              className="editor__entry"
-              data-kind={entry.is_dir ? "dir" : "file"}
-              data-active={id === active ? "true" : undefined}
-              aria-expanded={entry.is_dir ? expanded.has(id) : undefined}
-              onClick={() => (entry.is_dir ? onToggle(entry) : onOpen(entry.path))}
-            >
-              <span className="editor__glyph" aria-hidden="true">
-                {entry.is_dir ? (expanded.has(id) ? "▾" : "▸") : "·"}
-              </span>
-              {entry.name}
-            </button>
+            {isRenaming ? (
+              <NameField
+                value={renaming.draft}
+                placeholder="name"
+                onChange={onRenameChange}
+                onCommit={onRenameCommit}
+                onCancel={onRenameCancel}
+              />
+            ) : (
+              <button
+                type="button"
+                className="editor__entry"
+                data-kind={entry.is_dir ? "dir" : "file"}
+                data-active={id === active ? "true" : undefined}
+                aria-expanded={entry.is_dir ? expanded.has(id) : undefined}
+                onClick={() => (entry.is_dir ? onToggle(entry) : onOpen(entry.path))}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  onMenu({ x: e.clientX, y: e.clientY }, entry);
+                }}
+              >
+                <span className="editor__glyph" aria-hidden="true">
+                  {entry.is_dir ? (expanded.has(id) ? "▾" : "▸") : "·"}
+                </span>
+                {entry.name}
+              </button>
+            )}
+
             {entry.is_dir && expanded.has(id) && (
               <div className="editor__nested">
+                {isCreatingHere && renaming && (
+                  <NameField
+                    value={renaming.draft}
+                    placeholder={renaming.creating === "folder" ? "new folder" : "new file"}
+                    onChange={onRenameChange}
+                    onCommit={onRenameCommit}
+                    onCancel={onRenameCancel}
+                  />
+                )}
                 <Tree
                   root={root}
                   path={entry.path}
                   tree={tree}
                   expanded={expanded}
                   active={active}
+                  renaming={renaming}
                   onToggle={onToggle}
                   onOpen={onOpen}
+                  onMenu={onMenu}
+                  onRenameChange={onRenameChange}
+                  onRenameCommit={onRenameCommit}
+                  onRenameCancel={onRenameCancel}
                 />
               </div>
             )}

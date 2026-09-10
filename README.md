@@ -152,11 +152,23 @@ on is the work, and a round trip to a settings screen and back is not. Several
 can be open at once, each with its own tree, and files from any of them open
 side by side.
 
-Closing a file with changes **asks**: Save, Discard, or Cancel. Three answers
+Files are made, renamed and deleted from the tree — right-click an entry, or
+use **+** on a folder's heading. Three rules are enforced in Rust, each with a
+test: a new file will not take a name that is already there (that would be
+erasing, not creating), a rename will not overwrite another file, and a
+directory with anything in it will not be deleted. There is no undo here and
+no wastebasket, and the shell is right there for anyone who really means it.
+
+Nothing unsaved leaves without being asked about. Closing a file with changes
+**asks**: Save, Discard, or Cancel. Three answers
 because there are three things you might mean, and a two-button version makes
 one of them unreachable. Escape and clicking away both mean Cancel, so a stray
 keystroke never costs anything, and a save that fails leaves the file open —
 closing it anyway would be discarding under another name.
+
+**Quitting asks too.** Which files are open lives outside the editor, so
+wandering off to the terminal costs the scroll position and nothing else, and
+closing the window from any section still knows there is something to lose.
 
 **It can reach the folders you opened and nothing else.** Every path the window
 sends is relative to one of them; it never names an absolute one. The boundary

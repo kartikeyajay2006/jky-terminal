@@ -29,6 +29,12 @@ pub enum FileError {
     Read { path: String, reason: String },
     #[error("could not write `{path}`: {reason}")]
     Write { path: String, reason: String },
+    #[error("`{0}` is already there")]
+    Exists(String),
+    #[error("`{0}` is not empty")]
+    NotEmpty(String),
+    #[error("a name cannot be empty")]
+    NoName,
 }
 
 /// The largest file the editor will open.
@@ -98,9 +104,16 @@ impl Workspace {
 
         let joined = self.root.join(candidate);
 
-        // A file that does not exist yet has no canonical path, so the check
-        // falls to its parent — which must exist and must be inside.
-        let anchor = if joined.exists() { joined.clone() } else { joined.parent().map(Path::to_path_buf).ok_or_else(refused)? };
+        // A path that does not exist yet has no canonical form, so the check
+        // falls to the deepest part of it that does. Walking up rather than
+        // taking the immediate parent is what lets `a/b/c.txt` be created
+        // when neither `a` nor `b` is there — and it gives nothing away,
+        // because every component was already refused above unless it was an
+        // ordinary name.
+        let mut anchor = joined.clone();
+        while !anchor.exists() {
+            anchor = anchor.parent().map(Path::to_path_buf).ok_or_else(refused)?;
+        }
         let real = anchor.canonicalize().map_err(|_| refused())?;
         if !real.starts_with(&self.root) {
             return Err(refused());
@@ -187,6 +200,155 @@ impl Workspace {
         let temp = path.with_extension("jky-saving");
         std::fs::write(&temp, text).map_err(fail)?;
         std::fs::rename(&temp, &path).map_err(fail)
+    }
+}
+
+impl Workspace {
+    /// Make a new, empty file.
+    ///
+    /// Refuses one that is already there rather than truncating it. "New
+    /// file" and "erase this file" are different requests, and a name typed
+    /// by accident into the first must never perform the second.
+    pub fn create_file(&self, relative: &str) -> Result<(), FileError> {
+        let path = self.checked(relative)?;
+        if path.exists() {
+            return Err(FileError::Exists(relative.to_string()));
+        }
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| FileError::Write {
+                path: relative.to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+        std::fs::write(&path, "").map_err(|e| FileError::Write {
+            path: relative.to_string(),
+            reason: e.to_string(),
+        })
+    }
+
+    /// Make a new directory, and any directory above it that is missing.
+    pub fn create_dir(&self, relative: &str) -> Result<(), FileError> {
+        let path = self.checked(relative)?;
+        if path.exists() {
+            return Err(FileError::Exists(relative.to_string()));
+        }
+        std::fs::create_dir_all(&path).map_err(|e| FileError::Write {
+            path: relative.to_string(),
+            reason: e.to_string(),
+        })
+    }
+
+    /// Move or rename, inside this workspace.
+    ///
+    /// Both ends are resolved and both must land inside, so a rename cannot
+    /// be a way out of the tree — which is the obvious thing to try once
+    /// reading and writing are both fenced.
+    pub fn rename(&self, from: &str, to: &str) -> Result<(), FileError> {
+        let source = self.checked_entry(from)?;
+        let target = self.checked(to)?;
+
+        if !source.exists() {
+            return Err(FileError::Read {
+                path: from.to_string(),
+                reason: "it is not there".to_string(),
+            });
+        }
+        // Refused rather than overwriting. A rename that silently replaced
+        // another file would destroy it with no way back.
+        if target.exists() && target != source {
+            return Err(FileError::Exists(to.to_string()));
+        }
+
+        if let Some(dir) = target.parent() {
+            std::fs::create_dir_all(dir).map_err(|e| FileError::Write {
+                path: to.to_string(),
+                reason: e.to_string(),
+            })?;
+        }
+        std::fs::rename(&source, &target).map_err(|e| FileError::Write {
+            path: to.to_string(),
+            reason: e.to_string(),
+        })
+    }
+
+    /// Delete one file, or one directory that has nothing in it.
+    ///
+    /// A directory with contents is refused. There is no undo here and no
+    /// wastebasket to fish something out of, so an editor that removed a tree
+    /// on one click would be one misclick from taking somebody's project —
+    /// and the shell is right there for anyone who really means it.
+    pub fn delete(&self, relative: &str) -> Result<(), FileError> {
+        let path = self.checked_entry(relative)?;
+
+        let meta = std::fs::symlink_metadata(&path).map_err(|e| FileError::Read {
+            path: relative.to_string(),
+            reason: e.to_string(),
+        })?;
+
+        // A symlink is removed as the link it is, never followed — following
+        // one would delete a file outside the workspace through a name inside
+        // it.
+        if meta.file_type().is_symlink() || meta.is_file() {
+            return std::fs::remove_file(&path).map_err(|e| FileError::Write {
+                path: relative.to_string(),
+                reason: e.to_string(),
+            });
+        }
+
+        let empty = std::fs::read_dir(&path)
+            .map_err(|e| FileError::Read { path: relative.to_string(), reason: e.to_string() })?
+            .next()
+            .is_none();
+        if !empty {
+            return Err(FileError::NotEmpty(relative.to_string()));
+        }
+
+        std::fs::remove_dir(&path).map_err(|e| FileError::Write {
+            path: relative.to_string(),
+            reason: e.to_string(),
+        })
+    }
+
+    /// Resolve a path that must also carry a name.
+    ///
+    /// `resolve` accepts the workspace root itself, which is right for
+    /// listing and wrong for every call here: creating, renaming or deleting
+    /// "" would mean doing it to the whole folder.
+    fn checked(&self, relative: &str) -> Result<PathBuf, FileError> {
+        Self::named(relative)?;
+        self.resolve(relative)
+    }
+
+    /// Resolve a path whose last part must not be followed.
+    ///
+    /// Deleting or renaming a symlink acts on the link, never on what it
+    /// points at — otherwise removing a link inside the workspace would
+    /// remove a file outside it. So the directory holding the entry is
+    /// resolved and checked in full, and only then is the bare name put back
+    /// on. A link pointing out of the tree can be taken off your project;
+    /// nothing at the other end of it is touched.
+    fn checked_entry(&self, relative: &str) -> Result<PathBuf, FileError> {
+        let name = Self::named(relative)?;
+        let parent = match relative.trim_end_matches('/').rfind('/') {
+            Some(at) => self.resolve(&relative[..at])?,
+            None => self.root.clone(),
+        };
+
+        let real = parent.canonicalize().map_err(|_| FileError::Outside(relative.to_string()))?;
+        if !real.starts_with(&self.root) {
+            return Err(FileError::Outside(relative.to_string()));
+        }
+        Ok(real.join(name))
+    }
+
+    /// The last part of a path, refusing one that has none.
+    fn named(relative: &str) -> Result<String, FileError> {
+        let trimmed = relative.trim_end_matches('/');
+        let last = trimmed.rsplit('/').next().unwrap_or("").trim();
+        if last.is_empty() || last == "." || last == ".." {
+            return Err(FileError::NoName);
+        }
+        Ok(last.to_string())
     }
 }
 
@@ -322,5 +484,146 @@ mod tests {
     #[test]
     fn a_root_that_is_not_there_is_refused_when_it_is_opened() {
         assert!(Workspace::new("/definitely/not/here").is_err());
+    }
+}
+
+#[cfg(test)]
+mod change_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn workspace() -> (TempDir, Workspace) {
+        let d = TempDir::new().unwrap();
+        std::fs::create_dir(d.path().join("src")).unwrap();
+        std::fs::write(d.path().join("README.md"), "hello\n").unwrap();
+        std::fs::write(d.path().join("src/main.rs"), "fn main() {}\n").unwrap();
+        let w = Workspace::new(d.path()).unwrap();
+        (d, w)
+    }
+
+    #[test]
+    fn makes_an_empty_file() {
+        let (_d, w) = workspace();
+        w.create_file("notes.md").unwrap();
+        assert_eq!(w.read("notes.md").unwrap(), "");
+    }
+
+    #[test]
+    fn makes_the_directories_a_new_file_needs() {
+        let (_d, w) = workspace();
+        w.create_file("a/b/c.txt").unwrap();
+        assert_eq!(w.read("a/b/c.txt").unwrap(), "");
+    }
+
+    #[test]
+    fn refuses_to_make_a_file_that_is_already_there() {
+        // "New file" and "erase this file" are different requests, and a name
+        // typed by accident into the first must never perform the second.
+        let (_d, w) = workspace();
+        assert!(matches!(w.create_file("README.md"), Err(FileError::Exists(_))));
+        assert_eq!(w.read("README.md").unwrap(), "hello\n");
+    }
+
+    #[test]
+    fn makes_a_directory() {
+        let (_d, w) = workspace();
+        w.create_dir("docs/img").unwrap();
+        assert!(w.list("docs").is_ok());
+    }
+
+    #[test]
+    fn renames_a_file_and_keeps_what_was_in_it() {
+        let (_d, w) = workspace();
+        w.rename("README.md", "READ.md").unwrap();
+        assert_eq!(w.read("READ.md").unwrap(), "hello\n");
+        assert!(w.read("README.md").is_err());
+    }
+
+    #[test]
+    fn moves_a_file_into_another_directory() {
+        let (_d, w) = workspace();
+        w.rename("README.md", "src/README.md").unwrap();
+        assert_eq!(w.read("src/README.md").unwrap(), "hello\n");
+    }
+
+    #[test]
+    fn refuses_a_rename_that_would_destroy_another_file() {
+        let (_d, w) = workspace();
+        assert!(matches!(w.rename("README.md", "src/main.rs"), Err(FileError::Exists(_))));
+        assert_eq!(w.read("src/main.rs").unwrap(), "fn main() {}\n");
+    }
+
+    #[test]
+    fn refuses_to_rename_something_that_is_not_there() {
+        let (_d, w) = workspace();
+        assert!(w.rename("ghost.md", "other.md").is_err());
+    }
+
+    #[test]
+    fn deletes_a_file() {
+        let (_d, w) = workspace();
+        w.delete("README.md").unwrap();
+        assert!(w.read("README.md").is_err());
+    }
+
+    #[test]
+    fn deletes_an_empty_directory_and_refuses_one_that_is_not() {
+        // No undo and no wastebasket, so removing a tree on one click would
+        // be one misclick from taking somebody's project.
+        let (_d, w) = workspace();
+        w.create_dir("empty").unwrap();
+        w.delete("empty").unwrap();
+
+        assert!(matches!(w.delete("src"), Err(FileError::NotEmpty(_))));
+        assert_eq!(w.read("src/main.rs").unwrap(), "fn main() {}\n");
+    }
+
+    #[test]
+    fn every_change_refuses_a_path_that_climbs_out() {
+        // The obvious thing to try once reading and writing are both fenced.
+        let (_d, w) = workspace();
+        for evil in ["../escape.txt", "/etc/passwd", "src/../../escape"] {
+            assert!(w.create_file(evil).is_err(), "create {evil}");
+            assert!(w.create_dir(evil).is_err(), "mkdir {evil}");
+            assert!(w.delete(evil).is_err(), "delete {evil}");
+            assert!(w.rename("README.md", evil).is_err(), "rename to {evil}");
+            assert!(w.rename(evil, "here.txt").is_err(), "rename from {evil}");
+        }
+        assert_eq!(w.read("README.md").unwrap(), "hello\n");
+    }
+
+    #[test]
+    fn refuses_to_act_on_the_workspace_itself() {
+        // `resolve` accepts the root, which is right for listing and wrong for
+        // every one of these: deleting "" would mean deleting the folder.
+        let (_d, w) = workspace();
+        for empty in ["", "   ", "/", ".", ".."] {
+            assert!(matches!(w.delete(empty), Err(FileError::NoName)), "delete {empty:?}");
+            assert!(matches!(w.create_file(empty), Err(FileError::NoName)), "create {empty:?}");
+            assert!(matches!(w.rename(empty, "x"), Err(FileError::NoName)), "rename {empty:?}");
+        }
+    }
+
+    #[test]
+    fn a_trailing_slash_still_names_the_directory_it_is_on() {
+        let (_d, w) = workspace();
+        w.create_dir("empty").unwrap();
+        w.delete("empty/").unwrap();
+        assert!(w.list("empty").is_err());
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn deleting_a_symlink_removes_the_link_and_not_what_it_points_at() {
+        // Following one would delete a file outside the workspace through a
+        // name inside it.
+        let (d, w) = workspace();
+        let outside = TempDir::new().unwrap();
+        let secret = outside.path().join("secret");
+        std::fs::write(&secret, "s3kr1t\n").unwrap();
+        std::os::unix::fs::symlink(&secret, d.path().join("link")).unwrap();
+
+        w.delete("link").unwrap();
+        assert!(secret.exists(), "the file the link pointed at was deleted");
     }
 }
