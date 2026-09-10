@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { buildCommands, searchText, type PaletteCommand } from "./commands";
+import {
+  buildCommands,
+  searchText,
+  type PaletteCommand,
+  type PaletteContext,
+} from "./commands";
+import { getPlatform } from "../../platform";
 import { highlight, rank } from "./match";
 import "./Palette.css";
 
@@ -25,10 +31,40 @@ export function Palette({ onClose }: { onClose: () => void }) {
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLUListElement>(null);
 
-  // Built once per open rather than per keystroke: the list is static for the
-  // lifetime of the palette, and rebuilding it on every character would mean
-  // reading the theme table and the tab list on every character too.
-  const commands = useMemo(() => buildCommands(), []);
+  /*
+   * Workspaces, hosts and open folders, which live behind IPC.
+   *
+   * Fetched after the palette is on screen rather than before, so opening it
+   * never waits on a disk read — the one keystroke in the app that has to
+   * feel instant. The list rebuilds once they land.
+   */
+  const [context, setContext] = useState<PaletteContext>({});
+  useEffect(() => {
+    let live = true;
+    void (async () => {
+      const platform = getPlatform();
+      const [saved, hosts, folders] = await Promise.all([
+        platform.workspaces.list().catch(() => null),
+        platform.remote.list().catch(() => []),
+        platform.files.folders().catch(() => []),
+      ]);
+      if (!live) return;
+      setContext({
+        workspaces: saved?.workspaces ?? [],
+        activeWorkspace: saved?.active ?? null,
+        hosts,
+        folders,
+      });
+    })();
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  // Rebuilt only when that lands, not per keystroke: rebuilding on every
+  // character would mean reading the theme table and the tab list on every
+  // character too.
+  const commands = useMemo(() => buildCommands(context), [context]);
 
   const results = useMemo(
     () => rank(query, commands, searchText).slice(0, MAX_ROWS),

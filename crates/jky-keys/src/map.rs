@@ -76,8 +76,8 @@ impl Action {
             Action::TerminalFind => "Find in terminal",
             Action::TerminalCopy => "Copy",
             Action::TerminalPaste => "Paste",
-            Action::PaneSplitRight => "Split right",
-            Action::PaneSplitDown => "Split down",
+            Action::PaneSplitRight => "Split terminal right",
+            Action::PaneSplitDown => "Split terminal down",
             Action::PaneClose => "Close pane",
             Action::PaneFocusLeft => "Focus pane left",
             Action::PaneFocusRight => "Focus pane right",
@@ -106,8 +106,13 @@ impl Action {
             Action::TerminalFind => "Ctrl+F",
             Action::TerminalCopy => "Ctrl+Shift+C",
             Action::TerminalPaste => "Ctrl+Shift+V",
-            Action::PaneSplitRight => "Ctrl+Shift+D",
-            Action::PaneSplitDown => "Ctrl+Shift+E",
+            // Pairs with Ctrl+T, which opens a whole terminal: the shifted
+            // one divides the terminal you are in. Splitting is deliberate
+            // and stays that way — a tab is one terminal until you ask.
+            Action::PaneSplitRight => "Ctrl+Shift+T",
+            // D for down, which is a better mnemonic than the letter that
+            // happened to be free.
+            Action::PaneSplitDown => "Ctrl+Shift+D",
             Action::PaneClose => "Ctrl+Shift+W",
             Action::PaneFocusLeft => "Ctrl+Shift+ArrowLeft",
             Action::PaneFocusRight => "Ctrl+Shift+ArrowRight",
@@ -360,7 +365,10 @@ mod tests {
         let keys = fresh();
         let err = keys.bind(Action::PaneSplitRight.id(), "Ctrl+T").unwrap_err();
         assert!(matches!(err, KeymapError::Taken { .. }), "{err}");
-        assert_eq!(chord_for(&keys.bindings().unwrap(), Action::PaneSplitRight), "Ctrl+Shift+D");
+        assert_eq!(
+            chord_for(&keys.bindings().unwrap(), Action::PaneSplitRight),
+            Action::PaneSplitRight.default_chord()
+        );
     }
 
     #[test]

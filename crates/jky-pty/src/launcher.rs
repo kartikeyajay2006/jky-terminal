@@ -205,6 +205,18 @@ case "$1" in
     shift
     jky_send "open" "$@"
     ;;
+  split|history|hist|workspace|ws|host|hosts)
+    # Pass-through nouns: the app owns every rule about what they mean, so
+    # this only has to name the verb and hand over the words after it.
+    verb="$1"
+    shift
+    case "$verb" in
+      hist) verb="history" ;;
+      ws) verb="workspace" ;;
+      hosts) verb="host" ;;
+    esac
+    jky_send "$verb" "$@"
+    ;;
   notes|reminders|todos)
     # The app rewrites these files whenever the dashboard changes, so the
     # shell needs no JSON parser and no way to reach back into the app.
@@ -284,7 +296,7 @@ fn write_ask_launcher(
          )\r\n\
          goto :eof\r\n\
          :send\r\n\
-         powershell -NoProfile -Command \"$a = $args; $noun = $a[0].ToLower();          $verb = if ($a.Count -gt 1) {{ $a[1].ToLower() }} else {{ '' }};          $rest = if ($a.Count -gt 2) {{ @($a[2..($a.Count-1)]) }} else {{ @() }};          $map = @{{ 'new'='new'; 'add'='new'; 'write'='write'; 'append'='write';          'rename'='rename'; 'rm'='rm'; 'delete'='rm'; 'del'='rm';          'done'='done'; 'tick'='done'; 'undone'='undone'; 'untick'='undone' }};          if ($noun -eq 'theme' -or $noun -eq 'open' -or $noun -eq 'go') {{          $full = $(if ($noun -eq 'go') {{ 'open' }} else {{ $noun }});          $rest = @($a[1..($a.Count-1)]) }}          else {{ $tail = $map[$verb];          if (-not $tail) {{ [Console]::Error.WriteLine('jky: unknown command'); exit 1 }};          if ($noun -eq 'todo' -and $tail -eq 'new') {{ $tail = 'add' }};          if ($noun -eq 'reminder' -and $tail -eq 'new') {{ $tail = 'add' }};          $full = \"$noun.$tail\" }};          $json = (@{{ verb = $full; args = @($rest) }} | ConvertTo-Json -Compress);          $b = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json));          [Console]::Write([char]27 + ']{osc};JKYCmd=' + $b + [char]7)\" %*\r\n\
+         powershell -NoProfile -Command \"$a = $args; $noun = $a[0].ToLower();          $verb = if ($a.Count -gt 1) {{ $a[1].ToLower() }} else {{ '' }};          $rest = if ($a.Count -gt 2) {{ @($a[2..($a.Count-1)]) }} else {{ @() }};          $map = @{{ 'new'='new'; 'add'='new'; 'write'='write'; 'append'='write';          'rename'='rename'; 'rm'='rm'; 'delete'='rm'; 'del'='rm';          'done'='done'; 'tick'='done'; 'undone'='undone'; 'untick'='undone' }};          if ('theme','open','go','split','history','hist','workspace','ws','host','hosts' -contains $noun) {{          $full = $(switch ($noun) {{ 'go' {{ 'open' }} 'hist' {{ 'history' }} 'ws' {{ 'workspace' }} 'hosts' {{ 'host' }} default {{ $noun }} }});          $rest = @($a[1..($a.Count-1)]) }}          else {{ $tail = $map[$verb];          if (-not $tail) {{ [Console]::Error.WriteLine('jky: unknown command'); exit 1 }};          if ($noun -eq 'todo' -and $tail -eq 'new') {{ $tail = 'add' }};          if ($noun -eq 'reminder' -and $tail -eq 'new') {{ $tail = 'add' }};          $full = \"$noun.$tail\" }};          $json = (@{{ verb = $full; args = @($rest) }} | ConvertTo-Json -Compress);          $b = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json));          [Console]::Write([char]27 + ']{osc};JKYCmd=' + $b + [char]7)\" %*\r\n\
          goto :eof\r\n\
          :ask\r\n\
          shift\r\n\

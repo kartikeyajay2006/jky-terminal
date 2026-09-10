@@ -1,6 +1,8 @@
 import { newId, nowIso, useDashboard } from "../dashboard/dashboardStore";
 import { applyTheme, saveTheme, THEMES, type ThemeId } from "../../app/theme";
 import { useNav } from "../../app/navStore";
+import { useTabs } from "../../app/tabStore";
+import { getPlatform } from "../../platform";
 import {
   byReminderTime,
   fail,
@@ -167,12 +169,120 @@ export async function runShellCommand(command: ShellCommand): Promise<CommandRes
 
     case "open": {
       const section = (args[0] ?? "").trim().toLowerCase();
-      const known = ["dashboard", "terminal", "assistant", "games", "settings"];
+      // The rail, as it actually is. Written out rather than derived from
+      // RAIL_ITEMS because `apps` and `developer` are reachable here under
+      // the names people type, and a section added to the rail should be a
+      // deliberate addition here too.
+      const known = [
+        "dashboard",
+        "terminal",
+        "history",
+        "remote",
+        "editor",
+        "workspaces",
+        "assistant",
+        "games",
+        "apps",
+        "developer",
+        "settings",
+      ];
       if (!known.includes(section)) {
         return fail(`usage: jky open <${known.join("|")}>`);
       }
       useNav.getState().go(section, args[1]?.trim().toLowerCase());
       return ok(`opened ${section}`);
+    }
+
+    case "split": {
+      const which = (args[0] ?? "").trim().toLowerCase();
+      if (which && which !== "down" && which !== "right") {
+        return fail("usage: jky split [down]");
+      }
+      const tabs = useTabs.getState();
+      const tab = tabs.tabs.find((t) => t.id === tabs.activeId);
+      // A command typed in a terminal that is not the active tab is a
+      // command whose terminal has moved on; saying so beats splitting a
+      // stranger.
+      if (!tab) return fail("no terminal to split");
+
+      tabs.splitPane(tab.id, tab.focusedPane, which === "down" ? "column" : "row");
+      return ok(which === "down" ? "split down" : "split right");
+    }
+
+    case "history": {
+      const text = args.join(" ").trim();
+      if (!text) {
+        useNav.getState().go("history");
+        return ok("opened history");
+      }
+      const hits = await getPlatform().history.search({ text, limit: 8 });
+      if (hits.length === 0) return fail(`nothing matching “${text}”`);
+
+      // The commands themselves, one per line, so the answer can be copied
+      // straight off the screen — which is what somebody searching their
+      // history is about to do.
+      return ok(
+        [`${hits.length} of what you have run:`, ...hits.map((h) => `  ${h.command}`)].join("\n"),
+      );
+    }
+
+    case "workspace": {
+      const name = args.join(" ").trim();
+      const saved = await getPlatform().workspaces.list();
+
+      if (!name) {
+        if (saved.workspaces.length === 0) return fail("no workspaces saved yet");
+        return ok(
+          [
+            "workspaces:",
+            ...saved.workspaces.map(
+              (w) => `  ${w.id === saved.active ? "▸" : " "} ${w.name}`,
+            ),
+          ].join("\n"),
+        );
+      }
+
+      const found = saved.workspaces.find(
+        (w) => w.name.toLowerCase() === name.toLowerCase(),
+      );
+      if (!found) return fail(`no workspace “${name}” — try jky workspace`);
+
+      const applied = await getPlatform().workspaces.activate(found.id);
+      const tabs = useTabs.getState();
+      for (let i = 0; i < applied.workspace.terminals; i += 1) {
+        tabs.openTab("terminal", `${applied.workspace.name} ${i + 1}`);
+      }
+      return ok(
+        applied.missing.length > 0
+          ? `opened ${found.name} — not there: ${applied.missing.join(", ")}`
+          : `opened ${found.name}`,
+      );
+    }
+
+    case "host": {
+      const name = args.join(" ").trim();
+      const hosts = await getPlatform().remote.list();
+
+      if (!name) {
+        if (hosts.length === 0) return fail("no hosts saved yet");
+        return ok(
+          [
+            "hosts:",
+            ...hosts.map(
+              (h) => `  ${h.label || h.address}${h.label ? `  ${h.address}` : ""}`,
+            ),
+          ].join("\n"),
+        );
+      }
+
+      const wanted = name.toLowerCase();
+      const found = hosts.find(
+        (h) => h.label.toLowerCase() === wanted || h.address.toLowerCase() === wanted,
+      );
+      if (!found) return fail(`no host “${name}” — try jky host`);
+
+      useTabs.getState().openRemoteTab(found.id, found.label || found.address);
+      return ok(`connecting to ${found.label || found.address}`);
     }
 
     default:

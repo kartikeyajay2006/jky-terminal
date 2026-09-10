@@ -29,7 +29,7 @@ describe("the keyboard panel", () => {
     expect(screen.queryByText("Panes")).toBeNull();
     render(<Keyboard />);
     expect(screen.getByText("Panes")).toBeInTheDocument();
-    expect(chordButton("Split right")).toHaveTextContent("Ctrl+Shift+D");
+    expect(chordButton("Split terminal right")).toHaveTextContent("Ctrl+Shift+T");
   });
 
   it("takes a new binding by listening rather than by being typed", async () => {
@@ -38,22 +38,22 @@ describe("the keyboard panel", () => {
     const user = userEvent.setup();
     render(<Keyboard />);
 
-    await user.click(chordButton("Split right"));
+    await user.click(chordButton("Split terminal right"));
     expect(screen.getByText("press keys…")).toBeInTheDocument();
 
     await user.keyboard("{Control>}{Alt>}2{/Alt}{/Control}");
-    await waitFor(() => expect(chordButton("Split right")).toHaveTextContent("Ctrl+Alt+2"));
+    await waitFor(() => expect(chordButton("Split terminal right")).toHaveTextContent("Ctrl+Alt+2"));
   });
 
   it("says why a refused binding was refused, and changes nothing", async () => {
     const user = userEvent.setup();
     render(<Keyboard />);
 
-    await user.click(chordButton("Split right"));
+    await user.click(chordButton("Split terminal right"));
     await user.keyboard("{Control>}t{/Control}");
 
     await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent(/already/i));
-    expect(chordButton("Split right")).toHaveTextContent("Ctrl+Shift+D");
+    expect(chordButton("Split terminal right")).toHaveTextContent("Ctrl+Shift+T");
   });
 
   it("leaves a shortcut alone when the capture is escaped", async () => {
@@ -71,12 +71,12 @@ describe("the keyboard panel", () => {
     render(<Keyboard />);
     expect(screen.queryByRole("button", { name: "Reset" })).toBeNull();
 
-    await user.click(chordButton("Split right"));
+    await user.click(chordButton("Split terminal right"));
     await user.keyboard("{Control>}{Alt>}2{/Alt}{/Control}");
 
     await waitFor(() => expect(screen.getAllByRole("button", { name: "Reset" })).toHaveLength(1));
     await user.click(screen.getByRole("button", { name: "Reset" }));
-    await waitFor(() => expect(chordButton("Split right")).toHaveTextContent("Ctrl+Shift+D"));
+    await waitFor(() => expect(chordButton("Split terminal right")).toHaveTextContent("Ctrl+Shift+T"));
   });
 
   it("warns when a hand-edited keymap binds one chord twice", () => {
@@ -91,6 +91,6 @@ describe("the keyboard panel", () => {
     useKeymap.setState({ error: "disk on fire" });
     render(<Keyboard />);
     expect(screen.getByRole("status")).toHaveTextContent("disk on fire");
-    expect(chordButton("Split right")).toHaveTextContent("Ctrl+Shift+D");
+    expect(chordButton("Split terminal right")).toHaveTextContent("Ctrl+Shift+T");
   });
 });

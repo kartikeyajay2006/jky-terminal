@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { DEFAULT_BINDINGS } from "../../platform/keymap";
 import { buildBanner, hexToAnsi, parseHex, shade } from "./banner";
 
 const ESC = "\u001b";
@@ -160,12 +161,20 @@ describe("the shortcut hints", () => {
   });
 
   it("does not promise a shortcut that is not bound", () => {
-    // Every shortcut named here is handled: the palette and tabs in App and
-    // useShortcuts, find and copy/paste in the Terminal component.
-    const named = banner().match(/Ctrl\+[A-Z0-9-]+/g) ?? [];
-    const bound = new Set(["Ctrl+K", "Ctrl+T", "Ctrl+W", "Ctrl+F", "Ctrl+1-9"]);
+    // Checked against the keymap rather than a list written out here, so a
+    // rebound default cannot leave the banner advertising the old one. The
+    // digit jump is the one shortcut deliberately outside the keymap — see
+    // the note in `useShortcuts`.
+    const named = banner().match(/Ctrl\+(?:Shift\+|Alt\+)*[A-Za-z0-9]+/g) ?? [];
+    const bound = new Set([...DEFAULT_BINDINGS.map((b) => b.default_chord), "Ctrl+1-9"]);
+
+    expect(named.length).toBeGreaterThan(0);
     for (const shortcut of named) {
       expect(bound, `${shortcut} is advertised but not bound`).toContain(shortcut);
     }
+  });
+
+  it("names the split, so the one shortcut people would not guess is on screen", () => {
+    expect(banner()).toContain("Ctrl+Shift+T");
   });
 });

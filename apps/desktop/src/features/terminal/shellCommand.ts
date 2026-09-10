@@ -70,7 +70,14 @@ export function encodeCommand(command: ShellCommand): string {
 
 export interface CommandResult {
   ok: boolean;
-  /** One line, printed back into the terminal. */
+  /**
+   * What to print back into the terminal.
+   *
+   * Usually one line. A listing — `jky history`, `jky workspace` — is several,
+   * separated by `\n`; `renderResult` turns those into the carriage returns a
+   * terminal needs, because a bare newline in a pty leaves the next line
+   * starting wherever the last one ended.
+   */
   message: string;
 }
 
@@ -93,7 +100,10 @@ export function renderResult(result: CommandResult, accent: string): string {
   const reset = `${ESC}[0m`;
   const tint = result.ok ? colour(accent) : `${ESC}[38;2;255;77;106m`;
   const glyph = result.ok ? "✓" : "✗";
-  return `\r\n  ${tint}${glyph}${reset} ${result.message}\r\n`;
+  // Every line after the first is indented past the glyph, so a listing reads
+  // as one answer rather than as output that lost its left margin.
+  const body = result.message.split("\n").join(`\r\n    `);
+  return `\r\n  ${tint}${glyph}${reset} ${body}\r\n`;
 }
 
 function colour(hex: string): string {

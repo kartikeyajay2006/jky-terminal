@@ -106,9 +106,13 @@ mod tests {
 
     #[test]
     fn a_refused_rebind_changes_nothing() {
+        // Compared against the default rather than a chord written out here,
+        // so changing a default does not silently make this assert the wrong
+        // thing.
         let (_d, k) = keymap();
+        let before = chord_of(&keyboard_logic(&k).unwrap(), "pane-split-right");
         let _ = bind_logic(&k, "pane-split-right", "Ctrl+T");
-        assert_eq!(chord_of(&keyboard_logic(&k).unwrap(), "pane-split-right"), "Ctrl+Shift+D");
+        assert_eq!(chord_of(&keyboard_logic(&k).unwrap(), "pane-split-right"), before);
     }
 
     #[test]

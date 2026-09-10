@@ -1,4 +1,5 @@
 import { useNav } from "../../app/navStore";
+import { chordFor } from "../../app/keymapStore";
 import { useTabs } from "../../app/tabStore";
 import { THEMES, applyTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { useOpenGame } from "../games/openStore";
@@ -10,15 +11,35 @@ import { runShellCommand } from "../terminal/runShellCommand";
 import { byReminderTime, type CommandResult } from "../terminal/shellCommand";
 import type { GameId } from "../games/scores";
 import type { Direction } from "../terminal/panes/tree";
+import { getPlatform, type Folder, type RemoteHost, type SavedWorkspace } from "../../platform";
 
 export type PaletteGroup =
   | "Go to"
   | "Games"
   | "Terminal"
+  | "Workspaces"
+  | "Remote"
+  | "Editor"
   | "Theme"
   | "Notes"
   | "Todos"
   | "Reminders";
+
+/**
+ * What the palette cannot read for itself.
+ *
+ * Workspaces and hosts live behind IPC, and `buildCommands` is called while
+ * the palette is opening — so they are fetched by the palette and handed in.
+ * Absent means the list is built without them rather than not built at all: a
+ * palette that waited for a disk read before drawing would be a palette that
+ * feels slow on the one keystroke that has to feel instant.
+ */
+export interface PaletteContext {
+  workspaces?: SavedWorkspace[];
+  activeWorkspace?: string | null;
+  hosts?: RemoteHost[];
+  folders?: Folder[];
+}
 
 /** A command that needs a line of text before it can run. */
 export interface PaletteAsk {
@@ -45,7 +66,7 @@ export interface PaletteCommand {
 }
 
 /** The whole app, as a flat list of things you can do from one box. */
-export function buildCommands(): PaletteCommand[] {
+export function buildCommands(context: PaletteContext = {}): PaletteCommand[] {
   const nav = useNav.getState();
   const out: PaletteCommand[] = [];
 
@@ -95,6 +116,8 @@ export function buildCommands(): PaletteCommand[] {
   // --- settings panels ---
   for (const panel of [
     { id: "appearance", label: "Appearance" },
+    { id: "terminal", label: "Terminal" },
+    { id: "keyboard", label: "Keyboard" },
     { id: "providers", label: "Providers" },
     { id: "commands", label: "Commands" },
   ]) {
@@ -129,7 +152,7 @@ export function buildCommands(): PaletteCommand[] {
     id: "term:new",
     label: "New terminal",
     group: "Terminal",
-    hint: "Ctrl+T",
+    hint: chordFor("tab-new"),
     run: () => {
       const tabs = useTabs.getState();
       tabs.openTab("terminal", `Terminal ${tabs.tabs.length + 1}`);
@@ -141,8 +164,18 @@ export function buildCommands(): PaletteCommand[] {
   // palette can do everything the shortcuts do — which is what makes the
   // shortcuts discoverable rather than folklore.
   const splits: Array<{ id: string; label: string; hint: string; dir: Direction }> = [
-    { id: "term:split-right", label: "Split terminal right", hint: "Ctrl+Shift+D", dir: "row" },
-    { id: "term:split-down", label: "Split terminal down", hint: "Ctrl+Shift+E", dir: "column" },
+    {
+      id: "term:split-right",
+      label: "Split terminal right",
+      hint: chordFor("pane-split-right"),
+      dir: "row",
+    },
+    {
+      id: "term:split-down",
+      label: "Split terminal down",
+      hint: chordFor("pane-split-down"),
+      dir: "column",
+    },
   ];
   for (const split of splits) {
     out.push({
@@ -163,7 +196,7 @@ export function buildCommands(): PaletteCommand[] {
     id: "term:close-pane",
     label: "Close terminal pane",
     group: "Terminal",
-    hint: "Ctrl+Shift+W",
+    hint: chordFor("pane-close"),
     run: () => {
       const state = useTabs.getState();
       const tab = state.tabs.find((t) => t.id === state.activeId);
@@ -174,11 +207,81 @@ export function buildCommands(): PaletteCommand[] {
     id: "term:close",
     label: "Close terminal tab",
     group: "Terminal",
-    hint: "Ctrl+W",
+    hint: chordFor("tab-close"),
     run: () => {
       const { activeId, closeTab } = useTabs.getState();
       if (activeId) closeTab(activeId);
     },
+  });
+
+  // --- workspaces, hosts and folders ---
+  //
+  // These are the things the palette can only know by being told. Each row
+  // goes through the same call the section behind it uses, so switching a
+  // workspace from here and clicking it there are one code path.
+  for (const workspace of context.workspaces ?? []) {
+    out.push({
+      id: `wsp:${workspace.id}`,
+      label:
+        workspace.id === context.activeWorkspace
+          ? `${workspace.name} (current)`
+          : workspace.name,
+      group: "Workspaces",
+      hint: `${workspace.folders.length} folders`,
+      run: () => {
+        void getPlatform()
+          .workspaces.activate(workspace.id)
+          .then((applied) => {
+            const tabs = useTabs.getState();
+            for (let i = 0; i < applied.workspace.terminals; i += 1) {
+              tabs.openTab("terminal", `${applied.workspace.name} ${i + 1}`);
+            }
+            nav.go(applied.workspace.terminals > 0 ? "terminal" : "editor");
+          })
+          .catch(() => nav.go("workspaces"));
+      },
+    });
+  }
+  out.push({
+    id: "wsp:manage",
+    label: "Manage workspaces",
+    group: "Workspaces",
+    run: () => nav.go("workspaces"),
+  });
+
+  for (const host of context.hosts ?? []) {
+    out.push({
+      id: `host:${host.id}`,
+      label: `Connect to ${host.label || host.address}`,
+      group: "Remote",
+      hint: host.user ? `${host.user}@${host.address}` : host.address,
+      run: () => {
+        useTabs.getState().openRemoteTab(host.id, host.label || host.address);
+        nav.go("terminal");
+      },
+    });
+  }
+  out.push({
+    id: "host:manage",
+    label: "Manage saved machines",
+    group: "Remote",
+    run: () => nav.go("remote"),
+  });
+
+  for (const folder of context.folders ?? []) {
+    out.push({
+      id: `folder:${folder.root}`,
+      label: `Open ${folder.name} in the editor`,
+      group: "Editor",
+      hint: folder.available ? folder.root : "missing",
+      run: () => nav.go("editor"),
+    });
+  }
+  out.push({
+    id: "editor:open",
+    label: "Open a folder",
+    group: "Editor",
+    run: () => nav.go("editor"),
   });
 
   // --- writing, through the same verbs the shell sends ---

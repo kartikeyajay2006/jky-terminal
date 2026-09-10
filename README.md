@@ -109,12 +109,14 @@ silently cost one commit in three.
 
 ## Splits
 
-A tab holds as many terminals as you want, divided by lines you can drag.
+A tab is **one** terminal until you ask for another. Splitting is deliberate
+and stays that way — nothing arrives split, and a layout comes back only
+because you saved it in a workspace by name.
 
 | | |
 |---|---|
-| `Ctrl+Shift+D` | split right |
-| `Ctrl+Shift+E` | split down |
+| `Ctrl+Shift+T` | split right — the shifted pair of `Ctrl+T`, which opens a whole terminal |
+| `Ctrl+Shift+D` | split **d**own |
 | `Ctrl+Shift+W` | close this pane |
 | `Ctrl+Shift+←↑↓→` | move between panes |
 

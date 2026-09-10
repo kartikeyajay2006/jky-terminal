@@ -1,4 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
+import { runShellCommand } from "./runShellCommand";
+import { useTabs } from "../../app/tabStore";
+import { useNav } from "../../app/navStore";
+import { getPlatform } from "../../platform";
+import { leaves } from "./panes/tree";
 import {
   byReminderTime,
   decodeCommand,
@@ -171,5 +176,135 @@ describe("renderResult", () => {
 
   it("includes the message", () => {
     expect(renderResult(ok("note “x” created"), "#00e5ff")).toContain("note “x” created");
+  });
+});
+
+describe("the commands added for what the app grew", () => {
+  beforeEach(async () => {
+    useTabs.setState({ tabs: [], activeId: null });
+    useNav.setState({ pending: null });
+    const api = getPlatform().workspaces;
+    for (const w of (await api.list()).workspaces) await api.forget(w.id);
+    for (const h of await getPlatform().remote.list()) {
+      await getPlatform().remote.forget(h.id);
+    }
+    await getPlatform().history.clear();
+  });
+
+  it("splits the terminal, right by default and down when asked", async () => {
+    const id = useTabs.getState().openTab("terminal", "one");
+
+    expect((await runShellCommand({ verb: "split", args: [] })).ok).toBe(true);
+    expect(leaves(useTabs.getState().tabs[0].layout)).toHaveLength(2);
+
+    await runShellCommand({ verb: "split", args: ["down"] });
+    expect(leaves(useTabs.getState().tabs[0].layout)).toHaveLength(3);
+    expect(useTabs.getState().tabs[0].id).toBe(id);
+  });
+
+  it("refuses a split direction it does not know", async () => {
+    useTabs.getState().openTab("terminal", "one");
+    const result = await runShellCommand({ verb: "split", args: ["sideways"] });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain("usage");
+  });
+
+  it("says so rather than splitting a stranger when no terminal is active", async () => {
+    const result = await runShellCommand({ verb: "split", args: [] });
+    expect(result.ok).toBe(false);
+  });
+
+  it("searches the history and prints the commands themselves", async () => {
+    // One per line, so the answer can be copied straight off the screen.
+    await getPlatform().history.record({
+      command: "docker ps -a",
+      cwd: "/",
+      code: 0,
+      at: Date.now(),
+      session: "pane-1",
+    });
+
+    const result = await runShellCommand({ verb: "history", args: ["dkrps"] });
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain("docker ps -a");
+  });
+
+  it("opens the history section when asked for nothing in particular", async () => {
+    const result = await runShellCommand({ verb: "history", args: [] });
+    expect(result.ok).toBe(true);
+    expect(useNav.getState().pending?.section).toBe("history");
+  });
+
+  it("says nothing matched rather than printing an empty list", async () => {
+    const result = await runShellCommand({ verb: "history", args: ["kubectl"] });
+    expect(result.ok).toBe(false);
+  });
+
+  it("lists workspaces and marks the one you are in", async () => {
+    await getPlatform().workspaces.save({
+      id: "w1",
+      name: "the repo",
+      folders: [],
+      terminal_dir: null,
+      terminals: 0,
+      host: null,
+      note: "",
+      last_used: 0,
+    });
+    await getPlatform().workspaces.activate("w1");
+
+    const result = await runShellCommand({ verb: "workspace", args: [] });
+    expect(result.message).toContain("the repo");
+    expect(result.message).toContain("▸");
+  });
+
+  it("switches to a workspace by name, opening what it asks for", async () => {
+    await getPlatform().workspaces.save({
+      id: "w1",
+      name: "the repo",
+      folders: [],
+      terminal_dir: null,
+      terminals: 2,
+      host: null,
+      note: "",
+      last_used: 0,
+    });
+
+    const result = await runShellCommand({ verb: "workspace", args: ["the", "repo"] });
+    expect(result.ok).toBe(true);
+    expect(useTabs.getState().tabs).toHaveLength(2);
+  });
+
+  it("says which workspace it could not find", async () => {
+    const result = await runShellCommand({ verb: "workspace", args: ["nope"] });
+    expect(result.ok).toBe(false);
+  });
+
+  it("lists saved machines and connects to one by name", async () => {
+    await getPlatform().remote.save({
+      id: "h1",
+      label: "production",
+      address: "example.com",
+      user: "deploy",
+      port: null,
+      identity_file: null,
+      jump: null,
+      last_used: 0,
+    });
+
+    expect((await runShellCommand({ verb: "host", args: [] })).message).toContain("production");
+
+    const result = await runShellCommand({ verb: "host", args: ["production"] });
+    expect(result.ok).toBe(true);
+    const tab = useTabs.getState().tabs[0];
+    expect(tab.remotes[tab.id]).toBe("h1");
+  });
+
+  it("reaches the sections that did not exist when open was written", async () => {
+    for (const section of ["history", "remote", "editor", "workspaces"]) {
+      const result = await runShellCommand({ verb: "open", args: [section] });
+      expect(result.ok, section).toBe(true);
+      expect(useNav.getState().pending?.section).toBe(section);
+    }
   });
 });

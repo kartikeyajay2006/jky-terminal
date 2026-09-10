@@ -66,8 +66,12 @@ describe("what the app leaves alone", () => {
   });
 
   it("does not claim a shifted key it has no binding for", () => {
-    expect(isAppShortcut(key({ key: "T", ctrlKey: true, shiftKey: true }))).toBe(false);
     expect(isAppShortcut(key({ key: "K", ctrlKey: true, shiftKey: true }))).toBe(false);
+    expect(isAppShortcut(key({ key: "Q", ctrlKey: true, shiftKey: true }))).toBe(false);
+  });
+
+  it("claims the split, which is Ctrl+T's shifted pair", () => {
+    expect(isAppShortcut(key({ key: "T", ctrlKey: true, shiftKey: true }))).toBe(true);
   });
 
   it("does not claim Ctrl+0, which is not a tab", () => {

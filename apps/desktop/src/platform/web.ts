@@ -190,7 +190,35 @@ const WEB_COMMANDS: CommandSpec[] = [
     usage: "jky open <section>",
     summary: "Jump to a section",
     detail:
-      "One of dashboard, terminal, assistant, games or settings. A second word opens a panel inside it, so jky open dashboard calendar goes straight there.",
+      "One of dashboard, terminal, history, remote, editor, workspaces, assistant, games, apps, developer or settings. A second word opens a panel inside it, so jky open dashboard calendar goes straight there.",
+  },
+  {
+    names: ["jky split"],
+    usage: "jky split [down]",
+    summary: "Divide this terminal in two",
+    detail:
+      "Puts another terminal beside this one, or below it with the word down. The same as Ctrl+Shift+T and Ctrl+Shift+D, for when your hands are already on the keys.",
+  },
+  {
+    names: ["jky history", "jky hist"],
+    usage: "jky history [text]",
+    summary: "Search everything you have run",
+    detail:
+      "Prints the closest matches without leaving the terminal. The text is matched as a subsequence, so dkrps finds docker ps. With no text it opens the History section instead.",
+  },
+  {
+    names: ["jky workspace", "jky ws"],
+    usage: "jky workspace [name]",
+    summary: "List your workspaces, or switch to one",
+    detail:
+      "With no name it prints every saved workspace and marks the one you are in. Give it a name and it opens that workspace's folders and terminals, exactly as clicking it would.",
+  },
+  {
+    names: ["jky host", "jky hosts"],
+    usage: "jky host [name]",
+    summary: "List saved machines, or open a terminal on one",
+    detail:
+      "With no name it prints every host you have saved. Give it one and a terminal opens on that machine, over the ssh this computer already has.",
   },
   {
     names: ["jky banner"],

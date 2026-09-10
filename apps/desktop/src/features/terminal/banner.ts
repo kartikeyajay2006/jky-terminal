@@ -150,7 +150,7 @@ const TAGLINE = "AI Terminal. Infinite Possibilities.";
  * app from it.
  */
 const HINTS =
-  "Ctrl+K  command palette    Ctrl+T  new terminal    Ctrl+W  close    Ctrl+F  find";
+  "Ctrl+K  palette    Ctrl+T  new terminal    Ctrl+Shift+T  split    Ctrl+W  close    Ctrl+F  find";
 
 export function buildBanner({ cols, version, palette }: BannerOptions): string {
   const stops = [palette.accent, palette.violet, palette.magenta]

@@ -20,7 +20,8 @@ describe("reading a keystroke", () => {
 
   it("finds the action a chord is bound to", () => {
     expect(actionFor(press("t", { ctrlKey: true }))).toBe("tab-new");
-    expect(actionFor(press("D", { ctrlKey: true, shiftKey: true }))).toBe("pane-split-right");
+    expect(actionFor(press("T", { ctrlKey: true, shiftKey: true }))).toBe("pane-split-right");
+    expect(actionFor(press("D", { ctrlKey: true, shiftKey: true }))).toBe("pane-split-down");
   });
 
   it("treats Cmd as Ctrl, so a keymap means the same on either machine", () => {
@@ -48,7 +49,7 @@ describe("reading a keystroke", () => {
   it("follows a rebind", () => {
     useKeymap.setState({ byChord: new Map([["Ctrl+Alt+2", "pane-split-right"]]) });
     expect(actionFor(press("2", { ctrlKey: true, altKey: true }))).toBe("pane-split-right");
-    expect(actionFor(press("D", { ctrlKey: true, shiftKey: true }))).toBeNull();
+    expect(actionFor(press("T", { ctrlKey: true, shiftKey: true }))).toBeNull();
   });
 });
 
