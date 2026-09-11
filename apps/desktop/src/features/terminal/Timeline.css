@@ -1,0 +1,65 @@
+/*
+ * The session, down the left edge of the terminal.
+ *
+ * Narrow on purpose: it is read by glancing, not by studying, and every pixel
+ * it takes is a pixel of output. Left rather than right because output arrives
+ * on the left and the eye is already there.
+ */
+.tline {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 2px;
+  flex: 0 0 auto;
+  width: 10px;
+  padding: var(--s2) 2px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-right: 1px solid var(--line);
+  background: var(--surface);
+  scrollbar-width: none;
+}
+
+.tline::-webkit-scrollbar {
+  display: none;
+}
+
+.tline__tick {
+  flex: 0 0 auto;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+
+.tline__tick:hover,
+.tline__tick:focus-visible {
+  opacity: 1;
+  transform: scaleX(1.6);
+  outline: none;
+}
+
+.tline__tick[data-tone="ok"] {
+  background: var(--accent-dim);
+}
+
+/* A failure is the thing you are looking for when you look at this at all. */
+.tline__tick[data-tone="failed"] {
+  background: var(--danger);
+  opacity: 1;
+}
+
+.tline__tick[data-tone="running"] {
+  background: var(--accent);
+  opacity: 1;
+  animation: jky-pulse 1.4s var(--ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tline__tick[data-tone="running"] {
+    animation: none;
+  }
+}

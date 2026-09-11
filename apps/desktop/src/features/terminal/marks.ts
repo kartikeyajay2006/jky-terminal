@@ -111,6 +111,23 @@ export class MarkTracker {
     this.open = null;
   }
 
+  /**
+   * The block most recently touched: the one running, or the last there is.
+   *
+   * Not `last()`, which is the most recently *finished* one — this is
+   * whichever block a command's two escape sequences are describing right
+   * now, finished or not.
+   *
+   * The two escape sequences that describe a command arrive separately — one
+   * carries where and when, the other carries what was typed — and nothing
+   * guarantees which lands first. Anything wanting both has to be able to ask
+   * for the latest block whichever it is, rather than assuming the one it
+   * expected is the one that is open.
+   */
+  get latest(): CommandBlock | null {
+    return this.open ?? this.blocks[this.blocks.length - 1] ?? null;
+  }
+
   /** The command currently running, if the shell has told us one is. */
   get current(): CommandBlock | null {
     return this.open;

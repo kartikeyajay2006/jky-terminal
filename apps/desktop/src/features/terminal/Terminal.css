@@ -3,10 +3,20 @@
    off the bottom the moment one appears. */
 .term {
   flex: 1;
-  width: 100%;
+  /* `min-width`, not `width: 100%`: it shares a row with the session strip,
+     and a child asking for the full width would push the strip off. */
+  min-width: 0;
   min-height: 0;
   padding: var(--s3);
   background: var(--ground);
+}
+
+/* The scrollback and the strip that describes it, side by side. This takes
+   what the column has left over; the terminal takes what the strip does not. */
+.term__row {
+  display: flex;
+  flex: 1;
+  min-height: 0;
 }
 
 /* xterm sizes its own viewport; give the scrollbar the app's palette rather

@@ -12,6 +12,8 @@ import { getPlatform } from "../../platform";
 import { TYPE_EVENT } from "./typeEvent";
 import { useCompletion } from "./complete/useCompletion";
 import { useLivePanel } from "./useLivePanel";
+import { Timeline } from "./Timeline";
+import { pushTick, type Tick } from "./ticks";
 import { Suggestions } from "./complete/Suggestions";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
@@ -78,6 +80,14 @@ export function Terminal({
    * under its own history, and the one you want is the one you just ran.
    */
   const [found, setFound] = useState<Recognised | null>(null);
+  /**
+   * Every command this terminal has run, as the strip draws them.
+   *
+   * Per pane rather than app-wide: a strip is the shape of *this* session,
+   * and mixing two terminals' commands into one would make it the shape of
+   * nothing.
+   */
+  const [ticks, setTicks] = useState<Tick[]>([]);
   /** Shown in the panel's head, so it is anchored to what was typed. */
   const [ranCommand, setRanCommand] = useState("");
 
@@ -109,6 +119,8 @@ export function Terminal({
       setFound(recognised);
       if (recognised) setRanCommand(completion.command);
     },
+    // One mark on the session strip per finished command.
+    (tick) => setTicks((was) => pushTick(was, tick)),
     host,
   );
 
@@ -248,17 +260,26 @@ export function Terminal({
 
   return (
     <div className="term__wrap" data-ring={showFocusRing ? "true" : undefined}>
-      <div
-        className="term"
-        role="application"
-        aria-label="Terminal"
-        data-pane-id={paneId}
-        ref={container}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          setMenuAt({ x: e.clientX, y: e.clientY });
-        }}
-      />
+      {/* A row inside the column, so the strip stands beside the scrollback
+          and stops where it stops — the failure offer and the panel below are
+          not part of the session's shape and should not be striped. */}
+      <div className="term__row">
+        {/* The session, down the left edge. Absent until something has run:
+            an empty strip is a column of nothing taking width from output. */}
+        <Timeline ticks={ticks} onJump={term.scrollToLine} />
+
+        <div
+          className="term"
+          role="application"
+          aria-label="Terminal"
+          data-pane-id={paneId}
+          ref={container}
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setMenuAt({ x: e.clientX, y: e.clientY });
+          }}
+        />
+      </div>
 
       {/* Under the terminal rather than inside it: the offer needs buttons and
           focus, and xterm draws characters. It sits in the same box so it

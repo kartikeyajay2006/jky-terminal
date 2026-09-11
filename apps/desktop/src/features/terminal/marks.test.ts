@@ -124,3 +124,33 @@ describe("tracking commands", () => {
     expect(t.list).toHaveLength(0);
   });
 });
+
+describe("the block a command's two sequences describe", () => {
+  it("is the one running while one is", () => {
+    // The two sequences that describe a command arrive separately and
+    // nothing guarantees which lands first, so anything wanting both has to
+    // be able to ask for the latest block whichever it is.
+    const t = new MarkTracker();
+    t.prompt(at(1), 0);
+    t.output(at(2), 10);
+
+    // `startedAt` is when output began, which is when the command actually
+    // started — not when the prompt that invited it appeared.
+    expect(t.latest?.startedAt).toBe(10);
+    expect(t.latest?.end).toBeNull();
+  });
+
+  it("is the last one there is once it has finished", () => {
+    const t = new MarkTracker();
+    t.prompt(at(1), 0);
+    t.output(at(2), 10);
+    t.done(at(3), 0, 20);
+
+    expect(t.latest?.end?.line).toBe(3);
+    expect(t.latest?.finishedAt).toBe(20);
+  });
+
+  it("is nothing before anything has happened", () => {
+    expect(new MarkTracker().latest).toBeNull();
+  });
+});

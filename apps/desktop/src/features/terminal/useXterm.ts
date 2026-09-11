@@ -17,6 +17,7 @@ import { decodeDone, outputOf, type CommandDone } from "./commandFailure";
 import { MarkTracker, parseMark } from "./marks";
 import { useActivity } from "./activity";
 import type { Completion } from "./recognise";
+import type { Tick } from "./ticks";
 import { runShellCommand } from "./runShellCommand";
 import type { SearchHits } from "./TerminalSearch";
 
@@ -61,6 +62,8 @@ export interface TerminalControls {
   paste: () => Promise<boolean>;
   clear: () => void;
   focus: () => void;
+  /** Bring one line of the scrollback into view, for the session strip. */
+  scrollToLine: (line: number) => void;
 
   /**
    * What is typed at the prompt right now, and where the cursor is in it.
@@ -123,6 +126,14 @@ export function useXterm(
    */
   onDone?: (completion: Completion) => void,
   /**
+   * Called with each finished command, for the session strip.
+   *
+   * Separate from `onDone`, which is about what a command *printed*: this is
+   * about when it ran and how long it took, and the two are wanted by
+   * different parts of the app.
+   */
+  onBlock?: (tick: Tick) => void,
+  /**
    * A saved host to open this terminal on, rather than a local shell.
    *
    * The id of a host, never a command line: the argument list is built in
@@ -139,6 +150,8 @@ export function useXterm(
   failureHandler.current = onFailure;
   const doneHandler = useRef(onDone);
   doneHandler.current = onDone;
+  const blockHandler = useRef(onBlock);
+  blockHandler.current = onBlock;
   /**
    * The buffer line the last command's output began after.
    *
@@ -376,6 +389,23 @@ export function useXterm(
             : null;
 
         if (done.code !== 0) failureHandler.current?.(done);
+
+        // One mark for the session strip. The timing and the line come from
+        // the OSC 133 marks and the command from this report — two sequences
+        // describing one command, which is why `latest` exists.
+        const block = marks.current.latest;
+        blockHandler.current?.({
+          id: `${from}-${Date.now()}`,
+          command: done.command,
+          code: done.code,
+          took:
+            block?.startedAt != null
+              ? Math.max(0, (block.finishedAt ?? Date.now()) - block.startedAt)
+              : null,
+          line: from,
+          at: Date.now(),
+        });
+
         doneHandler.current?.({
           command: done.command,
           code: done.code,
@@ -624,6 +654,13 @@ export function useXterm(
       },
       clear: () => term.current?.clear(),
       focus: () => term.current?.focus(),
+      scrollToLine: (line) => {
+        const xterm = term.current;
+        if (!xterm) return;
+        // A little above it, so the command is not flush against the top edge
+        // with its own output out of sight below.
+        xterm.scrollToLine(Math.max(0, Math.floor(line) - 2));
+      },
 
       promptInput: () => {
         const xterm = term.current;
