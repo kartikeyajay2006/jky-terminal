@@ -197,3 +197,101 @@
   color: var(--text-muted);
   font-size: 12px;
 }
+
+/* ---- what the terminals are doing ---------------------------------------- */
+
+/*
+ * Motion that reports rather than decorates.
+ *
+ * The shell says where a command begins and how it ended, so none of this is
+ * a guess off the screen — which is what lets it be quiet enough to trust. A
+ * terminal that estimated would mark the wrong things, and a mark you cannot
+ * trust is worse than none.
+ */
+@keyframes jky-working {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+
+@keyframes jky-flash {
+  0% { opacity: 0; }
+  30% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/*
+ * A thread of light along the top of the window while something is running.
+ *
+ * At the very top because that is the one place nothing else uses, and out of
+ * the way of every pane — it says "still going" without taking a pixel from
+ * what you are reading.
+ */
+.shell::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--normal) var(--ease);
+}
+
+.shell[data-activity="running"]::before {
+  opacity: 1;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--accent),
+    var(--magenta),
+    var(--accent),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: jky-working 1.6s linear infinite;
+}
+
+/* A failure is a thing that happened rather than a state, so it passes. */
+.shell[data-activity="failed"]::before {
+  opacity: 1;
+  background: var(--danger);
+  animation: jky-flash 900ms var(--ease) 2;
+}
+
+/* The rail's own mark, for when the thread at the top is off screen. */
+.shell[data-activity="running"] .ident__mark {
+  box-shadow: 0 0 0 1px var(--accent), 0 0 14px var(--accent-glow);
+}
+
+.shell[data-activity="failed"] .ident__mark {
+  box-shadow: 0 0 0 1px var(--danger);
+}
+
+/* A tab you are not looking at is exactly where a long command and a failure
+   are easiest to miss, so each says so on its own. */
+.tabbar__tab[data-activity]::after {
+  content: "";
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  flex: 0 0 auto;
+}
+
+.tabbar__tab[data-activity="running"]::after {
+  background: var(--accent);
+  animation: jky-pulse 1.4s var(--ease) infinite;
+}
+
+.tabbar__tab[data-activity="failed"]::after {
+  background: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell[data-activity="running"]::before,
+  .shell[data-activity="failed"]::before,
+  .tabbar__tab[data-activity="running"]::after {
+    animation: none;
+  }
+}

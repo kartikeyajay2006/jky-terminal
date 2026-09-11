@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Rail } from "./Rail";
 import { useRail } from "./railStore";
+import { overallActivity, useActivity } from "../features/terminal/activity";
 import { StatusBar } from "./StatusBar";
 import { applyTheme, loadTheme, saveTheme, type ThemeId } from "./theme";
 import { Notifications } from "../features/notifications/Notifications";
@@ -19,6 +20,9 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
   // rail does — a rail that narrowed inside a column that did not would just
   // leave a gap.
   const collapsed = useRail((s) => s.collapsed);
+  // A command running somewhere, or one that failed. Read here rather than in
+  // the rail because the whole window answers to it.
+  const activity = overallActivity(useActivity((s) => s.panes));
 
   useEffect(() => {
     applyTheme(theme);
@@ -30,7 +34,13 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
   }
 
   return (
-    <div className="shell" data-rail={collapsed ? "collapsed" : undefined}>
+    <div
+      className="shell"
+      data-rail={collapsed ? "collapsed" : undefined}
+      // What the terminals are doing, said once at the top so anything below
+      // can answer to it without being handed the state.
+      data-activity={activity === "idle" ? undefined : activity}
+    >
       <Rail activeId={activeId} onSelect={onSelect ?? (() => {})} />
       <main className="shell__workspace">{children}</main>
       <StatusBar theme={theme} onThemeChange={changeTheme} shellName={shellLabel()} />

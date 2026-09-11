@@ -15,6 +15,7 @@ import { copyText, readText } from "./clipboard";
 import { decodeCommand, renderResult } from "./shellCommand";
 import { decodeDone, outputOf, type CommandDone } from "./commandFailure";
 import { MarkTracker, parseMark } from "./marks";
+import { useActivity } from "./activity";
 import type { Completion } from "./recognise";
 import { runShellCommand } from "./runShellCommand";
 import type { SearchHits } from "./TerminalSearch";
@@ -306,6 +307,17 @@ export function useXterm(
       if (parsed.kind === "prompt") marks.current.prompt(here, now);
       else if (parsed.kind === "output") marks.current.output(here, now);
       else marks.current.done(here, parsed.exitCode, now);
+
+      // The rest of the app learns what this terminal is doing from here.
+      // `C` is the shell saying a command's output is beginning, which is
+      // the moment it actually started running; `D` carries how it ended.
+      // Both are facts the shell reported, not guesses off the screen.
+      if (scrollbackKey) {
+        if (parsed.kind === "output") useActivity.getState().started(scrollbackKey);
+        else if (parsed.kind === "done") {
+          useActivity.getState().finished(scrollbackKey, parsed.exitCode);
+        }
+      }
 
       return true;
     });

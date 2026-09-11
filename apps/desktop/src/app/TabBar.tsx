@@ -1,7 +1,19 @@
-import { useTabs } from "./tabStore";
+import { useTabs, type Tab } from "./tabStore";
+import { leaves } from "../features/terminal/panes/tree";
+import { useActivity, type Activity } from "../features/terminal/activity";
 
 export function TabBar() {
   const tabs = useTabs((s) => s.tabs);
+  const panes = useActivity((s) => s.panes);
+
+  /** What the terminals inside one tab are doing, worst first. */
+  const tabActivity = (tab: Tab): Activity | null => {
+    const inside = leaves(tab.layout).map((pane) => panes[pane] ?? "idle");
+    if (inside.includes("failed")) return "failed";
+    if (inside.includes("running")) return "running";
+    return null;
+  };
+
   const activeId = useTabs((s) => s.activeId);
   const focusTab = useTabs((s) => s.focusTab);
   const closeTab = useTabs((s) => s.closeTab);
@@ -23,6 +35,10 @@ export function TabBar() {
             aria-selected={tab.id === activeId}
             aria-keyshortcuts="Delete"
             className="tabbar__tab"
+            // What the terminals in this tab are doing. A tab you are not
+            // looking at is exactly where a long command and a failure are
+            // easiest to miss.
+            data-activity={tabActivity(tab) ?? undefined}
             onClick={(e) => {
               if ((e.target as HTMLElement).dataset.close === "true") closeTab(tab.id);
               else focusTab(tab.id);

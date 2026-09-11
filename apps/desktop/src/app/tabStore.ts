@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { getPlatform } from "../platform";
+import { useActivity } from "../features/terminal/activity";
 import {
   closeLeaf,
   focusAfterClose,
@@ -235,6 +236,7 @@ export const useTabs = create<TabState>((set, get) => ({
     const platform = getPlatform();
     for (const key of leaves(tabs[index].layout)) {
       void platform.scrollback.forget(key).catch(() => {});
+      useActivity.getState().forget(key);
     }
     set({ tabs: remaining, activeId: nextActive });
   },
@@ -279,6 +281,9 @@ export const useTabs = create<TabState>((set, get) => ({
     }
 
     void getPlatform().scrollback.forget(paneId).catch(() => {});
+    // And stop reporting what it was doing: a pane that has gone cannot
+    // still be running something.
+    useActivity.getState().forget(paneId);
     const focused = focusAfterClose(tab.layout, paneId) ?? leaves(layout)[0];
     const tabs = withTab(get().tabs, tabId, (t) => {
       const { [paneId]: _gone, ...remotes } = t.remotes;
