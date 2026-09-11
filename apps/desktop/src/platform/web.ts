@@ -571,6 +571,22 @@ export function createWebPlatform(): Platform {
   }
 
   const files: FilesApi = {
+    async preview(root, path) {
+      const tree = treeOf(root);
+      if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);
+      if (!tree.has(path)) throw new Error(`could not read \`${path}\``);
+
+      // There are no real bytes here, so it answers with the shape of one
+      // rather than inventing a picture.
+      const name = path.toLowerCase();
+      if (/\.(png|jpe?g|gif|webp|bmp|ico|avif)$/.test(name)) {
+        return { kind: "image" as const, mime: "image/png", size: 0, data: null, note: "the browser build has no bytes to draw" };
+      }
+      if (name.endsWith(".pdf")) {
+        return { kind: "pdf" as const, mime: "application/pdf", size: 0, data: null, note: "PDFs cannot be shown in this window yet" };
+      }
+      return { kind: "binary" as const, mime: "application/octet-stream", size: 0, data: null, note: "there is no useful way to show this" };
+    },
     async create(root, path, folder) {
       const tree = treeOf(root);
       if (escapes(path)) throw new Error(`\`${path}\` is outside the open folder`);

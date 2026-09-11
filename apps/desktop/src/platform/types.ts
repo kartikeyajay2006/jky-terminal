@@ -252,7 +252,25 @@ export interface FileEntry {
  * anything that resolves outside it. Until a folder is opened, nothing here
  * can reach anything at all.
  */
+/** What a file that cannot be edited turns out to be. */
+export interface FilePreview {
+  kind: "image" | "pdf" | "binary";
+  mime: string;
+  size: number;
+  /** Base64 bytes, for images small enough to draw. */
+  data?: string | null;
+  /** Why there are none, when there are none. */
+  note?: string | null;
+}
+
 export interface FilesApi {
+  /**
+   * What a file is, when it is not one the editor can edit.
+   *
+   * The same bytes `read` returns, through the same checks — it differs only
+   * in what it does with something that is not UTF-8.
+   */
+  preview(root: string, path: string): Promise<FilePreview>;
   /** Make an empty file, or a directory. Refuses a name already taken. */
   create(root: string, path: string, folder: boolean): Promise<void>;
   /** Rename or move, inside one open folder. */

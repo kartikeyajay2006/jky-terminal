@@ -317,6 +317,13 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "files_folders".to_string(),
         "files_list".to_string(),
         "files_open_folder".to_string(),
+        // What a file is, when it is not one the editor can edit. It reads
+        // the same bytes `files_read` does through the same two checks and
+        // differs only in what it does with something that is not UTF-8: an
+        // image comes back as bytes to draw, anything else comes back named
+        // and measured. It writes nothing, and it is not a wider reach than
+        // reading text — the same file, the same fence, a different answer.
+        "files_preview".to_string(),
         "files_read".to_string(),
         "files_rename".to_string(),
         "files_write".to_string(),

@@ -1,4 +1,4 @@
-use jky_files::{Entry, FileError, Workspace};
+use jky_files::{Entry, FileError, Preview, Workspace};
 use jky_pty::home_dir;
 use jky_settings::SettingsStore;
 use serde::Serialize;
@@ -146,6 +146,21 @@ pub fn files_write(
     text: String,
 ) -> Result<(), String> {
     workspace(state.settings.as_ref(), &root)?.write(&path, &text).map_err(|e| e.to_string())
+}
+
+/// What a file is, when it is not one the editor can edit.
+///
+/// Reads the same bytes `files_read` does, through the same two checks, and
+/// differs only in what it does with a file that is not UTF-8: an image comes
+/// back as bytes to draw, anything else comes back named and measured. It
+/// writes nothing.
+#[tauri::command]
+pub fn files_preview(
+    state: State<'_, AppState>,
+    root: String,
+    path: String,
+) -> Result<Preview, String> {
+    workspace(state.settings.as_ref(), &root)?.preview(&path).map_err(|e| e.to_string())
 }
 
 /// Make a new, empty file, or a new directory.

@@ -373,3 +373,136 @@ describe("making, renaming and removing", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("not empty");
   });
 });
+
+describe("files that cannot be edited", () => {
+  beforeEach(async () => {
+    await closeEverything();
+    await openSample();
+    vi.restoreAllMocks();
+  });
+
+  /** A file the browser tree holds but the editor cannot read as text. */
+  async function addBinary(path: string) {
+    // The browser build keeps one tree for the whole file, so a second test
+    // asking for the same name finds it already there — which is fine.
+    await getPlatform().files.create("/tmp/sample", path, false).catch(() => {});
+    vi.spyOn(getPlatform().files, "read").mockRejectedValue(
+      new Error(`\`${path}\` is not a file this editor can open`),
+    );
+  }
+
+  it("opens a picture instead of refusing it", async () => {
+    // Refusing left an error and an empty pane: no picture, and no
+    // explanation either.
+    await addBinary("shot.png");
+    vi.spyOn(getPlatform().files, "preview").mockResolvedValue({
+      kind: "image",
+      mime: "image/png",
+      size: 2048,
+      data: "iVBORw0KGgo=",
+    });
+
+    const user = userEvent.setup();
+    render(<Editor />);
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /shot\.png/ }));
+
+    const image = await screen.findByRole("img", { name: "shot.png" });
+    expect(image).toHaveAttribute("src", "data:image/png;base64,iVBORw0KGgo=");
+    expect(screen.getAllByRole("tab")).toHaveLength(1);
+  });
+
+  it("says plainly that it cannot be edited", async () => {
+    await addBinary("shot.png");
+    vi.spyOn(getPlatform().files, "preview").mockResolvedValue({
+      kind: "image",
+      mime: "image/png",
+      size: 2048,
+      data: "iVBORw0KGgo=",
+    });
+
+    const user = userEvent.setup();
+    render(<Editor />);
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /shot\.png/ }));
+
+    expect(await screen.findByText(/cannot be edited here/)).toBeInTheDocument();
+    // And no editor is offered for it.
+    expect(screen.queryByLabelText("Editing shot.png")).toBeNull();
+  });
+
+  it("opens a PDF as a card that says why it is not drawn", async () => {
+    await addBinary("scan.pdf");
+    vi.spyOn(getPlatform().files, "preview").mockResolvedValue({
+      kind: "pdf",
+      mime: "application/pdf",
+      size: 120_000,
+      data: null,
+      note: "PDFs cannot be shown in this window yet",
+    });
+
+    const user = userEvent.setup();
+    render(<Editor />);
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /scan\.pdf/ }));
+
+    expect(await screen.findByText("PDFs cannot be shown in this window yet")).toBeInTheDocument();
+    expect(screen.getByText("PDF")).toBeInTheDocument();
+    // Still a tab, still open — that is the whole point.
+    expect(screen.getAllByRole("tab")).toHaveLength(1);
+  });
+
+  it("marks the tab read-only, where the unsaved dot would be", async () => {
+    // The two can never both apply: a file that cannot change is never
+    // unsaved.
+    await addBinary("shot.png");
+    vi.spyOn(getPlatform().files, "preview").mockResolvedValue({
+      kind: "image",
+      mime: "image/png",
+      size: 10,
+      data: "iVBORw0KGgo=",
+    });
+
+    const user = userEvent.setup();
+    render(<Editor />);
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /shot\.png/ }));
+
+    expect(await screen.findByLabelText("read-only")).toBeInTheDocument();
+    expect(screen.queryByLabelText("unsaved changes")).toBeNull();
+  });
+
+  it("closes without asking, because there is nothing to lose", async () => {
+    await addBinary("shot.png");
+    vi.spyOn(getPlatform().files, "preview").mockResolvedValue({
+      kind: "image",
+      mime: "image/png",
+      size: 10,
+      data: "iVBORw0KGgo=",
+    });
+
+    const user = userEvent.setup();
+    render(<Editor />);
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /shot\.png/ }));
+    await screen.findByLabelText("read-only");
+
+    await user.click(screen.getAllByRole("tab")[0].querySelector("[data-close]")!);
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    await waitFor(() => expect(screen.queryByRole("tab")).toBeNull());
+  });
+
+  it("still reports a file that cannot be read at all", async () => {
+    // Preview is a second chance, not a way to swallow a real failure.
+    await addBinary("broken.bin");
+    vi.spyOn(getPlatform().files, "preview").mockRejectedValue(new Error("gone"));
+
+    const user = userEvent.setup();
+    render(<Editor />);
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /broken\.bin/ }));
+
+    expect(await screen.findByRole("alert")).toHaveTextContent("not a file this editor can open");
+    expect(screen.queryByRole("tab")).toBeNull();
+  });
+});

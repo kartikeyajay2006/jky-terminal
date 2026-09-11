@@ -5,6 +5,7 @@ import { FolderPicker } from "../../components/FolderPicker";
 import { UnsavedDialog, type Answer } from "./UnsavedDialog";
 import { TerminalMenu, type MenuPoint } from "../terminal/TerminalMenu";
 import { idOf, isDirty, keyOf, useEditor, type OpenFile } from "./editorStore";
+import { FileView } from "./FileView";
 import "./Editor.css";
 
 /** What the rename prompt is asking about. */
@@ -348,6 +349,13 @@ export function Editor() {
                   &bull;
                 </span>
               )}
+              {/* A file that cannot change can never be unsaved, so the dot's
+                  place carries the reason instead. */}
+              {file.preview && (
+                <span className="editor__ro" aria-label="read-only">
+                  &#9679;
+                </span>
+              )}
               <span className="editor__close" data-close="true" aria-hidden="true">
                 &times;
               </span>
@@ -371,7 +379,14 @@ export function Editor() {
           </p>
         )}
 
-        {current ? (
+        {!current ? (
+          <p className="editor__empty">Choose a file on the left.</p>
+        ) : current.preview ? (
+          // Open, and plainly not editable. Both halves matter: refusing to
+          // open it left an error and an empty pane, and opening it into
+          // CodeMirror would offer to edit bytes it cannot represent.
+          <FileView path={current.path} preview={current.preview} />
+        ) : (
           <CodeMirror
             key={idOf(current)}
             path={current.path}
@@ -382,8 +397,6 @@ export function Editor() {
             }}
             onSave={() => void useEditor.getState().save(idOf(current))}
           />
-        ) : (
-          <p className="editor__empty">Choose a file on the left.</p>
         )}
       </div>
 

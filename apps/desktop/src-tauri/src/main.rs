@@ -40,6 +40,7 @@ fn main() {
             files::files_list,
             files::files_read,
             files::files_write,
+            files::files_preview,
             files::files_create,
             files::files_rename,
             files::files_delete,

@@ -16,6 +16,7 @@ export type {
   CompleteApi,
   Completions,
   FileEntry,
+  FilePreview,
   FilesApi,
   Folder,
   LifecycleApi,

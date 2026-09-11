@@ -44,6 +44,51 @@ pub enum FileError {
 /// opened by accident should say so rather than freeze the app.
 pub const MAX_BYTES: u64 = 2 * 1024 * 1024;
 
+/// What a file that is not text turns out to be.
+///
+/// The editor refuses to *edit* anything it cannot decode, and that refusal
+/// is right — an editor that silently rewrote the bytes it could not read
+/// would corrupt the file on the next save. But refusing to *show* it is a
+/// different thing, and it left the person who clicked a `.jpeg` looking at
+/// an error and an empty pane.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum PreviewKind {
+    /// Shown as a picture.
+    Image,
+    /// Named and measured, not drawn: see the note on `Preview::data`.
+    Pdf,
+    /// Anything else that is not text.
+    Binary,
+}
+
+/// A file the editor can show but not edit.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+pub struct Preview {
+    pub kind: PreviewKind,
+    /// For the `data:` URL an image is drawn from.
+    pub mime: String,
+    pub size: u64,
+    /// The bytes, base64, for images small enough to be worth sending.
+    ///
+    /// Only images. A PDF would need `frame-src` widened to accept `data:`,
+    /// and the webview this ships against on Linux does not render PDFs
+    /// inline anyway — so that would be a hole in the one rule bought for a
+    /// feature that would not work. A PDF is named and measured instead, and
+    /// says plainly that it cannot be shown here.
+    pub data: Option<String>,
+    /// Why there are no bytes, when there are none.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
+}
+
+/// The largest picture worth sending over IPC.
+///
+/// The whole file crosses as base64 — a third larger than the bytes — and is
+/// then held in the window twice over. A photograph off a phone is under
+/// this; a raw scan is not, and is named rather than drawn.
+pub const MAX_PREVIEW_BYTES: u64 = 4 * 1024 * 1024;
+
 /// One entry in a listing.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct Entry {
@@ -306,6 +351,65 @@ impl Workspace {
         std::fs::remove_dir(&path).map_err(|e| FileError::Write {
             path: relative.to_string(),
             reason: e.to_string(),
+        })
+    }
+
+    /// What a file is, for something that cannot be edited.
+    ///
+    /// Reads the same bytes `read` does and is fenced by the same two checks;
+    /// it differs only in what it does with a file that is not UTF-8. Nothing
+    /// here can write.
+    pub fn preview(&self, relative: &str) -> Result<Preview, FileError> {
+        let path = self.resolve(relative)?;
+        let meta = std::fs::metadata(&path).map_err(|e| FileError::Read {
+            path: relative.to_string(),
+            reason: e.to_string(),
+        })?;
+
+        let name = relative.rsplit('/').next().unwrap_or(relative).to_lowercase();
+        let extension = name.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
+        let (kind, mime) = match extension {
+            "png" => (PreviewKind::Image, "image/png"),
+            "jpg" | "jpeg" => (PreviewKind::Image, "image/jpeg"),
+            "gif" => (PreviewKind::Image, "image/gif"),
+            "webp" => (PreviewKind::Image, "image/webp"),
+            "bmp" => (PreviewKind::Image, "image/bmp"),
+            "ico" => (PreviewKind::Image, "image/x-icon"),
+            "avif" => (PreviewKind::Image, "image/avif"),
+            "pdf" => (PreviewKind::Pdf, "application/pdf"),
+            _ => (PreviewKind::Binary, "application/octet-stream"),
+        };
+
+        let size = meta.len();
+        if kind != PreviewKind::Image {
+            let note = match kind {
+                PreviewKind::Pdf => "PDFs cannot be shown in this window yet",
+                _ => "there is no useful way to show this",
+            };
+            return Ok(Preview { kind, mime: mime.into(), size, data: None, note: Some(note.into()) });
+        }
+
+        if size > MAX_PREVIEW_BYTES {
+            return Ok(Preview {
+                kind,
+                mime: mime.into(),
+                size,
+                data: None,
+                note: Some("larger than this editor will show".into()),
+            });
+        }
+
+        let bytes = std::fs::read(&path).map_err(|e| FileError::Read {
+            path: relative.to_string(),
+            reason: e.to_string(),
+        })?;
+
+        Ok(Preview {
+            kind,
+            mime: mime.into(),
+            size,
+            data: Some(base64::Engine::encode(&base64::engine::general_purpose::STANDARD, &bytes)),
+            note: None,
         })
     }
 
@@ -625,5 +729,115 @@ mod change_tests {
 
         w.delete("link").unwrap();
         assert!(secret.exists(), "the file the link pointed at was deleted");
+    }
+}
+
+#[cfg(test)]
+mod preview_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    /// The smallest real PNG: one transparent pixel.
+    const PNG: &[u8] = &[
+        0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d, 0x49, 0x48, 0x44,
+        0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1f,
+        0x15, 0xc4, 0x89,
+    ];
+
+    fn workspace() -> (TempDir, Workspace) {
+        let d = TempDir::new().unwrap();
+        std::fs::write(d.path().join("shot.png"), PNG).unwrap();
+        std::fs::write(d.path().join("scan.pdf"), b"%PDF-1.4\n").unwrap();
+        std::fs::write(d.path().join("notes.md"), "hello\n").unwrap();
+        let w = Workspace::new(d.path()).unwrap();
+        (d, w)
+    }
+
+    #[test]
+    fn an_image_comes_back_with_its_bytes_and_its_type() {
+        // Enough to build a data: URL from, which is all the window needs —
+        // `img-src 'self' data:` already permits one.
+        let (_d, w) = workspace();
+        let preview = w.preview("shot.png").unwrap();
+
+        assert_eq!(preview.kind, PreviewKind::Image);
+        assert_eq!(preview.mime, "image/png");
+        assert_eq!(preview.size, PNG.len() as u64);
+        assert!(preview.data.is_some());
+        assert_eq!(preview.note, None);
+    }
+
+    #[test]
+    fn a_jpeg_is_an_image_however_it_is_spelled() {
+        let (d, w) = workspace();
+        for name in ["a.jpg", "b.jpeg", "c.JPEG"] {
+            std::fs::write(d.path().join(name), PNG).unwrap();
+            assert_eq!(w.preview(name).unwrap().mime, "image/jpeg", "{name}");
+        }
+    }
+
+    #[test]
+    fn a_pdf_is_named_and_measured_rather_than_drawn() {
+        // Drawing one would need frame-src widened to accept data:, and the
+        // webview this ships against on Linux does not render PDFs inline —
+        // a hole in the one rule bought for something that would not work.
+        let (_d, w) = workspace();
+        let preview = w.preview("scan.pdf").unwrap();
+
+        assert_eq!(preview.kind, PreviewKind::Pdf);
+        assert_eq!(preview.data, None);
+        assert!(preview.note.is_some());
+        assert!(preview.size > 0);
+    }
+
+    #[test]
+    fn anything_else_says_so_rather_than_pretending() {
+        let (d, w) = workspace();
+        std::fs::write(d.path().join("thing.bin"), [0xff, 0xd8, 0x00]).unwrap();
+        let preview = w.preview("thing.bin").unwrap();
+
+        assert_eq!(preview.kind, PreviewKind::Binary);
+        assert_eq!(preview.data, None);
+        assert!(preview.note.is_some());
+    }
+
+    #[test]
+    fn a_picture_too_large_to_send_is_named_instead_of_refused() {
+        let (d, w) = workspace();
+        std::fs::write(d.path().join("huge.png"), vec![0u8; (MAX_PREVIEW_BYTES + 1) as usize])
+            .unwrap();
+
+        let preview = w.preview("huge.png").unwrap();
+        assert_eq!(preview.kind, PreviewKind::Image);
+        assert_eq!(preview.data, None);
+        assert!(preview.note.is_some());
+    }
+
+    #[test]
+    fn preview_is_fenced_exactly_as_reading_is() {
+        // It reads the same bytes through the same resolver; the only
+        // difference is what it does with a file that is not UTF-8.
+        let (_d, w) = workspace();
+        for evil in ["../escape.png", "/etc/passwd", "src/../../escape"] {
+            assert!(w.preview(evil).is_err(), "{evil}");
+        }
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn preview_refuses_a_symlink_pointing_out_of_the_workspace() {
+        let (d, w) = workspace();
+        let outside = TempDir::new().unwrap();
+        std::fs::write(outside.path().join("secret.png"), PNG).unwrap();
+        std::os::unix::fs::symlink(outside.path().join("secret.png"), d.path().join("link.png"))
+            .unwrap();
+
+        assert!(matches!(w.preview("link.png"), Err(FileError::Outside(_))));
+    }
+
+    #[test]
+    fn a_missing_file_says_so() {
+        let (_d, w) = workspace();
+        assert!(w.preview("nowhere.png").is_err());
     }
 }

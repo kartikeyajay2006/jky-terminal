@@ -1,0 +1,110 @@
+.fileview {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+/* What it is, what it is called, and that it cannot be changed — one line,
+   above the thing itself, so the rule is read before the file is. */
+.fileview__bar {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  flex: 0 0 auto;
+  padding: var(--s2) var(--s3);
+  border-bottom: 1px solid var(--line);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+}
+
+.fileview__what {
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.fileview__name {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.fileview__size {
+  color: var(--text-dim);
+}
+
+.fileview__ro {
+  margin-left: auto;
+  white-space: nowrap;
+  color: var(--warn);
+}
+
+.fileview__body {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  place-items: center;
+  padding: var(--s5);
+  overflow: auto;
+}
+
+/* Contained rather than scaled up: a 16px icon blown across the pane tells
+   you less about it than seeing it at the size it really is. */
+.fileview__image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius);
+  /* A checker, so a transparent image is visibly transparent rather than
+     looking like it has a black background. */
+  background-image:
+    linear-gradient(45deg, var(--surface) 25%, transparent 25%),
+    linear-gradient(-45deg, var(--surface) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, var(--surface) 75%),
+    linear-gradient(-45deg, transparent 75%, var(--surface) 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0;
+}
+
+.fileview__card {
+  display: grid;
+  justify-items: center;
+  gap: var(--s2);
+  max-width: 42ch;
+  padding: var(--s6);
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-lg);
+}
+
+.fileview__glyph {
+  margin: 0;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--text-dim);
+}
+
+.fileview__title {
+  margin: 0;
+  font-family: var(--font-mono);
+  color: var(--text);
+  word-break: break-all;
+}
+
+.fileview__note {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.fileview__meta {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-dim);
+}

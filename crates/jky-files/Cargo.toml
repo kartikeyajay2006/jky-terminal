@@ -6,6 +6,7 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+base64 = "0.21"
 serde.workspace = true
 thiserror.workspace = true
 

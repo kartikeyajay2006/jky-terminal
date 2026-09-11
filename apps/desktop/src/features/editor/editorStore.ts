@@ -1,7 +1,15 @@
 import { create } from "zustand";
-import { getPlatform } from "../../platform";
+import { getPlatform, type FilePreview } from "../../platform";
 
-/** One file open in the editor. */
+/**
+ * One file open in the editor.
+ *
+ * Either something to edit or something only to look at. A picture and a PDF
+ * are open in exactly the sense a source file is — a tab, a name, the main
+ * pane — and differ in that nothing about them can be changed. Refusing to
+ * open them at all left somebody who clicked a `.jpeg` looking at an error
+ * and an empty pane.
+ */
 export interface OpenFile {
   /** Which folder it came from. Two folders may hold the same relative path. */
   root: string;
@@ -9,12 +17,17 @@ export interface OpenFile {
   /** As it was read, so "changed" is a comparison rather than a guess. */
   saved: string;
   text: string;
+  /** Present when the file can be shown but not edited. */
+  preview?: FilePreview;
 }
+
+/** Whether a file can be changed at all. */
+export const isReadOnly = (file: OpenFile) => file.preview !== undefined;
 
 /** A file's identity across folders. */
 export const keyOf = (root: string, path: string) => `${root} ${path}`;
 export const idOf = (file: OpenFile) => keyOf(file.root, file.path);
-export const isDirty = (file: OpenFile) => file.text !== file.saved;
+export const isDirty = (file: OpenFile) => !isReadOnly(file) && file.text !== file.saved;
 
 interface EditorState {
   open: OpenFile[];
@@ -70,8 +83,25 @@ export const useEditor = create<EditorState>((set, get) => ({
         active: id,
         error: null,
       }));
+      return;
     } catch (e) {
-      set({ error: e instanceof Error ? e.message : String(e) });
+      // Not text. That is a reason to show it rather than to refuse it, so
+      // ask what it is — one extra round trip, and only on the files that
+      // could not be read as text in the first place.
+      const preview = await getPlatform()
+        .files.preview(root, path)
+        .catch(() => null);
+
+      if (!preview) {
+        set({ error: e instanceof Error ? e.message : String(e) });
+        return;
+      }
+
+      set((s) => ({
+        open: [...s.open, { root, path, saved: "", text: "", preview }],
+        active: id,
+        error: null,
+      }));
     }
   },
 
@@ -80,12 +110,15 @@ export const useEditor = create<EditorState>((set, get) => ({
   },
 
   edit: (id, text) => {
-    set((s) => ({ open: s.open.map((f) => (idOf(f) === id ? { ...f, text } : f)) }));
+    set((s) => ({
+      open: s.open.map((f) => (idOf(f) === id && !isReadOnly(f) ? { ...f, text } : f)),
+    }));
   },
 
   save: async (id) => {
     const file = get().open.find((f) => idOf(f) === id);
-    if (!file) return false;
+    // Nothing to write, and nothing that could have changed.
+    if (!file || isReadOnly(file)) return false;
 
     try {
       await getPlatform().files.write(file.root, file.path, file.text);

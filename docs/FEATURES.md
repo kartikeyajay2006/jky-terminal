@@ -130,6 +130,16 @@ test for each. Folders are re-resolved per call, so one that was deleted or
 unplugged stops working rather than answering for a ghost, and it is shown as
 **missing** rather than quietly dropped.
 
+A file it cannot edit still **opens**. An image is drawn; a PDF or anything
+else binary opens as a card naming what it is and how big, and every one of
+them says plainly that it cannot be edited here. Refusing to open them left
+you with an error and an empty pane — no picture, and no explanation either.
+
+A PDF is named rather than drawn on purpose: showing one would mean widening
+`frame-src` to accept `data:`, and the webview this ships against on Linux
+does not render PDFs inline anyway — a hole in the one rule, bought for
+something that would not work.
+
 Reads are text-only and size-capped. An editor that silently rewrote the bytes
 it could not decode would corrupt the file on the next save, so a binary is
 refused rather than mangled.

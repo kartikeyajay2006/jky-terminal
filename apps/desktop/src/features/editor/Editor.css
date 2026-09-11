@@ -260,3 +260,10 @@
 .editor__name:focus-visible {
   outline: none;
 }
+
+/* A tab whose file cannot be changed. Where the unsaved dot would go, since
+   the two can never both apply. */
+.editor__ro {
+  color: var(--text-dim);
+  font-size: 0.55rem;
+}

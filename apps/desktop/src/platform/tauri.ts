@@ -48,6 +48,7 @@ import type {
   CompleteApi,
   Completions,
   FileEntry,
+  FilePreview,
   FilesApi,
   Folder,
   LifecycleApi,
@@ -209,6 +210,9 @@ export function createTauriPlatform(): Platform {
   };
 
   const files: FilesApi = {
+    async preview(root, path) {
+      return invoke<FilePreview>("files_preview", { root, path });
+    },
     async create(root, path, folder) {
       await invoke<void>("files_create", { root, path, folder });
     },
