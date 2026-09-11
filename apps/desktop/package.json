@@ -4,13 +4,14 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "dev": "node scripts/pdf-assets.mjs && vite",
+    "build": "node scripts/pdf-assets.mjs && tsc --noEmit && vite build",
     "test": "vitest run --passWithNoTests",
     "lint": "eslint src --max-warnings 0",
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
-    "dev:desktop": "tauri dev"
+    "dev:desktop": "tauri dev",
+    "pdf:assets": "node scripts/pdf-assets.mjs"
   },
   "dependencies": {
     "@codemirror/commands": "^6",
@@ -33,6 +34,7 @@
     "@xterm/addon-web-links": "^0.11.0",
     "@xterm/addon-webgl": "^0.18.0",
     "@xterm/xterm": "^5.5.0",
+    "pdfjs-dist": "^6.3.289",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^5.0.2"

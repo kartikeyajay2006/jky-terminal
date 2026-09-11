@@ -12,6 +12,19 @@ import { useEditor } from "./editorStore";
  * right one — is all around the editor rather than inside it, so a textarea
  * stands in.
  */
+/*
+ * pdf.js decodes to a canvas, which jsdom does not implement, and it is
+ * fetched as its own chunk at runtime. What belongs to this component is
+ * whether a PDF with bytes reaches the renderer at all.
+ */
+vi.mock("./PdfView", () => ({
+  PdfView: ({ name, data }: { name: string; data: string }) => (
+    <div data-testid="pdf" data-bytes={data}>
+      {name}
+    </div>
+  ),
+}));
+
 vi.mock("./CodeMirror", () => ({
   CodeMirror: ({
     path,
@@ -431,14 +444,13 @@ describe("files that cannot be edited", () => {
     expect(screen.queryByLabelText("Editing shot.png")).toBeNull();
   });
 
-  it("opens a PDF as a card that says why it is not drawn", async () => {
+  it("draws a PDF, rather than describing one", async () => {
     await addBinary("scan.pdf");
     vi.spyOn(getPlatform().files, "preview").mockResolvedValue({
       kind: "pdf",
       mime: "application/pdf",
       size: 120_000,
-      data: null,
-      note: "PDFs cannot be shown in this window yet",
+      data: "JVBERi0xLjQK",
     });
 
     const user = userEvent.setup();
@@ -446,7 +458,28 @@ describe("files that cannot be edited", () => {
     const tree = within(screen.getByLabelText("Files"));
     await user.click(await tree.findByRole("button", { name: /scan\.pdf/ }));
 
-    expect(await screen.findByText("PDFs cannot be shown in this window yet")).toBeInTheDocument();
+    // The renderer is a separate chunk fetched on demand and stood in for
+    // here; what this checks is that a PDF with bytes reaches it at all.
+    expect(await screen.findByTestId("pdf")).toHaveTextContent("scan.pdf");
+    expect(screen.getAllByRole("tab")).toHaveLength(1);
+  });
+
+  it("names a PDF too large to draw instead of trying", async () => {
+    await addBinary("huge.pdf");
+    vi.spyOn(getPlatform().files, "preview").mockResolvedValue({
+      kind: "pdf",
+      mime: "application/pdf",
+      size: 40_000_000,
+      data: null,
+      note: "larger than this editor will show",
+    });
+
+    const user = userEvent.setup();
+    render(<Editor />);
+    const tree = within(screen.getByLabelText("Files"));
+    await user.click(await tree.findByRole("button", { name: /huge\.pdf/ }));
+
+    expect(await screen.findByText("larger than this editor will show")).toBeInTheDocument();
     expect(screen.getByText("PDF")).toBeInTheDocument();
     // Still a tab, still open — that is the whole point.
     expect(screen.getAllByRole("tab")).toHaveLength(1);

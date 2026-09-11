@@ -108,3 +108,44 @@
   font-size: 11px;
   color: var(--text-dim);
 }
+
+/* ---- a PDF, drawn ---------------------------------------------------------- */
+
+/* Pages are a column to scroll, so the body stops centring them. */
+.fileview__body[data-kind="pdf"] {
+  display: block;
+  padding: var(--s4);
+}
+
+.pdfview {
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+}
+
+.pdfview__pages {
+  display: grid;
+  gap: var(--s3);
+  justify-items: center;
+  max-width: 100%;
+}
+
+/* White, because a page is paper. Everything around it stays dark. */
+.pdfview__page {
+  max-width: 100%;
+  height: auto;
+  background: #fff;
+  border-radius: var(--radius);
+  box-shadow: 0 6px 24px color-mix(in srgb, var(--ground) 80%, transparent);
+}
+
+.pdfview__say {
+  margin: 0;
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.pdfview__say--bad {
+  color: var(--danger);
+}

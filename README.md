@@ -39,7 +39,7 @@ pnpm dev:desktop
 | | | |
 |---|---|---|
 | ❯ | **Terminal** | A real pty. Split it any way. **Any command can become an app.** |
-| ✎ | **Editor** | CodeMirror 6, several folders at once, nothing lost unsaved |
+| ✎ | **Editor** | CodeMirror 6, several folders at once. Images and PDFs open too |
 | ▦ | **Workspaces** | Folders, terminals and a machine, saved under a name |
 | ⇄ | **Remote** | A terminal on another machine, over the `ssh` you already have |
 | ↺ | **History** | Every command you have run — `dkrps` finds `docker ps` |

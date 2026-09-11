@@ -1,5 +1,8 @@
+import { Suspense, lazy } from "react";
 import type { FilePreview } from "../../platform";
 import "./FileView.css";
+
+const PdfView = lazy(async () => ({ default: (await import("./PdfView")).PdfView }));
 
 /** Bytes, in the roughest unit that is still true. */
 export function sizeText(bytes: number): string {
@@ -44,8 +47,14 @@ export function FileView({ path, preview }: { path: string; preview: FilePreview
         <span className="fileview__ro">read-only — this cannot be edited here</span>
       </header>
 
-      <div className="fileview__body">
-        {preview.data ? (
+      <div className="fileview__body" data-kind={preview.kind}>
+        {preview.kind === "pdf" && preview.data ? (
+          // Fetched the first time somebody opens a PDF: the renderer is far
+          // too large to sit in the bundle of everyone who never does.
+          <Suspense fallback={<p className="pdfview__say">Loading the PDF viewer…</p>}>
+            <PdfView name={name} data={preview.data} />
+          </Suspense>
+        ) : preview.data ? (
           <img
             className="fileview__image"
             src={`data:${preview.mime};base64,${preview.data}`}

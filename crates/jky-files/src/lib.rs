@@ -69,13 +69,14 @@ pub struct Preview {
     /// For the `data:` URL an image is drawn from.
     pub mime: String,
     pub size: u64,
-    /// The bytes, base64, for images small enough to be worth sending.
+    /// The bytes, base64, for anything small enough that showing it is worth
+    /// the trip.
     ///
-    /// Only images. A PDF would need `frame-src` widened to accept `data:`,
-    /// and the webview this ships against on Linux does not render PDFs
-    /// inline anyway — so that would be a hole in the one rule bought for a
-    /// feature that would not work. A PDF is named and measured instead, and
-    /// says plainly that it cannot be shown here.
+    /// Images and PDFs. Both are drawn in the window — the PDF by a renderer
+    /// that turns its pages into pictures, which is what lets it be shown
+    /// without widening `frame-src` to accept `data:` and without depending
+    /// on a webview having its own PDF viewer. Anything else has no useful
+    /// picture, so it is named and measured instead.
     pub data: Option<String>,
     /// Why there are no bytes, when there are none.
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -381,12 +382,14 @@ impl Workspace {
         };
 
         let size = meta.len();
-        if kind != PreviewKind::Image {
-            let note = match kind {
-                PreviewKind::Pdf => "PDFs cannot be shown in this window yet",
-                _ => "there is no useful way to show this",
-            };
-            return Ok(Preview { kind, mime: mime.into(), size, data: None, note: Some(note.into()) });
+        if kind == PreviewKind::Binary {
+            return Ok(Preview {
+                kind,
+                mime: mime.into(),
+                size,
+                data: None,
+                note: Some("there is no useful way to show this".into()),
+            });
         }
 
         if size > MAX_PREVIEW_BYTES {
@@ -777,17 +780,30 @@ mod preview_tests {
     }
 
     #[test]
-    fn a_pdf_is_named_and_measured_rather_than_drawn() {
-        // Drawing one would need frame-src widened to accept data:, and the
-        // webview this ships against on Linux does not render PDFs inline —
-        // a hole in the one rule bought for something that would not work.
+    fn a_pdf_comes_back_with_its_bytes_to_be_drawn_from() {
+        // Drawn by a renderer that turns its pages into pictures, which is
+        // what lets it be shown without widening frame-src to accept data:
+        // and without depending on the webview having a PDF viewer.
         let (_d, w) = workspace();
         let preview = w.preview("scan.pdf").unwrap();
 
         assert_eq!(preview.kind, PreviewKind::Pdf);
+        assert_eq!(preview.mime, "application/pdf");
+        assert!(preview.data.is_some());
+        assert_eq!(preview.note, None);
+        assert!(preview.size > 0);
+    }
+
+    #[test]
+    fn a_pdf_too_large_to_send_is_named_instead() {
+        let (d, w) = workspace();
+        std::fs::write(d.path().join("huge.pdf"), vec![0u8; (MAX_PREVIEW_BYTES + 1) as usize])
+            .unwrap();
+
+        let preview = w.preview("huge.pdf").unwrap();
+        assert_eq!(preview.kind, PreviewKind::Pdf);
         assert_eq!(preview.data, None);
         assert!(preview.note.is_some());
-        assert!(preview.size > 0);
     }
 
     #[test]

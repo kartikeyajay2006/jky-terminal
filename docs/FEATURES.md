@@ -135,10 +135,17 @@ else binary opens as a card naming what it is and how big, and every one of
 them says plainly that it cannot be edited here. Refusing to open them left
 you with an error and an empty pane — no picture, and no explanation either.
 
-A PDF is named rather than drawn on purpose: showing one would mean widening
-`frame-src` to accept `data:`, and the webview this ships against on Linux
-does not render PDFs inline anyway — a hole in the one rule, bought for
-something that would not work.
+PDFs are **drawn**, page by page, by turning each one into a picture. That is
+not the obvious way round and it is the only one that works here: handing the
+document to the webview would mean widening `frame-src` to accept `data:` — a
+hole in the one rule — and the webview this ships against on Linux does not
+render PDFs inline anyway.
+
+The renderer is fetched the first time somebody opens a PDF. It is 1.7 MB,
+which is far too much to sit in the download of everyone who never opens one,
+and it stays out of the entry bundle entirely. Its font and character-map data
+is served from the app's own origin, because `connect-src 'self'` is the whole
+point and a renderer that wanted a CDN would be one this app could not use.
 
 Reads are text-only and size-capped. An editor that silently rewrote the bytes
 it could not decode would corrupt the file on the next save, so a binary is
