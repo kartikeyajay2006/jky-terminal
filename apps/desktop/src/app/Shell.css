@@ -1,6 +1,7 @@
 .shell {
   display: grid;
   grid-template-columns: 180px minmax(0, 1fr);
+  transition: grid-template-columns var(--normal) var(--ease);
   grid-template-rows: minmax(0, 1fr) 30px;
   grid-template-areas:
     "rail workspace"
@@ -19,6 +20,98 @@
   border-right: 1px solid var(--line);
   background: var(--surface);
   overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* ---- collapsing ---------------------------------------------------------- */
+
+/*
+ * Narrowed to its glyphs.
+ *
+ * The rail keeps its width in the grid, so this is one number in one place;
+ * everything inside follows from it. Collapsed is *narrow*, not gone: the
+ * sections stay one click away and the toggle stays on screen, because a
+ * control that hides itself is one you have to already know about.
+ */
+.shell[data-rail="collapsed"] {
+  grid-template-columns: 56px minmax(0, 1fr);
+}
+
+/*
+ * The identity, with the toggle beside it.
+ *
+ * The toggle is taken out of the flow rather than laid beside the name: in a
+ * row the name shrinks to its own width and stops being centred in the rail,
+ * which is where it has always sat and where the eye looks for it.
+ */
+.rail__top {
+  position: relative;
+  display: grid;
+}
+
+/* The way back. A box with an arrow in it, in the accent, so it reads as a
+   control rather than as decoration beside the name. */
+.rail__toggle {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  background: var(--surface-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  color: var(--accent);
+  cursor: pointer;
+  transition:
+    border-color var(--fast) var(--ease),
+    background var(--fast) var(--ease);
+}
+
+/* Narrowed, there is no room beside the mark, so it sits under it. */
+.rail[data-collapsed="true"] .rail__top {
+  justify-items: center;
+  gap: var(--s2);
+}
+
+.rail[data-collapsed="true"] .rail__toggle {
+  position: static;
+}
+
+.rail__toggle:hover,
+.rail__toggle:focus-visible {
+  border-color: var(--accent);
+  background: var(--accent-glow);
+}
+
+.rail__chevron {
+  font-size: 15px;
+  line-height: 1;
+  background: linear-gradient(120deg, var(--accent), var(--magenta));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+/* What goes when the labels do. */
+.rail[data-collapsed="true"] .rail__label,
+.rail[data-collapsed="true"] .ident__name,
+.rail[data-collapsed="true"] .ident__message,
+.rail[data-collapsed="true"] .sys {
+  display: none;
+}
+
+.rail[data-collapsed="true"] .rail__item {
+  justify-content: center;
+  padding: var(--s2) 0;
+  gap: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell {
+    transition: none;
+  }
 }
 
 /* ---- the mark, and whose copy this is ----------------------------------- */

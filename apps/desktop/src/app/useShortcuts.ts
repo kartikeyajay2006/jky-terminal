@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useTabs } from "./tabStore";
+import { useRail } from "./railStore";
 import { actionFor } from "./keymapStore";
 import type { Side } from "../features/terminal/panes/tree";
 
@@ -34,6 +35,10 @@ export function useShortcuts(): void {
       switch (action) {
         case null:
           break;
+        case "rail-toggle":
+          e.preventDefault();
+          useRail.getState().toggle();
+          return;
         case "tab-new":
           e.preventDefault();
           openTab("terminal", `Terminal ${tabs.length + 1}`);

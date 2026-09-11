@@ -30,6 +30,7 @@ pub enum KeymapError {
 #[serde(rename_all = "kebab-case")]
 pub enum Action {
     PaletteToggle,
+    RailToggle,
     TabNew,
     TabClose,
     TabNext,
@@ -50,6 +51,7 @@ impl Action {
     pub fn id(self) -> &'static str {
         match self {
             Action::PaletteToggle => "palette-toggle",
+            Action::RailToggle => "rail-toggle",
             Action::TabNew => "tab-new",
             Action::TabClose => "tab-close",
             Action::TabNext => "tab-next",
@@ -70,6 +72,7 @@ impl Action {
     pub fn label(self) -> &'static str {
         match self {
             Action::PaletteToggle => "Command palette",
+            Action::RailToggle => "Show or hide the sidebar",
             Action::TabNew => "New terminal tab",
             Action::TabClose => "Close tab",
             Action::TabNext => "Next tab",
@@ -89,7 +92,7 @@ impl Action {
     /// Which part of the app it belongs to, for grouping in the panel.
     pub fn group(self) -> &'static str {
         match self {
-            Action::PaletteToggle => "App",
+            Action::PaletteToggle | Action::RailToggle => "App",
             Action::TabNew | Action::TabClose | Action::TabNext => "Tabs",
             Action::TerminalFind | Action::TerminalCopy | Action::TerminalPaste => "Terminal",
             _ => "Panes",
@@ -100,6 +103,8 @@ impl Action {
     pub fn default_chord(self) -> &'static str {
         match self {
             Action::PaletteToggle => "Ctrl+K",
+            // What every editor binds it to, so nobody has to look it up.
+            Action::RailToggle => "Ctrl+B",
             Action::TabNew => "Ctrl+T",
             Action::TabClose => "Ctrl+W",
             Action::TabNext => "Ctrl+Tab",
@@ -129,6 +134,7 @@ impl Action {
 /// Every action, in the order the settings panel lists them.
 pub const ACTIONS: &[Action] = &[
     Action::PaletteToggle,
+    Action::RailToggle,
     Action::TabNew,
     Action::TabClose,
     Action::TabNext,

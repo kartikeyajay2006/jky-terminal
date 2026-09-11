@@ -10,6 +10,12 @@ import type { Binding, Conflict, Keyboard } from "./types";
  */
 export const DEFAULT_BINDINGS: ReadonlyArray<Omit<Binding, "chord" | "custom">> = [
   { action: "palette-toggle", label: "Command palette", group: "App", default_chord: "Ctrl+K" },
+  {
+    action: "rail-toggle",
+    label: "Show or hide the sidebar",
+    group: "App",
+    default_chord: "Ctrl+B",
+  },
   { action: "tab-new", label: "New terminal tab", group: "Tabs", default_chord: "Ctrl+T" },
   { action: "tab-close", label: "Close tab", group: "Tabs", default_chord: "Ctrl+W" },
   { action: "tab-next", label: "Next tab", group: "Tabs", default_chord: "Ctrl+Tab" },

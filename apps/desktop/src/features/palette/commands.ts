@@ -1,6 +1,7 @@
 import { useNav } from "../../app/navStore";
 import { chordFor } from "../../app/keymapStore";
 import { useTabs } from "../../app/tabStore";
+import { useRail } from "../../app/railStore";
 import { THEMES, applyTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { useOpenGame } from "../games/openStore";
 import { GAMES } from "../games/Games";
@@ -148,6 +149,13 @@ export function buildCommands(context: PaletteContext = {}): PaletteCommand[] {
   }
 
   // --- terminal ---
+  out.push({
+    id: "app:rail",
+    label: "Show or hide the sidebar",
+    group: "Terminal",
+    hint: chordFor("rail-toggle"),
+    run: () => useRail.getState().toggle(),
+  });
   out.push({
     id: "term:new",
     label: "New terminal",

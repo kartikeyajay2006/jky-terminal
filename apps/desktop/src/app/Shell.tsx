@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Rail } from "./Rail";
+import { useRail } from "./railStore";
 import { StatusBar } from "./StatusBar";
 import { applyTheme, loadTheme, saveTheme, type ThemeId } from "./theme";
 import { Notifications } from "../features/notifications/Notifications";
@@ -14,6 +15,10 @@ interface ShellProps {
 
 export function Shell({ children, activeId = "terminal", onSelect }: ShellProps) {
   const [theme, setTheme] = useState<ThemeId>(loadTheme);
+  // The grid owns the rail's width, so the shell has to know as well as the
+  // rail does — a rail that narrowed inside a column that did not would just
+  // leave a gap.
+  const collapsed = useRail((s) => s.collapsed);
 
   useEffect(() => {
     applyTheme(theme);
@@ -25,7 +30,7 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
   }
 
   return (
-    <div className="shell">
+    <div className="shell" data-rail={collapsed ? "collapsed" : undefined}>
       <Rail activeId={activeId} onSelect={onSelect ?? (() => {})} />
       <main className="shell__workspace">{children}</main>
       <StatusBar theme={theme} onThemeChange={changeTheme} shellName={shellLabel()} />

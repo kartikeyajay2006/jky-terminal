@@ -1,4 +1,5 @@
 import { IdentityMark } from "./IdentityMark";
+import { useRail } from "./railStore";
 import { SystemStatus } from "./SystemStatus";
 
 export interface RailItem {
@@ -34,9 +35,34 @@ interface RailProps {
 }
 
 export function Rail({ activeId, onSelect }: RailProps) {
+  const collapsed = useRail((s) => s.collapsed);
+  const toggle = useRail((s) => s.toggle);
+
   return (
-    <nav className="rail" aria-label="Workspace">
-      <IdentityMark />
+    <nav className="rail" aria-label="Workspace" data-collapsed={collapsed ? "true" : undefined}>
+      <div className="rail__top">
+        <IdentityMark />
+        {/*
+         * Narrows the rail to its glyphs and back.
+         *
+         * It stays on screen when collapsed, because the only way back is
+         * through it — a control that hides itself is a control you have to
+         * know about beforehand. `title` as well as the label so the reason
+         * is readable with a pointer, where there is no label to read.
+         */}
+        <button
+          type="button"
+          className="rail__toggle"
+          aria-expanded={!collapsed}
+          aria-label={collapsed ? "Show the section names" : "Hide the section names"}
+          title={collapsed ? "Expand" : "Collapse"}
+          onClick={toggle}
+        >
+          <span className="rail__chevron" aria-hidden="true">
+            {collapsed ? "›" : "‹"}
+          </span>
+        </button>
+      </div>
       <ul className="rail__list">
         {RAIL_ITEMS.map((item) => (
           <li key={item.id}>
@@ -44,6 +70,9 @@ export function Rail({ activeId, onSelect }: RailProps) {
               type="button"
               className="rail__item"
               aria-current={item.id === activeId ? "page" : undefined}
+              // The label is still the accessible name; this is for a pointer,
+              // which has nothing to read once the labels are hidden.
+              title={item.label}
               onClick={() => onSelect(item.id)}
             >
               <span className="rail__glyph" aria-hidden="true">
@@ -66,6 +95,9 @@ export function Rail({ activeId, onSelect }: RailProps) {
               type="button"
               className="rail__item"
               aria-current={item.id === activeId ? "page" : undefined}
+              // The label is still the accessible name; this is for a pointer,
+              // which has nothing to read once the labels are hidden.
+              title={item.label}
               onClick={() => onSelect(item.id)}
             >
               <span className="rail__glyph" aria-hidden="true">
