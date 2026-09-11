@@ -181,13 +181,34 @@ describe("SystemStatus", () => {
    * A rate has no ceiling, which is why the network row has a fixed one — and
    * why a machine doing nothing must not draw a full bar.
    */
-  it("does not draw an idle network as a busy one", async () => {
-    __setPlatformForTests(reading(() => ({ ...IDLE, net_rx_bps: 200, net_tx_bps: 0 })));
+  it("draws a line for every reading that has a run behind it", async () => {
+    // The figure says the level; the line says what it has been doing, which
+    // is the part a single reading cannot give you.
     const { container } = render(<SystemStatus />);
     await waitFor(() => expect(container.querySelector('[data-tone="net"]')).toBeTruthy());
 
-    const fill = container.querySelector('[data-tone="net"] .sys__fill') as HTMLElement;
-    expect(parseFloat(fill.style.width)).toBeLessThan(5);
+    for (const tone of ["cpu", "ram", "disk", "net"]) {
+      const line = container.querySelector(`[data-tone="${tone}"] .sys__line`);
+      expect(line, tone).toBeTruthy();
+      expect(line!.getAttribute("points")).not.toContain("NaN");
+    }
+  });
+
+  it("marks a reading that is nearly full, in the line as well as the figure", async () => {
+    __setPlatformForTests(
+      reading(() => ({ ...IDLE, disk_used: 97, disk_total: 100 })),
+    );
+    const { container } = render(<SystemStatus />);
+
+    await waitFor(() =>
+      expect(container.querySelector('[data-tone="disk"] .sys__line[data-hot]')).toBeTruthy(),
+    );
+  });
+
+  it("leaves a quiet reading unmarked", async () => {
+    const { container } = render(<SystemStatus />);
+    await waitFor(() => expect(container.querySelector('[data-tone="net"]')).toBeTruthy());
+    expect(container.querySelector('[data-tone="net"] .sys__line[data-hot]')).toBeNull();
   });
 
   it("says how long the machine has been up", async () => {

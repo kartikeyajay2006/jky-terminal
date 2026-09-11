@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import { getPlatform } from "../platform";
 import type { SystemReading } from "../platform/types";
+import {
+  ceiling,
+  push,
+  SPARK_HEIGHT,
+  SPARK_WIDTH,
+  sparkArea,
+  sparkLine,
+  sparkPoints,
+} from "./spark";
 
 /** How often the machine is asked. */
 const EVERY_MS = 2000;
@@ -82,6 +91,19 @@ const NET_FULL = 2 * 1024 * 1024;
  */
 export function SystemStatus() {
   const [reading, setReading] = useState<SystemReading | null>(null);
+  /**
+   * The readings behind each figure, oldest first.
+   *
+   * Kept here rather than derived from `reading`, because a level is all a
+   * single reading has and the whole point of the lines is the run before it.
+   * One state, not four, so a poll draws once.
+   */
+  const [history, setHistory] = useState({
+    cpu: [] as number[],
+    ram: [] as number[],
+    disk: [] as number[],
+    net: [] as number[],
+  });
   /** Kept so an unmount between the ask and the answer sets no state. */
   const live = useRef(true);
 
@@ -92,7 +114,14 @@ export function SystemStatus() {
       void getPlatform()
         .system.status()
         .then((next) => {
-          if (live.current) setReading(next);
+          if (!live.current) return;
+          setReading(next);
+          setHistory((was) => ({
+            cpu: push(was.cpu, next.cpu_pct),
+            ram: push(was.ram, share(next.mem_used, next.mem_total)),
+            disk: push(was.disk, share(next.disk_used, next.disk_total)),
+            net: push(was.net, next.net_rx_bps + next.net_tx_bps),
+          }));
         })
         .catch(() => {
           // Keep what we have. See above.
@@ -125,12 +154,16 @@ export function SystemStatus() {
         label="CPU"
         tone="cpu"
         fill={cpu}
+        series={history.cpu}
+        max={100}
         value={reading ? `${Math.round(reading.cpu_pct)}%` : "—"}
       />
       <Row
         label="RAM"
         tone="ram"
         fill={ram}
+        series={history.ram}
+        max={100}
         value={reading ? `${Math.round(ram)}%` : "—"}
         // The percentage is what fits; the figures behind it are one hover
         // away rather than gone.
@@ -140,6 +173,8 @@ export function SystemStatus() {
         label="Disk"
         tone="disk"
         fill={disk}
+        series={history.disk}
+        max={100}
         value={reading ? `${Math.round(disk)}%` : "—"}
         detail={reading ? `${size(reading.disk_used)} of ${size(reading.disk_total)}` : undefined}
       />
@@ -147,6 +182,10 @@ export function SystemStatus() {
         label="Net"
         tone="net"
         fill={share(net, NET_FULL)}
+        series={history.net}
+        // No ceiling: a network has no maximum, so the line is drawn against
+        // the busiest moment it has seen rather than against a number this
+        // app invented.
         value={reading ? rateText(net) : "—"}
         detail={
           reading
@@ -177,6 +216,8 @@ function Row({
   fill,
   value,
   detail,
+  series,
+  max,
 }: {
   label: string;
   tone: string;
@@ -184,13 +225,43 @@ function Row({
   value: string;
   /** Shown on hover, for the figures the row has no width for. */
   detail?: string;
+  /** The readings behind the figure, oldest first. */
+  series: number[];
+  /** A fixed ceiling, where the reading has one. Absent scales to the run. */
+  max?: number;
 }) {
+  const points = sparkPoints(series, ceiling(series, max));
+
   return (
     <p className="sys__row" data-tone={tone} title={detail}>
       <span className="sys__label">{label}</span>
-      <span className="sys__bar" aria-hidden="true">
-        <span className="sys__fill" style={{ width: `${fill}%` }} data-hot={fill >= 85 || undefined} />
+
+      {/*
+       * A shape rather than a level.
+       *
+       * The bar said what the machine is doing now, which the figure beside
+       * it already said. The line says what it has been doing, which is the
+       * part you cannot get any other way — a disk at 82% is a number, and a
+       * disk that has climbed nine points in a minute is a problem.
+       *
+       * Hidden from assistive technology: the figure says the reading, and
+       * announcing a hundred coordinates says nothing at all.
+       */}
+      <span className="sys__spark" aria-hidden="true">
+        <svg
+          viewBox={`0 0 ${SPARK_WIDTH} ${SPARK_HEIGHT}`}
+          preserveAspectRatio="none"
+          focusable="false"
+        >
+          <path className="sys__area" d={sparkArea(points)} />
+          <polyline
+            className="sys__line"
+            points={sparkLine(points)}
+            data-hot={fill >= 85 || undefined}
+          />
+        </svg>
       </span>
+
       <span className="sys__value">{value}</span>
     </p>
   );

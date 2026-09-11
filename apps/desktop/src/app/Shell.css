@@ -623,41 +623,8 @@
   white-space: nowrap;
 }
 
-.sys__bar {
-  height: 5px;
-  border-radius: 999px;
-  background: var(--line);
-  overflow: hidden;
-}
 
-.sys__fill {
-  display: block;
-  height: 100%;
-  border-radius: 999px;
-  background: var(--tone);
-  /* Slower than the two-second poll, so a bar glides between readings
-     instead of stepping. */
-  transition: width 600ms var(--ease), background-color 300ms var(--ease);
-}
-
-/* Nearly full is worth colouring, and it is a warning rather than an error:
-   a disk at 90% is not broken yet. */
-.sys__fill[data-hot] {
-  background: var(--danger);
-}
-
-.sys__row[data-tone="disk"] .sys__fill[data-hot],
-.sys__row[data-tone="cpu"] .sys__fill[data-hot] {
-  background: var(--danger);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sys__fill {
-    transition: none;
-  }
-}
-
-/* Collapsed rail: no room for words or figures, so the bars carry it alone —
+/* Collapsed rail: no room for words or figures, so the lines carry it alone —
    still live, still a glance, just without the labels. */
 @media (max-width: 900px) {
   .sys {
@@ -677,4 +644,56 @@
   .sys__row--plain {
     display: none;
   }
+}
+
+/* ---- the status lines ---------------------------------------------------- */
+
+/*
+ * A shape, not a level.
+ *
+ * The bar said what the machine is doing now, which the figure beside it
+ * already said. The line says what it has been doing — a disk at 82% is a
+ * number, and a disk that climbed nine points in a minute is a problem.
+ */
+.sys__spark {
+  display: block;
+  height: 14px;
+  min-width: 0;
+}
+
+.sys__spark svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.sys__line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+.sys__area {
+  fill: var(--accent);
+  opacity: 0.14;
+  stroke: none;
+}
+
+/* Each reading keeps the colour its bar had, so the rail reads the same way
+   it always did. */
+.sys__row[data-tone="ram"] .sys__line { stroke: var(--mint); }
+.sys__row[data-tone="ram"] .sys__area { fill: var(--mint); }
+.sys__row[data-tone="disk"] .sys__line { stroke: var(--warn); }
+.sys__row[data-tone="disk"] .sys__area { fill: var(--warn); }
+.sys__row[data-tone="net"] .sys__line { stroke: var(--violet); }
+.sys__row[data-tone="net"] .sys__area { fill: var(--violet); }
+
+/* Nearly full. Said in the line as well as the figure, so it is caught at a
+   glance rather than read. */
+.sys__line[data-hot] {
+  stroke: var(--danger);
 }
