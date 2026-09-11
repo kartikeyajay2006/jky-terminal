@@ -2,6 +2,7 @@ import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import { DEFAULT_BINDINGS, conflictsIn } from "./keymap";
 import type {
   CompleteApi,
+  LiveApi,
   FileEntry,
   FilesApi,
   LifecycleApi,
@@ -569,6 +570,56 @@ export function createWebPlatform(): Platform {
     if (!tree) throw new Error(`could not read \`${root}\``);
     return tree;
   }
+
+  /*
+   * Keeping a panel live, in the browser.
+   *
+   * There is no process to run, so it answers with something that parses the
+   * way the real thing does and changes a little each time — enough to work
+   * on the panel, and honest about being a stand-in.
+   */
+  let liveTick = 0;
+  const live: LiveApi = {
+    async sources() {
+      return [
+        { id: "df", program: "df", args: ["-h"], shown: "df -h" },
+        { id: "ps", program: "ps", args: ["aux"], shown: "ps aux" },
+        { id: "docker-ps", program: "docker", args: ["ps"], shown: "docker ps" },
+      ];
+    },
+    async run(source) {
+      liveTick += 1;
+      if (source === "df") {
+        const used = 40 + (liveTick % 12);
+        return {
+          text: [
+            "Filesystem      Size  Used Avail Use% Mounted on",
+            `/dev/sda1       100G   ${used}G   ${100 - used}G  ${used}% /`,
+          ].join("\n"),
+          code: 0,
+        };
+      }
+      if (source === "ps") {
+        return {
+          text: [
+            "USER  PID %CPU %MEM    VSZ   RSS TTY STAT START TIME COMMAND",
+            `you   ${100 + liveTick}  ${liveTick % 9}.0  1.0 100000 20000 ?   S    10:00 0:01 node`,
+          ].join("\n"),
+          code: 0,
+        };
+      }
+      if (source === "docker-ps") {
+        return {
+          text: [
+            "CONTAINER ID   IMAGE   COMMAND   CREATED   STATUS          PORTS   NAMES",
+            `abc12345678    nginx   "x"       1 min     Up ${liveTick} minutes           web`,
+          ].join("\n"),
+          code: 0,
+        };
+      }
+      throw new Error(`\`${source}\` is not something this app knows how to keep live`);
+    },
+  };
 
   const files: FilesApi = {
     async preview(root, path) {
@@ -1376,6 +1427,7 @@ export function createWebPlatform(): Platform {
     history,
     complete,
     remote,
+    live,
     files,
     workspaces,
     lifecycle,

@@ -52,6 +52,9 @@ import type {
   FilesApi,
   Folder,
   LifecycleApi,
+  LiveApi,
+  LiveRun,
+  LiveSource,
   WorkspaceApi,
   WorkspaceApplied,
   Workspaces,
@@ -262,6 +265,15 @@ export function createTauriPlatform(): Platform {
     },
   };
 
+  const live: LiveApi = {
+    async sources() {
+      return invoke<LiveSource[]>("live_sources");
+    },
+    async run(source) {
+      return invoke<LiveRun>("live_run", { source });
+    },
+  };
+
   const pty: PtyApi = {
     async spawn(cols, rows, banner, accent) {
       return invoke<string>("pty_spawn", { cols, rows, banner, accent });
@@ -431,6 +443,7 @@ export function createTauriPlatform(): Platform {
     history,
     complete,
     remote,
+    live,
     files,
     workspaces,
     lifecycle,

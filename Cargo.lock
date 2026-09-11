@@ -2170,6 +2170,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "jky-live"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "thiserror 2.0.20",
+]
+
+[[package]]
 name = "jky-pty"
 version = "0.1.0"
 dependencies = [
@@ -2239,6 +2247,7 @@ dependencies = [
  "jky-files",
  "jky-history",
  "jky-keys",
+ "jky-live",
  "jky-pty",
  "jky-remote",
  "jky-secrets",

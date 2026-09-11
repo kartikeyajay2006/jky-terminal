@@ -8,7 +8,7 @@ mod state;
 
 use commands::{
     advice, ai, apps, browser, capture, complete, files, games, github, gmail, history, keys, open,
-    pty, remote, scrollback, settings, store, system, tools, vault, workspace,
+    live, pty, remote, scrollback, settings, store, system, tools, vault, workspace,
 };
 use state::AppState;
 use tauri::Manager;
@@ -48,6 +48,8 @@ fn main() {
             history::history_search,
             history::history_forget,
             history::history_clear,
+            live::live_sources,
+            live::live_run,
             keys::keys_list,
             keys::keys_bind,
             keys::keys_reset,

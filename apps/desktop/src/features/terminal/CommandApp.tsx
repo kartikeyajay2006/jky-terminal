@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { fromTerminal } from "./FailureHelp";
 import type { Chip, Column, Entry, Meter, Recognised, Row, View } from "./recognise";
+import { LIVE_EVERY_MS } from "./live";
 
 /**
  * What a command turned out to be.
@@ -25,6 +26,7 @@ export function CommandApp({
   onRun,
   onDismiss,
   claimKeys,
+  live,
 }: {
   found: Recognised;
   /** The command that produced it, shown so the panel is anchored to it. */
@@ -34,6 +36,17 @@ export function CommandApp({
   onDismiss: () => void;
   /** Lends this panel the terminal's keyboard while it is open. */
   claimKeys?: (handler: ((event: KeyboardEvent) => boolean) | null) => void;
+  /** Present when this command is one the app can run again. */
+  live?: {
+    on: boolean;
+    /** The command that would actually be re-run, so the panel can say it. */
+    shown: string;
+    /** When the answer on screen was last asked for. */
+    at: number | null;
+    /** Why it stopped, when it stopped itself. */
+    error: string | null;
+    toggle: () => void;
+  };
 }) {
   const actions = found.actions ?? [];
   const [tall, setTall] = useState(false);
@@ -132,6 +145,32 @@ export function CommandApp({
           exactly what the dismiss button did until someone read it.
         */}
         <span className="capp__tools">
+          {/*
+           * Keeping the panel current.
+           *
+           * Offered only for the handful of commands Rust knows how to run
+           * again — and only when what was typed is exactly one of them, so
+           * a panel never refreshes with a different question from the one
+           * on screen. What it does is visible while it does it: the
+           * interval is in the title and stopping is the same click.
+           */}
+          {live && (
+            <button
+              type="button"
+              className="capp__icon capp__icon--live"
+              aria-label={live.on ? "Stop refreshing" : "Keep this live"}
+              title={
+                live.on
+                  ? `Refreshing every ${Math.round(LIVE_EVERY_MS / 1000)}s — click to stop`
+                  : `Keep live (re-runs ${live.shown} every ${Math.round(LIVE_EVERY_MS / 1000)}s)`
+              }
+              aria-pressed={live.on}
+              data-on={live.on || undefined}
+              onClick={live.toggle}
+            >
+              ◉
+            </button>
+          )}
           <button
             type="button"
             className="capp__icon"
@@ -153,6 +192,15 @@ export function CommandApp({
           </button>
         </span>
       </header>
+
+      {live?.on && (
+        <p className="capp__live" role="status">
+          <span className="capp__live-dot" aria-hidden="true" />
+          {live.error
+            ? `${live.shown} stopped: ${live.error}`
+            : `re-running ${live.shown} every ${Math.round(LIVE_EVERY_MS / 1000)}s`}
+        </p>
+      )}
 
       <div className="capp__body">
         <Body view={found.view} title={found.title} />

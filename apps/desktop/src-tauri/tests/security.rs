@@ -353,6 +353,26 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "keys_list".to_string(),
         "keys_reset".to_string(),
         "keys_reset_all".to_string(),
+        // Running one of three known commands again, so a panel can stay
+        // current instead of being a photograph. This starts a process, which
+        // makes it the sharpest thing on this list, so it is worth saying
+        // exactly what it cannot do.
+        //
+        // It takes an *id*, never a command line. The program and its
+        // arguments are constants in `jky_live` — `df -h`, `ps aux`,
+        // `docker ps` — handed to the operating system as a list with no
+        // shell between, so there is nothing for a quote or a semicolon to
+        // mean and no path at all from a string in the renderer to a process.
+        // A command line arriving here is not a command line; it is a name
+        // that does not match, and there is a test that says so.
+        //
+        // Three, not thirty, and each was chosen for the same property: no
+        // argument and no working directory. That is what makes one safe to
+        // repeat unattended — a command whose meaning depends on where you
+        // are would quietly start answering about somewhere else the moment
+        // you changed directory. None of them writes anything.
+        "live_run".to_string(),
+        "live_sources".to_string(),
         // Hands one validated http(s) URL to the OS opener. This is the only
         // place a string from the window becomes a process argument, so the
         // rule it is checked against is itself unit-tested: scheme allow-list,

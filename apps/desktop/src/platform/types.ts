@@ -369,6 +369,35 @@ export interface LifecycleApi {
   close(): Promise<void>;
 }
 
+/** A command that can be run again on a timer. */
+export interface LiveSource {
+  /** What the window names. Never a command line. */
+  id: string;
+  program: string;
+  args: string[];
+  /** How it is written when typed, for the panel to show. */
+  shown: string;
+}
+
+/** What a run produced. */
+export interface LiveRun {
+  text: string;
+  /** Zero means it worked. */
+  code: number;
+}
+
+/**
+ * Running one of a few known commands again, so a panel can stay current.
+ *
+ * `run` takes an **id**, never a command line: the program and its arguments
+ * are constants in Rust, handed to the OS as a list with no shell between.
+ * There is no path from a string in the window to a process.
+ */
+export interface LiveApi {
+  sources(): Promise<LiveSource[]>;
+  run(source: string): Promise<LiveRun>;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
   setActiveProvider(provider: string): Promise<void>;
@@ -1133,6 +1162,8 @@ export interface Platform {
   readonly complete: CompleteApi;
   /** Terminals on other machines. */
   readonly remote: RemoteApi;
+  /** Running a known command again, so a panel can stay current. */
+  readonly live: LiveApi;
   /** Files, inside folders the person opened and nowhere else. */
   readonly files: FilesApi;
   /** Saved project setups. */

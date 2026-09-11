@@ -976,3 +976,39 @@
     display: none;
   }
 }
+
+/* ---- a panel that stays current ------------------------------------------ */
+
+.capp__icon--live[data-on] {
+  color: var(--accent);
+  border-color: var(--accent-dim);
+}
+
+/* Said while it is happening, not only in a tooltip: a panel re-running a
+   command on its own should never be doing so quietly. */
+.capp__live {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin: 0;
+  padding: var(--s1) var(--s3);
+  border-bottom: 1px solid var(--line);
+  color: var(--text-dim);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+
+.capp__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  flex: 0 0 auto;
+  animation: jky-pulse 1.6s var(--ease) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .capp__live-dot {
+    animation: none;
+  }
+}

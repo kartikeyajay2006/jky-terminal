@@ -11,6 +11,7 @@ import { actionFor, chordFor } from "../../app/keymapStore";
 import { getPlatform } from "../../platform";
 import { TYPE_EVENT } from "./typeEvent";
 import { useCompletion } from "./complete/useCompletion";
+import { useLivePanel } from "./useLivePanel";
 import { Suggestions } from "./complete/Suggestions";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
@@ -132,6 +133,14 @@ export function Terminal({
     window.addEventListener(TYPE_EVENT, onType);
     return () => window.removeEventListener(TYPE_EVENT, onType);
   }, [paneId, term]);
+
+  /*
+   * Keeping the panel current, when the command is one that can be.
+   *
+   * Paused with the pane: a panel behind a tab nobody is looking at should
+   * not be running a command every two seconds.
+   */
+  const live = useLivePanel(ranCommand, focused && found !== null);
 
   const [searching, setSearching] = useState(false);
   const [menuAt, setMenuAt] = useState<MenuPoint | null>(null);
@@ -275,8 +284,21 @@ export function Terminal({
           unusable the first time it got something wrong. */}
       {found && !failure && (
         <CommandApp
-          found={found}
+          // A fresher answer to the same command replaces the one parsed when
+          // it ran; everything else about the panel is unchanged.
+          found={live.fresh ?? found}
           command={ranCommand}
+          live={
+            live.source
+              ? {
+                  on: live.on,
+                  shown: live.shown,
+                  at: live.at,
+                  error: live.error,
+                  toggle: live.toggle,
+                }
+              : undefined
+          }
           claimKeys={term.claimKeys}
           onRun={(command) => {
             // Typed, not run. The person still presses Enter, and sees

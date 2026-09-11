@@ -9,6 +9,7 @@ pub mod github;
 pub mod complete;
 pub mod history;
 pub mod keys;
+pub mod live;
 pub mod gmail;
 pub mod open;
 pub mod pty;
