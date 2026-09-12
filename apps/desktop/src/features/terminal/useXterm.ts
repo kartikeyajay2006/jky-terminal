@@ -209,7 +209,23 @@ export function useXterm(
       // A panel's own keys, taken before the shell is sent them. Returning
       // false leaves the event alone entirely, so it still reaches the window
       // — which is why the panels ignore anything coming from in here.
-      if (keyClaim.current?.(event)) return false;
+      if (keyClaim.current?.(event)) {
+        // Claimed means claimed. Returning false stops xterm handling the
+        // key, but xterm only calls preventDefault for keys it handles — so
+        // without this the browser went on to do its own thing with it. For
+        // Tab that is moving focus to the next control, which took the
+        // keyboard out of the terminal and into the status bar's theme
+        // picker: press Tab to complete, and you had to click back into the
+        // terminal to keep typing.
+        //
+        // Every key a panel claims has a browser default worth stopping —
+        // Tab moves focus, Space and the arrows scroll, Enter submits.
+        //
+        // This stops the default only. The event still propagates to the
+        // window, which the comment above depends on.
+        event.preventDefault();
+        return false;
+      }
       return true;
     });
 

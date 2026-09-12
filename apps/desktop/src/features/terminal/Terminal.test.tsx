@@ -368,6 +368,43 @@ describe("letting the app's shortcuts through", () => {
     expect(handle(new KeyboardEvent("keydown", { key: "l" }))).toBe(true);
   });
 
+  /*
+   * A claimed key must not also do whatever the browser would have done.
+   *
+   * Returning false stops xterm handling a key, but xterm only calls
+   * preventDefault for keys it handles — so the browser went on to run its
+   * own default. For Tab that is moving focus to the next control, which is
+   * the theme picker in the status bar: you pressed Tab to complete a word
+   * and had to click back into the terminal to keep typing.
+   */
+  it("stops the browser acting on a key a panel has taken", async () => {
+    render(<Terminal paneId="tab-claim-default" />);
+    const handle = customKeyHandlers[customKeyHandlers.length - 1];
+
+    await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+    oscHandlers.get(1337)!(encodeDone(127, "/repo", "gti status"));
+    await screen.findByRole("group", { name: /command failed/i });
+
+    const claimed = new KeyboardEvent("keydown", { key: "4", cancelable: true });
+    expect(handle(claimed)).toBe(false);
+    expect(claimed.defaultPrevented, "the browser still acted on a claimed key").toBe(true);
+  });
+
+  it("leaves the browser alone for a key no panel wants", async () => {
+    render(<Terminal paneId="tab-claim-default-2" />);
+    const handle = customKeyHandlers[customKeyHandlers.length - 1];
+
+    await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+    oscHandlers.get(1337)!(encodeDone(127, "/repo", "gti status"));
+    await screen.findByRole("group", { name: /command failed/i });
+
+    // Unclaimed keys go to the shell, and preventing their default here
+    // would be this handler deciding things that are not its business.
+    const free = new KeyboardEvent("keydown", { key: "l", cancelable: true });
+    expect(handle(free)).toBe(true);
+    expect(free.defaultPrevented).toBe(false);
+  });
+
   // Claimed only while it is open: dismissing gives the digits back.
   it("gives the keys back when the panel goes", async () => {
     render(<Terminal paneId="tab-claim-2" />);
