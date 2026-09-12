@@ -382,6 +382,10 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "pty_attach".to_string(),
         "pty_kill".to_string(),
         "pty_resize".to_string(),
+        // The name of the shell a new terminal will run, for the status bar.
+        // No argument, and it returns a name rather than a path: the window
+        // is told what it is talking to, not where on disk it lives.
+        "pty_shell".to_string(),
         "pty_spawn".to_string(),
         "pty_write".to_string(),
         // What a terminal had on screen, kept across a restart. The renderer

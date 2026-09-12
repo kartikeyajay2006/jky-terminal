@@ -39,9 +39,13 @@ export function StatusBar({
         <span aria-hidden="true">{live ? "●" : "○"}</span>
         {live ? "native" : "preview"}
       </span>
-      <span className="status__item">
-        <span className="status__key">shell</span> {shellName}
-      </span>
+      {/* Absent until the shell is known, rather than a label with nothing
+          after it. In the browser preview there is no shell to name at all. */}
+      {shellName && (
+        <span className="status__item">
+          <span className="status__key">shell</span> {shellName}
+        </span>
+      )}
       <span className="status__spacer" />
       {/* The way out, and the only chrome focus mode leaves behind. A mode
           whose exit is a chord you have to remember is a mode people get

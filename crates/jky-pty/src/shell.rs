@@ -44,6 +44,35 @@ pub fn resolve_shell(shell_var: Option<String>, comspec_var: Option<String>) -> 
     }
 }
 
+/// What to call a shell, given the program that runs it.
+///
+/// The status bar used to guess this from the browser's user agent — Windows
+/// meant PowerShell, Mac meant zsh, anything else meant bash. That is a guess
+/// about the operating system dressed up as a fact about the shell, and it
+/// was wrong for everyone on Linux running zsh, everyone on a Mac running
+/// bash, and everyone anywhere running fish. The shell is already resolved
+/// here; naming it is the only part that was missing.
+///
+/// The file extension goes because `powershell.exe` is called PowerShell by
+/// the people using it, and a version suffix stays because `python3.11` and
+/// `bash-5.2` are the names those programs go by.
+pub fn shell_name(program: &str) -> String {
+    let file = program
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(program)
+        .trim();
+
+    let bare = file.strip_suffix(".exe").unwrap_or(file);
+    let bare = bare.strip_suffix(".EXE").unwrap_or(bare);
+
+    if bare.is_empty() {
+        // Better to say nothing than to name a shell that is not running.
+        return String::new();
+    }
+    bare.to_lowercase()
+}
+
 pub fn default_shell() -> ShellSpec {
     resolve_shell(std::env::var("SHELL").ok(), std::env::var("COMSPEC").ok())
 }
@@ -55,6 +84,41 @@ pub fn pty_env() -> HashMap<String, String> {
         ("COLORTERM".to_string(), "truecolor".to_string()),
         ("TERM_PROGRAM".to_string(), "jky-terminal".to_string()),
     ])
+}
+
+#[cfg(test)]
+mod name_tests {
+    use super::shell_name;
+
+    #[test]
+    fn a_shell_is_named_by_the_end_of_its_path() {
+        assert_eq!(shell_name("/usr/bin/zsh"), "zsh");
+        assert_eq!(shell_name("/bin/bash"), "bash");
+        assert_eq!(shell_name("/usr/local/bin/fish"), "fish");
+        assert_eq!(shell_name("nu"), "nu");
+    }
+
+    #[test]
+    fn a_windows_shell_is_named_the_way_people_say_it() {
+        // Backslashes, and an extension nobody says out loud.
+        assert_eq!(shell_name(r"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe"), "powershell");
+        assert_eq!(shell_name(r"C:\Windows\system32\cmd.exe"), "cmd");
+        assert_eq!(shell_name("PWSH.EXE"), "pwsh");
+    }
+
+    #[test]
+    fn a_version_in_the_name_is_part_of_the_name() {
+        // `bash-5.2` and `python3.11` are what those programs are called.
+        // Stripping to the last dot would name them `bash-5` and `python3`.
+        assert_eq!(shell_name("/opt/bin/bash-5.2"), "bash-5.2");
+    }
+
+    #[test]
+    fn nothing_is_named_nothing_rather_than_guessed_at() {
+        assert_eq!(shell_name(""), "");
+        assert_eq!(shell_name("   "), "");
+        assert_eq!(shell_name("/"), "");
+    }
 }
 
 #[cfg(test)]

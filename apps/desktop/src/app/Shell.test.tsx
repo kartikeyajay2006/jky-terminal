@@ -3,12 +3,71 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Shell } from "./Shell";
 import { useHud } from "./hudStore";
+import { createWebPlatform, __setPlatformForTests } from "../platform";
+import type { Platform } from "../platform/types";
 
 describe("Shell", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
     useHud.setState({ on: false });
+    __setPlatformForTests(null);
+  });
+
+  /** A platform whose shell has a name. */
+  function withShell(name: string, fail = false): Platform {
+    const base = createWebPlatform();
+    return {
+      ...base,
+      pty: {
+        ...base.pty,
+        async shell() {
+          if (fail) throw new Error("no backend");
+          return name;
+        },
+      },
+    };
+  }
+
+  describe("the shell it names", () => {
+    it("reports which shell the terminal will run", async () => {
+      __setPlatformForTests(withShell("zsh"));
+      render(<Shell>{null}</Shell>);
+      expect(await screen.findByRole("contentinfo")).toHaveTextContent(/shell/i);
+    });
+
+    it("says the shell Rust reports, not one inferred from the browser", async () => {
+      __setPlatformForTests(withShell("fish"));
+      render(<Shell>{null}</Shell>);
+
+      // The old code read navigator.userAgent and answered "bash" on every
+      // Linux machine, whatever was actually running.
+      expect(await screen.findByText("fish")).toBeInTheDocument();
+      expect(screen.queryByText("bash")).not.toBeInTheDocument();
+    });
+
+    it("names powershell on a machine that runs it", async () => {
+      __setPlatformForTests(withShell("powershell"));
+      render(<Shell>{null}</Shell>);
+      expect(await screen.findByText("powershell")).toBeInTheDocument();
+    });
+
+    it("says nothing at all when there is no shell to name", async () => {
+      // The browser preview runs none. A label with nothing after it, or a
+      // guessed name, are both worse than no label.
+      __setPlatformForTests(withShell(""));
+      render(<Shell>{null}</Shell>);
+      await screen.findByRole("contentinfo");
+      expect(screen.queryByText(/^shell$/i)).not.toBeInTheDocument();
+    });
+
+    it("stays quiet when the backend cannot be asked", async () => {
+      __setPlatformForTests(withShell("zsh", true));
+      render(<Shell>{null}</Shell>);
+      const bar = await screen.findByRole("contentinfo");
+      // Nothing depends on the answer, so a failure is not worth a word.
+      expect(bar).not.toHaveTextContent(/shell/i);
+    });
   });
 
   it("renders its children in the workspace region", () => {
@@ -58,11 +117,6 @@ describe("Shell", () => {
     await user.click(await screen.findByRole("option", { name: /dracula/i }));
 
     expect(localStorage.getItem("jky.theme")).toBe("dracula");
-  });
-
-  it("reports which shell the terminal will run", () => {
-    render(<Shell>{null}</Shell>);
-    expect(screen.getByRole("contentinfo")).toHaveTextContent(/shell/i);
   });
 
   describe("focus mode", () => {

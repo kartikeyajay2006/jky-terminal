@@ -406,6 +406,14 @@ export interface SettingsApi {
 export interface PtyApi {
   /** `banner` is stored so the `jky-terminal` shell command can reprint it. */
   spawn(cols: number, rows: number, banner: string, accent: string): Promise<string>;
+  /**
+   * What a new terminal will run — "zsh", "fish", "powershell".
+   *
+   * Asked rather than guessed. The status bar used to infer it from the user
+   * agent, which says what the operating system is and nothing whatever about
+   * the shell.
+   */
+  shell(): Promise<string>;
   write(id: string, data: string): Promise<void>;
   resize(id: string, cols: number, rows: number): Promise<void>;
   kill(id: string): Promise<void>;

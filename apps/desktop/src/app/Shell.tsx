@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Rail } from "./Rail";
+import { getPlatform } from "../platform";
 import { useRail } from "./railStore";
 import { useHud } from "./hudStore";
 import { overallActivity, useActivity } from "../features/terminal/activity";
@@ -30,6 +31,34 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
   // the rail because the whole window answers to it.
   const activity = overallActivity(useActivity((s) => s.panes));
 
+  /*
+   * What shell this actually runs, asked rather than guessed.
+   *
+   * It used to be inferred from the user agent — Windows meant PowerShell,
+   * Mac meant zsh, anything else meant bash — which is a fact about the
+   * operating system wearing the name of a fact about the shell, and wrong
+   * for everyone on Linux running zsh or anywhere running fish.
+   *
+   * Empty until the answer arrives, and empty in the browser preview, where
+   * there is no shell to name. The bar shows nothing rather than something
+   * made up.
+   */
+  const [shellName, setShellName] = useState("");
+  useEffect(() => {
+    let live = true;
+    void getPlatform()
+      .pty.shell()
+      .then((name) => {
+        if (live) setShellName(name);
+      })
+      // A status bar that cannot name the shell says nothing about it. There
+      // is no error worth showing here and nothing depends on the answer.
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, []);
+
   useEffect(() => {
     applyTheme(theme);
   }, [theme]);
@@ -53,7 +82,7 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
       <StatusBar
         theme={theme}
         onThemeChange={changeTheme}
-        shellName={shellLabel()}
+        shellName={shellName}
         hud={hud}
         onLeaveHud={leaveHud}
       />
@@ -63,14 +92,3 @@ export function Shell({ children, activeId = "terminal", onSelect }: ShellProps)
   );
 }
 
-/**
- * A best-effort guess at the user's shell, for display only. The authoritative
- * answer comes from the Rust side once a PTY is running; this is what the
- * status bar shows before then.
- */
-function shellLabel(): string {
-  const ua = navigator.userAgent;
-  if (ua.includes("Windows")) return "powershell";
-  if (ua.includes("Mac")) return "zsh";
-  return "bash";
-}

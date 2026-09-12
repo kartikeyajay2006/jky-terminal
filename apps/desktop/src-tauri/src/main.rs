@@ -70,6 +70,7 @@ fn main() {
             tools::tools_hash,
             tools::tools_yaml_to_json,
             pty::pty_spawn,
+            pty::pty_shell,
             pty::pty_attach,
             pty::pty_write,
             pty::pty_resize,

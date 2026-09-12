@@ -21,6 +21,21 @@ fn data_event(id: &str) -> String {
     format!("pty:data:{id}")
 }
 
+/// What shell a new terminal will run.
+///
+/// The status bar guessed this from the browser's user agent — Windows meant
+/// PowerShell, Mac meant zsh, anything else meant bash — which is a fact
+/// about the operating system wearing the name of a fact about the shell. It
+/// was wrong for everyone on Linux running zsh, everyone on a Mac running
+/// bash, and everyone anywhere running fish.
+///
+/// The same resolution a spawn does, so what the bar says and what you get
+/// cannot disagree.
+#[tauri::command]
+pub fn pty_shell() -> String {
+    jky_pty::shell_name(&default_shell().program)
+}
+
 #[tauri::command]
 pub fn pty_spawn(
     app: AppHandle,

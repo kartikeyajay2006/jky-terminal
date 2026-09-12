@@ -831,6 +831,11 @@ export function createWebPlatform(): Platform {
       // at spawn time is written to nobody.
       return `web-pty-${++ptyCounter}`;
     },
+    async shell() {
+      // The browser preview runs no shell at all, and naming one would be the
+      // same invention the status bar is being cured of.
+      return "";
+    },
     async write(id, data) {
       // Echo input back the way a real pty does, and answer Enter with a prompt.
       ptyHandlers.get(id)?.(data === "\r" ? "\r\njky $ " : data);
@@ -975,6 +980,19 @@ export function createWebPlatform(): Platform {
   let githubToken = false;
   let githubPolls = 0;
 
+
+/**
+ * The papers the preview pretends to have.
+ *
+ * One list, not two. It was written out here and then written again three
+ * lines below as `["thehindu", "bbc"]` to decide what to refuse — so a third
+ * source would have been offered and then rejected.
+ */
+const NEWS_SOURCES = [
+  { id: "thehindu", name: "The Hindu", region: "India", url: "https://example.invalid/1" },
+  { id: "bbc", name: "BBC World", region: "World", url: "https://example.invalid/2" },
+];
+
   const apps: AppsApi = {
     async weather(latitude, longitude) {
       if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
@@ -1001,15 +1019,12 @@ export function createWebPlatform(): Platform {
       };
     },
     async newsSources() {
-      return [
-        { id: "thehindu", name: "The Hindu", region: "India", url: "https://example.invalid/1" },
-        { id: "bbc", name: "BBC World", region: "World", url: "https://example.invalid/2" },
-      ];
+      return NEWS_SOURCES;
     },
     async news(source, limit) {
       if (limit <= 0) throw new Error("ask for at least one headline");
       // The same refusal the backend makes for an id it does not know.
-      if (source !== null && !["thehindu", "bbc"].includes(source)) {
+      if (source !== null && !NEWS_SOURCES.some((s) => s.id === source)) {
         throw new Error(`there is no paper called "${source}"`);
       }
       const name = source === "bbc" ? "BBC World" : "The Hindu";
