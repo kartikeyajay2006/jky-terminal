@@ -4,6 +4,17 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>JKY Terminal</title>
+    <!--
+      An icon, so the browser stops asking for /favicon.ico and logging a 404
+      that is not a bug in anything. Inline rather than a file: it is four
+      lines of SVG, and a separate request for a 32-pixel square is a request
+      the desktop build never makes anyway — its window icon comes from the
+      bundle. The mark matches the one at the top of the rail.
+    -->
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%2308080c'/%3E%3Crect x='2.5' y='2.5' width='27' height='27' rx='5.5' fill='none' stroke='%2300e5ff' stroke-width='2'/%3E%3Ctext x='16' y='23' font-family='monospace' font-size='18' font-weight='700' fill='%2300e5ff' text-anchor='middle'%3EJ%3C/text%3E%3C/svg%3E"
+    />
   </head>
   <body>
     <div id="root"></div>

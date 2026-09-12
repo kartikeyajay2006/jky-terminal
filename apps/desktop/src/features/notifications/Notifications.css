@@ -411,3 +411,12 @@
     width: min(340px, calc(100vw - var(--s5)));
   }
 }
+
+/*
+ * Focus mode drops the chrome, and a bell pinned over the output is chrome.
+ * Only the button goes — a banner is something that arrived while you were
+ * working, which is exactly when you want to be told.
+ */
+.shell[data-hud="on"] .tray__bell {
+  display: none;
+}
