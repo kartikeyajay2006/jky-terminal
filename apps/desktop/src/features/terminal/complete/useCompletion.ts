@@ -27,15 +27,20 @@ export interface CompletionState {
 
 export interface Completion extends CompletionState {
   /**
-   * Take the selected suggestion, or the one given.
+   * Take the selected suggestion, or the one given, and close the list.
    *
    * Answers whether it actually put anything on the prompt. False means the
-   * suggestion was already what is typed, and the caller should let the
-   * keystroke through — an Enter that took a completion changing nothing
-   * would be an Enter that did nothing at all.
+   * suggestion was already what is typed, so the caller can let the keystroke
+   * through rather than swallowing it to do nothing.
    */
   accept: (item?: Suggestion) => boolean;
   dismiss: () => void;
+  /**
+   * Move the highlight, and put what is now highlighted on the prompt.
+   *
+   * Moving writes. That is the whole design: nothing reaches your line that
+   * you did not move onto, and Enter runs exactly the text you can see.
+   */
   move: (delta: number) => void;
   select: (index: number) => void;
 }
@@ -61,6 +66,16 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
   const muted = useRef<string | null>(null);
   /** Rising number, so a slow answer cannot overwrite a newer one. */
   const turn = useRef(0);
+  /**
+   * The suggestion `move` has already put on the prompt.
+   *
+   * Needed because writing is not instant: `replaceRange` sends keystrokes to
+   * the pty and the shell echoes them back a moment later, so reading the
+   * prompt straight afterwards still shows the old text. Accepting what was
+   * just previewed would write it a second time, and `ls` + `lsblk` would
+   * become `lslsblk`. Remembering beats re-reading.
+   */
+  const shown = useRef<Suggestion | null>(null);
 
   /**
    * What is on screen, readable without a state updater.
@@ -74,6 +89,7 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
   view.current = state;
 
   const close = useCallback(() => {
+    shown.current = null;
     setState((s) => (s.open || s.items.length > 0 ? { ...s, open: false, items: [] } : s));
   }, []);
 
@@ -95,7 +111,10 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
       const typed = at.line.slice(0, at.cursor);
       if (typed !== muted.current) muted.current = null;
       if (typed === asked.current) return;
+      // The prompt moved for a reason other than a preview: whatever was
+      // previewed is no longer what is there.
       asked.current = typed;
+      shown.current = null;
 
       if (muted.current !== null) return;
 
@@ -126,23 +145,51 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
     return () => clearInterval(timer);
   }, [term, active, close]);
 
+  /**
+   * Put a suggestion on the prompt, replacing the word being completed.
+   *
+   * Answers whether anything changed. The range starts at the suggestion's
+   * own `from` — the start of the word — so writing a second suggestion over
+   * a first one replaces it rather than appending to it.
+   */
+  const put = useCallback(
+    (chosen: Suggestion): boolean => {
+      const at = term.promptInput();
+      if (!at) return false;
+
+      // Already exactly what is typed. Nothing to write, and saying so lets
+      // the caller hand the keystroke back.
+      if (at.line.slice(chosen.from, at.cursor) === chosen.value) return false;
+
+      term.replaceRange(chosen.from, at.cursor, chosen.value);
+      shown.current = chosen;
+      return true;
+    },
+    [term],
+  );
+
   const accept = useCallback(
     (item?: Suggestion) => {
       const chosen = item ?? view.current.items[view.current.index];
       if (!chosen) return false;
 
-      const at = term.promptInput();
-      if (!at) return false;
+      // Already on the prompt because moving put it there. The list closes
+      // and the keystroke is spent, but nothing is typed again — the shell
+      // may not have echoed the first write yet, and re-reading the prompt
+      // to check would see the text from before it.
+      const previewed = shown.current;
+      if (previewed && previewed.from === chosen.from && previewed.value === chosen.value) {
+        asked.current = "";
+        setState((s) => ({ ...s, open: false, items: [] }));
+        shown.current = null;
+        term.focus();
+        return true;
+      }
 
-      // Already typed. Nothing to put on the prompt, and saying so lets the
-      // caller give the keystroke back to the shell.
-      const replacing = at.line.slice(chosen.from, at.cursor);
-      if (replacing === chosen.value) {
+      if (!put(chosen)) {
         close();
         return false;
       }
-
-      term.replaceRange(chosen.from, at.cursor, chosen.value);
 
       // Forget what was asked, so the next poll sees the accepted text as a
       // change and offers what can follow it — which is what makes Tab twice
@@ -152,7 +199,7 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
       term.focus();
       return true;
     },
-    [term, close],
+    [term, close, put],
   );
 
   const dismiss = useCallback(() => {
@@ -164,13 +211,32 @@ export function useCompletion(term: TerminalControls, active: boolean): Completi
     term.focus();
   }, [term, close]);
 
-  const move = useCallback((delta: number) => {
-    setState((s) => {
-      if (s.items.length === 0) return s;
+  const move = useCallback(
+    (delta: number) => {
+      const { items, index } = view.current;
+      if (items.length === 0) return;
+
       // Wraps: a list this short is faster to cycle than to bound.
-      return { ...s, index: (s.index + delta + s.items.length) % s.items.length };
-    });
-  }, []);
+      const next = (index + delta + items.length) % items.length;
+      const chosen = items[next];
+      setState((s) => ({ ...s, index: next }));
+
+      // Written outside the updater, for the reason `view` exists: a side
+      // effect inside one runs twice under StrictMode, and this one types
+      // into a real shell.
+      if (put(chosen)) {
+        // The prompt now says what the poll would otherwise read as a change
+        // and answer with a different list — which would move the highlight
+        // out from under the arrow key that just moved it. Telling the poll
+        // this text is already accounted for is what keeps the list still
+        // while you walk down it.
+        const at = term.promptInput();
+        if (at) asked.current = at.line.slice(0, at.cursor);
+      }
+      term.focus();
+    },
+    [term, put],
+  );
 
   const select = useCallback((index: number) => {
     setState((s) => (index >= 0 && index < s.items.length ? { ...s, index } : s));

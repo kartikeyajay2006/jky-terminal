@@ -9,6 +9,7 @@ use jky_ai::{
     run_approved_command, COMMAND_TIMEOUT,
 };
 use jky_audit::{AuditEvent, AuditKind, AuditLog};
+use jky_pty::{home_dir, resolve_start_dir};
 use jky_secrets::{ProviderId, Secret, SecretStore};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -294,8 +295,28 @@ fn build_ctx(app: &AppHandle, state: &AppState, provider: &str) -> Result<Ctx, S
         audit: state.audit.clone(),
         slot: state.turn.clone(),
         cancelled: state.cancelled.clone(),
-        // Tools are confined to the directory the app was opened against.
-        root: std::env::current_dir().unwrap_or_else(|_| std::env::temp_dir()),
+        // Where the assistant's file tools may reach, and nowhere else —
+        // `resolve_within` refuses anything outside it.
+        //
+        // This was `current_dir()`, which the rest of the codebase forbids in
+        // as many words (see `pty.rs`): it is wherever the binary was
+        // launched from, which is the project folder in development and `/`
+        // or `C:\Windows\System32` from an installed shortcut. A sandbox
+        // rooted at `/` is not a sandbox, and one rooted somewhere arbitrary
+        // cannot reach the files the person is actually looking at. It was
+        // both of those, depending on how the app was started.
+        //
+        // The same resolution a terminal uses, so the assistant works where
+        // your shell works: a configured start directory, then home. Narrow
+        // it by setting one; it is the same setting either way.
+        root: resolve_start_dir(
+            state
+                .settings
+                .terminal_start_dir()
+                .unwrap_or(None)
+                .as_deref(),
+            home_dir(),
+        ),
     })
 }
 

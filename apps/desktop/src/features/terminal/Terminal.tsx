@@ -190,15 +190,20 @@ export function Terminal({
         case "Tab":
           completion.accept();
           return true;
-        // Enter takes the highlighted one and puts it on the prompt; the
-        // Enter after that runs it. Two presses, because a completion you
-        // cannot read before it runs is a completion you have to undo.
+        // Enter runs what is on the prompt. Always, list open or not.
         //
-        // It gives the key back when accepting would change nothing — the
-        // suggestion is already what is typed — so Enter over a finished
-        // command still runs it rather than doing nothing.
+        // It used to take the highlighted suggestion instead, and `ls` is
+        // where that fell over: it is a finished command *and* the prefix of
+        // `lsblk`, `lsof`, `lsipc` and `lsinitrd`. You typed `ls`, the list
+        // opened with something else highlighted because something has to be
+        // first, and Enter ran a command you never chose.
+        //
+        // No guard fixes that. The suggestion is not what you typed, so any
+        // "has it changed" check says yes and takes it. What fixes it is
+        // that nothing reaches the prompt unless you moved onto it — see
+        // `move` — which leaves Enter with one job and no judgement to make.
         case "Enter":
-          return completion.accept();
+          return false;
         case "ArrowDown":
           completion.move(1);
           return true;

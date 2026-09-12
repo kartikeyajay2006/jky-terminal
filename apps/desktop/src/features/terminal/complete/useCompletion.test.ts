@@ -289,3 +289,112 @@ describe("using a completion", () => {
     await waitFor(() => expect(result.current.open).toBe(true));
   });
 });
+
+/*
+ * The `ls` problem.
+ *
+ * `ls` is a finished command and also the prefix of `lsblk`, `lsof`, `lsipc`
+ * and `lsinitrd`. Something has to be highlighted first, so pressing Enter to
+ * run `ls` used to run whichever of those the list happened to open on — a
+ * command the person never chose and could not see coming.
+ */
+describe("running what is on the prompt", () => {
+  beforeEach(() => vi.restoreAllMocks());
+
+  const lsList = () =>
+    vi.spyOn(getPlatform().complete, "suggest").mockResolvedValue({
+      start: 0,
+      end: 2,
+      word: "ls",
+      items: [suggestion("lsblk"), suggestion("lsipc"), suggestion("lsof")],
+    });
+
+  it("puts nothing on the prompt just because a list opened", async () => {
+    lsList();
+    const { term, state } = fakeTerm("ls");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await settle();
+
+    expect(result.current.open).toBe(true);
+    // The list is showing. The prompt still says exactly what was typed, so
+    // the Enter that follows runs `ls` and not `lsblk`.
+    expect(state.replaced).toEqual([]);
+  });
+
+  it("writes the one you moved onto, and only that one", async () => {
+    lsList();
+    const { term, state } = fakeTerm("ls");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await settle();
+
+    act(() => result.current.move(1));
+    expect(state.replaced).toEqual([[0, 2, "lsipc"]]);
+    expect(result.current.index).toBe(1);
+  });
+
+  it("replaces the previewed word rather than appending to it", async () => {
+    lsList();
+    const { term, state } = fakeTerm("ls");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await settle();
+
+    act(() => result.current.move(1));
+    act(() => result.current.move(1));
+
+    // Each write starts at the word, not at the cursor left by the last one.
+    // Appending is how `ls` became `lsipclsof`.
+    expect(state.replaced).toEqual([
+      [0, 2, "lsipc"],
+      [0, 2, "lsof"],
+    ]);
+  });
+
+  it("does not type it a second time when the previewed one is accepted", async () => {
+    lsList();
+    const { term, state } = fakeTerm("ls");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await settle();
+
+    act(() => result.current.move(1));
+    act(() => {
+      result.current.accept();
+    });
+
+    // The shell has not echoed the first write yet, so re-reading the prompt
+    // would see `ls` and write `lsipc` again — giving `lslsipc`.
+    expect(state.replaced).toEqual([[0, 2, "lsipc"]]);
+    expect(result.current.open).toBe(false);
+  });
+
+  it("still writes when accepting something never previewed", async () => {
+    lsList();
+    const { term, state } = fakeTerm("ls");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await settle();
+
+    // Tab, with no arrow key first. Nothing is on the prompt yet.
+    act(() => {
+      result.current.accept();
+    });
+    expect(state.replaced).toEqual([[0, 2, "lsblk"]]);
+  });
+
+  it("forgets the preview once the prompt moves on its own", async () => {
+    lsList();
+    const { term, state } = fakeTerm("ls");
+    const { result } = renderHook(() => useCompletion(term, true));
+    await settle();
+
+    act(() => result.current.move(1));
+    // The person keeps typing instead of accepting.
+    state.text = "ls -la";
+    await settle();
+
+    act(() => {
+      result.current.accept();
+    });
+    // Whatever it writes now, it is not the stale preview being trusted.
+    expect(state.replaced.length).toBeGreaterThan(1);
+  });
+});
+
