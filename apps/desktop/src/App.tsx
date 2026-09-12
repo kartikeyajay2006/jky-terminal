@@ -10,8 +10,6 @@ import { Assistant } from "./features/assistant/Assistant";
 import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
 import { Apps } from "./features/apps/Apps";
-import { Developer } from "./features/developer/Developer";
-import { Games } from "./features/games/Games";
 import { History } from "./features/history/History";
 import { Remote } from "./features/remote/Remote";
 import { UnsavedDialog, type Answer } from "./features/editor/UnsavedDialog";
@@ -43,6 +41,23 @@ import "./styles/board.css";
  */
 const Editor = lazy(async () => ({
   default: (await import("./features/editor/Editor")).Editor,
+}));
+
+/**
+ * Two sections that are whole applications, fetched when they are opened.
+ *
+ * Games carries four game engines and Developer carries a regex worker, a JWT
+ * decoder and a JSON tool. Both are reached by clicking a rail item, which
+ * means neither is on the path to a terminal — and a terminal is what this
+ * app is for. Keeping them in the entry bundle made every cold start pay for
+ * tools most sessions never open.
+ */
+const Games = lazy(async () => ({
+  default: (await import("./features/games/Games")).Games,
+}));
+
+const Developer = lazy(async () => ({
+  default: (await import("./features/developer/Developer")).Developer,
 }));
 
 export function App() {
@@ -262,7 +277,11 @@ export function App() {
       {/* Unmounted when you leave, which stops its frame loop dead: three of
           the four games animate, and one left running in the background
           would burn a core painting a board nobody is looking at. */}
-      {section === "games" && <Games />}
+      {section === "games" && (
+        <Suspense fallback={<p className="workspace__empty">Loading games…</p>}>
+          <Games />
+        </Suspense>
+      )}
       {/* Unmounted on leaving for the same reason: the apps that fetch would
           keep polling behind a section nobody is looking at, and a timer would
           keep counting where it cannot be seen. */}
@@ -270,7 +289,11 @@ export function App() {
       {/* Unmounted on leaving like the rest: the regex tester owns a worker,
           and one left running behind a section nobody is looking at is a
           thread nobody can see. */}
-      {section === "developer" && <Developer />}
+      {section === "developer" && (
+        <Suspense fallback={<p className="workspace__empty">Loading the tools…</p>}>
+          <Developer />
+        </Suspense>
+      )}
 
       {paletteOpen && <Palette onClose={() => setPaletteOpen(false)} />}
 
