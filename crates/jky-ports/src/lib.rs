@@ -151,6 +151,14 @@ pub fn arrange(
     let mut merged: BTreeMap<(u16, Protocol, Option<u32>), Listener> = BTreeMap::new();
 
     for socket in sockets {
+        // Port 0 is not a port. macOS reports UDP sockets that were never
+        // bound to one, and they are real rows in the kernel's table — they
+        // are just not answers to "what is listening", and a row saying
+        // `0` is a thing the reader has to learn to ignore.
+        if socket.port == 0 {
+            continue;
+        }
+
         let key = (socket.port, socket.protocol, socket.pid);
         let owner = socket.pid.and_then(|pid| owners.get(&pid)).cloned().unwrap_or_default();
 
@@ -224,6 +232,11 @@ pub fn arrange(
 /// That is the kernel declining to say rather than an error, so the row is
 /// kept with an empty owner: knowing *something* holds port 80 is useful even
 /// when this user is not allowed to know what.
+///
+/// What the kernel said, unedited — including the port-0 sockets macOS
+/// reports, which `arrange` drops. Deciding what a person should see is that
+/// function's job, and keeping it there is what makes the decision testable
+/// without a machine to read.
 pub fn sockets() -> Result<Vec<Socket>, PortsError> {
     use netstat2::{AddressFamilyFlags, ProtocolFlags, ProtocolSocketInfo, TcpState};
 
@@ -488,13 +501,39 @@ mod tests {
         assert!(all(Vec::new(), &owners(&[])).is_empty());
     }
 
+    // Port 0 came back from the real table on macOS and only there, which is
+    // exactly the kind of thing three platforms in CI exists to catch.
+    #[test]
+    fn a_socket_bound_to_no_port_is_not_a_listener() {
+        let unbound = Socket {
+            port: 0,
+            protocol: Protocol::Udp,
+            addr: "0.0.0.0".parse().expect("address"),
+            pid: Some(1),
+        };
+        let rows = all(vec![unbound, sock(3000, "0.0.0.0", Some(1))], &owners(&[]));
+
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].port, 3000);
+    }
+
     // Reading the real table must not panic or hang on any supported OS. What
-    // is on this machine is not something a test can assert.
+    // is on this machine is not something a test can assert — and what came
+    // back is deliberately unedited, so there is nothing here to check beyond
+    // its having been readable at all.
     #[test]
     fn the_real_socket_table_can_be_read() {
-        let found = sockets().expect("the socket table is readable");
-        for socket in &found {
-            assert!(socket.port > 0, "a listener on port 0 is not listening");
+        sockets().expect("the socket table is readable");
+    }
+
+    // The whole path, on whatever this machine happens to be running. Nothing
+    // about the machine is asserted; that no row is nonsense is.
+    #[test]
+    fn nothing_nonsensical_survives_the_arranging_on_this_machine() {
+        let table = sockets().expect("the socket table is readable");
+        for row in arrange(table, &owners(&[]), PortSort::Port, "", MAX_PORTS) {
+            assert!(row.port > 0, "port {} reached a row", row.port);
+            assert!(!row.addresses.is_empty(), "port {} has no address", row.port);
         }
     }
 }
