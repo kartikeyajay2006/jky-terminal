@@ -18,8 +18,8 @@
   align-items: flex-start;
   padding-top: 12vh;
   background: rgb(0 0 0 / 45%);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  backdrop-filter: var(--scrim);
+  -webkit-backdrop-filter: var(--scrim);
 }
 
 .pal {
@@ -30,9 +30,9 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
-  backdrop-filter: blur(22px);
-  -webkit-backdrop-filter: blur(22px);
-  box-shadow: 0 26px 60px rgb(0 0 0 / 60%);
+  backdrop-filter: var(--veil);
+  -webkit-backdrop-filter: var(--veil);
+  box-shadow: var(--lift-3);
   overflow: hidden;
   animation: pal-in var(--normal) var(--ease);
 }

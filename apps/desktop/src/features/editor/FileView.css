@@ -136,7 +136,7 @@
   height: auto;
   background: #fff;
   border-radius: var(--radius);
-  box-shadow: 0 6px 24px color-mix(in srgb, var(--ground) 80%, transparent);
+  box-shadow: var(--lift-1);
 }
 
 .pdfview__say {

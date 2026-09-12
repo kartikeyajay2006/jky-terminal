@@ -11,7 +11,7 @@
   display: grid;
   place-items: center;
   background: color-mix(in srgb, var(--ground) 72%, transparent);
-  backdrop-filter: blur(2px);
+  backdrop-filter: var(--scrim);
 }
 
 .unsaved__box {
@@ -22,7 +22,7 @@
   background: var(--surface-raised);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
-  box-shadow: 0 24px 64px color-mix(in srgb, var(--ground) 70%, transparent);
+  box-shadow: var(--lift-3);
   animation: jky-rise var(--motion-normal) var(--ease) both;
 }
 

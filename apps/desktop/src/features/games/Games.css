@@ -135,7 +135,7 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
   background: var(--ground);
-  box-shadow: 0 18px 44px rgb(0 0 0 / 45%);
+  box-shadow: var(--lift-2);
   overflow: hidden;
 }
 
@@ -886,7 +886,7 @@
   border-color: var(--card-tone);
   background: var(--surface-raised);
   transform: translateY(-2px);
-  box-shadow: 0 14px 32px rgb(0 0 0 / 40%);
+  box-shadow: var(--lift-2);
 }
 
 @media (prefers-reduced-motion: reduce) {

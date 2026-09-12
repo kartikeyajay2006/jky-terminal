@@ -85,6 +85,9 @@
   --mint: #0f7b5f;
   --warn: #8e6a00;
   --lime: #4d7c0f;
+  /* A shadow on a near-white ground is grey, not black. Black at these
+     opacities reads as a smudge under the card rather than as height. */
+  --shade: #9a9ab2;
   color-scheme: light;
 }
 
@@ -111,6 +114,13 @@
   --mint: #4ee88a;
   --warn: #ffd24d;
   --lime: #b8ff5c;
+  /* No elevation. This theme's ground is pure black, so a black shadow is
+     invisible — and the borders above are loud precisely because this is
+     the theme for people who cannot rely on subtle depth to tell them what
+     is floating. Shadow would be decoration that conveys nothing. */
+  --lift-1: none;
+  --lift-2: none;
+  --lift-3: none;
 }
 
 /*
@@ -145,5 +155,8 @@
   /* Darker than it looks in a swatch: a lime on parchment fails as text
      well before it stops looking like a lime. */
   --lime: #5c7a12;
+  /* Warm, like the ground. A neutral grey shadow on parchment is the one
+     thing that makes a warm theme look like a cold theme with a filter. */
+  --shade: #a08c62;
   color-scheme: light;
 }

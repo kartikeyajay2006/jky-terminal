@@ -63,9 +63,9 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface-raised) 94%, transparent);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  box-shadow: 0 10px 28px rgb(0 0 0 / 45%);
+  backdrop-filter: var(--veil);
+  -webkit-backdrop-filter: var(--veil);
+  box-shadow: var(--lift-2);
 }
 
 .tsearch__glyph {
@@ -139,9 +139,9 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius);
   background: color-mix(in srgb, var(--surface-raised) 96%, transparent);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 14px 34px rgb(0 0 0 / 50%);
+  backdrop-filter: var(--veil);
+  -webkit-backdrop-filter: var(--veil);
+  box-shadow: var(--lift-2);
   display: grid;
   gap: 1px;
 }
@@ -385,7 +385,7 @@
       transparent 45%
     ),
     var(--surface);
-  box-shadow: 0 8px 28px color-mix(in srgb, var(--ground) 60%, transparent);
+  box-shadow: var(--lift-2);
   animation: jky-rise var(--motion-normal) var(--ease) both;
   overflow: hidden;
   transition: max-height var(--motion-normal) var(--ease);

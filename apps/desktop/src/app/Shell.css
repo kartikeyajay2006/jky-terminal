@@ -206,10 +206,10 @@
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-lg);
   background: color-mix(in srgb, var(--surface-raised) 97%, transparent);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
+  backdrop-filter: var(--veil);
+  -webkit-backdrop-filter: var(--veil);
   box-shadow:
-    0 24px 56px rgb(0 0 0 / 62%),
+    var(--lift-3),
     0 0 0 1px color-mix(in srgb, var(--accent) 12%, transparent);
   display: grid;
   gap: var(--s3);

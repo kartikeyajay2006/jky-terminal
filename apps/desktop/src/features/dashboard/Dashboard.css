@@ -1079,7 +1079,7 @@
   border-radius: var(--radius-lg);
   background: var(--surface-raised);
   /* Lifted off the form under it, which is otherwise the same colour. */
-  box-shadow: 0 12px 32px rgb(0 0 0 / 45%);
+  box-shadow: var(--lift-2);
   display: grid;
   gap: var(--s2);
 }
