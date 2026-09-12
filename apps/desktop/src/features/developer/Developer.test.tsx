@@ -188,12 +188,15 @@ describe("Developer", () => {
    * examples. A tool that reads this machine opens showing the machine — it
    * is already the example, and a button labelled "load an example computer"
    * would be nonsense.
+   *
+   * Which tools those are comes from the registry rather than from a list
+   * kept here. The two said the same thing in two places until a fourth
+   * machine-reading tool arrived and only one of them knew.
    */
   it("gives every tool that takes input something to try", async () => {
     const user = userEvent.setup();
-    const readsTheMachine = ["monitor", "processes", "env"];
 
-    for (const tool of TOOLS.filter((t) => !readsTheMachine.includes(t.id))) {
+    for (const tool of TOOLS.filter((t) => t.backend !== "machine")) {
       const view = render(<Developer />);
       await open(user, tool.name);
 

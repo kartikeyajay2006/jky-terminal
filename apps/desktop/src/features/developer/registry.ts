@@ -129,6 +129,15 @@ export const TOOLS: ToolDef[] = [
     backend: "machine",
   },
   {
+    id: "ports",
+    name: "Ports",
+    glyph: "⇄",
+    blurb: "What is listening, what holds it, and whether the network can see it.",
+    tone: "azure",
+    accent: "accent-dim",
+    backend: "machine",
+  },
+  {
     id: "env",
     name: "Environment",
     glyph: "$",

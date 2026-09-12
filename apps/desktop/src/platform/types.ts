@@ -1084,6 +1084,31 @@ export interface Proc {
 
 export type ProcSort = "cpu" | "memory" | "name";
 
+/**
+ * One thing listening on this machine.
+ *
+ * A row per port rather than per socket: a server bound to both IP stacks is
+ * two rows in the kernel's table and one server, and showing it twice answers
+ * a question nobody asked. `addresses` keeps what was merged.
+ */
+export interface Listener {
+  port: number;
+  protocol: "tcp" | "udp";
+  /**
+   * `network` means another machine can reach it — `0.0.0.0` and `::` are
+   * every interface, not none. `local` means loopback only.
+   */
+  reach: "local" | "network";
+  /** Null when the socket belongs to a process this user cannot see. */
+  pid: number | null;
+  /** Empty when the pid is unknown, or names nothing this user can see. */
+  process: string;
+  command: string;
+  addresses: string[];
+}
+
+export type PortSort = "port" | "process" | "reach";
+
 export interface Lookup {
   host: string;
   addresses: string[];
@@ -1119,6 +1144,8 @@ export interface ToolsApi {
   processes(sort: ProcSort, search: string): Promise<Proc[]>;
   /** Whether the signal was delivered — not whether the process has gone. */
   endProcess(pid: number): Promise<boolean>;
+  /** What is listening, merged and sorted in Rust. Stopping one is `endProcess`. */
+  ports(sort: PortSort, search: string): Promise<Listener[]>;
   /** The system resolver, asked where a name points. Addresses only. */
   resolve(host: string): Promise<Lookup>;
   /** What a new terminal would inherit. Not a running shell's environment. */

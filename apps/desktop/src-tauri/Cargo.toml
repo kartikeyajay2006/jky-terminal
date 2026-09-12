@@ -26,6 +26,7 @@ jky-audit = { path = "../../../crates/jky-audit" }
 jky-capture = { path = "../../../crates/jky-capture" }
 jky-apps = { path = "../../../crates/jky-apps" }
 jky-system = { path = "../../../crates/jky-system" }
+jky-ports = { path = "../../../crates/jky-ports" }
 jky-tools = { path = "../../../crates/jky-tools" }
 tokio.workspace = true
 reqwest.workspace = true

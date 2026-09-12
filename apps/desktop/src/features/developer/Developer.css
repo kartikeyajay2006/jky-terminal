@@ -1033,3 +1033,49 @@
   overflow-wrap: anywhere;
   color: var(--text-muted);
 }
+
+/* ---- ports --------------------------------------------------------------- */
+
+/* The protocol rides with the number rather than taking a column of its own:
+   it is almost always tcp, and a column that says the same word forty times
+   is a column that costs width and tells you nothing. */
+.ports__proto {
+  margin-left: var(--s1);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/*
+ * How far this port can be reached from.
+ *
+ * The one thing on the row that changes what you do, so it is the one thing
+ * on the row that is coloured. `network` is not an error — a server you meant
+ * to expose is doing its job — so it is the warning tone and not the danger
+ * one, and loopback is stated rather than left blank so the row never reads
+ * as "this has not loaded yet".
+ */
+.ports__reach {
+  display: inline-block;
+  padding: 2px var(--s2);
+  border: 1px solid var(--line-strong);
+  border-radius: 999px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.ports__reach[data-reach="network"] {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+/* A port whose owner this user is not allowed to see. Dimmed rather than
+   absent: the row is still the answer to "what has this port". */
+.ports__unknown {
+  color: var(--text-dim);
+  font-style: italic;
+}
+

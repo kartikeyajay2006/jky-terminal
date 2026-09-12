@@ -474,6 +474,13 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // thousands over IPC so the window could sort them would be sending
         // thousands over IPC. The sort order is chosen from a list, so the
         // window names an order and never an expression.
+        // What is listening, and what holds it. Reads the kernel's socket
+        // table and joins it with the process list already being sampled —
+        // no argument names a command, a file or a host. It returns a pid so
+        // the panel can offer to stop it, and stopping goes through
+        // `tools_end_process`, which is audited: one killer, one audit trail,
+        // rather than a second way in that nobody remembers to log.
+        "tools_ports".to_string(),
         "tools_processes".to_string(),
         // One HTTP request, and the tool that could most easily become
         // something else: a command that sends wherever it is told is the

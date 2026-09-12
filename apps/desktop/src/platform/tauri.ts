@@ -23,6 +23,7 @@ import type {
   HttpResponse,
   Lookup,
   Machine,
+  Listener,
   Proc,
   SystemApi,
   ToolsApi,
@@ -419,6 +420,7 @@ export function createTauriPlatform(): Platform {
     machine: () => invoke<Machine>("tools_machine"),
     processes: (sort, search) => invoke<Proc[]>("tools_processes", { sort, search }),
     endProcess: (pid) => invoke<boolean>("tools_end_process", { pid }),
+    ports: (sort, search) => invoke<Listener[]>("tools_ports", { sort, search }),
     resolve: (host) => invoke<Lookup>("tools_resolve", { host }),
     environment: () => invoke<EnvVar[]>("tools_environment"),
     request: (method, url, headers, body) =>

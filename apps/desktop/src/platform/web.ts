@@ -1356,6 +1356,7 @@ export function createWebPlatform(): Platform {
     machine: needsDesktop,
     processes: needsDesktop,
     endProcess: needsDesktop,
+    ports: needsDesktop,
     resolve: needsDesktop,
     environment: needsDesktop,
     request: needsDesktop,

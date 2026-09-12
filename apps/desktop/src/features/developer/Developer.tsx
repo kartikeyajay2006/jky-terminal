@@ -20,6 +20,7 @@ import { YamlTool } from "./tools/YamlTool";
 import { HttpTool } from "./tools/HttpTool";
 import { MonitorTool } from "./tools/MonitorTool";
 import { ProcessTool } from "./tools/ProcessTool";
+import { PortsTool } from "./tools/PortsTool";
 import { EnvTool } from "./tools/EnvTool";
 import { DnsTool } from "./tools/DnsTool";
 import { TOOLS, findTool, type ToolDef } from "./registry";
@@ -72,6 +73,8 @@ function body(id: string) {
       return <MonitorTool />;
     case "processes":
       return <ProcessTool />;
+    case "ports":
+      return <PortsTool />;
     case "env":
       return <EnvTool />;
     case "dns":

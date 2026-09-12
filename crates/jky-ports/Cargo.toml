@@ -1,0 +1,15 @@
+[package]
+name = "jky-ports"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+serde.workspace = true
+thiserror.workspace = true
+# The socket table, on all three platforms. The alternative was parsing `ss`,
+# `lsof` or `netstat` output, which means shelling out to a tool whose flags
+# and columns differ on every one of them — and being wrong silently when a
+# machine ships a different version.
+netstat2 = "0.11"

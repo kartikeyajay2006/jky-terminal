@@ -134,6 +134,62 @@ pub fn tools_processes(
     ))
 }
 
+/// What is listening on this machine.
+///
+/// Two readings joined: the kernel's socket table, and the process list the
+/// status readout already keeps warm. The join is here rather than in
+/// `jky-ports` so that crate never has to walk every process a second time
+/// for an answer this one already has.
+///
+/// Merged, sorted and cut in Rust for the same reason the process list is.
+/// The order is chosen from a list, so the window names an order and never
+/// an expression.
+#[tauri::command]
+pub fn tools_ports(
+    state: State<'_, AppState>,
+    sort: String,
+    search: String,
+) -> Result<Vec<jky_ports::Listener>, String> {
+    let order = match sort.as_str() {
+        "port" => jky_ports::PortSort::Port,
+        "process" => jky_ports::PortSort::Process,
+        "reach" => jky_ports::PortSort::Reach,
+        other => return Err(format!("{other} is not an order this sorts by")),
+    };
+    if search.len() > 200 {
+        return Err("that search is too long".into());
+    }
+
+    let sockets = jky_ports::sockets().map_err(|e| e.to_string())?;
+
+    let mut sampler = state
+        .sampler
+        .lock()
+        .map_err(|_| "the system readings are unavailable".to_string())?;
+
+    let owners = sampler
+        .processes()
+        .into_iter()
+        .map(|p| {
+            (
+                p.pid,
+                jky_ports::Owner {
+                    name: p.name,
+                    command: p.command,
+                },
+            )
+        })
+        .collect();
+
+    Ok(jky_ports::arrange(
+        sockets,
+        &owners,
+        order,
+        &search,
+        jky_ports::MAX_PORTS,
+    ))
+}
+
 /// Ask a process to stop.
 ///
 /// The one command in this file that changes anything, and the only one in

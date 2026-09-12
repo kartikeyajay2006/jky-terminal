@@ -62,6 +62,7 @@ fn main() {
             tools::tools_end_process,
             tools::tools_environment,
             tools::tools_machine,
+            tools::tools_ports,
             tools::tools_processes,
             tools::tools_request,
             tools::tools_resolve,

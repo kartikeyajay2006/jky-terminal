@@ -44,6 +44,7 @@ function withTools(over: Partial<Platform["tools"]> = {}): Platform {
       machine: base.tools.machine,
       processes: base.tools.processes,
       endProcess: base.tools.endProcess,
+      ports: base.tools.ports,
       resolve: base.tools.resolve,
       environment: base.tools.environment,
       request: base.tools.request,
