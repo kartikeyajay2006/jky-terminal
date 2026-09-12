@@ -1,12 +1,14 @@
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it } from "vitest";
 import { Shell } from "./Shell";
+import { useHud } from "./hudStore";
 
 describe("Shell", () => {
   beforeEach(() => {
     localStorage.clear();
     document.documentElement.removeAttribute("data-theme");
+    useHud.setState({ on: false });
   });
 
   it("renders its children in the workspace region", () => {
@@ -61,5 +63,49 @@ describe("Shell", () => {
   it("reports which shell the terminal will run", () => {
     render(<Shell>{null}</Shell>);
     expect(screen.getByRole("contentinfo")).toHaveTextContent(/shell/i);
+  });
+
+  describe("focus mode", () => {
+    it("keeps the navigation until asked", () => {
+      render(<Shell>{null}</Shell>);
+      expect(screen.getByRole("navigation", { name: /workspace/i })).toBeInTheDocument();
+    });
+
+    it("drops the chrome and gives the window to the work", () => {
+      const { container } = render(
+        <Shell>
+          <p>workspace content</p>
+        </Shell>,
+      );
+      act(() => useHud.getState().toggle());
+
+      expect(container.querySelector(".shell")).toHaveAttribute("data-hud", "on");
+      // The work itself is untouched. A focus mode that unmounted the
+      // terminal would kill the shell and everything typed into it.
+      expect(screen.getByText("workspace content")).toBeInTheDocument();
+    });
+
+    it("leaves one way out on screen, not only a chord", () => {
+      render(<Shell>{null}</Shell>);
+      act(() => useHud.getState().toggle());
+      // A mode you can only leave by remembering a keystroke is a mode
+      // people get stuck in once and then never enter again.
+      expect(screen.getByRole("button", { name: /leave focus/i })).toBeInTheDocument();
+    });
+
+    it("goes back when that way out is taken", async () => {
+      const user = userEvent.setup();
+      render(<Shell>{null}</Shell>);
+      act(() => useHud.getState().toggle());
+
+      await user.click(screen.getByRole("button", { name: /leave focus/i }));
+      expect(useHud.getState().on).toBe(false);
+      expect(screen.getByRole("navigation", { name: /workspace/i })).toBeInTheDocument();
+    });
+
+    it("offers no way out when there is nothing to leave", () => {
+      render(<Shell>{null}</Shell>);
+      expect(screen.queryByRole("button", { name: /leave focus/i })).not.toBeInTheDocument();
+    });
   });
 });

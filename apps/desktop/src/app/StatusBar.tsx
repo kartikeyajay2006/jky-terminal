@@ -6,14 +6,23 @@ interface StatusBarProps {
   theme: ThemeId;
   onThemeChange: (id: ThemeId) => void;
   shellName: string;
+  /** Focus mode: the bar floats over the work instead of sitting under it. */
+  hud?: boolean;
+  onLeaveHud?: () => void;
 }
 
-export function StatusBar({ theme, onThemeChange, shellName }: StatusBarProps) {
+export function StatusBar({
+  theme,
+  onThemeChange,
+  shellName,
+  hud = false,
+  onLeaveHud,
+}: StatusBarProps) {
   const platform = getPlatform();
   const live = platform.kind === "tauri";
 
   return (
-    <footer className="status">
+    <footer className="status" data-hud={hud ? "on" : undefined}>
       {/* Which backend is actually live. This was invisible once, and the
           desktop app silently ran the browser mock for an entire phase:
           keys in memory instead of the keychain, a fake echo shell instead
@@ -34,6 +43,14 @@ export function StatusBar({ theme, onThemeChange, shellName }: StatusBarProps) {
         <span className="status__key">shell</span> {shellName}
       </span>
       <span className="status__spacer" />
+      {/* The way out, and the only chrome focus mode leaves behind. A mode
+          whose exit is a chord you have to remember is a mode people get
+          stuck in and then stop using. */}
+      {hud && (
+        <button type="button" className="status__item status__leave" onClick={onLeaveHud}>
+          <span aria-hidden="true">✕</span> leave focus
+        </button>
+      )}
       <span className="status__item status__theme">
         <span className="status__key">theme</span>
         <Select

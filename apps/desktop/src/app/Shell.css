@@ -37,6 +37,80 @@
   grid-template-columns: 56px minmax(0, 1fr);
 }
 
+/* ---- focus mode ---------------------------------------------------------- */
+
+/*
+ * The window, minus everything that is not the work.
+ *
+ * The rail, the tabs and the status bar go; the terminal takes the whole
+ * window. One grid change does it, because focus mode is a statement about
+ * the window and a window is one thing — chrome that removed itself piece by
+ * piece would be five places to get wrong.
+ */
+.shell[data-hud="on"] {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  grid-template-areas: "workspace";
+}
+
+.shell[data-hud="on"] .rail,
+.shell[data-hud="on"] .tabbar {
+  display: none;
+}
+
+/*
+ * What is left: a small readout in the corner, and the way out.
+ *
+ * Not frosted, unlike every other floating surface in the app. There is
+ * terminal text underneath this one, and blur behind text is the one thing
+ * `--veil` exists to keep out of. It is opaque and it is small instead.
+ *
+ * It rests dimmed and comes up when looked at, so the corner of a full
+ * window is not permanently spoken for by something nobody is reading.
+ */
+.status[data-hud="on"] {
+  position: fixed;
+  right: var(--s3);
+  bottom: var(--s3);
+  z-index: 40;
+  gap: var(--s3);
+  height: 26px;
+  padding: 0 var(--s2) 0 var(--s3);
+  border: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-raised);
+  box-shadow: var(--lift-2);
+  opacity: 0.7;
+  transition: opacity var(--normal) var(--ease);
+}
+
+.status[data-hud="on"]:hover,
+.status[data-hud="on"]:focus-within {
+  opacity: 1;
+}
+
+/* Nothing has to stretch when the bar is only as wide as its contents. */
+.status[data-hud="on"] .status__spacer {
+  display: none;
+}
+
+.status__leave {
+  padding: 2px var(--s2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.status__leave:hover,
+.status__leave:focus-visible {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
 /*
  * The identity, with the toggle beside it.
  *

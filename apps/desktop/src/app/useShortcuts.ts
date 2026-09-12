@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useTabs } from "./tabStore";
 import { useRail } from "./railStore";
+import { useHud } from "./hudStore";
 import { actionFor } from "./keymapStore";
 import type { Side } from "../features/terminal/panes/tree";
 
@@ -38,6 +39,10 @@ export function useShortcuts(): void {
         case "rail-toggle":
           e.preventDefault();
           useRail.getState().toggle();
+          return;
+        case "hud-toggle":
+          e.preventDefault();
+          useHud.getState().toggle();
           return;
         case "tab-new":
           e.preventDefault();

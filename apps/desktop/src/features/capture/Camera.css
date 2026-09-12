@@ -115,3 +115,9 @@
 .shot__result--bad {
   color: var(--danger);
 }
+
+/* Focus mode drops the chrome, and a shutter button pinned over the output
+   is chrome. The keyboard still reaches it; only the button goes. */
+.shell[data-hud="on"] .shot__button {
+  display: none;
+}

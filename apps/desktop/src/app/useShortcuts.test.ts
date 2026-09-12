@@ -2,6 +2,7 @@ import { renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it } from "vitest";
 import { useShortcuts } from "./useShortcuts";
 import { useTabs } from "./tabStore";
+import { useHud } from "./hudStore";
 
 function press(key: string, mods: Partial<KeyboardEventInit> = {}) {
   window.dispatchEvent(
@@ -67,5 +68,26 @@ describe("useShortcuts", () => {
     unmount();
     press("t", { ctrlKey: true });
     expect(useTabs.getState().tabs).toHaveLength(0);
+  });
+
+  it("enters and leaves focus mode on ctrl+shift+b", () => {
+    useHud.setState({ on: false });
+    renderHook(() => useShortcuts());
+
+    // The shifted sibling of ctrl+b, which hides the sidebar: same key,
+    // more of it.
+    press("B", { ctrlKey: true, shiftKey: true });
+    expect(useHud.getState().on).toBe(true);
+
+    press("B", { ctrlKey: true, shiftKey: true });
+    expect(useHud.getState().on).toBe(false);
+  });
+
+  it("does not enter focus mode on the unshifted ctrl+b", () => {
+    useHud.setState({ on: false });
+    renderHook(() => useShortcuts());
+
+    press("b", { ctrlKey: true });
+    expect(useHud.getState().on).toBe(false);
   });
 });

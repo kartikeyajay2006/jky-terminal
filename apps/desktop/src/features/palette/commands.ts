@@ -2,6 +2,7 @@ import { useNav } from "../../app/navStore";
 import { chordFor } from "../../app/keymapStore";
 import { useTabs } from "../../app/tabStore";
 import { useRail } from "../../app/railStore";
+import { useHud } from "../../app/hudStore";
 import { THEMES, applyTheme, saveTheme, type ThemeId } from "../../app/theme";
 import { useOpenGame } from "../games/openStore";
 import { GAMES } from "../games/Games";
@@ -155,6 +156,13 @@ export function buildCommands(context: PaletteContext = {}): PaletteCommand[] {
     group: "Terminal",
     hint: chordFor("rail-toggle"),
     run: () => useRail.getState().toggle(),
+  });
+  out.push({
+    id: "app:hud",
+    label: "Focus mode",
+    group: "Terminal",
+    hint: chordFor("hud-toggle"),
+    run: () => useHud.getState().toggle(),
   });
   out.push({
     id: "term:new",

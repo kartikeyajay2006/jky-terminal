@@ -16,6 +16,12 @@ export const DEFAULT_BINDINGS: ReadonlyArray<Omit<Binding, "chord" | "custom">> 
     group: "App",
     default_chord: "Ctrl+B",
   },
+  {
+    action: "hud-toggle",
+    label: "Focus mode",
+    group: "App",
+    default_chord: "Ctrl+Shift+B",
+  },
   { action: "tab-new", label: "New terminal tab", group: "Tabs", default_chord: "Ctrl+T" },
   { action: "tab-close", label: "Close tab", group: "Tabs", default_chord: "Ctrl+W" },
   { action: "tab-next", label: "Next tab", group: "Tabs", default_chord: "Ctrl+Tab" },
