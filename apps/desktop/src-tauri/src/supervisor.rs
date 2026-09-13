@@ -41,14 +41,28 @@ impl Shell for Pty {
     }
 }
 
+/// The value of a `--flag value` pair, if it is there.
+pub fn argument(args: &[String], flag: &str) -> Option<String> {
+    let at = args.iter().position(|a| a == flag)?;
+    args.get(at + 1).cloned()
+}
+
+/// Where this supervisor was told to keep its records.
+///
+/// Told, never derived. The window already knows its configuration directory
+/// — Tauri resolves it per platform — and a supervisor working it out again
+/// from the environment is the same fact in two places, which is one place
+/// too many: they disagreed on macOS, where the answer is under
+/// `Library/Application Support` and the second derivation said otherwise.
+pub const CONFIG_FLAG: &str = "--config-dir";
+
 /// The session this was asked to supervise, if it was asked at all.
 ///
 /// Read from the arguments rather than an environment variable so that what a
 /// process is doing is visible in a process list — a supervisor nobody can
 /// identify is a supervisor nobody will ever stop.
 pub fn requested(args: &[String]) -> Option<String> {
-    let at = args.iter().position(|a| a == FLAG)?;
-    args.get(at + 1).cloned()
+    argument(args, FLAG)
 }
 
 /// Run as a supervisor until the shell exits.
@@ -104,6 +118,19 @@ mod tests {
     fn the_flag_is_found_wherever_it_sits() {
         let args = vec!["jky-terminal".into(), "--other".into(), FLAG.into(), "s1".into()];
         assert_eq!(requested(&args).as_deref(), Some("s1"));
+    }
+
+    #[test]
+    fn the_configuration_directory_is_given_rather_than_guessed() {
+        let args = vec![
+            "jky-terminal".into(),
+            FLAG.into(),
+            "s1".into(),
+            CONFIG_FLAG.into(),
+            "/somewhere".into(),
+        ];
+        assert_eq!(argument(&args, CONFIG_FLAG).as_deref(), Some("/somewhere"));
+        assert_eq!(argument(&args, "--absent"), None);
     }
 
     #[test]

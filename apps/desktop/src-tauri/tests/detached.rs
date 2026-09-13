@@ -73,14 +73,13 @@ fn start(config: &Path, session: &str) -> Option<Supervisor> {
     let child = Command::new(exe)
         .arg("--supervise")
         .arg(session)
+        // Named rather than derived, which is the point: where a supervisor
+        // records itself cannot depend on how three platforms each spell
+        // "the configuration directory".
+        .arg("--config-dir")
+        .arg(config)
         .arg("--cwd")
         .arg(config)
-        // A supervisor reads its config directory from the environment, the
-        // same way the window does, so pointing both at a scratch directory
-        // keeps this test out of the real one.
-        .env("XDG_CONFIG_HOME", config)
-        .env("APPDATA", config)
-        .env("HOME", config)
         .spawn()
         .expect("the supervisor should start");
     Some(Supervisor(child))
@@ -89,9 +88,7 @@ fn start(config: &Path, session: &str) -> Option<Supervisor> {
 #[test]
 fn a_shell_outlives_the_process_that_asked_for_it() {
     let config = scratch("survives");
-    // The supervisor derives its own config dir from the environment, so the
-    // sessions land under <config>/dev.jky.terminal/detached.
-    let recorded = sessions_dir(&config.join("dev.jky.terminal"));
+    let recorded = sessions_dir(&config);
 
     let Some(child) = start(&config, "one") else { return };
 
@@ -105,7 +102,9 @@ fn a_shell_outlives_the_process_that_asked_for_it() {
         let window = attach(&recorded, "one").expect("attach");
         let (reading, mut writing) = window.split();
 
-        Frame::Data(b"echo MARKER-ALIVE\n".to_vec())
+        // A carriage return, which is what a terminal sends for Enter. `\n`
+        // is Ctrl+J, and PowerShell does not read it as submitting a line.
+        Frame::Data(b"echo MARKER-ALIVE\r".to_vec())
             .write_to(&mut writing)
             .expect("type a command");
 
@@ -123,14 +122,14 @@ fn a_shell_outlives_the_process_that_asked_for_it() {
 
     let again = attach(&recorded, "one").expect("reattach");
     let (reading, mut writing) = again.split();
-    Frame::Data(b"echo MARKER-AGAIN\n".to_vec())
+    Frame::Data(b"echo MARKER-AGAIN\r".to_vec())
         .write_to(&mut writing)
         .expect("type again");
     let seen = read_until(reading, "MARKER-AGAIN", Duration::from_secs(25));
     assert!(seen.contains("MARKER-AGAIN"), "the reattached shell was deaf:\n{seen}");
 
     // And it ends when told to, taking its record with it.
-    Frame::Data(b"exit\n".to_vec()).write_to(&mut writing).ok();
+    Frame::Data(b"exit\r".to_vec()).write_to(&mut writing).ok();
     assert!(
         wait_for(|| sessions(&recorded).is_empty()),
         "the session outlived its shell"
@@ -183,7 +182,7 @@ fn an_ordinary_launch_is_not_a_supervisor() {
     // The flag is the only thing that turns this binary into one. Without it
     // nothing is recorded, because a window was asked for instead.
     let config = scratch("window");
-    let recorded = sessions_dir(&config.join("dev.jky.terminal"));
+    let recorded = sessions_dir(&config);
     assert!(sessions(&recorded).is_empty());
     let _ = std::fs::remove_dir_all(&config);
 }
