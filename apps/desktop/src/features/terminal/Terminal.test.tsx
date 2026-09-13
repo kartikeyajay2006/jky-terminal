@@ -421,6 +421,42 @@ describe("letting the app's shortcuts through", () => {
     expect(handle(new KeyboardEvent("keydown", { key: "1" }))).toBe(true);
   });
 
+  /*
+   * Shift+Enter, which a terminal has had no way to say since 1978.
+   *
+   * An assistant reading a paragraph needs a key for "newline" that is not
+   * "send". Without one a multi-line prompt submits itself halfway through,
+   * which in a terminal that calls itself an AI terminal is the feature not
+   * working rather than a rough edge.
+   */
+  it("sends a newline for Shift+Enter, and does not let xterm send Enter too", async () => {
+    render(<Terminal paneId="tab-shift-enter" />);
+    const handle = customKeyHandlers[customKeyHandlers.length - 1];
+    await waitFor(() => expect(writes.length).toBeGreaterThan(0));
+    writes.length = 0;
+
+    const event = new KeyboardEvent("keydown", { key: "Enter", shiftKey: true, cancelable: true });
+    // False keeps xterm out of it, so the carriage return that would have run
+    // the command is never sent.
+    expect(handle(event)).toBe(false);
+    expect(event.defaultPrevented).toBe(true);
+    await waitFor(() => expect(writes.join("")).toBe("\n"));
+  });
+
+  it("leaves plain Enter to the shell", async () => {
+    render(<Terminal paneId="tab-plain-enter" />);
+    const handle = customKeyHandlers[customKeyHandlers.length - 1];
+    await waitFor(() => expect(writes.length).toBeGreaterThan(0));
+    writes.length = 0;
+
+    const event = new KeyboardEvent("keydown", { key: "Enter", cancelable: true });
+    // Enter still runs the command, or this would be a terminal you cannot
+    // use a shell in.
+    expect(handle(event)).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
+    expect(writes.join("")).toBe("");
+  });
+
   it("hands the app's shortcuts back rather than swallowing them", () => {
     // The bug this fixes: xterm handles a key by calling stopPropagation, so
     // Ctrl+T pressed in a terminal never reached the window listener and every

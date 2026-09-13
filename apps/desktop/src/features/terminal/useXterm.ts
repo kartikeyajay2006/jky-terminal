@@ -10,6 +10,7 @@ import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
 import { buildBanner } from "./banner";
 import { isAppShortcut } from "../../app/shortcuts";
+import { overrideBytes } from "./inputKeys";
 import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFont";
 import { copyText, readText } from "./clipboard";
 import { decodeCommand, renderResult } from "./shellCommand";
@@ -226,6 +227,18 @@ export function useXterm(
         event.preventDefault();
         return false;
       }
+
+      // A key whose terminal answer is older than the question — Shift+Enter,
+      // which has meant the same byte as Enter since 1978 and now has to mean
+      // "newline" to an assistant reading a paragraph. See `inputKeys`.
+      const bytes = overrideBytes(event);
+      if (bytes !== null) {
+        const id = ptyRef.current;
+        if (id) void getPlatform().pty.write(id, bytes);
+        event.preventDefault();
+        return false;
+      }
+
       return true;
     });
 

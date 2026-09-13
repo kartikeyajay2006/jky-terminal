@@ -7,9 +7,7 @@ import { allPaneKeys, useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
 import { actionFor, useKeymap } from "./app/keymapStore";
 import { Assistant } from "./features/assistant/Assistant";
-import { Dashboard } from "./features/dashboard/Dashboard";
 import { useDashboard } from "./features/dashboard/dashboardStore";
-import { Apps } from "./features/apps/Apps";
 import { History } from "./features/history/History";
 import { Remote } from "./features/remote/Remote";
 import { UnsavedDialog, type Answer } from "./features/editor/UnsavedDialog";
@@ -58,6 +56,23 @@ const Games = lazy(async () => ({
 
 const Developer = lazy(async () => ({
   default: (await import("./features/developer/Developer")).Developer,
+}));
+
+/**
+ * Apps and the dashboard, fetched when they are opened.
+ *
+ * The same reasoning as the two above, applied when xterm 6 arrived seventy
+ * kilobytes heavier than xterm 5 and the entry bundle went over its budget.
+ * Apps is the largest section in the app — eight of them, one of which draws
+ * a map — and the dashboard is boards, notes and a calendar. Neither is on
+ * the path to a terminal, and this app opens on a terminal.
+ */
+const Apps = lazy(async () => ({
+  default: (await import("./features/apps/Apps")).Apps,
+}));
+
+const Dashboard = lazy(async () => ({
+  default: (await import("./features/dashboard/Dashboard")).Dashboard,
 }));
 
 export function App() {
@@ -272,7 +287,11 @@ export function App() {
         </Suspense>
       )}
       {section === "settings" && <Settings />}
-      {section === "dashboard" && <Dashboard />}
+      {section === "dashboard" && (
+        <Suspense fallback={<p className="workspace__empty">Loading the dashboard…</p>}>
+          <Dashboard />
+        </Suspense>
+      )}
       {section === "assistant" && <Assistant />}
       {/* Unmounted when you leave, which stops its frame loop dead: three of
           the four games animate, and one left running in the background
@@ -285,7 +304,11 @@ export function App() {
       {/* Unmounted on leaving for the same reason: the apps that fetch would
           keep polling behind a section nobody is looking at, and a timer would
           keep counting where it cannot be seen. */}
-      {section === "apps" && <Apps />}
+      {section === "apps" && (
+        <Suspense fallback={<p className="workspace__empty">Loading apps…</p>}>
+          <Apps />
+        </Suspense>
+      )}
       {/* Unmounted on leaving like the rest: the regex tester owns a worker,
           and one left running behind a section nobody is looking at is a
           thread nobody can see. */}
