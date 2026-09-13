@@ -40,6 +40,14 @@ pub trait Shell: Send + Sync + 'static {
     /// Keystrokes going the other way.
     fn input(&self, bytes: &[u8]) -> io::Result<()>;
     fn resize(&self, cols: u16, rows: u16) -> io::Result<()>;
+    /// Block until the shell exits, and report how.
+    ///
+    /// Asked as well as watching the output, because the end of a pty's
+    /// output is not a reliable sign that the shell has gone: something
+    /// holding the slave side of the pair open means the master never reaches
+    /// end-of-file, and a supervisor waiting for one waits for ever — holding
+    /// a shell that exited an hour ago.
+    fn wait(&self) -> io::Result<i32>;
 }
 
 /// The half of the connection output is written to, when a window is attached.
@@ -70,10 +78,34 @@ pub fn supervise(runtime_dir: &Path, session: &str, shell: impl Shell) -> io::Re
         let at = at.clone();
         std::thread::spawn(move || {
             let code = pump_output(&*shell, &attached, &replay);
-            ended.store(true, Ordering::SeqCst);
+            if ended.swap(true, Ordering::SeqCst) {
+                return;
+            }
 
             // Tell whoever is watching, then knock on our own door: the main
             // thread is blocked in `accept`, and nothing else will wake it.
+            if let Ok(mut held) = attached.lock() {
+                if let Some(stream) = held.as_mut() {
+                    let _ = Frame::Ended { code }.write_to(stream);
+                }
+            }
+            knock(&at);
+        })
+    };
+
+    // The other way a session ends, and the more reliable one.
+    let waiter = {
+        let shell = Arc::clone(&shell);
+        let attached = Arc::clone(&attached);
+        let ended = Arc::clone(&ended);
+        let at = at.clone();
+        std::thread::spawn(move || {
+            let code = shell.wait().unwrap_or(-1);
+            if ended.swap(true, Ordering::SeqCst) {
+                // The output already ended and said so. Saying it twice would
+                // have the window draw two exit notices for one shell.
+                return;
+            }
             if let Ok(mut held) = attached.lock() {
                 if let Some(stream) = held.as_mut() {
                     let _ = Frame::Ended { code }.write_to(stream);
@@ -102,7 +134,13 @@ pub fn supervise(runtime_dir: &Path, session: &str, shell: impl Shell) -> io::Re
         std::thread::spawn(move || serve_one(stream, &*shell, &attached, &replay));
     }
 
-    let _ = pump.join();
+    // Neither thread is joined. Whichever noticed the shell first has done
+    // its work; the other is blocked on a pty that will never speak again,
+    // and waiting for it would hold the session open exactly as long as the
+    // thing this is trying to avoid.
+    drop(pump);
+    drop(waiter);
+
     // The shell is gone, so the session is. Both halves go with it, which is
     // what makes a leaked address impossible rather than merely unlikely.
     forget(runtime_dir, session);
@@ -235,6 +273,15 @@ mod tests {
         fn resize(&self, cols: u16, rows: u16) -> io::Result<()> {
             self.sized.lock().unwrap().push((cols, rows));
             Ok(())
+        }
+        fn wait(&self) -> io::Result<i32> {
+            // Never returns, so these tests exercise the output-ended path.
+            // The process-exited path is proved against a real shell in the
+            // desktop crate's `detached` test, which is the only place it can
+            // be: it needs a process.
+            loop {
+                std::thread::park();
+            }
         }
     }
 

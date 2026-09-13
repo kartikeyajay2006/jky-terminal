@@ -5,6 +5,7 @@ mod audit_detail;
 mod listing;
 mod turn;
 mod state;
+mod supervisor;
 
 use commands::{
     advice, ai, apps, browser, capture, complete, files, games, github, gmail, history, keys, open,
@@ -14,6 +15,26 @@ use state::AppState;
 use tauri::Manager;
 
 fn main() {
+    // Before anything else, and deliberately before Tauri exists at all.
+    //
+    // Asked to supervise, this process is not a window: it opens a pty,
+    // listens on a socket and holds the shell until it exits. Starting a
+    // webview first and then not using it would cost a browser's worth of
+    // memory for every detached session on the machine.
+    let args: Vec<String> = std::env::args().collect();
+    if let Some(session) = supervisor::requested(&args) {
+        let config_dir = dirs_config().unwrap_or_else(std::env::temp_dir);
+        let cwd = args
+            .iter()
+            .position(|a| a == "--cwd")
+            .and_then(|at| args.get(at + 1))
+            .cloned();
+        // Failing here is a supervisor that never started, which the window
+        // finds out about by not finding a session to attach to.
+        let _ = supervisor::run(&config_dir, &session, cwd);
+        return;
+    }
+
     tauri::Builder::default()
         .setup(|app| {
             // Resolved by Tauri per platform: ~/.config/dev.jky.terminal on Linux,
@@ -135,4 +156,23 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");
+}
+
+/// The configuration directory, without Tauri.
+///
+/// A supervisor runs before the app exists, so it cannot ask Tauri where
+/// things live — and it must agree with what Tauri answers later, or windows
+/// and supervisors would record sessions in two different places.
+fn dirs_config() -> Option<std::path::PathBuf> {
+    let base = if cfg!(windows) {
+        std::env::var_os("APPDATA").map(std::path::PathBuf::from)
+    } else if cfg!(target_os = "macos") {
+        std::env::var_os("HOME")
+            .map(|h| std::path::PathBuf::from(h).join("Library/Application Support"))
+    } else {
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(std::path::PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|h| std::path::PathBuf::from(h).join(".config")))
+    };
+    base.map(|dir| dir.join("dev.jky.terminal"))
 }

@@ -157,6 +157,19 @@ impl PtySession {
 
     /// Terminate the child. Safe to call more than once — a process that has
     /// already exited is the desired end state, not an error.
+    /// Block until the shell exits, and report how.
+    ///
+    /// Needed because the end of a pty's output is not a reliable sign that
+    /// the shell has gone: this struct keeps the slave side of the pair open
+    /// for the life of the session, so the master never reaches end-of-file
+    /// and a reader waiting for one waits for ever. Anything whose lifetime
+    /// is meant to match the shell's has to ask the child directly.
+    pub fn wait(&self) -> Result<i32, PtyError> {
+        let mut child = self.child.lock().map_err(|e| PtyError::Io(e.to_string()))?;
+        let status = child.wait().map_err(|e| PtyError::Io(e.to_string()))?;
+        Ok(status.exit_code() as i32)
+    }
+
     pub fn kill(&self) -> Result<(), PtyError> {
         let mut child = self.child.lock().map_err(|e| PtyError::Io(e.to_string()))?;
         let _ = child.kill();

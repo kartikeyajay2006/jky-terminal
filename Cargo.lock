@@ -2332,11 +2332,13 @@ dependencies = [
 name = "jky-terminal"
 version = "0.1.0"
 dependencies = [
+ "interprocess",
  "jky-ai",
  "jky-apps",
  "jky-audit",
  "jky-capture",
  "jky-complete",
+ "jky-detach",
  "jky-files",
  "jky-history",
  "jky-keys",

@@ -1,0 +1,189 @@
+//! A shell that outlives the process that asked for it.
+//!
+//! Every other test of this runs the supervisor loop in a thread against a
+//! pipe. This one runs the real binary as a real second process holding a
+//! real shell, because the thing being claimed — that a shell survives the
+//! window — is a claim about processes, and a thread in the same process
+//! cannot demonstrate it.
+
+use std::io::Read;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Command};
+use interprocess::local_socket::traits::Stream as _;
+use std::time::{Duration, Instant};
+
+use jky_detach::{Frame, attach, sessions};
+
+fn binary() -> PathBuf {
+    // The test binary sits beside the one under test.
+    let mut path = std::env::current_exe().expect("this test's own path");
+    path.pop();
+    if path.ends_with("deps") {
+        path.pop();
+    }
+    path.join(if cfg!(windows) { "jky-terminal.exe" } else { "jky-terminal" })
+}
+
+fn scratch(tag: &str) -> PathBuf {
+    let dir = std::env::temp_dir().join(format!("jky-detached-{tag}-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::create_dir_all(&dir).expect("a scratch directory");
+    dir
+}
+
+/// Where the supervisor will record itself, given a config directory.
+fn sessions_dir(config: &Path) -> PathBuf {
+    config.join("detached")
+}
+
+fn wait_for(mut done: impl FnMut() -> bool) -> bool {
+    let until = Instant::now() + Duration::from_secs(30);
+    while Instant::now() < until {
+        if done() {
+            return true;
+        }
+        std::thread::sleep(Duration::from_millis(100));
+    }
+    false
+}
+
+/// A supervisor that is killed when the test ends, however it ends.
+///
+/// Without this a failing assertion leaves a real shell running on the
+/// machine — which is the precise thing this feature must never do by
+/// accident, and a test that does it while proving it does not would be
+/// quite a thing to ship.
+struct Supervisor(Child);
+
+impl Drop for Supervisor {
+    fn drop(&mut self) {
+        let _ = self.0.kill();
+        let _ = self.0.wait();
+    }
+}
+
+/// Start the binary as a supervisor, with its own config directory.
+fn start(config: &Path, session: &str) -> Option<Supervisor> {
+    let exe = binary();
+    if !exe.exists() {
+        eprintln!("no built binary at {exe:?}; skipping");
+        return None;
+    }
+
+    let child = Command::new(exe)
+        .arg("--supervise")
+        .arg(session)
+        .arg("--cwd")
+        .arg(config)
+        // A supervisor reads its config directory from the environment, the
+        // same way the window does, so pointing both at a scratch directory
+        // keeps this test out of the real one.
+        .env("XDG_CONFIG_HOME", config)
+        .env("APPDATA", config)
+        .env("HOME", config)
+        .spawn()
+        .expect("the supervisor should start");
+    Some(Supervisor(child))
+}
+
+#[test]
+fn a_shell_outlives_the_process_that_asked_for_it() {
+    let config = scratch("survives");
+    // The supervisor derives its own config dir from the environment, so the
+    // sessions land under <config>/dev.jky.terminal/detached.
+    let recorded = sessions_dir(&config.join("dev.jky.terminal"));
+
+    let Some(child) = start(&config, "one") else { return };
+
+    assert!(
+        wait_for(|| sessions(&recorded) == vec!["one".to_string()]),
+        "the supervisor never recorded itself in {recorded:?}"
+    );
+
+    // A window attaches, runs something, and leaves.
+    {
+        let window = attach(&recorded, "one").expect("attach");
+        let (reading, mut writing) = window.split();
+
+        Frame::Data(b"echo MARKER-ALIVE\n".to_vec())
+            .write_to(&mut writing)
+            .expect("type a command");
+
+        let seen = read_until(reading, "MARKER-ALIVE", Duration::from_secs(25));
+        assert!(seen.contains("MARKER-ALIVE"), "the shell never ran it:\n{seen}");
+
+        Frame::Detach.write_to(&mut writing).ok();
+    }
+
+    // The window is gone. The shell is not — which is the entire claim.
+    assert!(
+        sessions(&recorded) == vec!["one".to_string()],
+        "the session died with its window"
+    );
+
+    let again = attach(&recorded, "one").expect("reattach");
+    let (reading, mut writing) = again.split();
+    Frame::Data(b"echo MARKER-AGAIN\n".to_vec())
+        .write_to(&mut writing)
+        .expect("type again");
+    let seen = read_until(reading, "MARKER-AGAIN", Duration::from_secs(25));
+    assert!(seen.contains("MARKER-AGAIN"), "the reattached shell was deaf:\n{seen}");
+
+    // And it ends when told to, taking its record with it.
+    Frame::Data(b"exit\n".to_vec()).write_to(&mut writing).ok();
+    assert!(
+        wait_for(|| sessions(&recorded).is_empty()),
+        "the session outlived its shell"
+    );
+
+    drop(child);
+    let _ = std::fs::remove_dir_all(&config);
+}
+
+/// Read frames until the text appears, or time runs out.
+///
+/// On a thread, because `Frame::read_from` blocks: a deadline checked only
+/// between frames is no deadline at all when the next frame never comes, and
+/// the first version of this hung for ten minutes proving exactly that.
+fn read_until(window: impl Read + Send + 'static, text: &str, within: Duration) -> String {
+    let (send, recv) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let mut window = window;
+        while let Ok(frame) = Frame::read_from(&mut window) {
+            let bytes = match frame {
+                Frame::Data(b) | Frame::Replay(b) => b,
+                Frame::Ended { .. } => break,
+                _ => continue,
+            };
+            if send.send(String::from_utf8_lossy(&bytes).into_owned()).is_err() {
+                break;
+            }
+        }
+    });
+
+    let until = Instant::now() + within;
+    let mut seen = String::new();
+    while Instant::now() < until {
+        let left = until.saturating_duration_since(Instant::now());
+        match recv.recv_timeout(left) {
+            Ok(chunk) => {
+                seen.push_str(&chunk);
+                if seen.contains(text) {
+                    return seen;
+                }
+            }
+            Err(_) => break,
+        }
+    }
+    seen
+}
+
+#[test]
+fn an_ordinary_launch_is_not_a_supervisor() {
+    // The flag is the only thing that turns this binary into one. Without it
+    // nothing is recorded, because a window was asked for instead.
+    let config = scratch("window");
+    let recorded = sessions_dir(&config.join("dev.jky.terminal"));
+    assert!(sessions(&recorded).is_empty());
+    let _ = std::fs::remove_dir_all(&config);
+}

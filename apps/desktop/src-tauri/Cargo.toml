@@ -27,6 +27,7 @@ jky-capture = { path = "../../../crates/jky-capture" }
 jky-apps = { path = "../../../crates/jky-apps" }
 jky-system = { path = "../../../crates/jky-system" }
 jky-ports = { path = "../../../crates/jky-ports" }
+jky-detach = { path = "../../../crates/jky-detach" }
 jky-tools = { path = "../../../crates/jky-tools" }
 tokio.workspace = true
 reqwest.workspace = true
@@ -34,4 +35,5 @@ serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]
+interprocess = "2.4"
 tempfile = "3"
