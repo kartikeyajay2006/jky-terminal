@@ -179,6 +179,28 @@ mod tests {
     use crate::Frame;
     use std::io::Write;
 
+    /*
+     * A supervisor, reduced to the one thing every probe depends on: it is
+     * always accepting.
+     *
+     * On Unix that is a convenience — the kernel queues connections in the
+     * backlog whether or not anybody is in `accept`. On Windows it is the
+     * whole ballgame: a listener offers a finite number of pipe instances,
+     * and one that never accepts hands out its only instance to the first
+     * caller and has nothing for the second. A test holding an idle listener
+     * was therefore testing a configuration that cannot exist in production,
+     * and failing for a reason the real thing never would.
+     */
+    fn accepting(listener: impl ListenerExt + Send + 'static) {
+        std::thread::spawn(move || {
+            for conn in listener.incoming() {
+                // Taken and dropped. What matters is that accepting them
+                // keeps an instance available for whoever asks next.
+                drop(conn);
+            }
+        });
+    }
+
     fn scratch(tag: &str) -> std::path::PathBuf {
         let dir = std::env::temp_dir().join(format!("jky-detach-{tag}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
@@ -197,10 +219,15 @@ mod tests {
     #[test]
     fn a_listener_can_be_reached_and_is_listed() {
         let dir = scratch("live");
-        let (at, _listener) = listen(&dir, "one").expect("listen");
+        let (at, listener) = listen(&dir, "one").expect("listen");
+        accepting(listener);
 
         assert!(is_live(&at), "nothing answered at {at}");
+        // Asked twice on purpose. A probe that works once and then reports
+        // the session gone is worse than one that never worked.
+        assert!(is_live(&at), "the second question found nothing at {at}");
         assert_eq!(sweep(&dir), vec!["one".to_string()]);
+        assert_eq!(sweep(&dir), vec!["one".to_string()], "swept itself away");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -243,7 +270,8 @@ mod tests {
     #[test]
     fn sweeping_removes_what_is_dead_and_keeps_what_is_not() {
         let dir = scratch("mixed");
-        let (_at, _listener) = listen(&dir, "alive").expect("listen");
+        let (_at, listener) = listen(&dir, "alive").expect("listen");
+        accepting(listener);
 
         // A session that was recorded and then died: both its marker and its
         // socket are left behind, and both have to go.
