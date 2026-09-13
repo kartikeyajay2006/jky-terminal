@@ -98,6 +98,16 @@ mod name_tests {
         assert_eq!(shell_name("nu"), "nu");
     }
 
+    // The separator has to be handled by hand: `Path::file_name` splits on
+    // `\` only when it is compiled for Windows, so a test asserting the
+    // Windows answer from a Linux runner — which is this repository's whole
+    // approach to cross-platform code — would get the entire string back.
+    #[test]
+    fn a_windows_path_is_read_as_a_windows_path_on_any_machine() {
+        assert_eq!(shell_name(r"C:\Windows\System32\cmd.exe"), "cmd");
+        assert_eq!(shell_name(r"C:\Program Files\PowerShell\7\pwsh.exe"), "pwsh");
+    }
+
     #[test]
     fn a_windows_shell_is_named_the_way_people_say_it() {
         // Backslashes, and an extension nobody says out loud.

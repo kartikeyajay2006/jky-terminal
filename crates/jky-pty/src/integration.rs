@@ -262,17 +262,71 @@ pub fn install_shell_integration(config_dir: &Path, user_zdotdir: &Path) -> io::
 ///
 /// Nothing, rather than a best guess: half-hooking a shell means an escape
 /// sequence in the wrong place or a startup file that never runs, and the
-/// honest outcome for fish or PowerShell is that the feature is absent.
+/// honest outcome for a shell nobody has written hooks for is that the
+/// feature is absent.
+///
+/// Empty here does not mean unhooked any more. fish is hooked by argument —
+/// see `integration_args` — because it has no environment variable that would
+/// do it without editing the user's own configuration.
+/// The fish hooks, as one script to run after fish has read its config.
+///
+/// fish is hooked by argument rather than by environment, which is the whole
+/// reason this is shaped differently from the other two. There is no `ZDOTDIR`
+/// for fish: the only directory it reads is the user's own `conf.d`, and
+/// writing a file into somebody's configuration to make a terminal work is a
+/// thing they did not ask for and would have to find to undo. `--init-command`
+/// runs after their config and leaves nothing behind.
+///
+/// The events line up with the marks better than bash's do. `fish_preexec`
+/// fires between reading a command and running it, which is exactly `C`, and
+/// `fish_postexec` fires with the command line in hand, which is `D` and the
+/// report together — no `PS0` to abuse and no trap that fires per function.
+///
+/// `set -l s $status` is the first line of the postexec handler and has to be:
+/// `$status` is clobbered by the next command run, and every line after this
+/// one is a command.
+pub fn fish_hook() -> String {
+    format!(
+        r"function __jky_prompt --on-event fish_prompt
+printf ']{mark};A'
+end
+function __jky_preexec --on-event fish_preexec
+printf ']{mark};C'
+end
+function __jky_postexec --on-event fish_postexec
+set -l s $status
+printf ']{mark};D;%s]{cwd};file://%s%s' $s $hostname $PWD
+if command -v base64 >/dev/null 2>&1
+printf ']{osc};{prefix}%s' (printf '%s
+%s
+%s' $s $PWD $argv[1] | base64 | tr -d '
+')
+end
+end",
+        mark = MARK_OSC,
+        cwd = CWD_OSC,
+        osc = ASK_OSC,
+        prefix = DONE_PREFIX,
+    )
+}
+
+/// Arguments that hook a shell the environment cannot reach.
+///
+/// Empty for every shell hooked by environment, which is most of them.
+pub fn integration_args(shell: &str) -> Vec<String> {
+    match crate::shell::shell_name(shell).as_str() {
+        "fish" => vec!["--init-command".to_string(), fish_hook()],
+        _ => Vec::new(),
+    }
+}
+
 pub fn integration_env(
     shell: &str,
     config_dir: &Path,
     user_zdotdir: Option<&Path>,
 ) -> HashMap<String, String> {
-    let name = Path::new(shell)
-        .file_name()
-        .map(|n| n.to_string_lossy().to_ascii_lowercase())
-        .unwrap_or_default();
-    let name = name.trim_end_matches(".exe");
+    let name = crate::shell::shell_name(shell);
+    let name = name.as_str();
 
     let home = user_zdotdir
         .map(|p| p.display().to_string())
@@ -619,10 +673,84 @@ mod tests {
     // rather than one meant for a different shell.
     #[test]
     fn a_shell_that_cannot_be_hooked_is_left_alone() {
-        for shell in ["fish", "nu", "pwsh", "powershell.exe", ""] {
+        for shell in ["nu", ""] {
             let env = integration_env(shell, Path::new("/cfg"), Some(Path::new("/home")));
             assert!(env.is_empty(), "{shell} got {env:?}");
+            assert!(integration_args(shell).is_empty(), "{shell} got arguments");
         }
+    }
+
+    // fish is hooked by argument, so an empty environment is the right answer
+    // for it and not the sign of an unsupported shell it used to be.
+    #[test]
+    fn fish_is_hooked_by_argument_rather_than_environment() {
+        assert!(integration_env("fish", Path::new("/cfg"), None).is_empty());
+
+        let args = integration_args("/usr/bin/fish");
+        assert_eq!(args.first().map(String::as_str), Some("--init-command"));
+        // Nothing is written anywhere. Dropping a file into somebody's
+        // `conf.d` to make a terminal work is a thing they did not ask for
+        // and would have to go looking for to undo.
+        assert!(args[1].contains("--on-event fish_preexec"));
+        assert!(args[1].contains("--on-event fish_postexec"));
+    }
+
+    #[test]
+    fn the_fish_hook_reports_the_same_four_things_the_others_do() {
+        let hook = fish_hook();
+        assert!(hook.contains(&format!("{MARK_OSC};A")), "no prompt mark");
+        assert!(hook.contains(&format!("{MARK_OSC};C")), "no output mark");
+        assert!(hook.contains(&format!("{MARK_OSC};D")), "no done mark");
+        assert!(hook.contains(&format!("{CWD_OSC};file://")), "no directory");
+        assert!(hook.contains(DONE_PREFIX), "no command report");
+    }
+
+    // `$status` is clobbered by the next command, and every line after the
+    // first in that handler is a command.
+    #[test]
+    fn the_fish_hook_takes_the_status_before_anything_can_change_it() {
+        let hook = fish_hook();
+        let body = hook.split("--on-event fish_postexec").nth(1).expect("handler");
+        let first = body.lines().nth(1).unwrap_or("").trim();
+        assert_eq!(first, "set -l s $status", "the status is read too late");
+    }
+
+    /*
+     * The hook, run by a real fish.
+     *
+     * fish only fires its prompt events under a tty, so this fires them by
+     * hand with `emit` — which is the same code path the events take and the
+     * only part this test is about. Skipped where fish is absent.
+     */
+    #[test]
+    fn a_real_fish_runs_the_hook_and_emits_the_marks() {
+        use std::process::Command;
+
+        if Command::new("fish").arg("-c").arg("true").output().is_err() {
+            return;
+        }
+
+        let script = format!(
+            "{}\nemit fish_prompt\nemit fish_preexec 'echo hi'\nemit fish_postexec 'echo hi'",
+            fish_hook()
+        );
+        let out = Command::new("fish")
+            .arg("-c")
+            .arg(script.replace("\\n", "\n"))
+            .output()
+            .expect("fish should run");
+
+        assert!(
+            out.status.success(),
+            "fish could not run the hook: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+
+        let seen = String::from_utf8_lossy(&out.stdout);
+        assert!(seen.contains("\u{1b}]133;A\u{7}"), "no prompt mark in {seen:?}");
+        assert!(seen.contains("\u{1b}]133;C\u{7}"), "no output mark in {seen:?}");
+        assert!(seen.contains("\u{1b}]133;D;0\u{7}"), "no done mark in {seen:?}");
+        assert!(seen.contains("]1337;JKYDone="), "no command report in {seen:?}");
     }
 
     // The shell arrives as a path, not a name.

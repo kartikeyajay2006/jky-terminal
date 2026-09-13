@@ -220,3 +220,69 @@ fn the_shell_prints_no_errors_under_the_hook() {
         assert!(!seen.contains(noise), "the hook made the shell complain ({noise}):\n{seen:?}");
     }
 }
+
+/*
+ * The same proof, for fish.
+ *
+ * fish is hooked on its command line rather than through the environment, so
+ * nothing about the bash path above exercises it: a hook that never reached
+ * the shell and a hook that reached it and did nothing look identical from
+ * outside. This starts a real fish through a real pty, types a command, and
+ * reads the marks back.
+ */
+#[test]
+fn a_real_fish_emits_the_marks_through_a_real_pty() {
+    if !shell_on_path("fish") {
+        eprintln!("no fish on this machine; skipping");
+        return;
+    }
+
+    let dir = std::env::temp_dir().join(format!("jky-fish-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("a place to put the integration");
+    install_shell_integration(&dir, &dir).expect("the integration should install");
+
+    let session = PtySession::spawn(SpawnConfig {
+        shell: ShellSpec {
+            // No config of the user's, so the test speaks for the hook and
+            // not for whatever is in somebody's fish directory.
+            program: "fish".into(),
+            args: vec!["--no-config".into(), "-i".into()],
+        },
+        cwd: dir.clone(),
+        cols: 80,
+        rows: 24,
+        path_prepend: None,
+        // Set, which is what makes `integration_args` apply. The hook arrives
+        // as `--init-command` and nothing is written to the user's config.
+        integration_dir: Some(integration_dir(&dir)),
+    })
+    .expect("fish should start");
+
+    let watched = Watched::new(session.take_reader().expect("a reader"));
+    watched.wait(|s| s.contains("\u{1b}]133;A"), Duration::from_secs(20));
+
+    session.write(b"echo 'echo marker-fish'\n").expect("write");
+
+    let seen = watched.wait(
+        |s| match s.find("marker-fish") {
+            Some(at) => s[at..].contains("\u{1b}]133;D;"),
+            None => false,
+        },
+        Duration::from_secs(20),
+    );
+    let _ = session.kill();
+    std::fs::remove_dir_all(&dir).ok();
+
+    assert!(seen.contains("\u{1b}]133;A"), "no prompt mark came back:\n{seen:?}");
+    assert!(seen.contains("\u{1b}]133;C"), "no output mark came back:\n{seen:?}");
+    assert!(seen.contains("\u{1b}]133;D;0"), "no exit mark came back:\n{seen:?}");
+    assert!(seen.contains("\u{1b}]7;file://"), "no cwd report came back:\n{seen:?}");
+    assert!(seen.contains("]1337;JKYDone="), "no command report came back:\n{seen:?}");
+
+    // The ordering that is the whole reason for a mark rather than a search:
+    // the echoed command comes first, then the mark, then what it printed.
+    let echoed = seen.find("marker-fish").expect("the typed command should echo");
+    let c = seen.find("\u{1b}]133;C").expect("an output mark");
+    assert!(echoed < c, "the output mark landed before the echoed command");
+}
+
