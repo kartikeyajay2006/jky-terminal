@@ -8,3 +8,8 @@ authors.workspace = true
 [dependencies]
 serde.workspace = true
 thiserror.workspace = true
+# Unix domain sockets and Windows named pipes behind one API. The alternative
+# was a localhost TCP port, which would mean a listening socket granting shell
+# access and an authentication scheme to go with it — a far larger surface
+# than a file whose permissions already say who may open it.
+interprocess = "2.4"
