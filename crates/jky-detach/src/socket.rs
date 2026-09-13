@@ -5,12 +5,21 @@
 //! which differs between a Unix socket and a Windows named pipe and is the
 //! part no test can replace with arithmetic.
 //!
-//! A Unix socket also has to be swept. It is a file, it outlives the process
-//! that created it, and binding to an address a dead supervisor left behind
-//! fails — so a stale one is removed first. "Stale" is decided by trying to
-//! connect: a socket nobody is listening on refuses, and that is a far more
-//! reliable answer than reading a pid file and hoping the number has not been
-//! reused.
+//! Liveness is never probed, and that is the important decision here.
+//!
+//! The obvious design asks "is this session alive?" by connecting, then lists
+//! the ones that answered. It is wrong twice on Windows. A named pipe offers
+//! a finite number of instances, so every probe *consumes* one that a real
+//! window wanted — and after a connection is accepted there is a window
+//! before the server posts another, during which a perfectly healthy session
+//! answers nothing. A list built on that probe deletes live sessions, which
+//! is the one failure this whole feature exists to prevent.
+//!
+//! So listing and proving are separated. `sessions` reads the markers and
+//! promises only that somebody once recorded them. `attach` is what decides:
+//! it connects, and a session that cannot be connected to is dead — swept
+//! there and then, by the caller who just found out. Nothing is ever removed
+//! on the strength of a question nobody needed the answer to.
 
 use std::io;
 use std::path::Path;
@@ -31,44 +40,22 @@ fn as_name(at: &str) -> io::Result<Name<'_>> {
     }
 }
 
-/// Whether something is listening at this address right now.
+/// Whether a Unix socket still has a listener behind it.
 ///
-/// By connecting, which is the only answer that cannot be stale. A pid file
-/// says a process existed once; this says a supervisor is accepting
-/// connections at the moment the question was asked.
-pub fn is_live(at: &str) -> bool {
-    let Ok(name) = as_name(at) else { return false };
-    match Stream::connect(name) {
-        Ok(_) => true,
-        Err(e) => exists_but_busy(&e),
-    }
-}
-
-/// Whether a failed connection still proves somebody owns the address.
+/// Unix only, and deliberately: there a connection is queued in the backlog
+/// whether or not the supervisor is inside `accept`, so a refusal really does
+/// mean nothing is listening. The same question on Windows has no reliable
+/// answer — see the note at the top of this file — which is why nothing there
+/// asks it.
 ///
-/// On Unix it never does: the kernel queues a connection in the listener's
-/// backlog, so connecting succeeds whether or not the supervisor happens to
-/// be inside `accept` at that instant. A refusal means nothing is there.
-///
-/// A named pipe has no backlog. Connecting to one whose instance is not
-/// currently waiting fails with `ERROR_PIPE_BUSY`, and reading that as "dead"
-/// is how a perfectly healthy session came back missing from the list — it
-/// only had to be between accepts when the question was asked. Busy means the
-/// pipe exists and something owns it, which is exactly what was asked.
-///
-/// `ERROR_ACCESS_DENIED` says the same thing less politely: the pipe is
-/// there, held by somebody this process may not open. Still alive, and
-/// certainly not an address to sweep away.
-#[cfg(windows)]
-fn exists_but_busy(e: &io::Error) -> bool {
-    const ERROR_ACCESS_DENIED: i32 = 5;
-    const ERROR_PIPE_BUSY: i32 = 231;
-    matches!(e.raw_os_error(), Some(ERROR_PIPE_BUSY) | Some(ERROR_ACCESS_DENIED))
-}
-
+/// Used for exactly one thing: deciding whether the socket file left at an
+/// address may be deleted so a new supervisor can bind. Windows needs no
+/// equivalent, because creating a second pipe of the same name fails on its
+/// own and the OS is the authority.
 #[cfg(not(windows))]
-fn exists_but_busy(_: &io::Error) -> bool {
-    false
+fn unix_socket_is_live(at: &str) -> bool {
+    let Ok(name) = as_name(at) else { return false };
+    Stream::connect(name).is_ok()
 }
 
 /// Listen at an address, clearing anything dead that is already there.
@@ -78,20 +65,23 @@ fn exists_but_busy(_: &io::Error) -> bool {
 pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, impl ListenerExt)> {
     let at = address(runtime_dir, session).map_err(to_io)?;
 
-    if is_file_backed() {
-        std::fs::create_dir_all(socket_dir(runtime_dir))?;
+    std::fs::create_dir_all(socket_dir(runtime_dir))?;
 
-        if Path::new(&at).exists() {
-            if is_live(&at) {
-                return Err(io::Error::new(
-                    io::ErrorKind::AddrInUse,
-                    format!("a session called {session} is already running"),
-                ));
-            }
-            // Left by a supervisor that was killed rather than asked to stop.
-            // Nothing is listening, so nothing is lost by removing it.
-            std::fs::remove_file(&at)?;
+    // A Unix socket file outlives its supervisor, so binding fails until the
+    // corpse is cleared. Windows needs none of this: a second pipe of the
+    // same name is refused by the OS, which is a better authority than
+    // anything this could ask.
+    #[cfg(not(windows))]
+    if Path::new(&at).exists() {
+        if unix_socket_is_live(&at) {
+            return Err(io::Error::new(
+                io::ErrorKind::AddrInUse,
+                format!("a session called {session} is already running"),
+            ));
         }
+        // Left by a supervisor that was killed rather than asked to stop.
+        // Nothing is listening, so nothing is lost by removing it.
+        std::fs::remove_file(&at)?;
     }
 
     let listener = ListenerOptions::new().name(as_name(&at)?).create_sync()?;
@@ -106,67 +96,61 @@ pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, impl Lis
     Ok((at, listener))
 }
 
-/// Attach to a session that is already running.
+/// Attach to a session, and forget it if it turns out not to be there.
+///
+/// This is where liveness is decided, because this is the only place anybody
+/// actually needs the answer. A session that will not accept a connection is
+/// gone, and its marker is removed by the caller who just discovered it
+/// rather than by a sweep guessing on everyone's behalf.
 pub fn attach(runtime_dir: &Path, session: &str) -> io::Result<Stream> {
     let at = address(runtime_dir, session).map_err(to_io)?;
-    Stream::connect(as_name(&at)?)
+    match Stream::connect(as_name(&at)?) {
+        Ok(stream) => Ok(stream),
+        Err(e) => {
+            forget(runtime_dir, session);
+            Err(e)
+        }
+    }
 }
 
-/// Every session with something listening, and the dead ones swept away.
+/// Remove what a session left behind.
 ///
-/// Sweeping here rather than in a timer: the list is asked for when a window
-/// opens, which is exactly when a socket left by the last one should go.
-pub fn sweep(runtime_dir: &Path) -> Vec<String> {
-    let dir = socket_dir(runtime_dir);
-    let Ok(entries) = std::fs::read_dir(&dir) else {
+/// Called when attaching proved there is nothing there, and by a supervisor
+/// on its way out. Both halves go: the marker that lists it and, on Unix, the
+/// socket file that would otherwise block the next one to take the name.
+pub fn forget(runtime_dir: &Path, session: &str) {
+    if let Ok(note) = marker(runtime_dir, session) {
+        let _ = std::fs::remove_file(note);
+    }
+    if is_file_backed() {
+        if let Ok(at) = address(runtime_dir, session) {
+            let _ = std::fs::remove_file(at);
+        }
+    }
+}
+
+/// Every session anybody has recorded, in name order.
+///
+/// Candidates, not promises. A marker says a supervisor once existed under
+/// this name; whether it is still there is settled by `attach`, and by
+/// nothing else. Listing deletes nothing — a list that cleaned up as a side
+/// effect would be a list that could throw away a live session for being
+/// momentarily busy, which is the failure this feature exists to prevent.
+pub fn sessions(runtime_dir: &Path) -> Vec<String> {
+    let Ok(entries) = std::fs::read_dir(socket_dir(runtime_dir)) else {
         // No directory means no sessions, which is the ordinary first run.
         return Vec::new();
     };
 
-    let mut live = Vec::new();
-    let mut orphans = Vec::new();
+    let mut found: Vec<String> = entries
+        .flatten()
+        // Anything that is not a marker this could have written is somebody
+        // else's file, and not something to read or remove on their behalf.
+        .filter_map(|entry| crate::name_of(&entry.path()))
+        .collect();
 
-    for entry in entries.flatten() {
-        let path = entry.path();
-
-        let Some(session) = crate::name_of(&path) else {
-            // A socket with no marker beside it: written by a supervisor that
-            // died between binding and recording itself, or left by a version
-            // that had no markers. Nothing indexes it, so nothing would ever
-            // clean it up — it is collected here rather than left for ever.
-            if is_file_backed() && path.extension().is_some_and(|e| e == "sock") {
-                orphans.push(path);
-            }
-            // Anything else is somebody else's file, and not something to
-            // delete on their behalf.
-            continue;
-        };
-
-        // Asked, not read. A marker is a name; whether anything is behind it
-        // is a question only a connection can answer, because a file happily
-        // outlives the process that wrote it.
-        let Ok(at) = address(runtime_dir, &session) else { continue };
-        if is_live(&at) {
-            live.push(session);
-        } else {
-            let _ = std::fs::remove_file(&path);
-            if is_file_backed() {
-                let _ = std::fs::remove_file(&at);
-            }
-        }
-    }
-
-    // Swept after the markers, so a socket belonging to a session that *is*
-    // alive is never mistaken for an orphan by an unlucky ordering.
-    for path in orphans {
-        let at = path.display().to_string();
-        if !is_live(&at) {
-            let _ = std::fs::remove_file(&path);
-        }
-    }
-
-    live.sort();
-    live
+    found.sort();
+    found
 }
 
 fn to_io(e: NameError) -> io::Error {
@@ -179,23 +163,10 @@ mod tests {
     use crate::Frame;
     use std::io::Write;
 
-    /*
-     * A supervisor, reduced to the one thing every probe depends on: it is
-     * always accepting.
-     *
-     * On Unix that is a convenience — the kernel queues connections in the
-     * backlog whether or not anybody is in `accept`. On Windows it is the
-     * whole ballgame: a listener offers a finite number of pipe instances,
-     * and one that never accepts hands out its only instance to the first
-     * caller and has nothing for the second. A test holding an idle listener
-     * was therefore testing a configuration that cannot exist in production,
-     * and failing for a reason the real thing never would.
-     */
+    /// A supervisor, reduced to the one thing that matters: it accepts.
     fn accepting(listener: impl ListenerExt + Send + 'static) {
         std::thread::spawn(move || {
             for conn in listener.incoming() {
-                // Taken and dropped. What matters is that accepting them
-                // keeps an instance available for whoever asks next.
                 drop(conn);
             }
         });
@@ -209,25 +180,79 @@ mod tests {
     }
 
     #[test]
-    fn nothing_is_listening_at_an_address_nobody_made() {
+    fn no_sessions_before_any_are_made() {
         let dir = scratch("absent");
-        assert!(!is_live(&address(&dir, "never").unwrap()));
-        assert!(sweep(&dir).is_empty());
+        assert!(sessions(&dir).is_empty());
+        assert!(attach(&dir, "never").is_err());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]
-    fn a_listener_can_be_reached_and_is_listed() {
+    fn a_session_is_listed_and_can_be_attached_to() {
         let dir = scratch("live");
-        let (at, listener) = listen(&dir, "one").expect("listen");
+        let (_at, listener) = listen(&dir, "one").expect("listen");
         accepting(listener);
 
-        assert!(is_live(&at), "nothing answered at {at}");
-        // Asked twice on purpose. A probe that works once and then reports
-        // the session gone is worse than one that never worked.
-        assert!(is_live(&at), "the second question found nothing at {at}");
-        assert_eq!(sweep(&dir), vec!["one".to_string()]);
-        assert_eq!(sweep(&dir), vec!["one".to_string()], "swept itself away");
+        assert_eq!(sessions(&dir), vec!["one".to_string()]);
+        assert!(attach(&dir, "one").is_ok());
+
+        // Asked again, because a list that is right once and wrong after is
+        // worse than one that never worked. Listing touches nothing, so this
+        // cannot be affected by the attach above.
+        assert_eq!(sessions(&dir), vec!["one".to_string()], "the list ate itself");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn listing_never_removes_anything() {
+        // The failure this design exists to prevent: a live session deleted
+        // because it was momentarily busy when something asked after it.
+        let dir = scratch("keep");
+        let (_at, listener) = listen(&dir, "one").expect("listen");
+        accepting(listener);
+
+        for _ in 0..5 {
+            assert_eq!(sessions(&dir), vec!["one".to_string()]);
+        }
+        assert!(marker(&dir, "one").unwrap().exists());
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /*
+     * Attaching is what settles it.
+     *
+     * A marker with nothing behind it is a session that died without tidying
+     * up. The window that tried to reattach is the one that finds out, so it
+     * is the one that clears it away.
+     */
+    #[test]
+    fn attaching_to_a_session_that_is_gone_forgets_it() {
+        let dir = scratch("ghost");
+        std::fs::create_dir_all(socket_dir(&dir)).unwrap();
+        std::fs::write(marker(&dir, "ghost").unwrap(), b"ghost").unwrap();
+        assert_eq!(sessions(&dir), vec!["ghost".to_string()]);
+
+        assert!(attach(&dir, "ghost").is_err(), "attached to nothing");
+        assert!(sessions(&dir).is_empty(), "the dead marker was left behind");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn forgetting_takes_both_halves_and_leaves_the_rest() {
+        let dir = scratch("forget");
+        let (_at, listener) = listen(&dir, "one").expect("listen");
+        accepting(listener);
+
+        let theirs = socket_dir(&dir).join("notes.txt");
+        std::fs::write(&theirs, b"keep me").unwrap();
+
+        forget(&dir, "one");
+        assert!(sessions(&dir).is_empty());
+        assert!(!marker(&dir, "one").unwrap().exists());
+        assert!(theirs.exists(), "somebody else's file was deleted");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -235,12 +260,13 @@ mod tests {
     #[test]
     fn a_second_supervisor_refuses_rather_than_stealing_the_session() {
         // Two owners would each hold half the conversation, and the window
-        // would see a shell that answers every other keystroke.
+        // would meet a shell that answers every other keystroke. On Unix the
+        // stale-socket check refuses; on Windows the OS does.
         let dir = scratch("taken");
-        let (_at, _listener) = listen(&dir, "one").expect("listen");
+        let (_at, listener) = listen(&dir, "one").expect("listen");
+        accepting(listener);
 
-        let again = listen(&dir, "one");
-        assert!(again.is_err(), "the address was stolen");
+        assert!(listen(&dir, "one").is_err(), "the address was stolen");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
@@ -248,9 +274,8 @@ mod tests {
     /*
      * A socket left by a supervisor that was killed.
      *
-     * It is a file, so it outlives the process, and binding to it fails until
-     * it is removed. Deciding by connecting rather than by a pid means a
-     * reused pid cannot make a dead session look alive.
+     * It is a file, so it outlives the process, and binding fails until it is
+     * removed. Unix only: a pipe has no corpse to trip over.
      */
     #[cfg(not(windows))]
     #[test]
@@ -260,40 +285,8 @@ mod tests {
         std::fs::create_dir_all(socket_dir(&dir)).unwrap();
         std::fs::write(&at, b"").expect("leave a corpse");
 
-        assert!(!is_live(&at), "a plain file answered a connection");
+        assert!(!unix_socket_is_live(&at), "a plain file answered a connection");
         let (_at, _listener) = listen(&dir, "ghost").expect("the corpse should not block this");
-
-        let _ = std::fs::remove_dir_all(&dir);
-    }
-
-    #[cfg(not(windows))]
-    #[test]
-    fn sweeping_removes_what_is_dead_and_keeps_what_is_not() {
-        let dir = scratch("mixed");
-        let (_at, listener) = listen(&dir, "alive").expect("listen");
-        accepting(listener);
-
-        // A session that was recorded and then died: both its marker and its
-        // socket are left behind, and both have to go.
-        let dead = address(&dir, "dead").unwrap();
-        std::fs::write(&dead, b"").expect("leave a corpse");
-        std::fs::write(marker(&dir, "dead").unwrap(), b"dead").expect("and its marker");
-
-        // And one that died before it could record itself, so nothing indexes
-        // it. Without the orphan pass this would sit there for ever.
-        let unrecorded = address(&dir, "unrecorded").unwrap();
-        std::fs::write(&unrecorded, b"").expect("leave a second corpse");
-        // Something that is not ours at all, which must survive untouched.
-        let theirs = socket_dir(&dir).join("notes.txt");
-        std::fs::write(&theirs, b"keep me").unwrap();
-
-        assert_eq!(sweep(&dir), vec!["alive".to_string()]);
-        assert!(!Path::new(&dead).exists(), "the dead socket was left behind");
-        assert!(!marker(&dir, "dead").unwrap().exists(), "its marker was left behind");
-        assert!(!Path::new(&unrecorded).exists(), "an unrecorded socket was left for ever");
-        assert!(theirs.exists(), "somebody else's file was deleted");
-        // The live one keeps both halves.
-        assert!(marker(&dir, "alive").unwrap().exists(), "a live session lost its marker");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
