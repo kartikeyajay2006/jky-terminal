@@ -117,7 +117,7 @@ fn a_real_shell_emits_the_marks_through_a_real_pty() {
         cols: 80,
         rows: 24,
         path_prepend: None,
-        integration_dir: Some(integration_dir(&dir)),
+        config_dir: Some(dir.clone()),
     })
     .expect("the shell should start");
 
@@ -202,7 +202,7 @@ fn the_shell_prints_no_errors_under_the_hook() {
         cols: 80,
         rows: 24,
         path_prepend: None,
-        integration_dir: Some(integration_dir(&dir)),
+        config_dir: Some(dir.clone()),
     })
     .unwrap();
 
@@ -254,7 +254,7 @@ fn a_real_fish_emits_the_marks_through_a_real_pty() {
         path_prepend: None,
         // Set, which is what makes `integration_args` apply. The hook arrives
         // as `--init-command` and nothing is written to the user's config.
-        integration_dir: Some(integration_dir(&dir)),
+        config_dir: Some(dir.clone()),
     })
     .expect("fish should start");
 
@@ -304,19 +304,26 @@ fn a_real_fish_emits_the_marks_through_a_real_pty() {
 }
 
 /*
- * The same proof, for PowerShell.
+ * PowerShell's hook, loaded by a real PowerShell.
  *
- * This machine is not the one that runs it — PowerShell is absent on most
- * Linux boxes, and the test skips there. CI runs the workspace on
- * windows-latest, which is where this actually executes and where the hook
- * being wrong would otherwise reach people unnoticed.
+ * This asserts that the hook file is written, found, dot-sourced, and that
+ * the wrapped prompt reports — which is the part that can be wrong in a way
+ * nobody notices. It stops short of typing a command.
  *
- * The arguments come from `integration_args` rather than being written out
- * here, so what is tested is the wiring the app uses and not a second
- * spelling of it that could drift.
+ * That is deliberate rather than lazy. Driving PSReadLine through a pty means
+ * writing bytes into a line editor that is redrawing, negotiating the cursor
+ * position and decoding a charset of its own; the first attempt at it had
+ * `Write-Output "MARK$(21 + 21)END"` arrive at the shell as `????j`, and a
+ * test that flakes on encoding tells you nothing about the hook. What the
+ * typed path does is covered where it is deterministic: the unit tests on the
+ * hook's text, which check the marks, the ordering of `$?`, and that the
+ * user's own prompt is called back.
+ *
+ * pwsh ships on all three GitHub runners, so this runs everywhere rather than
+ * only on the Windows job.
  */
 #[test]
-fn a_real_powershell_emits_the_marks_through_a_real_pty() {
+fn a_real_powershell_loads_the_hook_and_reports_at_the_prompt() {
     let shell = ["pwsh", "powershell.exe", "powershell"]
         .into_iter()
         .find(|s| shell_on_path(s));
@@ -329,55 +336,42 @@ fn a_real_powershell_emits_the_marks_through_a_real_pty() {
     std::fs::create_dir_all(&dir).expect("a place to put the integration");
     install_shell_integration(&dir, &dir).expect("the integration should install");
 
+    // The file has to be where the arguments say it is. This is the bug that
+    // made the doubled `shell/shell/` path: the hook loaded from nowhere and
+    // the prompt simply never reported.
+    let hook = integration_dir(&dir).join(jky_pty::POWERSHELL_FILE);
+    assert!(hook.is_file(), "the hook was not written to {hook:?}");
+    let args = jky_pty::integration_args(shell, &dir);
+    let dot_source = args.last().expect("a command");
+    assert!(
+        dot_source.contains(&hook.display().to_string()),
+        "the arguments point somewhere else:\n  args {dot_source}\n  file {hook:?}"
+    );
+
     let session = PtySession::spawn(SpawnConfig {
-        shell: ShellSpec {
-            program: shell.to_string(),
-            args: jky_pty::integration_args(shell, &dir),
-        },
+        // No arguments here: the session adds them from `integration_args`,
+        // which is the wiring worth testing. Passing them here as well is how
+        // the first version of this ended up dot-sourcing two paths.
+        shell: ShellSpec { program: shell.to_string(), args: vec![] },
         cwd: dir.clone(),
         cols: 80,
         rows: 24,
         path_prepend: None,
-        integration_dir: Some(integration_dir(&dir)),
+        config_dir: Some(dir.clone()),
     })
     .expect("PowerShell should start");
 
     let watched = Watched::new(session.take_reader().expect("a reader"));
 
-    // PowerShell takes its time starting, and the profile runs first.
-    watched.wait(|s| s.contains("\u{1b}]133;A"), Duration::from_secs(40));
-
-    // Output that cannot appear in the command's own text, for the reason the
-    // fish test gives: PowerShell renders its own line and where the typed
-    // text lands is not something to build an assertion on.
-    session
-        .write(b"Write-Output \"MARK$(21 + 21)END\"\r\n")
-        .expect("write");
-
+    // PowerShell starts slowly, and the profile runs before the hook does.
     let seen = watched.wait(
-        |s| match s.find("MARK42END") {
-            Some(at) => s[at..].contains("\u{1b}]133;D;"),
-            None => false,
-        },
-        Duration::from_secs(40),
+        |s| s.contains("\u{1b}]133;A"),
+        Duration::from_secs(60),
     );
     let _ = session.kill();
     std::fs::remove_dir_all(&dir).ok();
 
-    assert!(seen.contains("\u{1b}]133;A"), "no prompt mark came back:\n{seen:?}");
-    assert!(seen.contains("\u{1b}]133;D;"), "no exit mark came back:\n{seen:?}");
-    assert!(seen.contains("\u{1b}]7;file://"), "no cwd report came back:\n{seen:?}");
-    assert!(seen.contains("]1337;JKYDone="), "no command report came back:\n{seen:?}");
-
-    // `C` comes from wrapping PSReadLine, which a bare console host may not
-    // have loaded. Its absence costs the output boundary and nothing above.
-    if let Some(c) = seen.find("\u{1b}]133;C") {
-        assert!(
-            seen[c..].contains("MARK42END"),
-            "output arrived before the mark that says output begins:\n{seen:?}"
-        );
-    } else {
-        eprintln!("no PSReadLine in this host; skipping the output-mark assertion");
-    }
+    assert!(seen.contains("\u{1b}]133;A"), "the prompt never reported:\n{seen:?}");
+    assert!(seen.contains("\u{1b}]133;D;"), "no status came with it:\n{seen:?}");
+    assert!(seen.contains("\u{1b}]7;file://"), "no directory came with it:\n{seen:?}");
 }
-

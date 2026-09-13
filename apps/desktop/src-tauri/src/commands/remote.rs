@@ -77,7 +77,7 @@ pub fn remote_spawn(
         // are this machine's, and the integration writes to a home directory
         // that is not the one at the other end.
         path_prepend: None,
-        integration_dir: None,
+        config_dir: None,
     })
     .map_err(|e| e.to_string())?;
 

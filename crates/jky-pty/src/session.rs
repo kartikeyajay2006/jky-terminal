@@ -29,13 +29,20 @@ pub struct SpawnConfig {
     /// inside our shells without installing anything system-wide or editing
     /// the user's shell configuration.
     pub path_prepend: Option<PathBuf>,
-    /// Where the shell-integration startup files live.
+    /// The app's configuration directory, when the shell should be hooked.
+    ///
+    /// Not the integration directory itself, which is a directory *inside*
+    /// this one — `integration_dir()` derives it, and the hooks call that
+    /// themselves. The field was named for the derived path while every
+    /// caller passed the parent, which nothing noticed until PowerShell
+    /// became the first hook to build a file path out of it and got
+    /// `shell/shell/`. Named for what it holds now.
     ///
     /// Set for a shell this app knows how to hook, and it is what lets the
     /// terminal be told that a command failed. `None` leaves the shell
     /// entirely alone — which is the right outcome for one this cannot hook,
     /// rather than a half-applied hook that shows escapes at the prompt.
-    pub integration_dir: Option<PathBuf>,
+    pub config_dir: Option<PathBuf>,
 }
 
 impl Default for SpawnConfig {
@@ -49,7 +56,7 @@ impl Default for SpawnConfig {
             cols: 80,
             rows: 24,
             path_prepend: None,
-            integration_dir: None,
+            config_dir: None,
         }
     }
 }
@@ -88,7 +95,7 @@ impl PtySession {
         // after its own arguments so nothing it was given is displaced. fish
         // is the one: it has no `ZDOTDIR`, and the only file it would read is
         // the user's own, which a terminal has no business writing into.
-        if let Some(dir) = &config.integration_dir {
+        if let Some(dir) = &config.config_dir {
             for arg in crate::integration::integration_args(&config.shell.program, dir) {
                 cmd.arg(arg);
             }
@@ -102,7 +109,7 @@ impl PtySession {
         }
         // Applied after the base environment so a shell we can hook gets its
         // hook, and one we cannot gets nothing at all.
-        if let Some(dir) = &config.integration_dir {
+        if let Some(dir) = &config.config_dir {
             for (k, v) in crate::integration::integration_env(&config.shell.program, dir, None) {
                 cmd.env(k, v);
             }
@@ -187,7 +194,7 @@ mod tests {
             cols: 80,
             rows: 24,
             path_prepend: None,
-            integration_dir: None,
+            config_dir: None,
         }
     }
 

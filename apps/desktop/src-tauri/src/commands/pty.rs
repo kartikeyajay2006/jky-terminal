@@ -82,7 +82,7 @@ pub fn pty_spawn(
         cols,
         rows,
         path_prepend: launchers_ok.then_some(bin_dir),
-        integration_dir: integration_ok.then(|| state.config_dir.clone()),
+        config_dir: integration_ok.then(|| state.config_dir.clone()),
     })
     .map_err(|e| e.to_string())?;
 
