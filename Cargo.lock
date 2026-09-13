@@ -2219,6 +2219,7 @@ name = "jky-detach"
 version = "0.1.0"
 dependencies = [
  "interprocess",
+ "os_pipe",
  "serde",
  "thiserror 2.0.20",
 ]

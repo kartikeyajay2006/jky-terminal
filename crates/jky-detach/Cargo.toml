@@ -13,3 +13,8 @@ thiserror.workspace = true
 # access and an authentication scheme to go with it — a far larger surface
 # than a file whose permissions already say who may open it.
 interprocess = "2.4"
+
+[dev-dependencies]
+# A pipe to stand in for a shell's output, so the supervisor loop is tested
+# without spawning a process.
+os_pipe = "1.2"

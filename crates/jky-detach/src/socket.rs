@@ -24,14 +24,18 @@
 use std::io;
 use std::path::Path;
 
-use interprocess::local_socket::traits::{ListenerExt, Stream as StreamTrait};
-use interprocess::local_socket::{GenericFilePath, GenericNamespaced, ListenerOptions, Stream};
+use interprocess::local_socket::traits::Stream as StreamTrait;
+use interprocess::local_socket::{GenericFilePath, GenericNamespaced, Listener, ListenerOptions, Stream};
 use interprocess::local_socket::{Name, ToFsName, ToNsName};
 
 use crate::name::{address, is_file_backed, marker, socket_dir};
 use crate::NameError;
 
 /// Turn an address into whatever the platform's socket layer wants.
+pub(crate) fn name_for(at: &str) -> io::Result<Name<'_>> {
+    as_name(at)
+}
+
 fn as_name(at: &str) -> io::Result<Name<'_>> {
     if is_file_backed() {
         at.to_fs_name::<GenericFilePath>()
@@ -62,7 +66,7 @@ fn unix_socket_is_live(at: &str) -> bool {
 ///
 /// Refuses rather than steals when a live supervisor holds the address: two
 /// supervisors on one session would each own half the conversation.
-pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, impl ListenerExt)> {
+pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, Listener)> {
     let at = address(runtime_dir, session).map_err(to_io)?;
 
     std::fs::create_dir_all(socket_dir(runtime_dir))?;
@@ -160,6 +164,7 @@ fn to_io(e: NameError) -> io::Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use interprocess::local_socket::traits::ListenerExt;
     use crate::Frame;
     use std::io::Write;
 

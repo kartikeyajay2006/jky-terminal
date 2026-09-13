@@ -21,6 +21,7 @@ mod frame;
 mod name;
 mod replay;
 mod socket;
+mod supervise;
 
 pub use frame::{Frame, FrameError, MAX_PAYLOAD};
 pub use name::{
@@ -28,3 +29,4 @@ pub use name::{
 };
 pub use replay::{REPLAY_BYTES, Replay};
 pub use socket::{attach, forget, listen, sessions};
+pub use supervise::{Shell, supervise};
