@@ -88,8 +88,8 @@ impl PtySession {
         // after its own arguments so nothing it was given is displaced. fish
         // is the one: it has no `ZDOTDIR`, and the only file it would read is
         // the user's own, which a terminal has no business writing into.
-        if config.integration_dir.is_some() {
-            for arg in crate::integration::integration_args(&config.shell.program) {
+        if let Some(dir) = &config.integration_dir {
+            for arg in crate::integration::integration_args(&config.shell.program, dir) {
                 cmd.arg(arg);
             }
         }

@@ -254,6 +254,10 @@ pub fn install_shell_integration(config_dir: &Path, user_zdotdir: &Path) -> io::
     for (name, body) in zsh_files(user_zdotdir) {
         std::fs::write(dir.join(name), body)?;
     }
+    // Written on every platform rather than behind `cfg(windows)`: PowerShell
+    // runs on macOS and Linux too, and a file nobody dot-sources costs a few
+    // hundred bytes on disk.
+    std::fs::write(dir.join(POWERSHELL_FILE), powershell_hook())?;
     Ok(())
 }
 
@@ -310,12 +314,107 @@ end",
     )
 }
 
+/// The name the PowerShell hook is written under.
+pub const POWERSHELL_FILE: &str = "jky-integration.ps1";
+
+/// The PowerShell hooks, as a file to be dot-sourced after the profile.
+///
+/// A file rather than a string on the command line, and that is the whole
+/// design. PowerShell's `-Command` takes a script as one argument, and a
+/// script this size carrying quotes, braces and `$` through a Windows command
+/// line is a quoting problem with no good answer. Dot-sourcing a path means
+/// only the path needs quoting, and the path is ours.
+///
+/// It runs after the user's profile, which is what lets it wrap the prompt
+/// they actually ended up with rather than the one they started from.
+///
+/// Two hooks, because PowerShell splits what bash does in one place:
+///
+/// `prompt` runs before each prompt and carries the status, the directory and
+/// the last command — `D`, the cwd report and `A`. `PSConsoleHostReadLine` is
+/// what PSReadLine calls to read a line, so wrapping it gives the moment
+/// between "the command has been read" and "the command runs", which is `C`
+/// and has no other hook in PowerShell.
+///
+/// Getting the status right is the fiddly part and it is why `$ok = $?` is
+/// the first statement. `$?` is whether the last thing succeeded and is
+/// clobbered by the next statement; `$LASTEXITCODE` is the exit code of the
+/// last *native* program and is stale after a cmdlet. Neither alone is the
+/// answer, so both are read, in that order, before anything else runs.
+pub fn powershell_hook() -> String {
+    format!(
+        r#"# JKY Terminal shell integration.
+#
+# Dot-sourced after your profile. It wraps the prompt to report what a
+# command did; deleting this file costs that and nothing else.
+
+if (-not $global:__jkyInstalled) {{
+  $global:__jkyInstalled = $true
+  $global:__jkyPrompt = $function:prompt
+
+  if (Test-Path function:PSConsoleHostReadLine) {{
+    $global:__jkyReadLine = $function:PSConsoleHostReadLine
+    function global:PSConsoleHostReadLine {{
+      $line = & $global:__jkyReadLine
+      [Console]::Write("$([char]27)]{mark};C$([char]7)")
+      $line
+    }}
+  }}
+
+  function global:prompt {{
+    $ok = $?
+    $native = $global:LASTEXITCODE
+    $code = if ($null -ne $native) {{ $native }} elseif ($ok) {{ 0 }} else {{ 1 }}
+
+    $e = [char]27
+    $a = [char]7
+    $here = $PWD.Path
+
+    [Console]::Write("$e]{mark};D;$code$a")
+    [Console]::Write("$e]{cwd};file://$env:COMPUTERNAME$($here -replace '\\', '/')$a")
+
+    $last = (Get-History -Count 1).CommandLine
+    if ($last) {{
+      $text = "$code`n$here`n$last"
+      $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($text))
+      [Console]::Write("$e]{osc};{prefix}$b64$a")
+    }}
+
+    [Console]::Write("$e]{mark};A$a")
+    & $global:__jkyPrompt
+  }}
+}}
+"#,
+        mark = MARK_OSC,
+        cwd = CWD_OSC,
+        osc = ASK_OSC,
+        prefix = DONE_PREFIX,
+    )
+}
+
+/// A path as PowerShell reads it inside single quotes.
+///
+/// Only the quote needs handling: inside single quotes PowerShell expands
+/// nothing, so a doubled quote is the whole escape.
+fn ps_quote(path: &Path) -> String {
+    format!("'{}'", path.display().to_string().replace('\'', "''"))
+}
+
 /// Arguments that hook a shell the environment cannot reach.
 ///
 /// Empty for every shell hooked by environment, which is most of them.
-pub fn integration_args(shell: &str) -> Vec<String> {
+pub fn integration_args(shell: &str, config_dir: &Path) -> Vec<String> {
     match crate::shell::shell_name(shell).as_str() {
         "fish" => vec!["--init-command".to_string(), fish_hook()],
+        // `-NoExit` because `-Command` would otherwise run the hook and leave;
+        // the hook is setup, not the session. The profile has already loaded
+        // by the time this runs, which is what lets it wrap the real prompt.
+        "pwsh" | "powershell" => vec![
+            "-NoLogo".to_string(),
+            "-NoExit".to_string(),
+            "-Command".to_string(),
+            format!(". {}", ps_quote(&integration_dir(config_dir).join(POWERSHELL_FILE))),
+        ],
         _ => Vec::new(),
     }
 }
@@ -676,7 +775,7 @@ mod tests {
         for shell in ["nu", ""] {
             let env = integration_env(shell, Path::new("/cfg"), Some(Path::new("/home")));
             assert!(env.is_empty(), "{shell} got {env:?}");
-            assert!(integration_args(shell).is_empty(), "{shell} got arguments");
+            assert!(integration_args(shell, Path::new("/cfg")).is_empty(), "{shell} got arguments");
         }
     }
 
@@ -686,13 +785,86 @@ mod tests {
     fn fish_is_hooked_by_argument_rather_than_environment() {
         assert!(integration_env("fish", Path::new("/cfg"), None).is_empty());
 
-        let args = integration_args("/usr/bin/fish");
+        let args = integration_args("/usr/bin/fish", Path::new("/cfg"));
         assert_eq!(args.first().map(String::as_str), Some("--init-command"));
         // Nothing is written anywhere. Dropping a file into somebody's
         // `conf.d` to make a terminal work is a thing they did not ask for
         // and would have to go looking for to undo.
         assert!(args[1].contains("--on-event fish_preexec"));
         assert!(args[1].contains("--on-event fish_postexec"));
+    }
+
+    #[test]
+    fn powershell_is_hooked_by_dot_sourcing_a_file_we_wrote() {
+        let args = integration_args("powershell.exe", Path::new("/cfg"));
+        assert_eq!(args.first().map(String::as_str), Some("-NoLogo"));
+        // Without -NoExit, -Command runs the hook and leaves. The hook is
+        // setup; the session is the point.
+        assert!(args.contains(&"-NoExit".to_string()), "the session would exit");
+        let last = args.last().expect("a command");
+        assert!(last.starts_with(". "), "not dot-sourced: {last}");
+        assert!(last.contains(POWERSHELL_FILE), "does not name the hook: {last}");
+    }
+
+    #[test]
+    fn pwsh_is_hooked_the_same_way_as_windows_powershell() {
+        let seven = integration_args("/usr/bin/pwsh", Path::new("/cfg"));
+        let five = integration_args(r"C:\Windows\...\powershell.exe", Path::new("/cfg"));
+        assert_eq!(seven, five);
+        assert!(!seven.is_empty());
+    }
+
+    // cmd.exe has no prompt hook worth the name, so it gets nothing rather
+    // than something meant for a shell it is not.
+    #[test]
+    fn cmd_is_not_pretended_to_be_powershell() {
+        assert!(integration_args("cmd.exe", Path::new("/cfg")).is_empty());
+    }
+
+    #[test]
+    fn the_powershell_hook_reports_the_same_four_things_the_others_do() {
+        let hook = powershell_hook();
+        assert!(hook.contains(&format!("{MARK_OSC};A")), "no prompt mark");
+        assert!(hook.contains(&format!("{MARK_OSC};C")), "no output mark");
+        assert!(hook.contains(&format!("{MARK_OSC};D")), "no done mark");
+        assert!(hook.contains(&format!("{CWD_OSC};file://")), "no directory");
+        assert!(hook.contains(DONE_PREFIX), "no command report");
+    }
+
+    /*
+     * `$?` is clobbered by the next statement, so it has to be read first.
+     *
+     * Reading it late reports the success of whatever the hook itself just
+     * did, which is always true — so every command would look like it worked
+     * and the failure offer would never appear.
+     */
+    #[test]
+    fn the_powershell_hook_takes_the_status_before_anything_can_change_it() {
+        let hook = powershell_hook();
+        let body = hook.split("function global:prompt {").nth(1).expect("the prompt");
+        let first = body.lines().nth(1).unwrap_or("").trim();
+        assert_eq!(first, "$ok = $?", "the status is read too late");
+    }
+
+    // It wraps the prompt the user ended up with rather than replacing it.
+    #[test]
+    fn the_powershell_hook_keeps_the_prompt_it_found() {
+        let hook = powershell_hook();
+        assert!(hook.contains("$global:__jkyPrompt = $function:prompt"), "does not save it");
+        assert!(hook.contains("& $global:__jkyPrompt"), "does not call it back");
+    }
+
+    // Dot-sourced twice — a nested shell, a reloaded profile — would wrap the
+    // wrapper, and every prompt would report twice.
+    #[test]
+    fn the_powershell_hook_installs_itself_only_once() {
+        assert!(powershell_hook().contains("if (-not $global:__jkyInstalled)"));
+    }
+
+    #[test]
+    fn a_path_with_a_quote_in_it_cannot_end_the_string_it_is_in() {
+        let quoted = ps_quote(Path::new("/tmp/it's here"));
+        assert_eq!(quoted, "'/tmp/it''s here'");
     }
 
     #[test]

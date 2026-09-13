@@ -18,14 +18,22 @@ pub fn resolve_shell(shell_var: Option<String>, comspec_var: Option<String>) -> 
     #[cfg(windows)]
     {
         let _ = shell_var;
-        // PowerShell is the modern default; COMSPEC (usually cmd.exe) is the
-        // guaranteed fallback because every Windows install has it.
-        if let Some(comspec) = non_empty(comspec_var) {
-            return ShellSpec { program: comspec, args: vec![] };
-        }
-        // Tail expression, not `return`: clippy's needless_return fires here,
-        // and this branch only compiles on Windows so the lint is invisible
-        // on any other machine.
+        // PowerShell, not COMSPEC.
+        //
+        // This used to prefer COMSPEC and fall back to PowerShell, under a
+        // comment saying it did the opposite — and COMSPEC is set to cmd.exe
+        // on every Windows install that has ever booted, so the fallback was
+        // the only branch that ever ran. Every Windows user got cmd.exe.
+        //
+        // That is the wrong default twice over. Windows Terminal, VS Code and
+        // every modern terminal open PowerShell, so it is what people expect.
+        // And cmd.exe cannot be hooked at all: it has no prompt hook worth
+        // the name, so under it the timeline, the panels, the exit codes and
+        // the recognisers are all silently dead.
+        //
+        // COMSPEC stays as the fallback it was always described as, for a
+        // machine where PowerShell has somehow been removed.
+        let _ = &comspec_var;
         ShellSpec {
             program: "powershell.exe".to_string(),
             args: vec!["-NoLogo".to_string()],
@@ -139,6 +147,24 @@ mod tests {
     fn the_default_shell_is_never_empty() {
         let spec = default_shell();
         assert!(!spec.program.is_empty(), "no shell resolved for this platform");
+    }
+
+    /*
+     * PowerShell, even with COMSPEC set — which it always is.
+     *
+     * The old order asked for COMSPEC first, so every Windows user got
+     * cmd.exe: a shell with no prompt hook, under which the timeline, the
+     * live panels, the exit codes and the recognisers are all silently dead.
+     */
+    #[test]
+    #[cfg(windows)]
+    fn windows_opens_powershell_even_though_comspec_is_always_set() {
+        let spec = resolve_shell(None, Some(r"C:\Windows\system32\cmd.exe".to_string()));
+        assert!(
+            spec.program.to_lowercase().contains("powershell"),
+            "COMSPEC won again: {}",
+            spec.program
+        );
     }
 
     #[test]

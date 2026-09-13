@@ -303,3 +303,81 @@ fn a_real_fish_emits_the_marks_through_a_real_pty() {
     );
 }
 
+/*
+ * The same proof, for PowerShell.
+ *
+ * This machine is not the one that runs it — PowerShell is absent on most
+ * Linux boxes, and the test skips there. CI runs the workspace on
+ * windows-latest, which is where this actually executes and where the hook
+ * being wrong would otherwise reach people unnoticed.
+ *
+ * The arguments come from `integration_args` rather than being written out
+ * here, so what is tested is the wiring the app uses and not a second
+ * spelling of it that could drift.
+ */
+#[test]
+fn a_real_powershell_emits_the_marks_through_a_real_pty() {
+    let shell = ["pwsh", "powershell.exe", "powershell"]
+        .into_iter()
+        .find(|s| shell_on_path(s));
+    let Some(shell) = shell else {
+        eprintln!("no PowerShell on this machine; skipping");
+        return;
+    };
+
+    let dir = std::env::temp_dir().join(format!("jky-ps-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("a place to put the integration");
+    install_shell_integration(&dir, &dir).expect("the integration should install");
+
+    let session = PtySession::spawn(SpawnConfig {
+        shell: ShellSpec {
+            program: shell.to_string(),
+            args: jky_pty::integration_args(shell, &dir),
+        },
+        cwd: dir.clone(),
+        cols: 80,
+        rows: 24,
+        path_prepend: None,
+        integration_dir: Some(integration_dir(&dir)),
+    })
+    .expect("PowerShell should start");
+
+    let watched = Watched::new(session.take_reader().expect("a reader"));
+
+    // PowerShell takes its time starting, and the profile runs first.
+    watched.wait(|s| s.contains("\u{1b}]133;A"), Duration::from_secs(40));
+
+    // Output that cannot appear in the command's own text, for the reason the
+    // fish test gives: PowerShell renders its own line and where the typed
+    // text lands is not something to build an assertion on.
+    session
+        .write(b"Write-Output \"MARK$(21 + 21)END\"\r\n")
+        .expect("write");
+
+    let seen = watched.wait(
+        |s| match s.find("MARK42END") {
+            Some(at) => s[at..].contains("\u{1b}]133;D;"),
+            None => false,
+        },
+        Duration::from_secs(40),
+    );
+    let _ = session.kill();
+    std::fs::remove_dir_all(&dir).ok();
+
+    assert!(seen.contains("\u{1b}]133;A"), "no prompt mark came back:\n{seen:?}");
+    assert!(seen.contains("\u{1b}]133;D;"), "no exit mark came back:\n{seen:?}");
+    assert!(seen.contains("\u{1b}]7;file://"), "no cwd report came back:\n{seen:?}");
+    assert!(seen.contains("]1337;JKYDone="), "no command report came back:\n{seen:?}");
+
+    // `C` comes from wrapping PSReadLine, which a bare console host may not
+    // have loaded. Its absence costs the output boundary and nothing above.
+    if let Some(c) = seen.find("\u{1b}]133;C") {
+        assert!(
+            seen[c..].contains("MARK42END"),
+            "output arrived before the mark that says output begins:\n{seen:?}"
+        );
+    } else {
+        eprintln!("no PSReadLine in this host; skipping the output-mark assertion");
+    }
+}
+
