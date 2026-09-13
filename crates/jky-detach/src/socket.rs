@@ -37,10 +37,38 @@ fn as_name(at: &str) -> io::Result<Name<'_>> {
 /// says a process existed once; this says a supervisor is accepting
 /// connections at the moment the question was asked.
 pub fn is_live(at: &str) -> bool {
-    match as_name(at) {
-        Ok(name) => Stream::connect(name).is_ok(),
-        Err(_) => false,
+    let Ok(name) = as_name(at) else { return false };
+    match Stream::connect(name) {
+        Ok(_) => true,
+        Err(e) => exists_but_busy(&e),
     }
+}
+
+/// Whether a failed connection still proves somebody owns the address.
+///
+/// On Unix it never does: the kernel queues a connection in the listener's
+/// backlog, so connecting succeeds whether or not the supervisor happens to
+/// be inside `accept` at that instant. A refusal means nothing is there.
+///
+/// A named pipe has no backlog. Connecting to one whose instance is not
+/// currently waiting fails with `ERROR_PIPE_BUSY`, and reading that as "dead"
+/// is how a perfectly healthy session came back missing from the list — it
+/// only had to be between accepts when the question was asked. Busy means the
+/// pipe exists and something owns it, which is exactly what was asked.
+///
+/// `ERROR_ACCESS_DENIED` says the same thing less politely: the pipe is
+/// there, held by somebody this process may not open. Still alive, and
+/// certainly not an address to sweep away.
+#[cfg(windows)]
+fn exists_but_busy(e: &io::Error) -> bool {
+    const ERROR_ACCESS_DENIED: i32 = 5;
+    const ERROR_PIPE_BUSY: i32 = 231;
+    matches!(e.raw_os_error(), Some(ERROR_PIPE_BUSY) | Some(ERROR_ACCESS_DENIED))
+}
+
+#[cfg(not(windows))]
+fn exists_but_busy(_: &io::Error) -> bool {
+    false
 }
 
 /// Listen at an address, clearing anything dead that is already there.
