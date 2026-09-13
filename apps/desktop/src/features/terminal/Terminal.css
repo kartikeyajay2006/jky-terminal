@@ -30,6 +30,54 @@
   border-radius: 5px;
 }
 
+/* ---- one command's mark in the gutter ------------------------------------ */
+
+/*
+ * A bar beside each command, from its prompt to the end of what it printed.
+ *
+ * An xterm decoration, so it is anchored to a line of the buffer and scrolls
+ * with it. It is registered at column zero and pulled left from there into
+ * the terminal's own padding, which is the only space available: xterm sizes
+ * itself in whole cells, so a column cannot be reserved for this without
+ * taking one away from output.
+ *
+ * Dim until looked at. Every command gets one, and forty bright bars down the
+ * side of a session would be forty things competing with the text they are
+ * describing.
+ */
+.term__block {
+  box-sizing: border-box;
+  width: 3px !important;
+  margin-left: -10px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.35;
+  transition: opacity var(--fast) var(--ease), width var(--fast) var(--ease);
+}
+
+.term__block:hover {
+  opacity: 1;
+  /* Widened rather than recoloured: the colour already means something. */
+  width: 5px !important;
+  margin-left: -11px;
+}
+
+.term__block[data-tone="ok"] {
+  background: var(--accent-dim);
+}
+
+/* The one you are looking for when you look at this at all, so it does not
+   wait to be hovered. */
+.term__block[data-tone="failed"] {
+  background: var(--danger);
+  opacity: 0.85;
+}
+
+.term__block[data-tone="running"] {
+  background: var(--accent);
+  opacity: 0.9;
+}
+
 /* ---- the find bar and the context menu ---------------------------------- */
 
 /*

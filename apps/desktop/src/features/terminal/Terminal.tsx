@@ -12,7 +12,11 @@ import { getPlatform } from "../../platform";
 import { TYPE_EVENT } from "./typeEvent";
 import { useCompletion } from "./complete/useCompletion";
 import { useLivePanel } from "./useLivePanel";
+import { useAsk } from "../../app/askStore";
+import { copyText } from "./clipboard";
 import { Timeline } from "./Timeline";
+import { actionsFor, questionFor, tookOf, tookText, transcript } from "./blocks";
+import type { BlockPick } from "./useXterm";
 import { pushTick, type Tick } from "./ticks";
 import { Suggestions } from "./complete/Suggestions";
 import "@xterm/xterm/css/xterm.css";
@@ -88,6 +92,8 @@ export function Terminal({
    * nothing.
    */
   const [ticks, setTicks] = useState<Tick[]>([]);
+  /** The command whose gutter mark was clicked, and where. */
+  const [picked, setPicked] = useState<BlockPick | null>(null);
   /** Shown in the panel's head, so it is anchored to what was typed. */
   const [ranCommand, setRanCommand] = useState("");
 
@@ -121,7 +127,62 @@ export function Terminal({
     },
     // One mark on the session strip per finished command.
     (tick) => setTicks((was) => pushTick(was, tick)),
+    // A gutter mark was clicked: offer what can be done with that command.
+    (pick) => setPicked(pick),
     host,
+  );
+
+  /**
+   * What the menu on a command's gutter mark offers.
+   *
+   * Built here rather than in `blocks` because every item is an effect on
+   * this terminal — what a block *is* stays testable without one.
+   *
+   * Nothing here runs a command. `Run it again` types it and leaves the
+   * Enter to the person, which is the rule every panel in this app follows:
+   * you see exactly what is about to happen before it does.
+   */
+  const blockItems = useCallback(
+    (pick: BlockPick) => {
+      const { block } = pick;
+      const output = term.blockOutput(block);
+      const can = actionsFor(block, output);
+      const took = tookText(tookOf(block));
+
+      return [
+        {
+          label: `Copy output · ${took}`,
+          disabled: !can.copyOutput,
+          run: () => void copyText(output),
+        },
+        {
+          label: "Copy command",
+          disabled: !can.copyCommand,
+          run: () => void copyText(block.command),
+        },
+        {
+          label: "Copy both",
+          disabled: !can.copyOutput && !can.copyCommand,
+          run: () => void copyText(transcript(block.command, output)),
+        },
+        {
+          label: "Run it again",
+          disabled: !can.rerun,
+          run: () => {
+            term.type(block.command);
+            term.focus();
+          },
+        },
+        {
+          label: block.exitCode ? `Ask why it failed · exit ${block.exitCode}` : "Ask about this",
+          disabled: !can.ask,
+          // The same route the shell's own `jky ask` takes, so there is one
+          // way into the assistant rather than two that drift.
+          run: () => useAsk.getState().ask(questionFor(block, output)),
+        },
+      ];
+    },
+    [term],
   );
 
   // Hand the keyboard to whichever pane is focused. Done here rather than on
@@ -361,6 +422,22 @@ export function Terminal({
           onNext={term.findNext}
           onPrevious={term.findPrevious}
           onClose={closeSearch}
+        />
+      )}
+
+      {/*
+        What can be done with one command.
+        *
+        * The same menu the right-click uses, because it is the same kind of
+        * thing and a second popup that looked almost like the first would be
+        * two things to learn. What changes is that every item here is about
+        * one command rather than about the selection.
+        */}
+      {picked && (
+        <TerminalMenu
+          at={{ x: picked.x, y: picked.y }}
+          onClose={() => setPicked(null)}
+          items={blockItems(picked)}
         />
       )}
 

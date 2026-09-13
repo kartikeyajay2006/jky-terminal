@@ -153,4 +153,47 @@ describe("the block a command's two sequences describe", () => {
   it("is nothing before anything has happened", () => {
     expect(new MarkTracker().latest).toBeNull();
   });
+
+  /*
+   * Naming a command that has already been followed by the next prompt.
+   *
+   * bash and zsh emit the status and the next prompt mark in one printf and
+   * send the command's name after both, so a block is always open by the time
+   * the name arrives. Naming the open one put every command's text — and the
+   * timing read the same way — against the wrong block.
+   */
+  it("names the command that finished, not the prompt that followed it", () => {
+    const marks = new MarkTracker();
+    marks.prompt({ line: 0 }, 1000);
+    marks.output({ line: 1 }, 1100);
+    marks.done({ line: 5 }, 0, 4000);
+    // The next prompt, drawn before the report arrives.
+    marks.prompt({ line: 6 }, 4001);
+
+    marks.describe("cargo test");
+
+    const finished = marks.list[0];
+    expect(finished.command).toBe("cargo test");
+    expect(marks.list[1].command, "the new prompt was named instead").toBe("");
+  });
+
+  it("names it just as well when nothing has followed yet", () => {
+    // fish closes the command and only then draws the prompt, so the report
+    // lands while no block is open.
+    const marks = new MarkTracker();
+    marks.prompt({ line: 0 }, 1000);
+    marks.output({ line: 1 }, 1100);
+    marks.done({ line: 5 }, 0, 4000);
+
+    marks.describe("ls");
+    expect(marks.list[0].command).toBe("ls");
+  });
+
+  it("has nothing to name before anything has finished", () => {
+    const marks = new MarkTracker();
+    marks.prompt({ line: 0 }, 1000);
+    expect(() => marks.describe("ls")).not.toThrow();
+    expect(marks.list[0].command).toBe("");
+  });
 });
+

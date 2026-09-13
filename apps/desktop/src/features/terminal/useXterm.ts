@@ -11,11 +11,12 @@ import { getPlatform } from "../../platform";
 import { buildBanner } from "./banner";
 import { isAppShortcut } from "../../app/shortcuts";
 import { overrideBytes } from "./inputKeys";
+import { isReal, outputRows, rowsOf, toneOf } from "./blocks";
 import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFont";
 import { copyText, readText } from "./clipboard";
 import { decodeCommand, renderResult } from "./shellCommand";
 import { decodeDone, outputOf, type CommandDone } from "./commandFailure";
-import { MarkTracker, parseMark } from "./marks";
+import { MarkTracker, parseMark, type CommandBlock } from "./marks";
 import { useActivity } from "./activity";
 import type { Completion } from "./recognise";
 import type { Tick } from "./ticks";
@@ -23,6 +24,13 @@ import { runShellCommand } from "./runShellCommand";
 import type { SearchHits } from "./TerminalSearch";
 
 /** What a mounted terminal lets the surrounding UI do to it. */
+/** A block the person clicked on, and where they clicked it. */
+export interface BlockPick {
+  block: CommandBlock;
+  x: number;
+  y: number;
+}
+
 export interface TerminalControls {
   /**
    * Let a panel take some keys before the shell is sent them.
@@ -65,6 +73,13 @@ export interface TerminalControls {
   focus: () => void;
   /** Bring one line of the scrollback into view, for the session strip. */
   scrollToLine: (line: number) => void;
+  /**
+   * Everything one command printed, read out of the scrollback.
+   *
+   * Empty when the shell never said where its output began: there is no
+   * honest answer then, and guessing is what the marks exist to replace.
+   */
+  blockOutput: (block: CommandBlock) => string;
 
   /**
    * What is typed at the prompt right now, and where the cursor is in it.
@@ -135,6 +150,14 @@ export function useXterm(
    */
   onBlock?: (tick: Tick) => void,
   /**
+   * A command's gutter mark was clicked.
+   *
+   * The window decides what to offer; this only says which command and
+   * where on screen, because a menu has to open beside the thing it is
+   * about and only the terminal knows where that is.
+   */
+  onPickBlock?: (pick: BlockPick) => void,
+  /**
    * A saved host to open this terminal on, rather than a local shell.
    *
    * The id of a host, never a command line: the argument list is built in
@@ -153,6 +176,8 @@ export function useXterm(
   doneHandler.current = onDone;
   const blockHandler = useRef(onBlock);
   blockHandler.current = onBlock;
+  const pickHandler = useRef(onPickBlock);
+  pickHandler.current = onPickBlock;
   /**
    * The buffer line the last command's output began after.
    *
@@ -179,6 +204,14 @@ export function useXterm(
   const cwd = useRef("");
   /** A panel's key handler, while one is open. See `claimKeys`. */
   const keyClaim = useRef<((event: KeyboardEvent) => boolean) | null>(null);
+  /**
+   * The gutter marks, one per finished command.
+   *
+   * Held so they can be disposed: a decoration outlives the terminal that
+   * drew it unless somebody says otherwise, and a cleared screen has to take
+   * its marks with it or they point at rows that are no longer there.
+   */
+  const blockMarks = useRef<Array<{ dispose(): void }>>([]);
 
   useEffect(() => {
     const node = container.current;
@@ -199,6 +232,57 @@ export function useXterm(
 
     const fit = new FitAddon();
     xterm.loadAddon(fit);
+
+    /**
+     * Draw one command's mark in the gutter.
+     *
+     * A decoration rather than anything of our own, because a decoration is
+     * anchored to a line of the buffer and scrolls with it — a box positioned
+     * over the terminal would have to be told about every scroll, resize and
+     * reflow, and would be wrong between being told.
+     *
+     * It sits at column zero and is pulled left into the terminal's own
+     * padding by the stylesheet, so it marks the block without covering the
+     * first character of what the command printed.
+     */
+    function markBlock(block: CommandBlock) {
+      const xterm = term.current;
+      // The first report of a session describes no command: both shells send
+      // a status before anything has run.
+      if (!xterm || !isReal(block)) return;
+
+      // A marker is relative to the cursor, and the cursor is at the prompt
+      // that follows the block — so the offset is backwards from there.
+      const back = block.prompt.line - (xterm.buffer.active.baseY + xterm.buffer.active.cursorY);
+      const marker = xterm.registerMarker(back);
+      if (!marker) return;
+
+      const decoration = xterm.registerDecoration({
+        marker,
+        anchor: "left",
+        x: 0,
+        width: 1,
+        height: rowsOf(block),
+      });
+      if (!decoration) {
+        marker.dispose();
+        return;
+      }
+
+      decoration.onRender((element) => {
+        element.className = "term__block";
+        element.dataset.tone = toneOf(block);
+        element.title = block.command
+          ? `${block.command}\nClick for what can be done with it.`
+          : "Click for what can be done with this command.";
+        element.onclick = (event) => {
+          event.stopPropagation();
+          pickHandler.current?.({ block, x: event.clientX, y: event.clientY });
+        };
+      });
+
+      blockMarks.current.push(decoration);
+    }
 
     // The app's own shortcuts must reach the window rather than the shell.
     // Without this, xterm handles Ctrl+T itself and calls stopPropagation, so
@@ -419,10 +503,26 @@ export function useXterm(
 
         if (done.code !== 0) failureHandler.current?.(done);
 
-        // One mark for the session strip. The timing and the line come from
-        // the OSC 133 marks and the command from this report — two sequences
-        // describing one command, which is why `latest` exists.
-        const block = marks.current.latest;
+        /*
+         * The command this report is about: the one that just finished.
+         *
+         * Not `latest`, which was wrong and quietly so. bash and zsh emit
+         * `D` and the next `A` in a single printf and send the report after
+         * both, so by the time it arrives a new block is already open —
+         * `latest` returned that one, whose `startedAt` is a moment ago and
+         * whose `finishedAt` is null. Every tick on the session strip was
+         * therefore timing an empty block and reading as zero.
+         *
+         * `last` is the most recently *finished* block, which is what the
+         * report describes under either ordering: bash and zsh open the next
+         * one first, fish does not.
+         */
+        const block = marks.current.last();
+        // Two sequences describe one command: this one says what was typed,
+        // the OSC 133 pair says where it sat and how it ended. Joining them
+        // here is what lets a block be copied, re-run or asked about.
+        marks.current.describe(done.command);
+        if (block) markBlock(block);
         blockHandler.current?.({
           id: `${from}-${Date.now()}`,
           command: done.command,
@@ -579,6 +679,11 @@ export function useXterm(
       cancelled = true;
       window.removeEventListener(TERM_FONT_EVENT, onFontChange);
       observer.disconnect();
+      // A decoration outlives the terminal that drew it unless it is told
+      // otherwise, and one anchored to a disposed buffer is a leak that also
+      // points at nothing.
+      for (const mark of blockMarks.current) mark.dispose();
+      blockMarks.current = [];
       selectionSub.dispose();
       unlisten?.();
 
@@ -681,8 +786,31 @@ export function useXterm(
         await getPlatform().pty.write(id, text);
         return true;
       },
-      clear: () => term.current?.clear(),
+      clear: () => {
+        term.current?.clear();
+        // The marks go with the screen. A decoration anchored to a row that
+        // was just scrolled away points at whatever is there now, which is
+        // somebody else's command.
+        for (const mark of blockMarks.current) mark.dispose();
+        blockMarks.current = [];
+        marks.current.reset();
+      },
       focus: () => term.current?.focus(),
+      blockOutput: (block) => {
+        const xterm = term.current;
+        const rows = outputRows(block);
+        if (!xterm || !rows) return "";
+
+        const buffer = xterm.buffer.active;
+        const lines: string[] = [];
+        for (let y = rows.from; y <= rows.to; y += 1) {
+          // `true` trims the trailing whitespace a cell grid always has —
+          // without it every line comes back padded to the terminal's width.
+          lines.push(buffer.getLine(y)?.translateToString(true) ?? "");
+        }
+        return lines.join("\n").replace(/\s+$/, "");
+      },
+
       scrollToLine: (line) => {
         const xterm = term.current;
         if (!xterm) return;

@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeDone } from "./commandFailure";
 
@@ -6,6 +7,13 @@ const writes: string[] = [];
 const onDataHandlers: Array<(d: string) => void> = [];
 const oscHandlers = new Map<number, (payload: string) => boolean>();
 const customKeyHandlers: Array<(e: KeyboardEvent) => boolean> = [];
+interface FakeDecoration {
+  height?: number;
+  element: HTMLElement;
+  disposed: boolean;
+}
+const markers: Array<{ disposed: boolean }> = [];
+const decorations: FakeDecoration[] = [];
 const disposed = { count: 0 };
 
 vi.mock("@xterm/xterm", () => ({
@@ -52,6 +60,35 @@ vi.mock("@xterm/xterm", () => ({
     }
     loadAddon() {}
     // The real Terminal exposes a parser for escape-sequence handlers; the
+    /*
+     * Markers and decorations, which is how a block's gutter mark is drawn.
+     *
+     * Enough of them to be driven: each decoration keeps the element it was
+     * rendered into, so a test can click it the way a person would.
+     */
+    registerMarker(offset: number) {
+      const marker = { line: 0, offset, disposed: false, dispose() { this.disposed = true; } };
+      markers.push(marker);
+      return marker;
+    }
+    registerDecoration(options: { marker: unknown; height?: number }) {
+      const element = document.createElement("div");
+      const decoration = {
+        marker: options.marker,
+        height: options.height,
+        element,
+        disposed: false,
+        onRender(cb: (el: HTMLElement) => void) {
+          cb(element);
+          return { dispose() {} };
+        },
+        dispose() {
+          this.disposed = true;
+        },
+      };
+      decorations.push(decoration);
+      return decoration;
+    }
     // app registers an OSC handler for `jky ask`.
     parser = {
       registerOscHandler(code: number, cb: (payload: string) => boolean) {
@@ -119,6 +156,8 @@ describe("Terminal", () => {
     writes.length = 0;
     onDataHandlers.length = 0;
     oscHandlers.clear();
+    markers.length = 0;
+    decorations.length = 0;
     disposed.count = 0;
     __setPlatformForTests(createWebPlatform());
     useAsk.setState({ pending: null });
@@ -495,5 +534,100 @@ describe("letting the app's shortcuts through", () => {
     const handle = handler();
     const e = new KeyboardEvent("keyup", { key: "t", ctrlKey: true });
     expect(handle(e)).toBe(true);
+  });
+
+  /*
+   * A command becomes something you can point at.
+   *
+   * The terminal already knew where every command started and ended — that is
+   * what the shell marks are for — but nothing on screen said so, and copying
+   * one command's output meant dragging a mouse and hoping the edges landed
+   * right. These check that the mark is drawn and that clicking it offers the
+   * things worth doing with that command.
+   */
+  describe("blocks", () => {
+    const finish = async (code: number, command: string) => {
+      await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+      // The 133 marks bound the block; the 1337 report names it.
+      // The real order a shell sends these in: prompt, output, status —
+      // and only then the report that says what was typed.
+      oscHandlers.get(133)?.("A");
+      oscHandlers.get(133)?.("C");
+      oscHandlers.get(133)?.(`D;${code}`);
+      oscHandlers.get(1337)!(encodeDone(code, "/repo", command));
+    };
+
+    it("marks a command in the gutter once it has finished", async () => {
+      render(<Terminal paneId="tab-blocks" />);
+      expect(decorations, "a mark before anything ran").toHaveLength(0);
+
+      await finish(0, "cargo test");
+      await waitFor(() => expect(decorations.length).toBeGreaterThan(0));
+      expect(decorations.at(-1)!.element.dataset.tone).toBe("ok");
+    });
+
+    it("marks a failure apart from a success", async () => {
+      render(<Terminal paneId="tab-blocks-2" />);
+      await finish(127, "gti status");
+      await waitFor(() => expect(decorations.length).toBeGreaterThan(0));
+      expect(decorations.at(-1)!.element.dataset.tone).toBe("failed");
+    });
+
+    it("offers what can be done with that one command", async () => {
+      render(<Terminal paneId="tab-blocks-3" />);
+      await finish(0, "cargo test");
+      await waitFor(() => expect(decorations.length).toBeGreaterThan(0));
+
+      decorations.at(-1)!.element.click();
+
+      const menu = await screen.findByRole("menu");
+      for (const label of [/copy output/i, /copy command/i, /run it again/i]) {
+        expect(within(menu).getByRole("menuitem", { name: label })).toBeInTheDocument();
+      }
+    });
+
+    it("asks why a failure failed rather than what it means", async () => {
+      render(<Terminal paneId="tab-blocks-4" />);
+      await finish(1, "git push");
+      await waitFor(() => expect(decorations.length).toBeGreaterThan(0));
+
+      decorations.at(-1)!.element.click();
+      const menu = await screen.findByRole("menu");
+      expect(within(menu).getByRole("menuitem", { name: /ask why it failed/i })).toBeInTheDocument();
+    });
+
+    it("types a re-run rather than running it", async () => {
+      render(<Terminal paneId="tab-blocks-5" />);
+      await finish(0, "cargo test");
+      await waitFor(() => expect(decorations.length).toBeGreaterThan(0));
+      writes.length = 0;
+
+      decorations.at(-1)!.element.click();
+      const menu = await screen.findByRole("menu");
+      await userEvent.click(within(menu).getByRole("menuitem", { name: /run it again/i }));
+
+      // Typed, never run. No newline, so the person still presses Enter and
+      // sees exactly what is about to happen.
+      await waitFor(() => expect(writes.join("")).toContain("cargo test"));
+      expect(writes.join("")).not.toContain("\n");
+    });
+
+    it("takes its marks with it when the screen is cleared", async () => {
+      render(<Terminal paneId="tab-blocks-6" />);
+      await finish(0, "ls");
+      await waitFor(() => expect(decorations.length).toBeGreaterThan(0));
+      const drawn = decorations.at(-1)!;
+
+      // Through the menu item that does it, which is the only way the app
+      // clears — Ctrl+L belongs to the shell and never reaches this.
+      const term = screen.getByRole("application", { name: /terminal/i });
+      fireEvent.contextMenu(term, { clientX: 20, clientY: 20 });
+      await userEvent.click(
+        within(await screen.findByRole("menu")).getByRole("menuitem", { name: /^clear$/i }),
+      );
+      // A decoration anchored to a row that has been scrolled away points at
+      // whatever is there now, which is somebody else's command.
+      await waitFor(() => expect(drawn.disposed).toBe(true));
+    });
   });
 });

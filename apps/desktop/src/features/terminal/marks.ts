@@ -41,6 +41,14 @@ export interface CommandBlock {
   exitCode: number | null;
   startedAt: number | null;
   finishedAt: number | null;
+  /**
+   * What was typed, once the shell has said.
+   *
+   * Empty until then, and empty for ever under a shell whose integration
+   * cannot report it. It arrives on a different escape sequence from the one
+   * that bounds the block, so a block always exists before it is named.
+   */
+  command: string;
 }
 
 /**
@@ -90,7 +98,15 @@ export class MarkTracker {
     // no `D` — a shell killed mid-run, or one whose integration is partial.
     // Closing it here keeps the list ordered rather than leaving a block that
     // swallows everything after it.
-    this.open = { prompt: at, output: null, end: null, exitCode: null, startedAt: now, finishedAt: null };
+    this.open = {
+      prompt: at,
+      output: null,
+      end: null,
+      exitCode: null,
+      startedAt: now,
+      finishedAt: null,
+      command: "",
+    };
     this.blocks.push(this.open);
     while (this.blocks.length > this.limit) this.blocks.shift();
   }
@@ -126,6 +142,23 @@ export class MarkTracker {
    */
   get latest(): CommandBlock | null {
     return this.open ?? this.blocks[this.blocks.length - 1] ?? null;
+  }
+
+  /**
+   * Name the block being described.
+   *
+   * The two sequences that describe a command arrive separately — one bounds
+   * it, the other says what was typed — and nothing guarantees which lands
+   * first. So this names whichever block is latest rather than assuming the
+   * open one, and does nothing at all when there is no block to name, which
+   * is what the very first report of a session is.
+   */
+  describe(command: string): void {
+    // The most recently finished block, not the open one. The report always
+    // follows the status that closed the command it describes — and under
+    // bash and zsh it also follows the prompt mark that opened the next.
+    const block = this.last();
+    if (block) block.command = command;
   }
 
   /** The command currently running, if the shell has told us one is. */
