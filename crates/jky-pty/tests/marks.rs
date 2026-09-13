@@ -261,10 +261,19 @@ fn a_real_fish_emits_the_marks_through_a_real_pty() {
     let watched = Watched::new(session.take_reader().expect("a reader"));
     watched.wait(|s| s.contains("\u{1b}]133;A"), Duration::from_secs(20));
 
-    session.write(b"echo 'echo marker-fish'\n").expect("write");
+    // A command whose output cannot appear in its own text.
+    //
+    // The bash test above types a command that prints itself, because the
+    // thing it is proving is that the mark beats searching the screen for the
+    // command. That works there because bash leans on the terminal's own echo,
+    // which is strictly ordered. fish does its own line editing and repaints
+    // the line as it pleases, so where the typed text lands in the stream is
+    // not something fish promises — asserting it made this test fail two runs
+    // in five. `MARK42END` can only have come from running the command.
+    session.write(b"echo MARK(math 21 + 21)END\n").expect("write");
 
     let seen = watched.wait(
-        |s| match s.find("marker-fish") {
+        |s| match s.find("MARK42END") {
             Some(at) => s[at..].contains("\u{1b}]133;D;"),
             None => false,
         },
@@ -275,14 +284,22 @@ fn a_real_fish_emits_the_marks_through_a_real_pty() {
 
     assert!(seen.contains("\u{1b}]133;A"), "no prompt mark came back:\n{seen:?}");
     assert!(seen.contains("\u{1b}]133;C"), "no output mark came back:\n{seen:?}");
-    assert!(seen.contains("\u{1b}]133;D;0"), "no exit mark came back:\n{seen:?}");
     assert!(seen.contains("\u{1b}]7;file://"), "no cwd report came back:\n{seen:?}");
     assert!(seen.contains("]1337;JKYDone="), "no command report came back:\n{seen:?}");
 
-    // The ordering that is the whole reason for a mark rather than a search:
-    // the echoed command comes first, then the mark, then what it printed.
-    let echoed = seen.find("marker-fish").expect("the typed command should echo");
+    // What `C` claims, checked: output begins after it. The command's own
+    // text cannot satisfy this, so nothing but having run it can.
     let c = seen.find("\u{1b}]133;C").expect("an output mark");
-    assert!(echoed < c, "the output mark landed before the echoed command");
+    assert!(
+        seen[c..].contains("MARK42END"),
+        "the output arrived before the mark that says output begins:\n{seen:?}"
+    );
+
+    // And `D` closes it, after the output rather than with the next prompt.
+    let printed = seen.find("MARK42END").expect("the output");
+    assert!(
+        seen[printed..].contains("\u{1b}]133;D;0"),
+        "no exit mark after the output:\n{seen:?}"
+    );
 }
 
