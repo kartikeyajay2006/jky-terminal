@@ -276,8 +276,8 @@ export function createTauriPlatform(): Platform {
   };
 
   const pty: PtyApi = {
-    async spawn(cols, rows, banner, accent) {
-      return invoke<string>("pty_spawn", { cols, rows, banner, accent });
+    async spawn(cols, rows, banner, accent, cwd) {
+      return invoke<string>("pty_spawn", { cols, rows, banner, accent, cwd: cwd ?? null });
     },
     async shell() {
       return invoke<string>("pty_shell");

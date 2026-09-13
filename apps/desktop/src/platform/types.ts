@@ -404,8 +404,20 @@ export interface SettingsApi {
 }
 
 export interface PtyApi {
-  /** `banner` is stored so the `jky-terminal` shell command can reprint it. */
-  spawn(cols: number, rows: number, banner: string, accent: string): Promise<string>;
+  /**
+   * `banner` is stored so the `jky-terminal` shell command can reprint it.
+   *
+   * `cwd` is where this pane last was, when the window remembers. Rust
+   * decides whether to honour it — a directory deleted since is not one to
+   * open in — and falls back to the configured start directory, then home.
+   */
+  spawn(
+    cols: number,
+    rows: number,
+    banner: string,
+    accent: string,
+    cwd?: string | null,
+  ): Promise<string>;
   /**
    * What a new terminal will run — "zsh", "fish", "powershell".
    *

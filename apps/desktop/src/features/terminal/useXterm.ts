@@ -14,6 +14,7 @@ import { overrideBytes } from "./inputKeys";
 import { isReal, outputRows, rowsOf, toneOf } from "./blocks";
 import { TERM_FONT_EVENT, loadTermFont, stackFor, type TermFont } from "./termFont";
 import { copyText, readText } from "./clipboard";
+import { dirOf, usePaneDirs } from "./paneDirs";
 import { decodeCommand, renderResult } from "./shellCommand";
 import { decodeDone, outputOf, type CommandDone } from "./commandFailure";
 import { MarkTracker, parseMark, type CommandBlock } from "./marks";
@@ -414,7 +415,12 @@ export function useXterm(
       // because the hostname looked odd would break completions on every
       // machine with an unusual `hostname`.
       const path = payload.replace(/^file:\/\/[^/]*/, "");
-      if (path.startsWith("/")) cwd.current = decodeURIComponent(path);
+      if (path.startsWith("/")) {
+        cwd.current = decodeURIComponent(path);
+        // Reported on every prompt, so this is mostly a no-op — the store
+        // writes only when the directory actually changed.
+        if (scrollbackKey) usePaneDirs.getState().remember(scrollbackKey, cwd.current);
+      }
       return true;
     });
 
@@ -607,6 +613,10 @@ export function useXterm(
             xterm.rows,
             banner,
             tokens.getPropertyValue("--accent"),
+            // Where this pane was when it was last open. Rust checks the
+            // directory still exists before honouring it — a project folder
+            // moved or deleted since must not stop a terminal from opening.
+            dirOf(scrollbackKey),
           );
       if (cancelled) {
         // StrictMode unmounted us mid-spawn. Kill it rather than leaking a

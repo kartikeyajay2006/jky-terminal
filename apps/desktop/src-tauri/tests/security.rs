@@ -386,6 +386,11 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // No argument, and it returns a name rather than a path: the window
         // is told what it is talking to, not where on disk it lives.
         "pty_shell".to_string(),
+        // Starts a shell. It now also takes where that pane last was, which
+        // grants nothing new: `pty_write` already sends arbitrary bytes to a
+        // shell, so anything that could reach this could already type `cd`.
+        // Rust still decides — the directory is honoured only if it is still
+        // a directory, and falls back to the configured one, then home.
         "pty_spawn".to_string(),
         "pty_write".to_string(),
         // What a terminal had on screen, kept across a restart. The renderer

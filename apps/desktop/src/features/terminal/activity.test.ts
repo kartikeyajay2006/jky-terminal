@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { activityOf, overallActivity, FAILED_MS, SLOW_MS, useActivity } from "./activity";
+import { activityOf, overallActivity, FAILED_MS, SLOW_MS, useActivity, runningCount } from "./activity";
 
 describe("what a terminal is doing", () => {
   beforeEach(() => {
@@ -102,4 +102,22 @@ describe("what the app as a whole is doing", () => {
     // The failure has already happened and is the one that can be missed.
     expect(overallActivity({ a: "running", b: "failed" })).toBe("failed");
   });
+
+  describe("counting what is still going", () => {
+    it("counts only the panes mid-command", () => {
+      expect(
+        runningCount({ a: "running", b: "idle", c: "running", d: "failed" }),
+      ).toBe(2);
+    });
+
+    it("counts a failure as finished, because it is", () => {
+      // It stopped. There is nothing to lose by closing on it.
+      expect(runningCount({ a: "failed", b: "idle" })).toBe(0);
+    });
+
+    it("counts nothing when nothing is open", () => {
+      expect(runningCount({})).toBe(0);
+    });
+  });
 });
+

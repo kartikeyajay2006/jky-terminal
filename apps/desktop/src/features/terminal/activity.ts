@@ -127,3 +127,20 @@ export function overallActivity(panes: Record<string, Activity>): Activity {
   if (states.includes("running")) return "running";
   return "idle";
 }
+
+/**
+ * How many terminals are in the middle of something.
+ *
+ * Asked when the window is about to close. A build, a deploy or an assistant
+ * halfway through a task is work in progress exactly as much as an unsaved
+ * file is, and quitting takes it with no way to get it back — the shell is a
+ * child of this process and dies with it.
+ *
+ * Counted from the same marks the session strip is drawn from, so it is the
+ * shell's own account of what is running rather than a guess about whether
+ * output has stopped.
+ */
+export function runningCount(panes: Record<string, Activity>): number {
+  return Object.values(panes).filter((state) => state === "running").length;
+}
+

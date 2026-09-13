@@ -1,5 +1,7 @@
 use std::io::Read;
 
+use std::path::Path;
+
 use jky_pty::{
     PtySession, SpawnConfig, default_shell, home_dir, install_launchers, launcher_dir,
     parse_accent, render_commands, resolve_start_dir,
@@ -44,12 +46,29 @@ pub fn pty_spawn(
     rows: u16,
     banner: String,
     accent: String,
+    // Where this pane last was, when the window remembers.
+    cwd: Option<String>,
 ) -> Result<String, String> {
     // Never current_dir(): that is wherever the binary was launched from,
     // which is the project folder in development and something arbitrary from
-    // an installed shortcut. A configured directory wins, then home.
+    // an installed shortcut.
+    //
+    // Order: where this pane last was, then a configured directory, then
+    // home. The window remembers the first of those because the window is
+    // where OSC 7 arrives — but whether it is honoured is decided here, and
+    // only after the machine says it is still a directory. A path that has
+    // been deleted or renamed since is not one to open in, and a spawn into
+    // a missing directory fails outright.
+    //
+    // Naming it from the window grants nothing new: `pty_write` already
+    // sends arbitrary bytes to a shell, so anything that could reach this
+    // could already type `cd`.
+    let remembered = cwd.filter(|d| Path::new(d).is_dir());
     let configured = state.settings.terminal_start_dir().unwrap_or(None);
-    let cwd = resolve_start_dir(configured.as_deref(), home_dir());
+    let cwd = resolve_start_dir(
+        remembered.as_deref().or(configured.as_deref()),
+        home_dir(),
+    );
 
     // Refresh on every spawn so the banner the command prints matches the
     // theme that was active when this terminal opened. A failure here must

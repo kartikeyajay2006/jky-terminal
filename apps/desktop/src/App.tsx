@@ -2,6 +2,8 @@ import { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
 import { useAsk } from "./app/askStore";
+import { runningCount, useActivity } from "./features/terminal/activity";
+import { quitBody, quitTitle } from "./features/terminal/quitting";
 import { useChat } from "./app/chatStore";
 import { allPaneKeys, useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
@@ -93,6 +95,9 @@ export function App() {
    * about at all.
    */
   const [quitting, setQuitting] = useState(false);
+
+  /** Terminals mid-command, read when asked rather than watched. */
+  const stillRunning = () => runningCount(useActivity.getState().panes);
   useEffect(() => {
     let stop: (() => void) | undefined;
 
@@ -101,7 +106,10 @@ export function App() {
         // Nothing to lose, so nothing to ask. `lifecycle.close` goes round
         // this guard rather than through it, so the answer never has to be
         // remembered.
-        if (unsavedCount() === 0) return true;
+        // Work in progress is not only unsaved files. A build, a deploy or
+        // an assistant halfway through a task dies with this process, and
+        // there is no getting it back — so it earns the same question.
+        if (unsavedCount() === 0 && stillRunning() === 0) return true;
         setQuitting(true);
         return false;
       })
@@ -322,9 +330,11 @@ export function App() {
 
       {quitting && (
         <UnsavedDialog
-          title={`${unsavedCount()} unsaved ${unsavedCount() === 1 ? "file" : "files"}`}
-          body="Closing now throws away everything that is not on disk."
-          saveLabel="Save all and quit"
+          title={quitTitle(unsavedCount(), stillRunning())}
+          body={quitBody(unsavedCount(), stillRunning())}
+          // Nothing to save when it is only commands running, so the safe
+          // answer is to stay rather than to write something to disk.
+          saveLabel={unsavedCount() > 0 ? "Save all and quit" : "Keep working"}
           discardLabel="Quit anyway"
           onAnswer={(answer) => void leave(answer)}
         />
