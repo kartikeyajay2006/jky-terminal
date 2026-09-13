@@ -13,27 +13,26 @@ pub struct ShellSpec {
 /// is what makes this testable: a test can assert the Windows fallback while
 /// running on Linux.
 pub fn resolve_shell(shell_var: Option<String>, comspec_var: Option<String>) -> ShellSpec {
-    let non_empty = |v: Option<String>| v.filter(|s| !s.trim().is_empty());
-
     #[cfg(windows)]
     {
-        let _ = shell_var;
-        // PowerShell, not COMSPEC.
+        // PowerShell, and neither variable gets a say.
         //
         // This used to prefer COMSPEC and fall back to PowerShell, under a
-        // comment saying it did the opposite — and COMSPEC is set to cmd.exe
-        // on every Windows install that has ever booted, so the fallback was
-        // the only branch that ever ran. Every Windows user got cmd.exe.
+        // comment saying it did the opposite — and COMSPEC names cmd.exe on
+        // every Windows install that has ever booted, so the fallback was the
+        // only branch that ever ran. Every Windows user got cmd.exe.
         //
-        // That is the wrong default twice over. Windows Terminal, VS Code and
-        // every modern terminal open PowerShell, so it is what people expect.
-        // And cmd.exe cannot be hooked at all: it has no prompt hook worth
-        // the name, so under it the timeline, the panels, the exit codes and
-        // the recognisers are all silently dead.
+        // Wrong twice over. Windows Terminal, VS Code and every modern
+        // terminal open PowerShell, so it is what people expect. And cmd.exe
+        // cannot be hooked at all: it has no prompt hook worth the name, so
+        // under it the timeline, the live panels, the exit codes and the
+        // recognisers are all silently dead.
         //
-        // COMSPEC stays as the fallback it was always described as, for a
-        // machine where PowerShell has somehow been removed.
-        let _ = &comspec_var;
+        // So COMSPEC is deliberately not consulted, rather than kept as a
+        // fallback that would always win. `$SHELL` is a POSIX idea and is not
+        // set here either. PowerShell has shipped with Windows since 7, which
+        // is older than anything this app supports.
+        let _ = (shell_var, comspec_var);
         ShellSpec {
             program: "powershell.exe".to_string(),
             args: vec!["-NoLogo".to_string()],
@@ -43,6 +42,11 @@ pub fn resolve_shell(shell_var: Option<String>, comspec_var: Option<String>) -> 
     #[cfg(not(windows))]
     {
         let _ = comspec_var;
+        // Declared here rather than above the branches: the Windows arm reads
+        // no variables at all any more, so a closure defined for both would
+        // be unused there — which is an error under `-D warnings`, on the one
+        // platform this machine cannot compile for.
+        let non_empty = |v: Option<String>| v.filter(|s| !s.trim().is_empty());
         if let Some(shell) = non_empty(shell_var) {
             return ShellSpec { program: shell, args: vec![] };
         }
@@ -167,9 +171,11 @@ mod tests {
         );
     }
 
+    // Distinct from the test above: that one says COMSPEC cannot win, this
+    // one says an empty environment is still enough to find a shell at all.
     #[test]
     #[cfg(windows)]
-    fn windows_falls_back_to_a_real_windows_shell() {
+    fn windows_needs_no_environment_to_find_a_shell() {
         let spec = resolve_shell(None, None);
         let p = spec.program.to_lowercase();
         assert!(
