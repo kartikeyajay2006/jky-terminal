@@ -76,17 +76,52 @@ pub fn address(runtime_dir: &Path, name: &str) -> Result<String, NameError> {
 
     #[cfg(windows)]
     {
-        let _ = runtime_dir;
-        // A flat namespace with a fixed prefix. The user's name is not in it:
-        // pipes are per-machine, and two people logged in at once would
-        // otherwise collide — the ACL on the pipe is what separates them.
-        Ok(format!(r"\\.\pipe\jky-terminal-{name}"))
+        // A named pipe does not live in a directory. The namespace is flat
+        // and machine-wide, so the runtime directory — which is what makes
+        // two instances or two logged-in users distinct — has to be folded
+        // into the name itself or they collide. Two windows each opening a
+        // session called `pty-1` is not a corner case; it is Tuesday.
+        Ok(format!(r"\\.\pipe\jky-terminal-{}-{name}", digest(runtime_dir)))
     }
 
     #[cfg(not(windows))]
     {
         Ok(socket_dir(runtime_dir).join(format!("{name}.sock")).display().to_string())
     }
+}
+
+/// A short, stable digest of a path.
+///
+/// Windows only, because only there is the namespace flat: a Unix socket path
+/// already contains the runtime directory and needs nothing folded in.
+///
+/// FNV-1a, written out rather than taken from the standard library, because
+/// `DefaultHasher` makes no promise about being the same from one release of
+/// Rust to the next — and a supervisor started by yesterday's build has to be
+/// findable by today's.
+#[cfg(windows)]
+fn digest(path: &Path) -> String {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    for byte in path.display().to_string().as_bytes() {
+        hash ^= u64::from(*byte);
+        hash = hash.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{hash:016x}")
+}
+
+/// Where the note recording a session lives.
+///
+/// A named pipe leaves nothing on disk, so on Windows there is no directory
+/// to list and no way to find a detached session again. A small marker file
+/// gives every platform the same answer to "what sessions are there": list
+/// these, then ask each one whether anything is still listening.
+///
+/// The marker is only a name. Whether the session is alive is never read from
+/// a file — that is decided by connecting, because a file can outlive the
+/// process that wrote it and a connection cannot.
+pub fn marker(runtime_dir: &Path, name: &str) -> Result<PathBuf, NameError> {
+    let name = check(name)?;
+    Ok(socket_dir(runtime_dir).join(format!("{name}.session")))
 }
 
 /// Whether an address is a file that has to be cleaned up.
@@ -105,7 +140,7 @@ pub const fn is_file_backed() -> bool {
 /// `.sock` we could have made is somebody else's business.
 pub fn name_of(path: &Path) -> Option<String> {
     let file = path.file_name()?.to_str()?;
-    let name = file.strip_suffix(".sock")?;
+    let name = file.strip_suffix(".session")?;
     check(name).ok().map(str::to_string)
 }
 
@@ -189,13 +224,37 @@ mod tests {
     }
 
     #[test]
-    fn a_socket_says_which_session_it_belongs_to() {
-        assert_eq!(name_of(Path::new("/run/jky/sessions/pty-7.sock")).as_deref(), Some("pty-7"));
+    fn a_marker_says_which_session_it_belongs_to() {
+        assert_eq!(name_of(Path::new("/run/jky/sessions/pty-7.session")).as_deref(), Some("pty-7"));
+    }
+
+    /*
+     * The Windows namespace is flat and machine-wide.
+     *
+     * Nothing about the runtime directory is in the path there, so without
+     * folding it into the name, two windows — or two people logged in at
+     * once — each opening `pty-1` would meet each other's shell.
+     */
+    #[test]
+    fn two_instances_do_not_share_an_address() {
+        let one = address(Path::new("/run/a"), "pty-1").unwrap();
+        let two = address(Path::new("/run/b"), "pty-1").unwrap();
+        assert_ne!(one, two);
+    }
+
+    #[test]
+    fn the_same_instance_always_gets_the_same_address() {
+        // A supervisor started by an earlier launch has to be findable by a
+        // later one, so this cannot drift between runs or Rust versions.
+        assert_eq!(
+            address(Path::new("/run/a"), "pty-1").unwrap(),
+            address(Path::new("/run/a"), "pty-1").unwrap()
+        );
     }
 
     #[test]
     fn anything_else_in_the_directory_is_somebody_elses_business() {
-        for path in ["/run/jky/sessions/notes.txt", "/run/jky/sessions/.sock", "/run/jky"] {
+        for path in ["/run/jky/sessions/notes.txt", "/run/jky/sessions/.session", "/run/jky"] {
             assert_eq!(name_of(Path::new(path)), None, "{path}");
         }
     }
@@ -211,9 +270,9 @@ mod tests {
     #[test]
     fn a_socket_named_something_we_would_never_make_is_not_ours() {
         for path in [
-            "/run/jky/sessions/has space.sock",
-            "/run/jky/sessions/..sock",
-            "/run/jky/sessions/semi;colon.sock",
+            "/run/jky/sessions/has space.session",
+            "/run/jky/sessions/...session",
+            "/run/jky/sessions/semi;colon.session",
         ] {
             assert_eq!(name_of(Path::new(path)), None, "{path}");
         }

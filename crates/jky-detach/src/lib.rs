@@ -23,6 +23,8 @@ mod replay;
 mod socket;
 
 pub use frame::{Frame, FrameError, MAX_PAYLOAD};
-pub use name::{MAX_NAME, NameError, address, check, is_file_backed, name_of, socket_dir};
+pub use name::{
+    MAX_NAME, NameError, address, check, is_file_backed, marker, name_of, socket_dir,
+};
 pub use replay::{REPLAY_BYTES, Replay};
 pub use socket::{attach, is_live, listen, sweep};

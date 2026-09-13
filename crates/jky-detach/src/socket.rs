@@ -19,7 +19,7 @@ use interprocess::local_socket::traits::{ListenerExt, Stream as StreamTrait};
 use interprocess::local_socket::{GenericFilePath, GenericNamespaced, ListenerOptions, Stream};
 use interprocess::local_socket::{Name, ToFsName, ToNsName};
 
-use crate::name::{address, is_file_backed, socket_dir};
+use crate::name::{address, is_file_backed, marker, socket_dir};
 use crate::NameError;
 
 /// Turn an address into whatever the platform's socket layer wants.
@@ -67,6 +67,14 @@ pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, impl Lis
     }
 
     let listener = ListenerOptions::new().name(as_name(&at)?).create_sync()?;
+
+    // The note that says this session exists. On Windows a pipe leaves
+    // nothing on disk, so without it there is no directory to list and a
+    // detached session could never be found again. Written after the listener
+    // is up, so a marker never names something that is not accepting yet.
+    std::fs::create_dir_all(socket_dir(runtime_dir))?;
+    std::fs::write(marker(runtime_dir, session).map_err(to_io)?, session)?;
+
     Ok((at, listener))
 }
 
@@ -88,18 +96,43 @@ pub fn sweep(runtime_dir: &Path) -> Vec<String> {
     };
 
     let mut live = Vec::new();
+    let mut orphans = Vec::new();
+
     for entry in entries.flatten() {
         let path = entry.path();
+
         let Some(session) = crate::name_of(&path) else {
-            // Not a socket this could have made. Somebody else's file, and
-            // not something to delete on their behalf.
+            // A socket with no marker beside it: written by a supervisor that
+            // died between binding and recording itself, or left by a version
+            // that had no markers. Nothing indexes it, so nothing would ever
+            // clean it up — it is collected here rather than left for ever.
+            if is_file_backed() && path.extension().is_some_and(|e| e == "sock") {
+                orphans.push(path);
+            }
+            // Anything else is somebody else's file, and not something to
+            // delete on their behalf.
             continue;
         };
 
-        let at = path.display().to_string();
+        // Asked, not read. A marker is a name; whether anything is behind it
+        // is a question only a connection can answer, because a file happily
+        // outlives the process that wrote it.
+        let Ok(at) = address(runtime_dir, &session) else { continue };
         if is_live(&at) {
             live.push(session);
         } else {
+            let _ = std::fs::remove_file(&path);
+            if is_file_backed() {
+                let _ = std::fs::remove_file(&at);
+            }
+        }
+    }
+
+    // Swept after the markers, so a socket belonging to a session that *is*
+    // alive is never mistaken for an orphan by an unlucky ordering.
+    for path in orphans {
+        let at = path.display().to_string();
+        if !is_live(&at) {
             let _ = std::fs::remove_file(&path);
         }
     }
@@ -184,15 +217,27 @@ mod tests {
         let dir = scratch("mixed");
         let (_at, _listener) = listen(&dir, "alive").expect("listen");
 
+        // A session that was recorded and then died: both its marker and its
+        // socket are left behind, and both have to go.
         let dead = address(&dir, "dead").unwrap();
         std::fs::write(&dead, b"").expect("leave a corpse");
+        std::fs::write(marker(&dir, "dead").unwrap(), b"dead").expect("and its marker");
+
+        // And one that died before it could record itself, so nothing indexes
+        // it. Without the orphan pass this would sit there for ever.
+        let unrecorded = address(&dir, "unrecorded").unwrap();
+        std::fs::write(&unrecorded, b"").expect("leave a second corpse");
         // Something that is not ours at all, which must survive untouched.
         let theirs = socket_dir(&dir).join("notes.txt");
         std::fs::write(&theirs, b"keep me").unwrap();
 
         assert_eq!(sweep(&dir), vec!["alive".to_string()]);
         assert!(!Path::new(&dead).exists(), "the dead socket was left behind");
+        assert!(!marker(&dir, "dead").unwrap().exists(), "its marker was left behind");
+        assert!(!Path::new(&unrecorded).exists(), "an unrecorded socket was left for ever");
         assert!(theirs.exists(), "somebody else's file was deleted");
+        // The live one keeps both halves.
+        assert!(marker(&dir, "alive").unwrap().exists(), "a live session lost its marker");
 
         let _ = std::fs::remove_dir_all(&dir);
     }
