@@ -3,6 +3,7 @@ import { Shell } from "./app/Shell";
 import { TabBar } from "./app/TabBar";
 import { useAsk } from "./app/askStore";
 import { runningCount, useActivity } from "./features/terminal/activity";
+import { usePaneDirs } from "./features/terminal/paneDirs";
 import { quitBody, quitTitle } from "./features/terminal/quitting";
 import { useChat } from "./app/chatStore";
 import { allPaneKeys, useTabs } from "./app/tabStore";
@@ -166,6 +167,11 @@ export function App() {
     // output of every pane but the first on each start.
     const keys = allPaneKeys(useTabs.getState().tabs);
     void getPlatform().scrollback.prune(keys).catch(() => {});
+    // The directory each pane was in, pruned by the same list and for the
+    // same reason. It was written on every prompt and never removed, so a
+    // pane closed months ago still had its last directory recorded — a small
+    // leak, but one that only ever grew.
+    usePaneDirs.getState().prune(keys);
   }, []);
 
   // Assistant events are subscribed here, not in the panel. A stream that

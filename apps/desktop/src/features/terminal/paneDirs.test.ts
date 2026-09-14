@@ -73,4 +73,22 @@ describe("where each terminal was", () => {
     const kept = Object.entries(raw).filter(([, v]) => typeof v === "string" && v !== "");
     expect(kept).toEqual([["a", "/repo"]]);
   });
+
+  it("keeps a pane that is still open when pruning", () => {
+    // Pruning runs at startup against the panes that exist. Dropping one that
+    // is open would send that terminal home on the next launch.
+    usePaneDirs.getState().remember("tab-1", "/repo");
+    usePaneDirs.getState().prune(["tab-1"]);
+    expect(dirOf("tab-1")).toBe("/repo");
+  });
+
+  it("writes the pruned record back, so the loss survives a restart", () => {
+    usePaneDirs.getState().remember("gone", "/old");
+    usePaneDirs.getState().remember("here", "/new");
+    usePaneDirs.getState().prune(["here"]);
+
+    const stored = JSON.parse(localStorage.getItem("jky.panes.dirs")!);
+    expect(stored).toEqual({ here: "/new" });
+  });
 });
+

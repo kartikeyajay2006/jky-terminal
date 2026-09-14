@@ -155,8 +155,6 @@ impl PtySession {
             .map_err(|e| PtyError::Io(e.to_string()))
     }
 
-    /// Terminate the child. Safe to call more than once — a process that has
-    /// already exited is the desired end state, not an error.
     /// Block until the shell exits, and report how.
     ///
     /// Needed because the end of a pty's output is not a reliable sign that
@@ -164,12 +162,27 @@ impl PtySession {
     /// for the life of the session, so the master never reaches end-of-file
     /// and a reader waiting for one waits for ever. Anything whose lifetime
     /// is meant to match the shell's has to ask the child directly.
+    ///
+    /// Polled rather than blocked, and that is not a style choice. `wait`
+    /// needs the child, `kill` needs the same child, and a `wait` that held
+    /// the lock while blocking would make `kill` wait for the very thing it
+    /// was called to end — which is what closing a tab does. Fifty
+    /// milliseconds is nothing against the life of a shell, and the lock is
+    /// free between every one of them.
     pub fn wait(&self) -> Result<i32, PtyError> {
-        let mut child = self.child.lock().map_err(|e| PtyError::Io(e.to_string()))?;
-        let status = child.wait().map_err(|e| PtyError::Io(e.to_string()))?;
-        Ok(status.exit_code() as i32)
+        loop {
+            {
+                let mut child = self.child.lock().map_err(|e| PtyError::Io(e.to_string()))?;
+                if let Some(status) = child.try_wait().map_err(|e| PtyError::Io(e.to_string()))? {
+                    return Ok(status.exit_code() as i32);
+                }
+            }
+            std::thread::sleep(std::time::Duration::from_millis(50));
+        }
     }
 
+    /// Terminate the child. Safe to call more than once — a process that has
+    /// already exited is the desired end state, not an error.
     pub fn kill(&self) -> Result<(), PtyError> {
         let mut child = self.child.lock().map_err(|e| PtyError::Io(e.to_string()))?;
         let _ = child.kill();
@@ -261,5 +274,63 @@ mod tests {
         let session = PtySession::spawn(config(default_shell())).expect("spawn");
         assert!(session.kill().is_ok());
         assert!(session.kill().is_ok(), "a second kill must be a no-op");
+    }
+
+    /*
+     * `kill` must not wait for `wait`.
+     *
+     * Both need the child. A `wait` that held the lock while blocking would
+     * make `kill` block until the shell exited on its own — and `kill` is
+     * what closing a tab does, so the tab would hang until the very thing it
+     * was closing decided to finish.
+     */
+    #[test]
+    fn killing_a_shell_does_not_wait_for_it_to_exit_by_itself() {
+        use std::sync::mpsc;
+        use std::time::Duration;
+
+        let session = std::sync::Arc::new(
+            PtySession::spawn(config(ShellSpec {
+                program: sleeper().0,
+                args: sleeper().1,
+            }))
+            .expect("spawn"),
+        );
+
+        // Something waiting on it, as a supervisor does for its whole life.
+        let waiting = {
+            let session = std::sync::Arc::clone(&session);
+            std::thread::spawn(move || session.wait())
+        };
+        std::thread::sleep(Duration::from_millis(150));
+
+        let (done, heard) = mpsc::channel();
+        let killer = {
+            let session = std::sync::Arc::clone(&session);
+            std::thread::spawn(move || {
+                let result = session.kill();
+                done.send(()).ok();
+                result
+            })
+        };
+
+        assert!(
+            heard.recv_timeout(Duration::from_secs(10)).is_ok(),
+            "kill blocked behind wait"
+        );
+        assert!(killer.join().expect("killer").is_ok());
+        let _ = waiting.join();
+    }
+
+    /// A shell that will not exit on its own, so the test is about the locks.
+    fn sleeper() -> (String, Vec<String>) {
+        if cfg!(windows) {
+            (
+                "powershell.exe".to_string(),
+                vec!["-NoLogo".into(), "-Command".into(), "Start-Sleep -Seconds 120".into()],
+            )
+        } else {
+            ("sh".to_string(), vec!["-c".into(), "sleep 120".into()])
+        }
     }
 }

@@ -108,6 +108,15 @@ export interface TerminalControls {
 const NO_HITS: SearchHits = { current: 0, total: 0 };
 
 /**
+ * The most gutter marks kept at once.
+ *
+ * The same number of commands `MarkTracker` remembers, deliberately: a mark
+ * whose block has been forgotten is a mark that can be clicked and has
+ * nothing to say.
+ */
+const MAX_MARKS = 500;
+
+/**
  * Owns one xterm instance bound to one pty session.
  *
  * Everything here is lifecycle: create the terminal, attach it to the DOM,
@@ -283,6 +292,15 @@ export function useXterm(
       });
 
       blockMarks.current.push(decoration);
+
+      // Bounded, for the same reason and to the same number as the blocks
+      // themselves. `MarkTracker` forgets a command once five hundred newer
+      // ones exist; without the same limit here a terminal left open all day
+      // accumulated a decoration and a marker per command for ever, none of
+      // which could be reached once the block behind it had been forgotten.
+      while (blockMarks.current.length > MAX_MARKS) {
+        blockMarks.current.shift()?.dispose();
+      }
     }
 
     // The app's own shortcuts must reach the window rather than the shell.

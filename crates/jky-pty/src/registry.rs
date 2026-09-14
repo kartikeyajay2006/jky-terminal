@@ -4,10 +4,28 @@ use std::sync::{Arc, Mutex};
 use crate::session::PtySession;
 
 /// Holds every live PTY, keyed by an id the frontend uses to address it.
+///
+/// Every lock here is taken with `recover` rather than `expect`, and that is
+/// the difference between one bad moment and a dead application. A `Mutex` in
+/// Rust is poisoned for ever once a thread panics while holding it, so
+/// `expect` on these would mean a single panic anywhere near a terminal took
+/// every terminal with it — not just the one, and not just then: every later
+/// keystroke, resize and close would panic too, until the app was restarted.
+///
+/// Nothing here can leave the map in a state worth refusing to read. It is
+/// ids and handles; a panic elsewhere says nothing about whether this entry
+/// is still a shell. The rest of this workspace already treats a poisoned
+/// lock as recoverable — see `jky-system` — and this was the one place that
+/// did not.
 #[derive(Default)]
 pub struct PtyRegistry {
     sessions: Mutex<HashMap<String, Arc<PtySession>>>,
     counter: Mutex<u64>,
+}
+
+/// The value behind a lock, poisoned or not.
+fn recover<T>(lock: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    lock.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
 }
 
 impl PtyRegistry {
@@ -17,25 +35,25 @@ impl PtyRegistry {
 
     pub fn insert(&self, session: PtySession) -> String {
         let id = {
-            let mut counter = self.counter.lock().expect("counter lock");
+            let mut counter = recover(&self.counter);
             *counter += 1;
             format!("pty-{counter}")
         };
 
-        self.sessions
-            .lock()
-            .expect("sessions lock")
-            .insert(id.clone(), Arc::new(session));
+        recover(&self.sessions).insert(id.clone(), Arc::new(session));
         id
     }
 
     pub fn get(&self, id: &str) -> Option<Arc<PtySession>> {
-        self.sessions.lock().expect("sessions lock").get(id).cloned()
+        recover(&self.sessions).get(id).cloned()
     }
 
     /// Remove and kill. Returns whether a session was actually present.
     pub fn remove(&self, id: &str) -> bool {
-        let removed = self.sessions.lock().expect("sessions lock").remove(id);
+        // Taken out of the map before it is killed, so the lock is not held
+        // across `kill` — which talks to the operating system and has no
+        // business blocking every other terminal while it does.
+        let removed = recover(&self.sessions).remove(id);
         match removed {
             Some(session) => {
                 let _ = session.kill();
@@ -46,7 +64,7 @@ impl PtyRegistry {
     }
 
     pub fn len(&self) -> usize {
-        self.sessions.lock().expect("sessions lock").len()
+        recover(&self.sessions).len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -109,5 +127,34 @@ mod tests {
         fn assert_send_sync<T: Send + Sync>() {}
         assert_send_sync::<PtyRegistry>();
         assert_send_sync::<Arc<PtySession>>();
+    }
+
+    /*
+     * A poisoned lock must not take the application with it.
+     *
+     * A `Mutex` stays poisoned for ever once a thread panics holding it. With
+     * `expect`, one panic anywhere near a terminal would have made every
+     * later keystroke, resize and close panic too — for every terminal, until
+     * the app was restarted.
+     */
+    #[test]
+    fn a_panic_in_one_place_does_not_end_every_terminal() {
+        let registry = std::sync::Arc::new(PtyRegistry::new());
+
+        // Poison it, the way a panic while holding the lock would.
+        let poisoner = {
+            let registry = std::sync::Arc::clone(&registry);
+            std::thread::spawn(move || {
+                let _held = recover(&registry.sessions);
+                panic!("something went wrong while holding the lock");
+            })
+        };
+        assert!(poisoner.join().is_err(), "the thread should have panicked");
+
+        // Every one of these would have panicked before.
+        assert_eq!(registry.len(), 0);
+        assert!(registry.get("pty-1").is_none());
+        assert!(!registry.remove("pty-1"));
+        assert!(registry.is_empty());
     }
 }

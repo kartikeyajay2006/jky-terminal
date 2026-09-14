@@ -612,6 +612,27 @@ describe("letting the app's shortcuts through", () => {
       expect(writes.join("")).not.toContain("\n");
     });
 
+    it("keeps no more marks than there are commands to remember", async () => {
+      render(<Terminal paneId="tab-blocks-cap" />);
+      await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+
+      // Well past the limit. Unbounded, this left a decoration and a marker
+      // for every command a terminal had ever run.
+      for (let i = 0; i < 520; i += 1) {
+        oscHandlers.get(133)?.("A");
+        oscHandlers.get(133)?.("C");
+        oscHandlers.get(133)?.("D;0");
+        oscHandlers.get(1337)!(encodeDone(0, "/repo", `echo ${i}`));
+      }
+
+      await waitFor(() => expect(decorations.length).toBeGreaterThan(500));
+      const alive = decorations.filter((d) => !d.disposed);
+      expect(alive.length, "marks grew without bound").toBeLessThanOrEqual(500);
+      // The oldest went first, so what is kept is what is on screen.
+      expect(decorations[0].disposed).toBe(true);
+      expect(decorations.at(-1)!.disposed).toBe(false);
+    });
+
     it("takes its marks with it when the screen is cleared", async () => {
       render(<Terminal paneId="tab-blocks-6" />);
       await finish(0, "ls");
