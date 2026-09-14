@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml"><img src="https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <img src="https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff" alt="Linux, macOS, Windows">
-  <img src="https://img.shields.io/badge/tests-2218%20frontend%20%C2%B7%201070%20Rust-3ddc97" alt="Tests">
+  <img src="https://img.shields.io/badge/tests-2229%20frontend%20%C2%B7%201089%20Rust-3ddc97" alt="Tests">
   <img src="https://img.shields.io/badge/license-MIT-7c3aed" alt="MIT">
 </p>
 
@@ -38,7 +38,7 @@ pnpm dev:desktop
 
 | | | |
 |---|---|---|
-| ❯ | **Terminal** | A real pty. Split it any way. **Any command can become an app.** |
+| ❯ | **Terminal** | A real pty. Split it any way. Close the window and the shells keep running. **Any command can become an app.** |
 | ✎ | **Editor** | CodeMirror 6, several folders at once. Images and PDFs open too |
 | ▦ | **Workspaces** | Folders, terminals and a machine, saved under a name |
 | ⇄ | **Remote** | A terminal on another machine, over the `ssh` you already have |

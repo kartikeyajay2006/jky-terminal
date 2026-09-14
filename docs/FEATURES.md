@@ -92,6 +92,49 @@ only that one.
 
 ---
 
+## Terminals outlive the window
+
+Close the window in the middle of a build and the build keeps going. Open the
+app again and each pane is back on the shell it had, showing what that shell
+printed while nobody was looking.
+
+A shell used to be a child of the window, and a child dies with its parent.
+Now each pane's shell is held by a small supervisor — this same program, run
+with `--supervise` — and the window is only ever a client of it. The window
+closing is an ordinary disconnect rather than the end of anything. It is the
+shape `dtach` settled on, and the reason people keep tmux running underneath a
+terminal; here it is simply how a terminal works.
+
+**Closing a pane ends its shell.** Quitting does not, and a terminal merely
+leaving the screen does not either. Those are different acts, and the app
+treats them differently rather than guessing which one you meant.
+
+**Reopening draws what was missed, not what was there.** A rejoined shell sends
+the tail of what it printed while no window was attached, so the pane shows the
+build you left rather than a blank prompt. The old scrollback is not drawn above
+it — that would be the same session twice — and neither is the banner, which
+belongs to a shell that has just started.
+
+**Quitting asks only about what it would lose**: unsaved files, and commands in
+a shell the window still owns. A remote session over `ssh` is one of those — it
+is still a child of the window, and still ends with it.
+
+**Nobody else can reach them.** A supervisor answers a connection by sending
+what the shell printed, so who may connect is who may read the shell. On Unix
+the sockets live in a directory only you can enter; on Windows each pipe admits
+its owner and no one else.
+
+**Nothing is left behind by accident.** A supervisor ends when its shell does,
+and takes its socket and its record with it. On start the app ends any held
+shell no pane claims — one left over when a crash kept a pane's closing from
+arriving. On Windows, a job that forbids its processes from breaking away can
+still take held shells with it when it closes; that is the job's rule, and a
+terminal still opens.
+
+---
+
+---
+
 ## Editor
 
 CodeMirror 6, with the language loaded only when you open a file that needs
