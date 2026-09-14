@@ -2222,6 +2222,7 @@ dependencies = [
  "os_pipe",
  "serde",
  "thiserror 2.0.20",
+ "widestring",
 ]
 
 [[package]]

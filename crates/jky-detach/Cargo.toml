@@ -14,6 +14,11 @@ thiserror.workspace = true
 # than a file whose permissions already say who may open it.
 interprocess = "2.4"
 
+[target.'cfg(windows)'.dependencies]
+# The pipe's security descriptor is written as SDDL, which Windows reads as
+# UTF-16. The same crate `interprocess` already uses for it, so the types meet.
+widestring = "1"
+
 [dev-dependencies]
 # A pipe to stand in for a shell's output, so the supervisor loop is tested
 # without spawning a process.

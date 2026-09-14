@@ -62,6 +62,46 @@ fn unix_socket_is_live(at: &str) -> bool {
     Stream::connect(name).is_ok()
 }
 
+/// Create the sessions directory so that only this user can reach into it.
+///
+/// A socket streams a live shell, and on Unix who may connect is decided by
+/// permissions. The directory is the one to trust: nobody gets past a
+/// directory they cannot search, whatever the socket file's own mode says, and
+/// that mode is not honoured everywhere. Tightened on every listen, so a
+/// directory made loosely — by an older build, or by hand — is corrected
+/// rather than believed.
+#[cfg(not(windows))]
+fn private_dir(dir: &Path) -> io::Result<()> {
+    use std::os::unix::fs::PermissionsExt;
+    std::fs::create_dir_all(dir)?;
+    std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
+}
+
+/// On Windows the directory holds only markers, which name a session and grant
+/// nothing. What admits a window is the pipe itself.
+#[cfg(windows)]
+fn private_dir(dir: &Path) -> io::Result<()> {
+    std::fs::create_dir_all(dir)
+}
+
+/// Who may open a session's pipe: its owner, and nobody else.
+///
+/// A named pipe created with no descriptor gets the default one, which lets
+/// every account on the machine open it for reading — and a supervisor answers
+/// any connection by sending the tail of the shell's output. So it is stated: a
+/// protected DACL whose one entry grants the owner of the pipe everything.
+/// `OW` rather than a SID looked up at runtime, because it means the owner of
+/// this object whoever that is, with no token to query and nothing to convert.
+#[cfg(windows)]
+const PIPE_SECURITY: &str = "D:P(A;;GA;;;OW)";
+
+#[cfg(windows)]
+fn pipe_security() -> io::Result<interprocess::os::windows::security_descriptor::SecurityDescriptor> {
+    let sddl = widestring::U16CString::from_str(PIPE_SECURITY)
+        .map_err(|e| io::Error::new(io::ErrorKind::InvalidInput, e.to_string()))?;
+    interprocess::os::windows::security_descriptor::SecurityDescriptor::deserialize(&sddl)
+}
+
 /// Listen at an address, clearing anything dead that is already there.
 ///
 /// Refuses rather than steals when a live supervisor holds the address: two
@@ -69,7 +109,7 @@ fn unix_socket_is_live(at: &str) -> bool {
 pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, Listener)> {
     let at = address(runtime_dir, session).map_err(to_io)?;
 
-    std::fs::create_dir_all(socket_dir(runtime_dir))?;
+    private_dir(&socket_dir(runtime_dir))?;
 
     // A Unix socket file outlives its supervisor, so binding fails until the
     // corpse is cleared. Windows needs none of this: a second pipe of the
@@ -88,13 +128,19 @@ pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, Listener
         std::fs::remove_file(&at)?;
     }
 
-    let listener = ListenerOptions::new().name(as_name(&at)?).create_sync()?;
+    let options = ListenerOptions::new().name(as_name(&at)?);
+    #[cfg(windows)]
+    let options = {
+        use interprocess::os::windows::local_socket::ListenerOptionsExt;
+        options.security_descriptor(pipe_security()?)
+    };
+    let listener = options.create_sync()?;
 
     // The note that says this session exists. On Windows a pipe leaves
     // nothing on disk, so without it there is no directory to list and a
     // detached session could never be found again. Written after the listener
     // is up, so a marker never names something that is not accepting yet.
-    std::fs::create_dir_all(socket_dir(runtime_dir))?;
+    private_dir(&socket_dir(runtime_dir))?;
     std::fs::write(marker(runtime_dir, session).map_err(to_io)?, session)?;
 
     Ok((at, listener))
@@ -327,5 +373,43 @@ mod tests {
         assert!(listen(&dir, "../escape").is_err());
         assert!(attach(&dir, "../escape").is_err());
         let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /*
+     * A socket streams a live shell, so who may reach one matters.
+     *
+     * On Unix that is decided by permissions, and the directory is the one
+     * to trust: nobody gets past a directory they cannot search. Made loosely
+     * first, on purpose — a directory left by an older build, or by hand, has
+     * to be corrected rather than believed.
+     */
+    #[cfg(not(windows))]
+    #[test]
+    fn the_sessions_directory_admits_nobody_else_even_if_it_was_made_loosely() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = scratch("private");
+        std::fs::create_dir_all(socket_dir(&dir)).unwrap();
+        std::fs::set_permissions(socket_dir(&dir), std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let (_at, _listener) = listen(&dir, "p").expect("listen");
+
+        let mode = std::fs::metadata(socket_dir(&dir)).unwrap().permissions().mode() & 0o777;
+        assert_eq!(mode, 0o700, "another user could reach a live shell's socket");
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+    /*
+     * The Windows half of the same guarantee.
+     *
+     * Nothing short of a second account can show another user being refused,
+     * so this pins the descriptor that does the refusing — and the listen and
+     * attach tests above, run on Windows, are what show its owner still gets in.
+     */
+    #[cfg(windows)]
+    #[test]
+    fn the_pipe_descriptor_names_its_owner_and_nobody_else() {
+        assert_eq!(PIPE_SECURITY, "D:P(A;;GA;;;OW)");
+        assert!(pipe_security().is_ok(), "the descriptor did not parse");
     }
 }
