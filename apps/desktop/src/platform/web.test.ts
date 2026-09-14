@@ -82,3 +82,24 @@ describe("web platform mock", () => {
     expect(JSON.stringify(sessionStorage)).not.toContain("sk-ant");
   });
 });
+
+describe("the web platform's terminals", () => {
+  it("spawns a shell that is new and does not outlive the page", async () => {
+    // The preview runs no processes, so nothing it starts can be rejoined or
+    // survive a reload. Saying so is what keeps the quit question honest here.
+    const spawned = await createWebPlatform().pty.spawn(80, 24, "", "", null, "pane-1");
+    expect(spawned).toEqual({
+      id: expect.stringMatching(/^web-pty-/),
+      reattached: false,
+      survives: false,
+    });
+  });
+
+  it("lets go of, ends and prunes a terminal without complaint", async () => {
+    const { pty } = createWebPlatform();
+    const { id } = await pty.spawn(80, 24, "", "", null, "pane-1");
+    await expect(pty.release(id)).resolves.toBeUndefined();
+    await expect(pty.end("pane-1")).resolves.toBeUndefined();
+    await expect(pty.prune(["pane-1"])).resolves.toBeUndefined();
+  });
+});

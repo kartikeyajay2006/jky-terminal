@@ -626,7 +626,7 @@ export function useXterm(
       // exactly what it should look like.
       const id = host
         ? await platform.remote.spawn(host, xterm.cols, xterm.rows)
-        : await platform.pty.spawn(
+        : (await platform.pty.spawn(
             xterm.cols,
             xterm.rows,
             banner,
@@ -635,11 +635,11 @@ export function useXterm(
             // directory still exists before honouring it — a project folder
             // moved or deleted since must not stop a terminal from opening.
             dirOf(scrollbackKey),
-          );
+          )).id;
       if (cancelled) {
         // StrictMode unmounted us mid-spawn. Kill it rather than leaking a
         // shell process for the lifetime of the app.
-        void platform.pty.kill(id);
+        void platform.pty.release(id);
         return;
       }
       ptyId = id;
@@ -727,7 +727,7 @@ export function useXterm(
         }
       }
 
-      if (ptyId) void platform.pty.kill(ptyId);
+      if (ptyId) void platform.pty.release(ptyId);
       xterm.dispose();
       term.current = null;
       searchAddon.current = null;

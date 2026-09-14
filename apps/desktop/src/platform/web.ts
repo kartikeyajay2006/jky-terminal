@@ -825,11 +825,14 @@ export function createWebPlatform(): Platform {
   let ptyCounter = 0;
 
   const pty: PtyApi = {
-    async spawn(_cols, _rows, _banner, _accent, _cwd) {
+    async spawn(_cols, _rows, _banner, _accent, _cwd, _pane) {
       // Deliberately silent. The prompt is emitted when a handler subscribes,
       // not here: spawn resolves before onData registers, so anything emitted
       // at spawn time is written to nobody.
-      return `web-pty-${++ptyCounter}`;
+      //
+      // Never rejoined and never surviving: the preview runs no processes, so
+      // nothing it starts can outlive the page.
+      return { id: `web-pty-${++ptyCounter}`, reattached: false, survives: false };
     },
     async shell() {
       // The browser preview runs no shell at all, and naming one would be the
@@ -841,9 +844,12 @@ export function createWebPlatform(): Platform {
       ptyHandlers.get(id)?.(data === "\r" ? "\r\njky $ " : data);
     },
     async resize() {},
-    async kill(id) {
+    async release(id) {
       ptyHandlers.delete(id);
     },
+    // Nothing is held, so there is nothing to end or prune.
+    async end() {},
+    async prune() {},
     async onData(id, handler) {
       ptyHandlers.set(id, handler);
       return () => ptyHandlers.delete(id);

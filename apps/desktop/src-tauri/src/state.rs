@@ -78,6 +78,10 @@ pub struct AppState {
     /// The dashboard's notes, todos, events and reminders.
     pub store: Arc<Store>,
     pub ptys: Arc<PtyRegistry>,
+    /// Terminals whose shell is held by a supervisor and outlives the window.
+    /// Beside `ptys` rather than in it: those are the window's own children,
+    /// these are connections to processes that are not.
+    pub held: Arc<jky_detach::Clients>,
     /// Kept so the pty layer can place its shell launchers under it.
     pub config_dir: PathBuf,
     pub audit: Arc<AuditLog>,
@@ -116,6 +120,7 @@ impl AppState {
             workspaces: Arc::new(WorkspaceStore::new(config_dir.join("workspaces.json"))),
             store: Arc::new(Store::new(config_dir)),
             ptys: Arc::new(PtyRegistry::new()),
+            held: Arc::new(jky_detach::Clients::new()),
             config_dir: config_dir.to_path_buf(),
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
             turn: Arc::new(Mutex::new(None)),

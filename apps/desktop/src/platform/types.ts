@@ -403,6 +403,16 @@ export interface SettingsApi {
   setActiveProvider(provider: string): Promise<void>;
 }
 
+/** What starting a terminal produced. */
+export interface Spawned {
+  /** Addresses this terminal in every other call. */
+  id: string;
+  /** An existing shell was found and joined, so its output is on its way. */
+  reattached: boolean;
+  /** The shell is held apart from the window and outlives it. */
+  survives: boolean;
+}
+
 export interface PtyApi {
   /**
    * `banner` is stored so the `jky-terminal` shell command can reprint it.
@@ -417,7 +427,9 @@ export interface PtyApi {
     banner: string,
     accent: string,
     cwd?: string | null,
-  ): Promise<string>;
+    /** Which pane this is, so its shell can be found again after a restart. */
+    pane?: string | null,
+  ): Promise<Spawned>;
   /**
    * What a new terminal will run — "zsh", "fish", "powershell".
    *
@@ -428,7 +440,15 @@ export interface PtyApi {
   shell(): Promise<string>;
   write(id: string, data: string): Promise<void>;
   resize(id: string, cols: number, rows: number): Promise<void>;
-  kill(id: string): Promise<void>;
+  /**
+   * The window letting go of a terminal it unmounted. A shell that outlives
+   * the window keeps running; one that does not, ends.
+   */
+  release(id: string): Promise<void>;
+  /** End a pane's shell — what closing the pane means. */
+  end(pane: string): Promise<void>;
+  /** End every held shell no pane in `panes` claims. */
+  prune(panes: string[]): Promise<void>;
   /** Subscribe to this session's output. Resolves to an unsubscribe function. */
   onData(id: string, handler: (chunk: string) => void): Promise<() => void>;
   /**

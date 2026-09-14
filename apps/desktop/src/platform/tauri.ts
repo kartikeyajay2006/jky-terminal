@@ -44,6 +44,7 @@ import type {
   Platform,
   ProviderStatus,
   PtyApi,
+  Spawned,
   Reminder,
   ScrollbackApi,
   CompleteApi,
@@ -276,8 +277,15 @@ export function createTauriPlatform(): Platform {
   };
 
   const pty: PtyApi = {
-    async spawn(cols, rows, banner, accent, cwd) {
-      return invoke<string>("pty_spawn", { cols, rows, banner, accent, cwd: cwd ?? null });
+    async spawn(cols, rows, banner, accent, cwd, pane) {
+      return invoke<Spawned>("pty_spawn", {
+        cols,
+        rows,
+        banner,
+        accent,
+        cwd: cwd ?? null,
+        pane: pane ?? null,
+      });
     },
     async shell() {
       return invoke<string>("pty_shell");
@@ -288,8 +296,14 @@ export function createTauriPlatform(): Platform {
     async resize(id, cols, rows) {
       await invoke<void>("pty_resize", { id, cols, rows });
     },
-    async kill(id) {
-      await invoke<void>("pty_kill", { id });
+    async release(id) {
+      await invoke<void>("pty_release", { id });
+    },
+    async end(pane) {
+      await invoke<void>("pty_end", { pane });
+    },
+    async prune(panes) {
+      await invoke<void>("pty_prune", { panes });
     },
     async onData(id, handler) {
       return listen<{ id: string; chunk: string }>(`pty:data:${id}`, (e) =>

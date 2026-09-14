@@ -78,6 +78,21 @@ pub fn run(config_dir: &Path, session: &str, cwd: Option<String>) -> std::io::Re
     supervise(&jky_detach_dir(config_dir), session, Pty(pty))
 }
 
+/// The arguments that make this binary hold `session`, starting in `cwd`.
+///
+/// Built here, beside `requested` and `argument`, so what a window asks for and
+/// what a supervisor reads back are written in one place and cannot drift.
+pub fn supervise_args(session: &str, config_dir: &Path, cwd: &Path) -> Vec<std::ffi::OsString> {
+    vec![
+        FLAG.into(),
+        session.into(),
+        CONFIG_FLAG.into(),
+        config_dir.into(),
+        "--cwd".into(),
+        cwd.into(),
+    ]
+}
+
 /// What a held shell is started with: everything a window's own shell gets.
 ///
 /// The window installs the launchers and the shell hooks before it asks for a
@@ -148,6 +163,20 @@ mod tests {
     fn sessions_live_beside_the_rest_of_the_configuration() {
         assert_eq!(jky_detach_dir(Path::new("/cfg")), Path::new("/cfg/detached"));
     }
+    #[test]
+    fn a_supervisor_is_asked_for_by_name_directory_and_start() {
+        let args = supervise_args("pane-2", Path::new("/cfg"), Path::new("/work"));
+        let args: Vec<String> = args.iter().map(|a| a.to_string_lossy().into_owned()).collect();
+        assert_eq!(args, ["--supervise", "pane-2", "--config-dir", "/cfg", "--cwd", "/work"]);
+
+        // What the window asks for is what this binary reads back, so the two
+        // cannot drift apart without this failing.
+        let launched = [vec!["jky-terminal".to_string()], args.clone()].concat();
+        assert_eq!(requested(&launched).as_deref(), Some("pane-2"));
+        assert_eq!(argument(&launched, CONFIG_FLAG).as_deref(), Some("/cfg"));
+        assert_eq!(argument(&launched, "--cwd").as_deref(), Some("/work"));
+    }
+
     #[test]
     fn a_held_shell_has_the_jky_commands_when_the_window_installed_them() {
         let config = tempfile::tempdir().expect("a scratch directory");

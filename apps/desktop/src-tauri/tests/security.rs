@@ -380,7 +380,18 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // the CSP that forbids the webview reaching any host is untouched.
         "open_external".to_string(),
         "pty_attach".to_string(),
-        "pty_kill".to_string(),
+        // Ends one pane's shell by name — what closing a pane means now that a
+        // shell outlives its window. Grants nothing new: `pty_write` already
+        // sends `exit` to any shell the window holds. The name is checked
+        // against jky-detach's allow-list before it becomes an address.
+        "pty_end".to_string(),
+        // Ends every held shell no pane claims, once, at startup — by the same
+        // list that already prunes scrollback. Reaches only this user's own
+        // sessions of this app, in a directory Rust chooses.
+        "pty_prune".to_string(),
+        // The window letting go of a terminal it unmounted. A held shell is
+        // left running; a window-owned one is ended, as `pty_kill` did.
+        "pty_release".to_string(),
         "pty_resize".to_string(),
         // The name of the shell a new terminal will run, for the status bar.
         // No argument, and it returns a name rather than a path: the window

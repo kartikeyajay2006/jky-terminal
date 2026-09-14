@@ -1,6 +1,8 @@
 use std::io::Read;
 
 use std::path::Path;
+use std::sync::Arc;
+use std::time::Duration;
 
 use jky_pty::{
     PtySession, SpawnConfig, default_shell, home_dir, install_launchers, launcher_dir,
@@ -10,6 +12,21 @@ use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
 
 use crate::state::AppState;
+
+/// How long a pane waits for its supervisor before settling for a shell of
+/// the window's own. A terminal that will not open is worse than one that
+/// will not survive.
+const OPEN_WITHIN: Duration = Duration::from_secs(10);
+
+/// What starting a terminal produced.
+#[derive(Serialize)]
+pub struct Spawned {
+    id: String,
+    /// An existing shell was joined, so its output is on its way.
+    reattached: bool,
+    /// The shell is held by a supervisor and outlives the window.
+    survives: bool,
+}
 
 #[derive(Clone, Serialize)]
 struct PtyChunk {
@@ -39,8 +56,7 @@ pub fn pty_shell() -> String {
 }
 
 #[tauri::command]
-pub fn pty_spawn(
-    app: AppHandle,
+pub async fn pty_spawn(
     state: State<'_, AppState>,
     cols: u16,
     rows: u16,
@@ -48,7 +64,9 @@ pub fn pty_spawn(
     accent: String,
     // Where this pane last was, when the window remembers.
     cwd: Option<String>,
-) -> Result<String, String> {
+    // Which pane this is, so its shell can be found again after a restart.
+    pane: Option<String>,
+) -> Result<Spawned, String> {
     // Never current_dir(): that is wherever the binary was launched from,
     // which is the project folder in development and something arbitrary from
     // an installed shortcut.
@@ -95,6 +113,34 @@ pub fn pty_spawn(
         jky_pty::install_shell_integration(&state.config_dir, h).is_ok()
     });
 
+    // Held by a supervisor when the pane has a name the socket layer accepts.
+    // Asynchronous, and off the runtime's own threads, because joining waits on
+    // a socket — and a synchronous command would wait on the main thread.
+    if let Some(pane) = pane.filter(|p| jky_detach::check(p).is_ok()) {
+        let dir = crate::supervisor::jky_detach_dir(&state.config_dir);
+        let args = crate::supervisor::supervise_args(&pane, &state.config_dir, &cwd);
+        let name = pane.clone();
+        let opened = tokio::task::spawn_blocking(move || {
+            let exe = std::env::current_exe()?;
+            jky_detach::open(
+                &dir,
+                &name,
+                || jky_detach::launch(&exe, &args).map(|_| ()),
+                OPEN_WITHIN,
+            )
+        })
+        .await
+        .map_err(|_| "starting the terminal was interrupted".to_string())?;
+
+        if let Ok(opened) = opened {
+            let reattached = opened.reattached;
+            let id = state.held.insert(&pane, opened);
+            return Ok(Spawned { id, reattached, survives: true });
+        }
+        // Falls through: a shell of the window's own, which will not survive
+        // the window but will open — and says so, so quitting still asks.
+    }
+
     let session = PtySession::spawn(SpawnConfig {
         shell,
         cwd,
@@ -110,8 +156,7 @@ pub fn pty_spawn(
     // id — so anything read before then would be emitted to nobody and the
     // first prompt would vanish. The pty's own buffer holds that output until
     // pty_attach starts the pump.
-    let _ = &app;
-    Ok(state.ptys.insert(session))
+    Ok(Spawned { id: state.ptys.insert(session), reattached: false, survives: false })
 }
 
 /// Begin streaming a session's output.
@@ -121,6 +166,29 @@ pub fn pty_spawn(
 /// emitted before anything is listening.
 #[tauri::command]
 pub fn pty_attach(app: AppHandle, state: State<'_, AppState>, id: String) -> Result<(), String> {
+    // A held shell streams through its supervisor: what it printed while no
+    // window was attached first, then live output until the shell ends.
+    if let Some(held) = state.held.get(&id) {
+        let frames = held
+            .client
+            .take_frames()
+            .ok_or_else(|| format!("pty '{id}' is already streaming"))?;
+        let replay = held.take_replay();
+        let registry = Arc::clone(&state.held);
+        let event = data_event(&id);
+        std::thread::spawn(move || {
+            let ended = jky_detach::stream(frames, replay, |bytes| {
+                let chunk = String::from_utf8_lossy(&bytes).to_string();
+                app.emit(&event, PtyChunk { id: id.clone(), chunk }).is_ok()
+            });
+            // An ended shell's id addresses nothing now.
+            if ended.is_some() {
+                registry.remove(&id);
+            }
+        });
+        return Ok(());
+    }
+
     let session = state.ptys.get(&id).ok_or_else(|| format!("no pty '{id}'"))?;
     let mut reader = session.take_reader().map_err(|e| e.to_string())?;
 
@@ -157,6 +225,9 @@ pub fn commands_list() -> Vec<jky_pty::CommandSpec> {
 
 #[tauri::command]
 pub fn pty_write(state: State<'_, AppState>, id: String, data: String) -> Result<(), String> {
+    if let Some(held) = state.held.get(&id) {
+        return held.client.input(data.as_bytes()).map_err(|e| e.to_string());
+    }
     let session = state.ptys.get(&id).ok_or_else(|| format!("no pty '{id}'"))?;
     session.write(data.as_bytes()).map_err(|e| e.to_string())
 }
@@ -168,14 +239,53 @@ pub fn pty_resize(
     cols: u16,
     rows: u16,
 ) -> Result<(), String> {
+    if let Some(held) = state.held.get(&id) {
+        return held.client.resize(cols, rows).map_err(|e| e.to_string());
+    }
     let session = state.ptys.get(&id).ok_or_else(|| format!("no pty '{id}'"))?;
     session.resize(cols, rows).map_err(|e| e.to_string())
 }
 
+/// The window letting go of a terminal.
+///
+/// Not the same as closing it. A terminal unmounts for reasons that are not
+/// the user closing it — a double mount in development, a spawn cancelled
+/// mid-flight — so a held shell is only detached here and keeps running. A
+/// shell of the window's own has nothing else that could reach it, so it ends.
 #[tauri::command]
-pub fn pty_kill(state: State<'_, AppState>, id: String) -> Result<(), String> {
+pub fn pty_release(state: State<'_, AppState>, id: String) -> Result<(), String> {
+    if let Some(held) = state.held.remove(&id) {
+        let _ = held.client.detach();
+        return Ok(());
+    }
     state.ptys.remove(&id);
-    Ok(()) // killing an already-dead pty is the desired end state
+    Ok(()) // releasing an already-gone terminal is the desired end state
+}
+
+/// End a pane's shell: what closing the pane means.
+#[tauri::command]
+pub async fn pty_end(state: State<'_, AppState>, pane: String) -> Result<(), String> {
+    if jky_detach::check(&pane).is_err() {
+        return Ok(()); // no session could have that name
+    }
+    if let Some((id, held)) = state.held.by_session(&pane) {
+        let _ = held.client.hangup();
+        state.held.remove(&id);
+        return Ok(());
+    }
+    let dir = crate::supervisor::jky_detach_dir(&state.config_dir);
+    tokio::task::spawn_blocking(move || jky_detach::end(&dir, &pane))
+        .await
+        .map_err(|_| "ending the terminal was interrupted".to_string())
+}
+
+/// End every held shell no pane claims. Called once, at startup.
+#[tauri::command]
+pub async fn pty_prune(state: State<'_, AppState>, panes: Vec<String>) -> Result<(), String> {
+    let dir = crate::supervisor::jky_detach_dir(&state.config_dir);
+    tokio::task::spawn_blocking(move || jky_detach::prune(&dir, &panes))
+        .await
+        .map_err(|_| "pruning terminals was interrupted".to_string())
 }
 
 /// The user's home directory, which is where zsh looks for startup files when
