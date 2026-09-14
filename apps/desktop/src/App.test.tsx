@@ -214,3 +214,36 @@ describe("moving between sections", () => {
     expect(screen.queryAllByRole("tab")).toHaveLength(0);
   });
 });
+
+describe("starting up", () => {
+  beforeEach(() => {
+    disposed.count = 0;
+    useTabs.setState({ tabs: [], activeId: null });
+    useChat.setState({ sessions: [], activeId: null, busy: false, tools: [], error: null });
+    useDashboard.setState({
+      notes: [], todos: [], events: [], reminders: [], loaded: false, errors: {},
+    });
+  });
+  afterEach(() => __setPlatformForTests(null));
+
+  it("prunes held shells by the same list the scrollback is pruned by", async () => {
+    // A shell held for a pane that no longer exists — closed while a crash
+    // kept the hang-up from arriving — has nothing left to claim it. The list
+    // that already decides which saved output to keep decides this too, so
+    // the two cannot disagree about which panes exist.
+    const pruned: string[][] = [];
+    const scrolled: string[][] = [];
+    const base = createWebPlatform();
+    __setPlatformForTests({
+      ...base,
+      pty: { ...base.pty, prune: async (panes) => void pruned.push(panes) },
+      scrollback: { ...base.scrollback, prune: async (keys) => void scrolled.push(keys) },
+    });
+
+    render(<App />);
+
+    await waitFor(() => expect(pruned).toHaveLength(1));
+    expect(scrolled).toHaveLength(1);
+    expect(pruned[0]).toEqual(scrolled[0]);
+  });
+});

@@ -1,6 +1,7 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { allPaneKeys, readTabs, useTabs } from "./tabStore";
 import { leaves, type Pane } from "../features/terminal/panes/tree";
+import { createWebPlatform, __setPlatformForTests } from "../platform";
 
 const reset = () => useTabs.setState({ tabs: [], activeId: null });
 
@@ -272,5 +273,46 @@ describe("moving a terminal within its tab", () => {
 
     useTabs.getState().swapPanes(id, id, "pane-999");
     expect(leaves(tabOf(id).layout)).toEqual(before);
+  });
+});
+
+describe("closing ends the shells in it", () => {
+  // Closing is the one thing that ends a shell, now that shells outlive the
+  // window. A terminal merely unmounting lets go of it instead, so the store
+  // that knows a pane was closed is the one that has to say so.
+  const ended: string[] = [];
+
+  beforeEach(() => {
+    reset();
+    ended.length = 0;
+    const base = createWebPlatform();
+    __setPlatformForTests({
+      ...base,
+      pty: { ...base.pty, end: async (pane) => void ended.push(pane) },
+    });
+  });
+  afterEach(() => __setPlatformForTests(null));
+
+  it("ends the shell of a closed pane, and only that one", () => {
+    const tab = useTabs.getState().openTab("terminal", "Terminal");
+    useTabs.getState().splitPane(tab, tab, "row");
+    const [first, second] = allPaneKeys(useTabs.getState().tabs);
+
+    useTabs.getState().closePane(tab, second);
+
+    expect(ended).toEqual([second]);
+    expect(ended).not.toContain(first);
+  });
+
+  it("ends the shell of every pane in a closed tab", () => {
+    const tab = useTabs.getState().openTab("terminal", "Terminal");
+    useTabs.getState().splitPane(tab, tab, "row");
+    useTabs.getState().splitPane(tab, tab, "column");
+    const panes = allPaneKeys(useTabs.getState().tabs.filter((t) => t.id === tab));
+    expect(panes).toHaveLength(3);
+
+    useTabs.getState().closeTab(tab);
+
+    expect([...ended].sort()).toEqual([...panes].sort());
   });
 });

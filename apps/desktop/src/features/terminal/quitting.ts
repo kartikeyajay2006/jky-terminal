@@ -28,7 +28,7 @@ export function quitTitle(unsaved: number, running: number): string {
 export function quitBody(unsaved: number, running: number): string {
   const lost =
     running > 0
-      ? "A shell is a child of this window, so anything still going stops when it closes."
+      ? "Those shells are each a child of this window, so anything still going in them stops when it closes."
       : "";
   const disk = unsaved > 0 ? "Closing now throws away everything that is not on disk." : "";
   return [disk, lost].filter(Boolean).join(" ");

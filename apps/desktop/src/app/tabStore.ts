@@ -236,6 +236,9 @@ export const useTabs = create<TabState>((set, get) => ({
     const platform = getPlatform();
     for (const key of leaves(tabs[index].layout)) {
       void platform.scrollback.forget(key).catch(() => {});
+      // Closing is the one thing that ends a shell, now that shells outlive
+      // the window. A terminal merely unmounting lets go of it instead.
+      void platform.pty.end(key).catch(() => {});
       useActivity.getState().forget(key);
     }
     set({ tabs: remaining, activeId: nextActive });
@@ -281,6 +284,8 @@ export const useTabs = create<TabState>((set, get) => ({
     }
 
     void getPlatform().scrollback.forget(paneId).catch(() => {});
+    // Its shell goes with it — the one pane, not the tab.
+    void getPlatform().pty.end(paneId).catch(() => {});
     // And stop reporting what it was doing: a pane that has gone cannot
     // still be running something.
     useActivity.getState().forget(paneId);

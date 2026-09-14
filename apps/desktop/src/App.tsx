@@ -97,8 +97,14 @@ export function App() {
    */
   const [quitting, setQuitting] = useState(false);
 
-  /** Terminals mid-command, read when asked rather than watched. */
-  const stillRunning = () => runningCount(useActivity.getState().panes);
+  /**
+   * Terminals mid-command that quitting would lose, read when asked rather
+   * than watched. A shell held by a supervisor keeps going, so it is skipped.
+   */
+  const stillRunning = () => {
+    const { panes, survivors } = useActivity.getState();
+    return runningCount(panes, survivors);
+  };
   useEffect(() => {
     let stop: (() => void) | undefined;
 
@@ -167,6 +173,10 @@ export function App() {
     // output of every pane but the first on each start.
     const keys = allPaneKeys(useTabs.getState().tabs);
     void getPlatform().scrollback.prune(keys).catch(() => {});
+    // Shells held for panes that no longer exist — closed while a crash kept
+    // the hang-up from arriving — are ended by the same list, so the two
+    // cannot disagree about which panes there are.
+    void getPlatform().pty.prune(keys).catch(() => {});
     // The directory each pane was in, pruned by the same list and for the
     // same reason. It was written on every prompt and never removed, so a
     // pane closed months ago still had its last directory recorded — a small

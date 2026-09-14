@@ -29,4 +29,11 @@ describe("what the quit question says", () => {
     expect(both).toContain("not on disk");
     expect(both).toContain("child of this window");
   });
+  it("does not claim that every shell dies with the window, because most do not", () => {
+    // Most local shells are held by a supervisor now. The ones quitting asks
+    // about are those still children of the window, and the question has to
+    // say that rather than something that is no longer true of all of them.
+    expect(quitBody(0, 1)).not.toMatch(/^A shell is/);
+    expect(quitBody(0, 1)).toContain("child of this window");
+  });
 });
