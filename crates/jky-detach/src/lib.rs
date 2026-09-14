@@ -17,6 +17,7 @@
 //! a replay cut through an escape sequence, a name that is really a path —
 //! and each is testable on its own.
 
+mod client;
 mod frame;
 mod launch;
 mod name;
@@ -26,6 +27,7 @@ mod supervise;
 #[cfg(test)]
 mod testing;
 
+pub use client::{Client, Joined, Opened, end, join, open, prune, stream};
 pub use frame::{Frame, FrameError, MAX_PAYLOAD};
 pub use launch::launch;
 pub use name::{
