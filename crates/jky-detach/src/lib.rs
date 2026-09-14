@@ -18,6 +18,7 @@
 //! and each is testable on its own.
 
 mod frame;
+mod launch;
 mod name;
 mod replay;
 mod socket;
@@ -26,6 +27,7 @@ mod supervise;
 mod testing;
 
 pub use frame::{Frame, FrameError, MAX_PAYLOAD};
+pub use launch::launch;
 pub use name::{
     MAX_NAME, NameError, address, check, is_file_backed, marker, name_of, socket_dir,
 };
