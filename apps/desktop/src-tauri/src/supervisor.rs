@@ -74,22 +74,29 @@ pub fn requested(args: &[String]) -> Option<String> {
 /// The start directory is resolved the same way a window resolves it, so a
 /// detached terminal opens where an attached one would.
 pub fn run(config_dir: &Path, session: &str, cwd: Option<String>) -> std::io::Result<()> {
-    let start = resolve_start_dir(cwd.as_deref(), home_dir());
+    let pty = PtySession::spawn(spawn_config(config_dir, cwd)).map_err(std::io::Error::other)?;
+    supervise(&jky_detach_dir(config_dir), session, Pty(pty))
+}
 
-    let pty = PtySession::spawn(SpawnConfig {
+/// What a held shell is started with: everything a window's own shell gets.
+///
+/// The window installs the launchers and the shell hooks before it asks for a
+/// supervisor, so both are there to point at. A launcher directory that is not
+/// there means the shell goes without the `jky` commands — never without a
+/// shell.
+fn spawn_config(config_dir: &Path, cwd: Option<String>) -> SpawnConfig {
+    let launchers = jky_pty::launcher_dir(config_dir);
+    SpawnConfig {
         shell: default_shell(),
-        cwd: start,
+        cwd: resolve_start_dir(cwd.as_deref(), home_dir()),
         // The window resizes it the moment it attaches. This is only what the
         // shell sees before anybody is looking, and it has to be *something*:
         // a pty of zero columns is rejected outright on some platforms.
         cols: 80,
         rows: 24,
-        path_prepend: None,
+        path_prepend: launchers.is_dir().then_some(launchers),
         config_dir: Some(config_dir.to_path_buf()),
-    })
-    .map_err(std::io::Error::other)?;
-
-    supervise(&jky_detach_dir(config_dir), session, Pty(pty))
+    }
 }
 
 /// Where sessions are recorded.
@@ -140,5 +147,21 @@ mod tests {
     #[test]
     fn sessions_live_beside_the_rest_of_the_configuration() {
         assert_eq!(jky_detach_dir(Path::new("/cfg")), Path::new("/cfg/detached"));
+    }
+    #[test]
+    fn a_held_shell_has_the_jky_commands_when_the_window_installed_them() {
+        let config = tempfile::tempdir().expect("a scratch directory");
+        assert_eq!(
+            spawn_config(config.path(), None).path_prepend,
+            None,
+            "pointed PATH at launchers that were never installed"
+        );
+
+        std::fs::create_dir_all(jky_pty::launcher_dir(config.path())).unwrap();
+        assert_eq!(
+            spawn_config(config.path(), None).path_prepend,
+            Some(jky_pty::launcher_dir(config.path())),
+            "a held shell went without the jky commands a window's shell has"
+        );
     }
 }

@@ -220,3 +220,82 @@ fn a_hangup_ends_a_real_shell_its_supervisor_and_its_record() {
 
     let _ = std::fs::remove_dir_all(&config);
 }
+
+/// A process this test launched, ended when the test ends however it ends.
+///
+/// `launch` detaches on purpose, so nothing else would ever end one a failing
+/// assertion left behind.
+struct Launched(u32);
+
+impl Drop for Launched {
+    fn drop(&mut self) {
+        #[cfg(not(windows))]
+        let _ = Command::new("kill").arg(self.0.to_string()).status();
+        #[cfg(windows)]
+        let _ = Command::new("taskkill")
+            .args(["/PID", &self.0.to_string(), "/F", "/T"])
+            .status();
+    }
+}
+
+/*
+ * The window's side of it, with a real supervisor in a real process.
+ *
+ * Nothing is there, so opening starts one — detached, the way the app will.
+ * The window runs something, lets go, and opens the same pane again: it must
+ * find that shell rather than start a second, and closing it must leave
+ * nothing behind.
+ */
+#[test]
+fn a_window_that_finds_nothing_starts_a_shell_it_can_leave_and_find_again() {
+    let exe = binary();
+    if !exe.exists() {
+        eprintln!("no built binary at {exe:?}; skipping");
+        return;
+    }
+    let config = scratch("open");
+    let recorded = sessions_dir(&config);
+    let mut launched: Option<Launched> = None;
+
+    let args: [std::ffi::OsString; 6] = [
+        "--supervise".into(),
+        "fresh".into(),
+        "--config-dir".into(),
+        config.clone().into_os_string(),
+        "--cwd".into(),
+        config.clone().into_os_string(),
+    ];
+    let first = jky_detach::open(
+        &recorded,
+        "fresh",
+        || {
+            launched = Some(Launched(jky_detach::launch(&exe, &args)?));
+            Ok(())
+        },
+        Duration::from_secs(30),
+    )
+    .expect("open");
+    assert!(!first.reattached, "a shell that was just started was called old");
+
+    first.client.input(b"echo MARKER-HELD\r").expect("type");
+    let frames = first.client.take_frames().expect("frames");
+    let seen = read_until(frames, "MARKER-HELD", Duration::from_secs(25));
+    assert!(seen.contains("MARKER-HELD"), "the held shell never ran it:\n{seen}");
+    first.client.detach().expect("let go");
+    drop(first);
+
+    let again = jky_detach::open(
+        &recorded,
+        "fresh",
+        || -> std::io::Result<()> { panic!("started a second shell for one pane") },
+        Duration::from_secs(10),
+    )
+    .expect("reopen");
+    assert!(again.reattached, "leaving and coming back started over");
+
+    again.client.hangup().expect("hang up");
+    assert!(wait_for(|| sessions(&recorded).is_empty()), "closing it left it running");
+
+    drop(launched);
+    let _ = std::fs::remove_dir_all(&config);
+}
