@@ -53,6 +53,7 @@ pub const MAX_PAYLOAD: u32 = 4 * 1024 * 1024;
 const KIND_DATA: u8 = 0x00;
 const KIND_RESIZE: u8 = 0x01;
 const KIND_DETACH: u8 = 0x02;
+const KIND_HANGUP: u8 = 0x03;
 const KIND_REPLAY: u8 = 0x10;
 const KIND_ENDED: u8 = 0x11;
 
@@ -69,6 +70,12 @@ pub enum Frame {
     /// crashes or the machine sleeps — those also leave the shell running, so
     /// the two are handled the same way. This exists to say it was meant.
     Detach,
+    /// The window wants the shell ended, not left.
+    ///
+    /// What closing a pane means. A window going away — politely or by
+    /// crashing — leaves the shell running; this is the one message that
+    /// does not.
+    Hangup,
     /// What happened while nobody was attached, sent once on reattaching.
     ///
     /// Separate from `Data` so the window can tell the catch-up from the live
@@ -86,6 +93,7 @@ impl Frame {
             Frame::Data(_) => KIND_DATA,
             Frame::Resize { .. } => KIND_RESIZE,
             Frame::Detach => KIND_DETACH,
+            Frame::Hangup => KIND_HANGUP,
             Frame::Replay(_) => KIND_REPLAY,
             Frame::Ended { .. } => KIND_ENDED,
         }
@@ -100,7 +108,7 @@ impl Frame {
                 out.extend_from_slice(&rows.to_be_bytes());
                 out
             }
-            Frame::Detach => Vec::new(),
+            Frame::Detach | Frame::Hangup => Vec::new(),
             Frame::Ended { code } => code.to_be_bytes().to_vec(),
         }
     }
@@ -142,6 +150,7 @@ impl Frame {
             KIND_DATA => Ok(Frame::Data(payload)),
             KIND_REPLAY => Ok(Frame::Replay(payload)),
             KIND_DETACH => Ok(Frame::Detach),
+            KIND_HANGUP => Ok(Frame::Hangup),
             KIND_RESIZE => {
                 let size: [u8; 4] = payload
                     .as_slice()
@@ -180,11 +189,21 @@ mod tests {
             Frame::Data(b"ls -la\n".to_vec()),
             Frame::Resize { cols: 120, rows: 40 },
             Frame::Detach,
+            Frame::Hangup,
             Frame::Replay(b"previous output".to_vec()),
             Frame::Ended { code: 0 },
         ] {
             assert_eq!(round_trip(&frame), frame, "{frame:?}");
         }
+    }
+
+    #[test]
+    fn a_hangup_crosses_the_wire_and_is_not_a_detach() {
+        // Leaving and ending are the two things a window can mean by going,
+        // and confusing them either kills a build or leaks a shell.
+        let back = round_trip(&Frame::Hangup);
+        assert_eq!(back, Frame::Hangup);
+        assert_ne!(back, Frame::Detach);
     }
 
     #[test]
