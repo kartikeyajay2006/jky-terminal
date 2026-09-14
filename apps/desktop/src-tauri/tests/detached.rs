@@ -186,3 +186,37 @@ fn an_ordinary_launch_is_not_a_supervisor() {
     assert!(sessions(&recorded).is_empty());
     let _ = std::fs::remove_dir_all(&config);
 }
+
+/*
+ * Closing a pane, proved against a real shell in a real second process.
+ *
+ * The crate's own test shows the supervisor asks its shell to end. Only a
+ * process can show the rest: that a real pty's shell actually goes, that the
+ * supervisor holding it goes too, and that nothing is left on disk to find.
+ */
+#[test]
+fn a_hangup_ends_a_real_shell_its_supervisor_and_its_record() {
+    let config = scratch("hangup");
+    let recorded = sessions_dir(&config);
+
+    let Some(mut child) = start(&config, "gone") else { return };
+    assert!(
+        wait_for(|| sessions(&recorded) == vec!["gone".to_string()]),
+        "the supervisor never recorded itself in {recorded:?}"
+    );
+
+    let window = attach(&recorded, "gone").expect("attach");
+    let (_reading, mut writing) = window.split();
+    Frame::Hangup.write_to(&mut writing).expect("hang up");
+
+    assert!(
+        wait_for(|| sessions(&recorded).is_empty()),
+        "the shell outlived being closed"
+    );
+    assert!(
+        wait_for(|| matches!(child.0.try_wait(), Ok(Some(_)))),
+        "the supervisor kept running with nothing to hold"
+    );
+
+    let _ = std::fs::remove_dir_all(&config);
+}

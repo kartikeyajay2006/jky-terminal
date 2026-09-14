@@ -22,6 +22,8 @@ mod name;
 mod replay;
 mod socket;
 mod supervise;
+#[cfg(test)]
+mod testing;
 
 pub use frame::{Frame, FrameError, MAX_PAYLOAD};
 pub use name::{

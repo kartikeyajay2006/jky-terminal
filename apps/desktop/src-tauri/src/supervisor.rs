@@ -39,6 +39,10 @@ impl Shell for Pty {
     fn wait(&self) -> std::io::Result<i32> {
         self.0.wait().map_err(std::io::Error::other)
     }
+
+    fn kill(&self) -> std::io::Result<()> {
+        self.0.kill().map_err(std::io::Error::other)
+    }
 }
 
 /// The value of a `--flag value` pair, if it is there.

@@ -48,6 +48,12 @@ pub trait Shell: Send + Sync + 'static {
     /// end-of-file, and a supervisor waiting for one waits for ever — holding
     /// a shell that exited an hour ago.
     fn wait(&self) -> io::Result<i32>;
+    /// End the shell.
+    ///
+    /// Asked for when a window closes a pane rather than leaving it. The exit
+    /// is then noticed the ordinary way — by `wait`, or by the output ending —
+    /// so there is still exactly one way out of a session, not two.
+    fn kill(&self) -> io::Result<()>;
 }
 
 /// The half of the connection output is written to, when a window is attached.
@@ -220,6 +226,12 @@ fn serve_one(stream: Stream, shell: &impl Shell, attached: &Attached, replay: &M
             Ok(Frame::Resize { cols, rows }) => {
                 let _ = shell.resize(cols, rows);
             }
+            // The one way a window's going ends the shell: the pane was
+            // closed. The window is done either way, so it is let go here too.
+            Ok(Frame::Hangup) => {
+                let _ = shell.kill();
+                break;
+            }
             // Said, or merely happened — a window that crashed and one that
             // left politely both leave the shell running, which is the point.
             Ok(Frame::Detach) => break,
@@ -247,86 +259,10 @@ fn knock(at: &str) {
 mod tests {
     use super::*;
     use crate::socket::attach;
+    use crate::testing::*;
     use std::io::Write;
     use std::sync::mpsc;
     use std::time::Duration;
-
-    /// A shell that is a pipe and a log, so the loop can be driven exactly.
-    struct Fake {
-        output: Mutex<Option<Box<dyn Read + Send>>>,
-        typed: Arc<Mutex<Vec<u8>>>,
-        sized: Arc<Mutex<Vec<(u16, u16)>>>,
-    }
-
-    impl Shell for Fake {
-        fn output(&self) -> io::Result<Box<dyn Read + Send>> {
-            self.output
-                .lock()
-                .unwrap()
-                .take()
-                .ok_or_else(|| io::Error::other("taken twice"))
-        }
-        fn input(&self, bytes: &[u8]) -> io::Result<()> {
-            self.typed.lock().unwrap().extend_from_slice(bytes);
-            Ok(())
-        }
-        fn resize(&self, cols: u16, rows: u16) -> io::Result<()> {
-            self.sized.lock().unwrap().push((cols, rows));
-            Ok(())
-        }
-        fn wait(&self) -> io::Result<i32> {
-            // Never returns, so these tests exercise the output-ended path.
-            // The process-exited path is proved against a real shell in the
-            // desktop crate's `detached` test, which is the only place it can
-            // be: it needs a process.
-            loop {
-                std::thread::park();
-            }
-        }
-    }
-
-    fn scratch(tag: &str) -> std::path::PathBuf {
-        let dir = std::env::temp_dir().join(format!("jky-sup-{tag}-{}", std::process::id()));
-        let _ = std::fs::remove_dir_all(&dir);
-        std::fs::create_dir_all(&dir).expect("a scratch directory");
-        dir
-    }
-
-    /// A shell whose output is whatever is written to the returned sender.
-    /// A fake shell, plus the handles a test drives and inspects it through.
-    struct Rig {
-        shell: Fake,
-        /// Write here and the fake shell "prints" it. Dropping it ends the shell.
-        writer: os_pipe::PipeWriter,
-        typed: Arc<Mutex<Vec<u8>>>,
-        sized: Arc<Mutex<Vec<(u16, u16)>>>,
-    }
-
-    fn fake() -> Rig {
-        let (reader, writer) = os_pipe::pipe().expect("a pipe");
-        let typed = Arc::new(Mutex::new(Vec::new()));
-        let sized = Arc::new(Mutex::new(Vec::new()));
-        Rig {
-            shell: Fake {
-                output: Mutex::new(Some(Box::new(reader))),
-                typed: Arc::clone(&typed),
-                sized: Arc::clone(&sized),
-            },
-            writer,
-            typed,
-            sized,
-        }
-    }
-
-    fn wait_for(mut done: impl FnMut() -> bool) -> bool {
-        for _ in 0..200 {
-            if done() {
-                return true;
-            }
-            std::thread::sleep(Duration::from_millis(25));
-        }
-        false
-    }
 
     #[test]
     fn a_window_sees_what_the_shell_prints_and_the_shell_sees_what_is_typed() {
@@ -420,7 +356,7 @@ mod tests {
     #[test]
     fn a_resize_reaches_the_shell_rather_than_being_typed_into_it() {
         let dir = scratch("resize");
-        let Rig { shell, writer, typed, sized } = fake();
+        let Rig { shell, writer, typed, sized, .. } = fake();
 
         let run = {
             let dir = dir.clone();
@@ -551,6 +487,40 @@ mod tests {
         assert!(matches!(Frame::read_from(&mut window), Ok(Frame::Ended { .. })));
 
         let _ = run.join();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /*
+     * Closing a pane, which is not the same as leaving it.
+     *
+     * Every other way a window goes leaves the shell running. This is the one
+     * that must not: a pane the user closed whose shell kept going would be a
+     * process nobody can see, reach or remember starting.
+     */
+    #[test]
+    fn a_hangup_ends_the_shell_rather_than_leaving_it() {
+        let dir = scratch("hangup");
+        let Rig { shell, writer, killed, .. } = fake();
+
+        let run = {
+            let dir = dir.clone();
+            std::thread::spawn(move || supervise(&dir, "one", shell))
+        };
+        assert!(wait_for(|| crate::sessions(&dir) == vec!["one".to_string()]));
+
+        let mut window = attach(&dir, "one").expect("attach");
+        assert_eq!(Frame::read_from(&mut window).expect("handshake"), Frame::Replay(Vec::new()));
+        Frame::Hangup.write_to(&mut window).unwrap();
+
+        assert!(
+            wait_for(|| killed.load(Ordering::SeqCst)),
+            "the shell was never told to end"
+        );
+
+        // What a killed shell's output does next.
+        drop(writer);
+        assert!(wait_for(|| crate::sessions(&dir).is_empty()), "the session outlived its shell");
+        run.join().expect("thread").expect("supervise");
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
