@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Dashboard, SECTIONS } from "./Dashboard";
+import { Dashboard } from "./Dashboard";
+import { SECTIONS } from "./sections";
 import { useDashboard } from "./dashboardStore";
 import { EVENT_COLOURS, __setPlatformForTests, createWebPlatform } from "../../platform";
 

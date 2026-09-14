@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { decodeGamePayload, GAME_PREFIX, SHELL_ORDER, useOpenGame } from "./openStore";
-import { GAMES } from "./Games";
+import { GAMES } from "./registry";
 
 describe("decoding a game from the shell", () => {
   it("maps each number onto the game the command promises", () => {

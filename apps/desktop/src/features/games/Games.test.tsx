@@ -1,7 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { Games, GAMES } from "./Games";
+import { Games } from "./Games";
+import { GAMES } from "./registry";
 import { submitScore, writeTally } from "./scores";
 import { recordPlay } from "./stats";
 import { useOpenGame } from "./openStore";

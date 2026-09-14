@@ -3,88 +3,16 @@ import { DinoRun } from "./dino/DinoRun";
 import { SnakeGame } from "./snake/SnakeGame";
 import { TicTacToe } from "./tictactoe/TicTacToe";
 import { FlappyBird } from "./flappy/FlappyBird";
-import { Arcade, type ArcadeGame } from "./Arcade";
+import { Arcade } from "./Arcade";
 import { getPlatform } from "../../platform";
 import { highScore, padScore, type GameId } from "./scores";
 import { useOpenGame } from "./openStore";
+import { GAMES } from "./registry";
 import { useNav } from "../../app/navStore";
 import "./Games.css";
 
 /** Where the section is: the front, or one of the games. */
 type View = "arcade" | GameId;
-
-/**
- * The suite, in the order the sub-nav lists them.
- *
- * This order is also the shell command's contract — `jky games 2` means the
- * second of these — which `openStore` asserts against.
- */
-export const GAMES: ArcadeGame[] = [
-  {
-    id: "dino",
-    label: "Dino Run",
-    glyph: "🦖",
-    blurb: "Jump the cactuses. It only gets faster.",
-    scored: true,
-    keys: "SPACE · ↓",
-    tone: "mint",
-    art: [
-      "    ▄███▄      ",
-      "    █▀█▀█   ▓  ",
-      "▄▄▄██████  ▓▓▓ ",
-      "███████▀    ▓  ",
-      "───────────────",
-    ],
-  },
-  {
-    id: "snake",
-    label: "Snake",
-    glyph: "🐍",
-    blurb: "Eat, grow, and try not to corner yourself.",
-    scored: true,
-    keys: "↑ ↓ ← → · SPACE",
-    tone: "accent",
-    art: [
-      "┌─────────────┐",
-      "│ ███▓▓▓    ◆ │",
-      "│     ▓       │",
-      "│     ▓▓▓▓    │",
-      "└─────────────┘",
-    ],
-  },
-  {
-    id: "tictactoe",
-    label: "Tic Tac Toe",
-    glyph: "⨯○",
-    blurb: "Two players, one keyboard.",
-    scored: false,
-    keys: "1 – 9 · ENTER",
-    tone: "violet",
-    art: [
-      "   X │ O │ X   ",
-      "  ───┼───┼───  ",
-      "   O │ X │ O   ",
-      "  ───┼───┼───  ",
-      "   X │ O │ X   ",
-    ],
-  },
-  {
-    id: "flappy",
-    label: "Flappy Bird",
-    glyph: "🐦",
-    blurb: "Mind the gap. The gap gets smaller.",
-    scored: true,
-    keys: "SPACE",
-    tone: "warn",
-    art: [
-      "█▌       ▐█   ",
-      "█▌  ▄██▖ ▐█   ",
-      "      ▝▘      ",
-      "█▌       ▐█   ",
-      "▀▀▀▀▀▀▀▀▀▀▀▀▀ ",
-    ],
-  },
-];
 
 const LAST_VIEW_KEY = "jky.games.last";
 

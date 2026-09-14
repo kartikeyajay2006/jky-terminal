@@ -1,7 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { PanelHead } from "../settings/PanelHead";
 import { useDashboard, newId, nowIso } from "./dashboardStore";
-import type { DashPanel } from "./Dashboard";
+import type { DashPanel } from "./sections";
 import { GRID_ROWS, WEEKDAYS, monthGrid, monthLabel } from "./calendar";
 import { byTimeOfDay, clockFromHhMm, clockTime, eventsOn, longDate, upcoming } from "./upcoming";
 import {

@@ -7,24 +7,8 @@ import { NotesPanel } from "./NotesPanel";
 import { TodosPanel } from "./TodosPanel";
 import { CalendarPanel } from "./CalendarPanel";
 import { RemindersPanel } from "./RemindersPanel";
+import { SECTIONS, type DashPanel } from "./sections";
 import "./Dashboard.css";
-
-export type DashPanel = "overview" | "notes" | "todos" | "calendar" | "reminders";
-
-interface Section {
-  id: DashPanel;
-  label: string;
-  glyph: string;
-}
-
-/** The sub-sections, in the order they appear down the side. */
-export const SECTIONS: Section[] = [
-  { id: "overview", label: "Overview", glyph: "◆" },
-  { id: "notes", label: "Notes", glyph: "▤" },
-  { id: "todos", label: "Todos", glyph: "☑" },
-  { id: "calendar", label: "Calendar", glyph: "▦" },
-  { id: "reminders", label: "Reminders", glyph: "◔" },
-];
 
 export function Dashboard() {
   const [panel, setPanel] = useState<DashPanel>("overview");
