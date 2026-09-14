@@ -19,6 +19,7 @@
 
 mod client;
 mod frame;
+mod held;
 mod launch;
 mod name;
 mod replay;
@@ -29,6 +30,7 @@ mod testing;
 
 pub use client::{Client, Joined, Opened, end, join, open, prune, stream};
 pub use frame::{Frame, FrameError, MAX_PAYLOAD};
+pub use held::{Clients, Held};
 pub use launch::launch;
 pub use name::{
     MAX_NAME, NameError, address, check, is_file_backed, marker, name_of, socket_dir,
