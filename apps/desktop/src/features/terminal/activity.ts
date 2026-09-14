@@ -24,6 +24,10 @@ interface ActivityState {
   finished: (pane: string, exitCode: number | null) => void;
   /** A pane went away. */
   forget: (pane: string) => void;
+  /** Panes whose shell is held apart from the window, and so survives it. */
+  survivors: Record<string, true>;
+  /** Say whether a pane's shell survives the window. */
+  held: (pane: string, survives: boolean) => void;
 }
 
 const timers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -49,6 +53,7 @@ function clear(pane: string): void {
  */
 export const useActivity = create<ActivityState>((set) => ({
   panes: {},
+  survivors: {},
 
   started: (pane) => {
     clear(pane);
@@ -105,9 +110,16 @@ export const useActivity = create<ActivityState>((set) => ({
     clear(pane);
     set((s) => {
       const { [pane]: _gone, ...panes } = s.panes;
-      return { panes };
+      const { [pane]: _held, ...survivors } = s.survivors;
+      return { panes, survivors };
     });
   },
+
+  held: (pane, survives) =>
+    set((s) => {
+      const { [pane]: _was, ...survivors } = s.survivors;
+      return { survivors: survives ? { ...survivors, [pane]: true } : survivors };
+    }),
 }));
 
 /** What one pane is doing. */
@@ -129,18 +141,24 @@ export function overallActivity(panes: Record<string, Activity>): Activity {
 }
 
 /**
- * How many terminals are in the middle of something.
+ * How many terminals are in the middle of something quitting would lose.
  *
  * Asked when the window is about to close. A build, a deploy or an assistant
  * halfway through a task is work in progress exactly as much as an unsaved
- * file is, and quitting takes it with no way to get it back — the shell is a
- * child of this process and dies with it.
+ * file is. A shell held by a supervisor keeps running when the window goes,
+ * so what it is doing is not lost and is not worth asking about; what is left
+ * is a remote session, or a local shell that could not be held, each a child
+ * of this process that dies with it.
  *
  * Counted from the same marks the session strip is drawn from, so it is the
  * shell's own account of what is running rather than a guess about whether
  * output has stopped.
  */
-export function runningCount(panes: Record<string, Activity>): number {
-  return Object.values(panes).filter((state) => state === "running").length;
+export function runningCount(
+  panes: Record<string, Activity>,
+  survivors: Record<string, true> = {},
+): number {
+  return Object.entries(panes).filter(([pane, state]) => state === "running" && !survivors[pane])
+    .length;
 }
 

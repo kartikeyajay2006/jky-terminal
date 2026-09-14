@@ -596,16 +596,14 @@ export function useXterm(
     const platform = getPlatform();
 
     void (async () => {
-      // Last session's output first, then a rule, then this session's banner.
-      // In that order the scrollback reads as a history rather than as a
-      // terminal that mysteriously already has text in it.
+      // Read before spawning, drawn after: whether the old output belongs on
+      // screen depends on whether the shell is new. A rejoined shell sends
+      // what it printed while nobody watched, and old scrollback above that
+      // would show the same session twice.
+      let previous = "";
       if (scrollbackKey) {
         try {
-          const previous = await platform.scrollback.load(scrollbackKey);
-          if (previous && !cancelled) {
-            xterm.write(previous.endsWith("\n") ? previous : `${previous}\r\n`);
-            xterm.write(`\x1b[2m${"─".repeat(Math.max(8, xterm.cols - 2))}\x1b[0m\r\n`);
-          }
+          previous = await platform.scrollback.load(scrollbackKey);
         } catch {
           // A terminal that will not open because its history could not be
           // read would be a poor trade for a convenience.
@@ -613,20 +611,17 @@ export function useXterm(
       }
       if (cancelled) return;
 
-      // Greet before the shell speaks. Written into the pty stream rather
-      // than overlaid, so it lives in the scrollback like a real MOTD, and
-      // coloured from the live theme tokens so it follows the active theme.
-      if (!host) xterm.write(banner);
-
-      // The same banner goes to the backend, which stores it so the
-      // `jky-terminal` shell command can reprint exactly what was shown.
       // A remote terminal takes no banner and no accent: both are drawn by
       // this machine's shell integration, and none of that exists at the
-      // other end. It is a terminal on somebody else's computer, which is
-      // exactly what it should look like.
-      const id = host
-        ? await platform.remote.spawn(host, xterm.cols, xterm.rows)
-        : (await platform.pty.spawn(
+      // other end. It is a terminal on somebody else's computer, and it is
+      // never held — it cannot outlive the window.
+      const spawned = host
+        ? {
+            id: await platform.remote.spawn(host, xterm.cols, xterm.rows),
+            reattached: false,
+            survives: false,
+          }
+        : await platform.pty.spawn(
             xterm.cols,
             xterm.rows,
             banner,
@@ -635,12 +630,36 @@ export function useXterm(
             // directory still exists before honouring it — a project folder
             // moved or deleted since must not stop a terminal from opening.
             dirOf(scrollbackKey),
-          )).id;
+            // Which pane this is, so a shell that outlived the window can be
+            // found again. Absent, the shell is the window's own.
+            scrollbackKey ?? null,
+          );
+      const id = spawned.id;
       if (cancelled) {
-        // StrictMode unmounted us mid-spawn. Kill it rather than leaking a
-        // shell process for the lifetime of the app.
+        // Unmounted mid-spawn — StrictMode does this on purpose. Let go rather
+        // than end it: a held shell may be exactly what the next mount of this
+        // pane is about to rejoin, and one the window owns ends either way.
         void platform.pty.release(id);
         return;
+      }
+
+      // Whether quitting would lose what this pane is doing.
+      if (scrollbackKey) useActivity.getState().held(scrollbackKey, spawned.survives);
+
+      if (!spawned.reattached) {
+        // Last session's output first, then a rule, then this session's
+        // banner. In that order the scrollback reads as a history rather than
+        // as a terminal that mysteriously already has text in it.
+        if (previous) {
+          xterm.write(previous.endsWith("\n") ? previous : `${previous}\r\n`);
+          xterm.write(`\x1b[2m${"─".repeat(Math.max(8, xterm.cols - 2))}\x1b[0m\r\n`);
+        }
+        // Greet before the shell speaks. Written into the terminal rather
+        // than overlaid, so it lives in the scrollback like a real MOTD, and
+        // coloured from the live theme tokens so it follows the active theme.
+        // The same banner went to the backend, which stores it so the
+        // `jky-terminal` shell command can reprint exactly what was shown.
+        if (!host) xterm.write(banner);
       }
       ptyId = id;
       ptyRef.current = id;

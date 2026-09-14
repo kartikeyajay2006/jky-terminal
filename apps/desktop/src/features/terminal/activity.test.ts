@@ -121,3 +121,22 @@ describe("what the app as a whole is doing", () => {
   });
 });
 
+describe("shells that outlive the window", () => {
+  it("does not count a command in a shell that outlives the window as lost by quitting", () => {
+    const panes = { "pane-1": "running", "pane-2": "running", "pane-3": "idle" } as const;
+    expect(runningCount(panes)).toBe(2);
+    expect(runningCount(panes, { "pane-1": true })).toBe(1);
+  });
+
+  it("remembers which panes survive, and forgets with the pane", () => {
+    useActivity.getState().held("pane-9", true);
+    expect(useActivity.getState().survivors["pane-9"]).toBe(true);
+
+    useActivity.getState().held("pane-9", false);
+    expect(useActivity.getState().survivors["pane-9"]).toBeUndefined();
+
+    useActivity.getState().held("pane-9", true);
+    useActivity.getState().forget("pane-9");
+    expect(useActivity.getState().survivors["pane-9"]).toBeUndefined();
+  });
+});

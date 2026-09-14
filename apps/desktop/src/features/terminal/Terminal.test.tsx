@@ -206,6 +206,59 @@ describe("Terminal", () => {
     await waitFor(() => expect(writes.join("")).toContain("jky $"));
   });
 
+  it("names its pane when it asks for a shell, so the shell can be found again", async () => {
+    const panes: Array<string | null | undefined> = [];
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      pty: {
+        ...platform.pty,
+        spawn: (cols, rows, banner, accent, cwd, pane) => {
+          panes.push(pane);
+          return platform.pty.spawn(cols, rows, banner, accent, cwd, pane);
+        },
+      },
+    });
+
+    render(<Terminal paneId="pane-7" />);
+    await waitFor(() => expect(panes).toEqual(["pane-7"]));
+  });
+
+  it("draws neither old scrollback nor the banner over a shell it rejoined", async () => {
+    // A rejoined shell sends what it printed while nobody watched. Old
+    // scrollback above that would show the same session twice, and a banner
+    // would greet a shell that has been running for an hour.
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      scrollback: { ...platform.scrollback, load: async () => "OLD-SESSION-TEXT" },
+      pty: {
+        ...platform.pty,
+        spawn: async () => ({ id: "held-1", reattached: true, survives: true }),
+      },
+    });
+
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(writes.join("")).toContain("jky $"));
+    expect(writes.join("")).not.toContain("OLD-SESSION-TEXT");
+    expect(writes.join("")).not.toContain("Infinite Possibilities.");
+  });
+
+  it("restores old scrollback above a shell that is new", async () => {
+    // What already happens, kept true through the reordering: a new shell
+    // still gets its history and its greeting.
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      scrollback: { ...platform.scrollback, load: async () => "OLD-SESSION-TEXT" },
+    });
+
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(writes.join("")).toContain("jky $"));
+    expect(writes.join("")).toContain("OLD-SESSION-TEXT");
+    expect(writes.join("")).toContain("Infinite Possibilities.");
+  });
+
   it("forwards keystrokes to the pty", async () => {
     render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(onDataHandlers.length).toBeGreaterThan(0));
