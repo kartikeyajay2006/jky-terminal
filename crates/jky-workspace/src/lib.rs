@@ -11,7 +11,9 @@
 //! capability — otherwise a file somebody edited would be a way to read any
 //! directory on the machine.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -34,6 +36,7 @@ pub enum WorkspaceError {
 /// The longest a name may be. Long enough to be descriptive, short enough to
 /// fit a list without being cut off — a name that is cut off is not a name.
 pub const MAX_NAME: usize = 60;
+static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// One saved setup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -115,7 +118,7 @@ impl WorkspaceStore {
         }
         let text = serde_json::to_string_pretty(saved)
             .map_err(|e| WorkspaceError::Write(e.to_string()))?;
-        std::fs::write(&self.path, text).map_err(|e| WorkspaceError::Write(e.to_string()))
+        atomic_write(&self.path, text.as_bytes()).map_err(|e| WorkspaceError::Write(e.to_string()))
     }
 
     /// Add or replace one.
@@ -195,6 +198,23 @@ impl WorkspaceStore {
         self.write(&saved)?;
         self.load()
     }
+}
+
+fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let parent = path.parent().ok_or_else(|| std::io::Error::other("workspace path has no parent"))?;
+    for _ in 0..32 {
+        let temp = parent.join(format!(".workspaces-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
+        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        };
+        let result = file.write_all(bytes).and_then(|_| file.sync_all());
+        drop(file);
+        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
+        return std::fs::rename(temp, path);
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary workspace file"))
 }
 
 /// Keep the first of each, drop blanks. Order is the person's, so it is kept.

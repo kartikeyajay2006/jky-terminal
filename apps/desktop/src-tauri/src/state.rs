@@ -87,6 +87,10 @@ pub struct AppState {
     pub audit: Arc<AuditLog>,
     /// The turn currently in flight, if any. One at a time in v0.1.
     pub turn: Arc<Mutex<Option<TurnState>>>,
+    /// Serializes an entire AI interaction, including the period while it is
+    /// waiting for an approval. A single cancellation flag is safe only when
+    /// there can be one owner at a time.
+    pub ai_active: Arc<Mutex<bool>>,
     /// Set when the user asks to stop. Checked between stream chunks and
     /// between rounds, so a long answer stops rather than being hidden.
     pub cancelled: Arc<AtomicBool>,
@@ -124,6 +128,7 @@ impl AppState {
             config_dir: config_dir.to_path_buf(),
             audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
             turn: Arc::new(Mutex::new(None)),
+            ai_active: Arc::new(Mutex::new(false)),
             cancelled: Arc::new(AtomicBool::new(false)),
             http: jky_apps::net::client(),
             sampler: Arc::new(Mutex::new(Sampler::new())),

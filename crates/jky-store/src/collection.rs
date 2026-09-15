@@ -4,7 +4,10 @@
 //! they share one implementation that is tested once. Four hand-written
 //! copies would be four places for the atomic-write logic to drift.
 
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -31,15 +34,22 @@ pub enum StoreError {
 
 pub struct Collection<T> {
     path: PathBuf,
+    mutation: Arc<Mutex<()>>,
     _marker: std::marker::PhantomData<T>,
 }
+
+static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 impl<T> Collection<T>
 where
     T: Serialize + DeserializeOwned + Identified,
 {
     pub fn new(path: impl AsRef<Path>) -> Self {
-        Self { path: path.as_ref().to_path_buf(), _marker: std::marker::PhantomData }
+        Self {
+            path: path.as_ref().to_path_buf(),
+            mutation: Arc::new(Mutex::new(())),
+            _marker: std::marker::PhantomData,
+        }
     }
 
     pub fn path(&self) -> &Path {
@@ -67,6 +77,9 @@ where
     /// One operation rather than separate create and update, so the frontend
     /// can send a whole record without first asking whether it exists.
     pub fn save(&self, record: T) -> Result<Vec<T>, StoreError> {
+        let _guard = self.mutation.lock().map_err(|e| StoreError::Write {
+            path: self.display(), source: std::io::Error::other(e.to_string()),
+        })?;
         let mut all = self.list()?;
         match all.iter().position(|r| r.id() == record.id()) {
             Some(i) => all[i] = record,
@@ -79,6 +92,9 @@ where
     /// Remove the record with this id. Removing what is not there is not an
     /// error: the caller asked for it to be gone, and it is gone.
     pub fn remove(&self, id: &str) -> Result<Vec<T>, StoreError> {
+        let _guard = self.mutation.lock().map_err(|e| StoreError::Write {
+            path: self.display(), source: std::io::Error::other(e.to_string()),
+        })?;
         let mut all = self.list()?;
         all.retain(|r| r.id() != id);
         self.write(&all)?;
@@ -102,16 +118,30 @@ where
             source: std::io::Error::new(std::io::ErrorKind::InvalidData, e),
         })?;
 
-        let tmp = self.path.with_extension("tmp");
-        std::fs::write(&tmp, json)
-            .map_err(|source| StoreError::Write { path: self.display(), source })?;
-        std::fs::rename(&tmp, &self.path)
+        atomic_write(&self.path, json.as_bytes())
             .map_err(|source| StoreError::Write { path: self.display(), source })
     }
 
     fn display(&self) -> String {
         self.path.display().to_string()
     }
+}
+
+fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let parent = path.parent().ok_or_else(|| std::io::Error::other("collection path has no parent"))?;
+    for _ in 0..32 {
+        let temp = parent.join(format!(".collection-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
+        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        };
+        let result = file.write_all(bytes).and_then(|_| file.sync_all());
+        drop(file);
+        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
+        return std::fs::rename(temp, path);
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary collection file"))
 }
 
 #[cfg(test)]
