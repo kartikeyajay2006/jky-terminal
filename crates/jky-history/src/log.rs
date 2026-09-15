@@ -1,5 +1,7 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::entry::{Entry, Hit};
 use crate::search::{search, Query};
@@ -45,11 +47,14 @@ pub const MAX_COMMAND: usize = 4096;
 /// rewriting anything.
 pub struct History {
     path: PathBuf,
+    mutation: Arc<Mutex<()>>,
 }
+
+static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 impl History {
     pub fn new(path: impl AsRef<Path>) -> Self {
-        Self { path: path.as_ref().to_path_buf() }
+        Self { path: path.as_ref().to_path_buf(), mutation: Arc::new(Mutex::new(())) }
     }
 
     /// Read every entry, skipping any line that is not one.
@@ -72,6 +77,7 @@ impl History {
     /// empty prompt is not a thing anyone searches for, and a history full of
     /// them is a history that has to be scrolled past.
     pub fn record(&self, mut entry: Entry) -> Result<(), HistoryError> {
+        let _guard = self.mutation.lock().map_err(|e| HistoryError::Write(e.to_string()))?;
         entry.command = entry.command.trim().to_string();
         if entry.command.is_empty() {
             return Err(HistoryError::Empty);
@@ -114,9 +120,7 @@ impl History {
         }
         // Through a neighbouring file, so an interrupted rewrite leaves the
         // old history intact rather than half of it.
-        let temp = self.path.with_extension("jsonl.tmp");
-        std::fs::write(&temp, out).map_err(|e| HistoryError::Write(e.to_string()))?;
-        std::fs::rename(&temp, &self.path).map_err(|e| HistoryError::Write(e.to_string()))
+        atomic_write(&self.path, out.as_bytes()).map_err(|e| HistoryError::Write(e.to_string()))
     }
 
     pub fn search(&self, query: &Query, now: i64) -> Result<Vec<Hit>, HistoryError> {
@@ -129,6 +133,7 @@ impl History {
     /// in it means every time they ran it, not the one they happen to be
     /// looking at.
     pub fn forget(&self, command: &str) -> Result<usize, HistoryError> {
+        let _guard = self.mutation.lock().map_err(|e| HistoryError::Write(e.to_string()))?;
         let entries = self.all()?;
         let kept: Vec<Entry> = entries.iter().filter(|e| e.command != command).cloned().collect();
         let removed = entries.len() - kept.len();
@@ -140,12 +145,30 @@ impl History {
 
     /// Forget everything.
     pub fn clear(&self) -> Result<(), HistoryError> {
+        let _guard = self.mutation.lock().map_err(|e| HistoryError::Write(e.to_string()))?;
         match std::fs::remove_file(&self.path) {
             Ok(()) => Ok(()),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
             Err(e) => Err(HistoryError::Write(e.to_string())),
         }
     }
+}
+
+fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let parent = path.parent().ok_or_else(|| std::io::Error::other("history path has no parent"))?;
+    for _ in 0..32 {
+        let temp = parent.join(format!(".history-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
+        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        };
+        let result = file.write_all(bytes).and_then(|_| file.sync_all());
+        drop(file);
+        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
+        return std::fs::rename(temp, path);
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary history file"))
 }
 
 #[cfg(test)]

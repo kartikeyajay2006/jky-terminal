@@ -2,7 +2,7 @@ use futures_util::StreamExt;
 use jky_secrets::Secret;
 
 use crate::provider::{AIProvider, AiError};
-use crate::sse::SseDecoder;
+use crate::sse::{SseDecoder, Utf8ChunkDecoder};
 use crate::types::{ChatRequest, Role, StreamEvent};
 
 pub const MESSAGES_URL: &str = "https://api.anthropic.com/v1/messages";
@@ -77,11 +77,12 @@ impl AIProvider for AnthropicProvider {
         }
 
         let mut decoder = SseDecoder::new();
+        let mut utf8 = Utf8ChunkDecoder::default();
         let mut stream = response.bytes_stream();
 
         while let Some(chunk) = stream.next().await {
             let bytes = chunk.map_err(|e| AiError::Network(e.to_string()))?;
-            let text = String::from_utf8_lossy(&bytes);
+            let text = utf8.push(&bytes);
             for event in decoder.push(&text) {
                 if !on_event(event) {
                     // The caller asked to stop. Returning drops the response,

@@ -8,6 +8,13 @@ use crate::sandbox::resolve_within;
 /// out the conversation. Truncation is announced rather than silent, so the
 /// model knows it is reasoning about a fragment.
 pub const MAX_TOOL_OUTPUT: usize = 24_000;
+/// Limits apply to the work as well as the returned answer. Without them a
+/// small final answer could still require reading an entire monorepo.
+const MAX_SEARCH_FILES: usize = 5_000;
+const MAX_SEARCH_FILE_BYTES: u64 = 1_024 * 1_024;
+const MAX_SEARCH_BYTES: u64 = 16 * 1_024 * 1_024;
+const MAX_SEARCH_DEPTH: usize = 32;
+const MAX_LIST_ENTRIES: usize = 1_000;
 
 /// Directories no one means to search.
 const SKIP_DIRS: &[&str] = &[
@@ -82,21 +89,28 @@ fn list_dir(root: &Path, input: &serde_json::Value) -> ToolOutcome {
         return ToolOutcome::err(format!("could not list '{requested}'"));
     };
 
-    let mut names: Vec<String> = entries
-        .filter_map(Result::ok)
-        .map(|e| {
-            let name = e.file_name().to_string_lossy().to_string();
+    let mut names = Vec::new();
+    let mut limited = false;
+    for entry in entries.flatten() {
+        if names.len() == MAX_LIST_ENTRIES {
+            limited = true;
+            break;
+        }
+        let name = entry.file_name().to_string_lossy().to_string();
             // A trailing slash so the model can tell a directory from a file
             // without a second call.
-            if e.path().is_dir() { format!("{name}/") } else { name }
-        })
-        .collect();
+            names.push(if entry.path().is_dir() { format!("{name}/") } else { name });
+    }
     names.sort();
 
     if names.is_empty() {
         return ToolOutcome::ok(format!("'{requested}' is empty"));
     }
-    ToolOutcome::ok(truncate(names.join("\n")))
+    let mut result = names.join("\n");
+    if limited {
+        result.push_str("\n… directory listing truncated at 1,000 entries.");
+    }
+    ToolOutcome::ok(truncate(result))
 }
 
 fn git_status(root: &Path) -> ToolOutcome {
@@ -126,43 +140,82 @@ fn search_codebase(root: &Path, input: &serde_json::Value) -> ToolOutcome {
         return ToolOutcome::err("search_codebase needs a 'query' argument");
     };
 
+    if query.len() > 2_048 {
+        return ToolOutcome::err("search query is too long");
+    }
+    let Ok(root) = root.canonicalize() else {
+        return ToolOutcome::err("could not resolve the project root");
+    };
     let mut hits = Vec::new();
-    walk(root, &mut |file| {
+    let mut budget = SearchBudget::default();
+    walk(&root, &root, 0, &mut |file| {
+        if budget.files >= MAX_SEARCH_FILES || budget.bytes >= MAX_SEARCH_BYTES {
+            return false;
+        }
+        let Ok(meta) = std::fs::metadata(file) else { return true };
+        if !meta.is_file() || meta.len() > MAX_SEARCH_FILE_BYTES {
+            return true;
+        }
+        budget.files += 1;
+        budget.bytes += meta.len();
         let Ok(text) = std::fs::read_to_string(file) else {
-            return; // binary or unreadable; not an error, just not a match
+            return true; // binary or unreadable; not an error, just not a match
         };
         for (i, line) in text.lines().enumerate() {
             if line.contains(query) {
-                let rel = file.strip_prefix(root).unwrap_or(file);
+                let rel = file.strip_prefix(&root).unwrap_or(file);
                 hits.push(format!("{}:{}: {}", rel.display(), i + 1, line.trim()));
             }
         }
+        true
     });
 
     if hits.is_empty() {
         return ToolOutcome::ok(format!("no matches for '{query}'"));
     }
-    ToolOutcome::ok(truncate(hits.join("\n")))
+    let mut result = hits.join("\n");
+    if budget.files >= MAX_SEARCH_FILES || budget.bytes >= MAX_SEARCH_BYTES {
+        result.push_str("\n… search stopped at its resource limit.");
+    }
+    ToolOutcome::ok(truncate(result))
 }
 
 /// Depth-first over the project, skipping directories nobody means to search.
-fn walk(dir: &Path, visit: &mut impl FnMut(&Path)) {
+#[derive(Default)]
+struct SearchBudget { files: usize, bytes: u64 }
+
+fn walk(
+    root: &Path,
+    dir: &Path,
+    depth: usize,
+    visit: &mut impl FnMut(&Path) -> bool,
+) -> bool {
+    if depth > MAX_SEARCH_DEPTH {
+        return false;
+    }
     let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
+        return true;
     };
     for entry in entries.filter_map(Result::ok) {
         let path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
-
-        if path.is_dir() {
+        // file_type does not follow links. Never recurse through a symlink,
+        // and canonicalise actual entries before using them as defence in
+        // depth against a directory being swapped while a search is running.
+        let Ok(kind) = entry.file_type() else { continue };
+        if kind.is_symlink() { continue; }
+        let Ok(real) = path.canonicalize() else { continue };
+        if !real.starts_with(root) { continue; }
+        if kind.is_dir() {
             if SKIP_DIRS.contains(&name.as_str()) || name.starts_with('.') {
                 continue;
             }
-            walk(&path, visit);
-        } else {
-            visit(&path);
+            if !walk(root, &real, depth + 1, visit) { return false; }
+        } else if kind.is_file() && !visit(&real) {
+            return false;
         }
     }
+    true
 }
 
 #[cfg(test)]
@@ -304,6 +357,19 @@ mod tests {
 
         let out = run(&dir, "search_codebase", serde_json::json!({"query": "println"}));
         assert!(!out.text.contains("node_modules"), "searched node_modules: {}", out.text);
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn search_codebase_never_follows_a_symlink_outside_the_project() {
+        use std::os::unix::fs::symlink;
+        let dir = project();
+        let outside = TempDir::new().unwrap();
+        fs::write(outside.path().join("secret.txt"), "SYMLINK-SECRET").unwrap();
+        symlink(outside.path(), dir.path().join("outside")).unwrap();
+
+        let out = run(&dir, "search_codebase", serde_json::json!({"query": "SYMLINK-SECRET"}));
+        assert!(out.text.starts_with("no matches"), "search escaped: {}", out.text);
     }
 
     #[test]

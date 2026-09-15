@@ -24,15 +24,28 @@ pub fn run_approved_command(root: &Path, command: &str, timeout: Duration) -> To
 
     let (program, flag) = if cfg!(windows) { ("cmd.exe", "/C") } else { ("/bin/sh", "-c") };
 
-    let child = Command::new(program)
+    let mut process = Command::new(program);
+    process
         .arg(flag)
         .arg(trimmed)
         .current_dir(root)
         // A command waiting on input would otherwise hang until the timeout.
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn();
+        .stderr(Stdio::piped());
+
+    // A shell can create children. Put it in its own Unix process group so a
+    // timeout can terminate that whole tree rather than merely reporting a
+    // timeout while a background process keeps running.
+    #[cfg(unix)]
+    unsafe {
+        use std::os::unix::process::CommandExt;
+        process.pre_exec(|| {
+            if libc::setpgid(0, 0) == 0 { Ok(()) } else { Err(std::io::Error::last_os_error()) }
+        });
+    }
+
+    let child = process.spawn();
 
     let child = match child {
         Ok(c) => c,
@@ -43,6 +56,7 @@ pub fn run_approved_command(root: &Path, command: &str, timeout: Duration) -> To
 
     // wait_with_output has no timeout, so the wait happens on a thread and the
     // deadline is enforced here.
+    let pid = child.id();
     let (tx, rx) = mpsc::channel();
     std::thread::spawn(move || {
         let _ = tx.send(child.wait_with_output());
@@ -53,12 +67,19 @@ pub fn run_approved_command(root: &Path, command: &str, timeout: Duration) -> To
         Ok(Err(e)) => {
             return ToolOutcome { text: format!("the command failed: {e}"), is_error: true }
         }
-        Err(_) => {
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            terminate_tree(pid);
+            // The waiting thread owns the pipes, so give it a short grace
+            // period to reap the terminated process and avoid a zombie.
+            let _ = rx.recv_timeout(Duration::from_secs(2));
             return ToolOutcome {
                 text: format!("the command timed out after {} seconds", timeout.as_secs().max(1)),
                 is_error: true,
             }
         }
+        Err(mpsc::RecvTimeoutError::Disconnected) => return ToolOutcome {
+            text: "the command runner stopped unexpectedly".into(), is_error: true,
+        },
     };
 
     let stdout = String::from_utf8_lossy(&output.stdout).to_string();
@@ -88,6 +109,20 @@ pub fn run_approved_command(root: &Path, command: &str, timeout: Duration) -> To
     }
 
     ToolOutcome { text, is_error: code != 0 }
+}
+
+fn terminate_tree(pid: u32) {
+    #[cfg(unix)]
+    {
+        // Negative pid targets the dedicated process group established above.
+        let _ = Command::new("kill").arg("-TERM").arg(format!("-{pid}")).status();
+    }
+    #[cfg(windows)]
+    {
+        let _ = Command::new("taskkill")
+            .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .status();
+    }
 }
 
 #[cfg(test)]

@@ -135,7 +135,7 @@ fn is_hh_mm(value: &str) -> bool {
 // buys something real. The bodies delegate to the generic helpers above it,
 // so there is no logic to keep in step.
 
-fn list_of<T>(c: Collection<T>) -> Result<Vec<T>, String>
+fn list_of<T>(c: &Collection<T>) -> Result<Vec<T>, String>
 where
     T: Serialize + DeserializeOwned + Identified,
 {
@@ -153,14 +153,14 @@ fn refresh_listings(state: &State<'_, AppState>) {
     let _ = crate::listing::write_all(&state.store, &bin_dir, None);
 }
 
-fn save_into<T>(c: Collection<T>, record: T) -> Result<Vec<T>, String>
+fn save_into<T>(c: &Collection<T>, record: T) -> Result<Vec<T>, String>
 where
     T: Serialize + DeserializeOwned + Identified,
 {
     c.save(record).map_err(|e| e.to_string())
 }
 
-fn delete_from<T>(c: Collection<T>, id: &str) -> Result<Vec<T>, String>
+fn delete_from<T>(c: &Collection<T>, id: &str) -> Result<Vec<T>, String>
 where
     T: Serialize + DeserializeOwned + Identified,
 {

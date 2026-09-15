@@ -312,22 +312,28 @@ pub fn wait_for_code(
     timeout: Duration,
 ) -> Result<String, OAuthError> {
     listener
-        .set_nonblocking(false)
+        .set_nonblocking(true)
         .map_err(|e| OAuthError::Network(e.to_string()))?;
 
     let deadline = std::time::Instant::now() + timeout;
 
     loop {
-        if std::time::Instant::now() > deadline {
+        let now = std::time::Instant::now();
+        if now >= deadline {
             return Err(OAuthError::Declined("the sign-in timed out".into()));
         }
 
-        let (mut stream, _) = listener
-            .accept()
-            .map_err(|e| OAuthError::Network(e.to_string()))?;
+        let (mut stream, _) = match listener.accept() {
+            Ok(connection) => connection,
+            Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                std::thread::sleep(Duration::from_millis(25));
+                continue;
+            }
+            Err(e) => return Err(OAuthError::Network(e.to_string())),
+        };
 
         stream
-            .set_read_timeout(Some(Duration::from_secs(10)))
+            .set_read_timeout(Some((deadline - now).min(Duration::from_secs(10))))
             .map_err(|e| OAuthError::Network(e.to_string()))?;
 
         let mut line = String::new();

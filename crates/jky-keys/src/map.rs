@@ -1,9 +1,13 @@
 use std::collections::BTreeMap;
+use std::io::Write;
 use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
 use crate::chord::{Chord, ChordError};
+
+static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, thiserror::Error)]
 pub enum KeymapError {
@@ -218,7 +222,7 @@ impl Keymap {
         }
         let text =
             serde_json::to_string_pretty(file).map_err(|e| KeymapError::Write(e.to_string()))?;
-        std::fs::write(&self.path, text).map_err(|e| KeymapError::Write(e.to_string()))
+        atomic_write(&self.path, text.as_bytes()).map_err(|e| KeymapError::Write(e.to_string()))
     }
 
     /// The whole table: every action, with whatever is bound to it now.
@@ -278,6 +282,23 @@ impl Keymap {
         self.save(&file)?;
         Ok(resolve(&file))
     }
+}
+
+fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let parent = path.parent().ok_or_else(|| std::io::Error::other("keymap path has no parent"))?;
+    for _ in 0..32 {
+        let temp = parent.join(format!(".keymap-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
+        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        };
+        let result = file.write_all(bytes).and_then(|_| file.sync_all());
+        drop(file);
+        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
+        return std::fs::rename(temp, path);
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary keymap file"))
 }
 
 /// Lay the overrides over the defaults.

@@ -70,10 +70,10 @@ pub struct ChatRequest {
 #[derive(Debug, Clone, PartialEq)]
 pub enum StreamEvent {
     TextDelta(String),
-    ToolUseStart { id: String, name: String },
+    ToolUseStart { index: usize, id: String, name: String },
     /// A fragment of a tool's JSON arguments. Accumulate; parse at BlockStop.
-    ToolInputDelta(String),
-    BlockStop,
+    ToolInputDelta { index: usize, fragment: String },
+    BlockStop { index: usize },
     Done { stop_reason: String },
     Error(String),
 }

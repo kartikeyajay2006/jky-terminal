@@ -1,5 +1,46 @@
 use crate::types::StreamEvent;
 
+/// Decodes arbitrary network chunks without replacing a character split at a
+/// chunk boundary. SSE is UTF-8, but TCP does not preserve UTF-8 boundaries.
+#[derive(Default)]
+pub(crate) struct Utf8ChunkDecoder {
+    pending: Vec<u8>,
+}
+
+impl Utf8ChunkDecoder {
+    pub(crate) fn push(&mut self, bytes: &[u8]) -> String {
+        self.pending.extend_from_slice(bytes);
+        let mut text = String::new();
+        loop {
+            match std::str::from_utf8(&self.pending) {
+                Ok(valid) => {
+                    text.push_str(valid);
+                    self.pending.clear();
+                    return text;
+                }
+                Err(error) => {
+                    let valid = error.valid_up_to();
+                    // SAFETY: valid_up_to is guaranteed to end on a UTF-8 boundary.
+                    text.push_str(unsafe { std::str::from_utf8_unchecked(&self.pending[..valid]) });
+                    match error.error_len() {
+                        // A malformed sequence is not going to become valid with
+                        // another chunk; replace it and continue with the tail.
+                        Some(len) => {
+                            text.push('\u{FFFD}');
+                            self.pending.drain(..valid + len);
+                        }
+                        // Keep an incomplete final character for the next chunk.
+                        None => {
+                            self.pending.drain(..valid);
+                            return text;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 /// Incremental Server-Sent Events decoder for the Anthropic Messages stream.
 ///
 /// Holds a buffer because network chunks do not align to frame boundaries —
@@ -52,6 +93,7 @@ fn decode_frame(frame: &str) -> Option<StreamEvent> {
                 return None;
             }
             Some(StreamEvent::ToolUseStart {
+                index: value.get("index")?.as_u64()? as usize,
                 id: block.get("id")?.as_str()?.to_string(),
                 name: block.get("name")?.as_str()?.to_string(),
             })
@@ -62,13 +104,16 @@ fn decode_frame(frame: &str) -> Option<StreamEvent> {
                 "text_delta" => Some(StreamEvent::TextDelta(
                     delta.get("text")?.as_str()?.to_string(),
                 )),
-                "input_json_delta" => Some(StreamEvent::ToolInputDelta(
-                    delta.get("partial_json")?.as_str()?.to_string(),
-                )),
+                "input_json_delta" => Some(StreamEvent::ToolInputDelta {
+                    index: value.get("index")?.as_u64()? as usize,
+                    fragment: delta.get("partial_json")?.as_str()?.to_string(),
+                }),
                 _ => None,
             }
         }
-        "content_block_stop" => Some(StreamEvent::BlockStop),
+        "content_block_stop" => Some(StreamEvent::BlockStop {
+            index: value.get("index")?.as_u64()? as usize,
+        }),
         "message_delta" => Some(StreamEvent::Done {
             stop_reason: value
                 .get("delta")?
@@ -138,7 +183,7 @@ mod tests {
         );
         assert_eq!(
             events,
-            vec![StreamEvent::ToolUseStart { id: "toolu_7".into(), name: "read_file".into() }]
+            vec![StreamEvent::ToolUseStart { index: 1, id: "toolu_7".into(), name: "read_file".into() }]
         );
     }
 
@@ -147,7 +192,7 @@ mod tests {
         let events = decode(
             "data: {\"type\":\"content_block_delta\",\"index\":1,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"pa\"}}\n\n",
         );
-        assert_eq!(events, vec![StreamEvent::ToolInputDelta("{\"pa".into())]);
+        assert_eq!(events, vec![StreamEvent::ToolInputDelta { index: 1, fragment: "{\"pa".into() }]);
     }
 
     #[test]
@@ -164,7 +209,7 @@ mod tests {
     fn block_stop_is_reported_so_tool_arguments_can_be_parsed() {
         assert_eq!(
             decode("data: {\"type\":\"content_block_stop\",\"index\":1}\n\n"),
-            vec![StreamEvent::BlockStop]
+            vec![StreamEvent::BlockStop { index: 1 }]
         );
     }
 
@@ -210,5 +255,12 @@ mod tests {
             "data: {\"type\":\"content_block_delta\",\"delta\":{\"type\":\"text_delta\",\"text\":\"x\"}}\r\n\r\n",
         );
         assert_eq!(events, vec![StreamEvent::TextDelta("x".into())]);
+    }
+
+    #[test]
+    fn utf8_split_across_network_chunks_is_not_corrupted() {
+        let mut decoder = Utf8ChunkDecoder::default();
+        assert_eq!(decoder.push(&[0xf0, 0x9f]), "");
+        assert_eq!(decoder.push(&[0x98, 0x80]), "😀");
     }
 }

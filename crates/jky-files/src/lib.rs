@@ -11,7 +11,9 @@
 //! canonicalised, so `../` and a symlink pointing out of the tree are refused
 //! by the same rule rather than by a list of tricks somebody thought of.
 
+use std::io::Write;
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::Serialize;
 
@@ -43,6 +45,7 @@ pub enum FileError {
 /// IPC as a string and is held in the window twice over. A four-megabyte log
 /// opened by accident should say so rather than freeze the app.
 pub const MAX_BYTES: u64 = 2 * 1024 * 1024;
+static SAVE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// What a file that is not text turns out to be.
 ///
@@ -243,10 +246,35 @@ impl Workspace {
             reason: e.to_string(),
         };
 
-        let temp = path.with_extension("jky-saving");
-        std::fs::write(&temp, text).map_err(fail)?;
-        std::fs::rename(&temp, &path).map_err(fail)
+        write_atomic(&path, text.as_bytes()).map_err(fail)
     }
+}
+
+/// Save through an exclusively-created sibling. The name is unique per save,
+/// and `create_new` refuses a pre-existing link instead of following it.
+fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    let parent = path.parent().ok_or_else(|| std::io::Error::other("file has no parent directory"))?;
+    for _ in 0..32 {
+        let sequence = SAVE_COUNTER.fetch_add(1, Ordering::Relaxed);
+        let temp = parent.join(format!(
+            ".{}.jky-saving-{}-{}",
+            path.file_name().unwrap_or_default().to_string_lossy(),
+            std::process::id(), sequence,
+        ));
+        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
+            Ok(file) => file,
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(e) => return Err(e),
+        };
+        let result = file.write_all(bytes).and_then(|_| file.sync_all());
+        drop(file);
+        if let Err(error) = result {
+            let _ = std::fs::remove_file(&temp);
+            return Err(error);
+        }
+        return std::fs::rename(temp, path);
+    }
+    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve a temporary save file"))
 }
 
 impl Workspace {

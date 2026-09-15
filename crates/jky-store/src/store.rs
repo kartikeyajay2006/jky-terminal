@@ -1,6 +1,6 @@
 //! One handle over the four collections.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::collection::Collection;
 use crate::model::{Event, Note, Reminder, Todo};
@@ -11,28 +11,37 @@ use crate::model::{Event, Note, Reminder, Todo};
 /// something outside this app, then costs the user that one collection
 /// instead of everything they have ever saved.
 pub struct Store {
-    dir: PathBuf,
+    notes: Collection<Note>,
+    todos: Collection<Todo>,
+    events: Collection<Event>,
+    reminders: Collection<Reminder>,
 }
 
 impl Store {
     pub fn new(dir: impl AsRef<Path>) -> Self {
-        Self { dir: dir.as_ref().to_path_buf() }
+        let dir = dir.as_ref();
+        Self {
+            notes: Collection::new(dir.join("notes.json")),
+            todos: Collection::new(dir.join("todos.json")),
+            events: Collection::new(dir.join("events.json")),
+            reminders: Collection::new(dir.join("reminders.json")),
+        }
     }
 
-    pub fn notes(&self) -> Collection<Note> {
-        Collection::new(self.dir.join("notes.json"))
+    pub fn notes(&self) -> &Collection<Note> {
+        &self.notes
     }
 
-    pub fn todos(&self) -> Collection<Todo> {
-        Collection::new(self.dir.join("todos.json"))
+    pub fn todos(&self) -> &Collection<Todo> {
+        &self.todos
     }
 
-    pub fn events(&self) -> Collection<Event> {
-        Collection::new(self.dir.join("events.json"))
+    pub fn events(&self) -> &Collection<Event> {
+        &self.events
     }
 
-    pub fn reminders(&self) -> Collection<Reminder> {
-        Collection::new(self.dir.join("reminders.json"))
+    pub fn reminders(&self) -> &Collection<Reminder> {
+        &self.reminders
     }
 }
 

@@ -1,7 +1,10 @@
+use std::collections::HashMap;
+
 use futures_util::StreamExt;
 use jky_secrets::Secret;
 
 use crate::provider::{AIProvider, AiError};
+use crate::sse::Utf8ChunkDecoder;
 use crate::types::{ChatRequest, ContentBlock, Role, StreamEvent};
 
 pub const CHAT_COMPLETIONS_URL: &str = "https://api.openai.com/v1/chat/completions";
@@ -27,22 +30,43 @@ pub fn build_openai_body(request: &ChatRequest) -> serde_json::Value {
     })];
 
     for message in &request.messages {
-        let role = match message.role {
-            Role::User => "user",
-            Role::Assistant => "assistant",
-        };
-        // Flatten to the plain string content OpenAI expects for text turns.
-        let text: String = message
-            .content
-            .iter()
-            .filter_map(|b| match b {
-                ContentBlock::Text { text } => Some(text.as_str()),
-                ContentBlock::ToolResult { content, .. } => Some(content.as_str()),
-                ContentBlock::ToolUse { .. } => None,
-            })
-            .collect::<Vec<_>>()
-            .join("\n");
-        messages.push(serde_json::json!({ "role": role, "content": text }));
+        let text = message.content.iter().filter_map(|block| match block {
+            ContentBlock::Text { text } => Some(text.as_str()),
+            _ => None,
+        }).collect::<Vec<_>>().join("\n");
+
+        match message.role {
+            Role::Assistant => {
+                let calls: Vec<_> = message.content.iter().filter_map(|block| match block {
+                    ContentBlock::ToolUse { id, name, input } => Some(serde_json::json!({
+                        "id": id,
+                        "type": "function",
+                        "function": { "name": name, "arguments": input.to_string() },
+                    })),
+                    _ => None,
+                }).collect();
+                if !text.is_empty() || !calls.is_empty() {
+                    let mut assistant = serde_json::json!({ "role": "assistant", "content": text });
+                    if !calls.is_empty() { assistant["tool_calls"] = serde_json::Value::Array(calls); }
+                    messages.push(assistant);
+                }
+            }
+            Role::User => {
+                if !text.is_empty() {
+                    messages.push(serde_json::json!({ "role": "user", "content": text }));
+                }
+                // Tool results are a distinct OpenAI role, linked to the
+                // preceding assistant call by tool_call_id. Flattening them
+                // into user text breaks the provider's tool protocol.
+                for block in &message.content {
+                    if let ContentBlock::ToolResult { tool_use_id, content, .. } = block {
+                        messages.push(serde_json::json!({
+                            "role": "tool", "tool_call_id": tool_use_id, "content": content,
+                        }));
+                    }
+                }
+            }
+        }
     }
 
     let mut body = serde_json::json!({
@@ -78,6 +102,7 @@ pub fn build_openai_body(request: &ChatRequest) -> serde_json::Value {
 #[derive(Default)]
 pub struct OpenAiSseDecoder {
     buffer: String,
+    tool_ids: HashMap<usize, String>,
 }
 
 impl OpenAiSseDecoder {
@@ -91,13 +116,18 @@ impl OpenAiSseDecoder {
         let mut events = Vec::new();
         while let Some(idx) = self.buffer.find("\n\n") {
             let frame: String = self.buffer.drain(..idx + 2).collect();
-            events.extend(decode_frame(&frame));
+            events.extend(self.decode_frame(&frame));
         }
         events
     }
 }
 
-fn decode_frame(frame: &str) -> Vec<StreamEvent> {
+fn tool_index(call: &serde_json::Value) -> Option<usize> {
+    call.get("index")?.as_u64().map(|index| index as usize)
+}
+
+impl OpenAiSseDecoder {
+fn decode_frame(&mut self, frame: &str) -> Vec<StreamEvent> {
     let Some(data) = frame.lines().find_map(|l| l.strip_prefix("data:")).map(str::trim) else {
         return Vec::new();
     };
@@ -127,6 +157,7 @@ fn decode_frame(frame: &str) -> Vec<StreamEvent> {
         }
         if let Some(calls) = delta.get("tool_calls").and_then(|c| c.as_array()) {
             for call in calls {
+                let Some(index) = tool_index(call) else { continue };
                 let function = call.get("function");
                 // A call announces itself with an id and a name, then streams
                 // its arguments in later frames carrying neither.
@@ -134,7 +165,9 @@ fn decode_frame(frame: &str) -> Vec<StreamEvent> {
                     call.get("id").and_then(|i| i.as_str()),
                     function.and_then(|f| f.get("name")).and_then(|n| n.as_str()),
                 ) {
+                    self.tool_ids.insert(index, id.to_string());
                     events.push(StreamEvent::ToolUseStart {
+                        index,
                         id: id.to_string(),
                         name: name.to_string(),
                     });
@@ -144,7 +177,7 @@ fn decode_frame(frame: &str) -> Vec<StreamEvent> {
                     .and_then(|a| a.as_str())
                 {
                     if !args.is_empty() {
-                        events.push(StreamEvent::ToolInputDelta(args.to_string()));
+                        events.push(StreamEvent::ToolInputDelta { index, fragment: args.to_string() });
                     }
                 }
             }
@@ -152,11 +185,15 @@ fn decode_frame(frame: &str) -> Vec<StreamEvent> {
     }
 
     if let Some(reason) = choice.get("finish_reason").and_then(|r| r.as_str()) {
-        events.push(StreamEvent::BlockStop);
+        for index in self.tool_ids.keys() {
+            events.push(StreamEvent::BlockStop { index: *index });
+        }
+        self.tool_ids.clear();
         events.push(StreamEvent::Done { stop_reason: reason.to_string() });
     }
 
     events
+}
 }
 
 pub struct OpenAiProvider {
@@ -210,11 +247,13 @@ impl AIProvider for OpenAiProvider {
         }
 
         let mut decoder = OpenAiSseDecoder::new();
+        let mut utf8 = Utf8ChunkDecoder::default();
         let mut stream = response.bytes_stream();
 
         while let Some(chunk) = stream.next().await {
             let bytes = chunk.map_err(|e| AiError::Network(e.to_string()))?;
-            for event in decoder.push(&String::from_utf8_lossy(&bytes)) {
+            let text = utf8.push(&bytes);
+            for event in decoder.push(&text) {
                 if !on_event(event) {
                     // The caller asked to stop. Returning drops the response,
                     // which closes the connection rather than reading to the
@@ -282,6 +321,33 @@ mod tests {
     }
 
     #[test]
+    fn tool_calls_and_results_keep_openais_required_linkage() {
+        let mut req = request();
+        req.messages = vec![
+            Message {
+                role: Role::Assistant,
+                content: vec![ContentBlock::ToolUse {
+                    id: "call_42".into(),
+                    name: "read_file".into(),
+                    input: serde_json::json!({"path": "src/main.rs"}),
+                }],
+            },
+            Message {
+                role: Role::User,
+                content: vec![ContentBlock::ToolResult {
+                    tool_use_id: "call_42".into(), content: "fn main() {}".into(), is_error: false,
+                }],
+            },
+        ];
+        let messages = build_openai_body(&req)["messages"].as_array().unwrap().to_vec();
+        assert_eq!(messages[1]["role"], "assistant");
+        assert_eq!(messages[1]["tool_calls"][0]["id"], "call_42");
+        assert_eq!(messages[1]["tool_calls"][0]["function"]["name"], "read_file");
+        assert_eq!(messages[2]["role"], "tool");
+        assert_eq!(messages[2]["tool_call_id"], "call_42");
+    }
+
+    #[test]
     fn thinking_and_output_config_are_not_sent() {
         // Both are Anthropic-only. OpenAI rejects unknown top-level fields.
         let body = build_openai_body(&request());
@@ -340,7 +406,7 @@ mod tests {
         }));
         assert_eq!(
             OpenAiSseDecoder::new().push(&frame),
-            vec![StreamEvent::BlockStop, StreamEvent::Done { stop_reason: "tool_calls".into() }]
+            vec![StreamEvent::Done { stop_reason: "tool_calls".into() }]
         );
     }
 
@@ -354,7 +420,7 @@ mod tests {
         }));
         assert_eq!(
             OpenAiSseDecoder::new().push(&frame),
-            vec![StreamEvent::ToolUseStart { id: "call_1".into(), name: "read_file".into() }]
+            vec![StreamEvent::ToolUseStart { index: 0, id: "call_1".into(), name: "read_file".into() }]
         );
     }
 
@@ -367,8 +433,24 @@ mod tests {
         }));
         assert_eq!(
             OpenAiSseDecoder::new().push(&frame),
-            vec![StreamEvent::ToolInputDelta("{\"pa".into())]
+            vec![StreamEvent::ToolInputDelta { index: 0, fragment: "{\"pa".into() }]
         );
+    }
+
+    #[test]
+    fn parallel_tool_call_fragments_keep_their_indices() {
+        let mut decoder = OpenAiSseDecoder::new();
+        let starts = format!("data: {}\n\n", serde_json::json!({"choices": [{"delta": {"tool_calls": [
+            {"index": 0, "id": "call_a", "function": {"name": "read_file", "arguments": ""}},
+            {"index": 1, "id": "call_b", "function": {"name": "list_dir", "arguments": ""}}
+        ]}}]}));
+        let fragments = format!("data: {}\n\n", serde_json::json!({"choices": [{"delta": {"tool_calls": [
+            {"index": 1, "function": {"arguments": r#"{"path":"b"#}},
+            {"index": 0, "function": {"arguments": r#"{"path":"a"#}}
+        ]}}]}));
+        let events = [decoder.push(&starts), decoder.push(&fragments)].concat();
+        assert!(events.contains(&StreamEvent::ToolInputDelta { index: 0, fragment: "{\"path\":\"a".into() }));
+        assert!(events.contains(&StreamEvent::ToolInputDelta { index: 1, fragment: "{\"path\":\"b".into() }));
     }
 
     #[test]

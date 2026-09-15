@@ -78,10 +78,12 @@ fn launch(url: &str) -> std::io::Result<()> {
 
     #[cfg(target_os = "windows")]
     let mut command = {
-        // The empty string is `start`'s title argument. Without it, a URL in
-        // quotes is taken as the window title and nothing opens.
-        let mut c = std::process::Command::new("cmd");
-        c.args(["/C", "start", "", url]);
+        // Do not use `cmd /C start` here. `cmd.exe` parses its arguments as a
+        // shell command, so a link copied from terminal output could turn
+        // shell metacharacters into another command. Explorer receives this
+        // as one process argument and does not invoke a command interpreter.
+        let mut c = std::process::Command::new("explorer.exe");
+        c.arg(url);
         c
     };
 

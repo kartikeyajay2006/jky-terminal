@@ -5,11 +5,11 @@ use std::sync::{Arc, Mutex};
 
 use jky_ai::{
     AIProvider, AnthropicProvider, ChatRequest, ContentBlock, Message, OpenAiProvider,
-    StreamEvent, assistant_tools, execute_read_tool, is_destructive, requires_approval,
+    StreamEvent, OLLAMA_CHAT_URL, assistant_tools, execute_read_tool, is_destructive, requires_approval,
     run_approved_command, COMMAND_TIMEOUT,
 };
 use jky_audit::{AuditEvent, AuditKind, AuditLog};
-use jky_pty::{home_dir, resolve_start_dir};
+use jky_pty::{expand_tilde, home_dir};
 use jky_secrets::{ProviderId, Secret, SecretStore};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, State};
@@ -90,8 +90,10 @@ async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBl
     let sink = blocks.clone();
     let app = ctx.app.clone();
 
-    let mut open_tool: Option<(String, String)> = None;
-    let mut tool_json = String::new();
+    // Provider stream indices are stable within one response. Keeping each
+    // call separate prevents parallel OpenAI calls from overwriting each
+    // other's arguments.
+    let mut open_tools: HashMap<usize, (String, String, String)> = HashMap::new();
 
     let cancelled = ctx.cancelled.clone();
     let mut on_event = move |event: StreamEvent| -> bool {
@@ -108,14 +110,17 @@ async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBl
             }
             let _ = app.emit("ai:delta", text);
         }
-        StreamEvent::ToolUseStart { id, name } => {
-            open_tool = Some((id, name));
-            tool_json.clear();
+        StreamEvent::ToolUseStart { index, id, name } => {
+            open_tools.insert(index, (id, name, String::new()));
         }
-        StreamEvent::ToolInputDelta(fragment) => tool_json.push_str(&fragment),
-        StreamEvent::BlockStop => {
-            if let Some((id, name)) = open_tool.take() {
-                let input = serde_json::from_str(&tool_json).unwrap_or(serde_json::Value::Null);
+        StreamEvent::ToolInputDelta { index, fragment } => {
+            if let Some((_, _, json)) = open_tools.get_mut(&index) {
+                json.push_str(&fragment);
+            }
+        }
+        StreamEvent::BlockStop { index } => {
+            if let Some((id, name, json)) = open_tools.remove(&index) {
+                let input = serde_json::from_str(&json).unwrap_or(serde_json::Value::Null);
                 if let Ok(mut b) = sink.lock() {
                     b.push(ContentBlock::ToolUse { id, name, input });
                 }
@@ -135,6 +140,10 @@ async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBl
             .await
             .map_err(|e| e.to_string())?,
         ProviderId::OpenAi => OpenAiProvider::new(Secret::new(ctx.key.expose().clone()))
+            .stream_chat(request, &mut on_event)
+            .await
+            .map_err(|e| e.to_string())?,
+        ProviderId::Ollama => OpenAiProvider::at(OLLAMA_CHAT_URL, Secret::new(String::new()))
             .stream_chat(request, &mut on_event)
             .await
             .map_err(|e| e.to_string())?,
@@ -279,7 +288,13 @@ fn summarise(text: &str) -> String {
 
 fn build_ctx(app: &AppHandle, state: &AppState, provider: &str) -> Result<Ctx, String> {
     let id = ProviderId::parse(provider).ok_or_else(|| format!("unknown provider '{provider}'"))?;
-    let key = resolve_key(state.secrets.as_ref(), provider)?;
+    // Local Ollama deliberately has no credential. Do not touch the secret
+    // store for it: a missing key must not prevent a local model from running.
+    let key = if id.requires_key() {
+        resolve_key(state.secrets.as_ref(), provider)?
+    } else {
+        Secret::new(String::new())
+    };
     let model = state
         .settings
         .selected_model(provider)
@@ -295,28 +310,23 @@ fn build_ctx(app: &AppHandle, state: &AppState, provider: &str) -> Result<Ctx, S
         audit: state.audit.clone(),
         slot: state.turn.clone(),
         cancelled: state.cancelled.clone(),
-        // Where the assistant's file tools may reach, and nowhere else —
-        // `resolve_within` refuses anything outside it.
-        //
-        // This was `current_dir()`, which the rest of the codebase forbids in
-        // as many words (see `pty.rs`): it is wherever the binary was
-        // launched from, which is the project folder in development and `/`
-        // or `C:\Windows\System32` from an installed shortcut. A sandbox
-        // rooted at `/` is not a sandbox, and one rooted somewhere arbitrary
-        // cannot reach the files the person is actually looking at. It was
-        // both of those, depending on how the app was started.
-        //
-        // The same resolution a terminal uses, so the assistant works where
-        // your shell works: a configured start directory, then home. Narrow
-        // it by setting one; it is the same setting either way.
-        root: resolve_start_dir(
-            state
+        // AI file tools need an explicit project boundary. Falling back to a
+        // home directory makes an apparently project-scoped assistant able to
+        // read unrelated personal files. The terminal may still start in the
+        // home directory; only AI tools require this deliberate setting.
+        root: {
+            let configured = state
                 .settings
                 .terminal_start_dir()
-                .unwrap_or(None)
-                .as_deref(),
-            home_dir(),
-        ),
+                .map_err(|e| e.to_string())?
+                .filter(|path| !path.trim().is_empty())
+                .ok_or("choose a project folder in Settings → Terminal before using AI tools")?;
+            let root = expand_tilde(&configured, home_dir().as_deref());
+            if !root.is_dir() {
+                return Err("the configured AI project folder does not exist".into());
+            }
+            root.canonicalize().map_err(|e| e.to_string())?
+        },
     })
 }
 
@@ -330,6 +340,13 @@ pub async fn ai_send(
     // Everything is pulled out of state before the first await: a borrow held
     // across one would make the future non-Send.
     let ctx = build_ctx(&app, &state, &provider)?;
+    {
+        let mut active = state.ai_active.lock().map_err(|e| e.to_string())?;
+        if *active {
+            return Err("an AI turn is already in progress; finish or cancel it first".into());
+        }
+        *active = true;
+    }
 
     let _ = ctx.audit.append(AuditEvent::new(
         AuditKind::SecretRead,
@@ -352,6 +369,9 @@ pub async fn ai_send(
     };
 
     let result = drive(ctx, turn).await;
+    if state.turn.lock().map_err(|e| e.to_string())?.is_none() {
+        *state.ai_active.lock().map_err(|e| e.to_string())? = false;
+    }
     if let Err(message) = &result {
         let _ = app.emit("ai:error", message.clone());
         let _ = app.emit("ai:done", "error");
@@ -366,12 +386,23 @@ async fn decide(
     call_id: String,
     approve: bool,
 ) -> Result<(), String> {
-    let (mut turn, provider) = {
-        let mut slot = state.turn.lock().map_err(|e| e.to_string())?;
-        let turn = slot.take().ok_or("there is no turn waiting on a decision")?;
-        let provider = turn.provider.clone();
-        (turn, provider)
-    };
+    // Build every fallible dependency before removing the parked turn. A
+    // context failure must leave the approval available to retry.
+    let provider = state
+        .turn
+        .lock()
+        .map_err(|e| e.to_string())?
+        .as_ref()
+        .ok_or("there is no turn waiting on a decision")?
+        .provider
+        .clone();
+    let ctx = build_ctx(&app, &state, &provider)?;
+    let mut turn = state
+        .turn
+        .lock()
+        .map_err(|e| e.to_string())?
+        .take()
+        .ok_or("there is no turn waiting on a decision")?;
 
     let Some(pending) = turn.awaiting.remove(&call_id) else {
         // Put it back: another call may still be waiting.
@@ -380,8 +411,6 @@ async fn decide(
         }
         return Err(format!("no pending tool call '{call_id}'"));
     };
-
-    let ctx = build_ctx(&app, &state, &provider)?;
 
     let block = if approve {
         let outcome = run_approved_command(&ctx.root, &pending.command, COMMAND_TIMEOUT);
@@ -428,6 +457,9 @@ async fn decide(
     );
 
     let result = drive(ctx, turn).await;
+    if state.turn.lock().map_err(|e| e.to_string())?.is_none() {
+        *state.ai_active.lock().map_err(|e| e.to_string())? = false;
+    }
     if let Err(message) = &result {
         let _ = app.emit("ai:error", message.clone());
         let _ = app.emit("ai:done", "error");
@@ -462,7 +494,15 @@ pub async fn ai_reject_tool(
 pub fn ai_cancel(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     state.cancelled.store(true, Ordering::Relaxed);
     if let Ok(mut slot) = state.turn.lock() {
-        *slot = None;
+        // A parked approval has no running stream left to observe the flag,
+        // so it can release the serialization gate immediately. A streaming
+        // request keeps it until its owner exits, preventing a new request
+        // from resetting this request's cancellation state.
+        if slot.take().is_some() {
+            if let Ok(mut active) = state.ai_active.lock() {
+                *active = false;
+            }
+        }
     }
     let _ = app.emit("ai:done", "cancelled");
     Ok(())
