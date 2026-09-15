@@ -15,11 +15,17 @@ interface FakeDecoration {
 const markers: Array<{ disposed: boolean }> = [];
 const decorations: FakeDecoration[] = [];
 const disposed = { count: 0 };
+const created: Array<{ options: Record<string, unknown> }> = [];
 
 vi.mock("@xterm/xterm", () => ({
   Terminal: class {
     cols = 80;
     rows = 24;
+    options: Record<string, unknown>;
+    constructor(options: Record<string, unknown> = {}) {
+      this.options = { ...options };
+      created.push(this);
+    }
     open() {}
     write(data: string) {
       writes.push(data);
@@ -158,6 +164,7 @@ describe("Terminal", () => {
     oscHandlers.clear();
     markers.length = 0;
     decorations.length = 0;
+    created.length = 0;
     disposed.count = 0;
     __setPlatformForTests(createWebPlatform());
     useAsk.setState({ pending: null });
@@ -266,6 +273,31 @@ describe("Terminal", () => {
     writes.length = 0;
     onDataHandlers[0]("l");
     await waitFor(() => expect(writes.join("")).toContain("l"));
+  });
+
+  it("takes its colours from the theme, and follows a change of theme", async () => {
+    // A terminal that kept xterm's own black would be a black box in every
+    // light theme — the one part of the window that ignored the choice.
+    const root = document.documentElement;
+    root.style.setProperty("--ground", "#101820");
+    root.style.setProperty("--text", "#dde6f0");
+    try {
+      render(<Terminal paneId="tab-1" />);
+      await waitFor(() => expect(created.length).toBeGreaterThan(0));
+      const theme = () => created[0].options.theme as Record<string, string> | undefined;
+      expect(theme()?.background).toBe("#101820");
+      expect(theme()?.foreground).toBe("#dde6f0");
+
+      root.style.setProperty("--ground", "#fbf7ef");
+      root.style.setProperty("--text", "#2e2617");
+      root.setAttribute("data-theme", "gold");
+      await waitFor(() => expect(theme()?.background).toBe("#fbf7ef"));
+      expect(theme()?.foreground).toBe("#2e2617");
+    } finally {
+      root.style.removeProperty("--ground");
+      root.style.removeProperty("--text");
+      root.removeAttribute("data-theme");
+    }
   });
 
   it("tells the pty its real size once spawn completes", async () => {

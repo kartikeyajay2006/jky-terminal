@@ -9,6 +9,7 @@ import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
 import { buildBanner } from "./banner";
+import { terminalColours } from "./termColours";
 import { isAppShortcut } from "../../app/shortcuts";
 import { overrideBytes } from "./inputKeys";
 import { isReal, outputRows, rowsOf, toneOf } from "./blocks";
@@ -232,13 +233,29 @@ export function useXterm(
     let ptyId: string | null = null;
 
     const font = loadTermFont();
+    // Read live on every call, because the theme can change under a terminal
+    // that is already open.
+    const readToken = (name: string) =>
+      getComputedStyle(document.documentElement).getPropertyValue(name);
     const xterm = new Xterm({
       fontFamily: stackFor(font.family),
       fontSize: font.size,
       cursorBlink: true,
       allowProposedApi: true,
+      theme: terminalColours(readToken),
     });
     term.current = xterm;
+
+    // Repaint when the theme changes. A terminal opened under one theme and
+    // kept under another would otherwise be the one surface still wearing
+    // the old colours.
+    const themeWatch = new MutationObserver(() => {
+      xterm.options.theme = terminalColours(readToken);
+    });
+    themeWatch.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
 
     const fit = new FitAddon();
     xterm.loadAddon(fit);
@@ -726,6 +743,7 @@ export function useXterm(
       cancelled = true;
       window.removeEventListener(TERM_FONT_EVENT, onFontChange);
       observer.disconnect();
+      themeWatch.disconnect();
       // A decoration outlives the terminal that drew it unless it is told
       // otherwise, and one anchored to a disposed buffer is a leak that also
       // points at nothing.
