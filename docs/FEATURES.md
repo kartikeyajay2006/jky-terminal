@@ -111,9 +111,9 @@ treats them differently rather than guessing which one you meant.
 
 **Reopening draws what was missed, not what was there.** A rejoined shell sends
 the tail of what it printed while no window was attached, so the pane shows the
-build you left rather than a blank prompt. The old scrollback is not drawn above
-it — that would be the same session twice — and neither is the banner, which
-belongs to a shell that has just started.
+build you left rather than a blank prompt. The banner greets it, the way it
+greets every terminal as it opens, but the old scrollback is not drawn — that
+would be the same session twice.
 
 **Quitting asks only about what it would lose**: unsaved files, and commands in
 a shell the window still owns. A remote session over `ssh` is one of those — it

@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeDone } from "./commandFailure";
-import { offsetToWordmark } from "./banner";
+import { WORDMARK_MARK, WORDMARK_OSC } from "./banner";
 
 const writes: string[] = [];
 const onDataHandlers: Array<(d: string) => void> = [];
@@ -18,12 +18,6 @@ interface FakeDecoration {
 const markers: Array<{ disposed: boolean }> = [];
 const decorations: FakeDecoration[] = [];
 const disposed = { count: 0 };
-// What xterm calls once a write has been parsed. Held until a test says so,
-// so a test that does not care what happens after a write is unaffected.
-const writeCallbacks: Array<() => void> = [];
-const flushWrites = () => {
-  while (writeCallbacks.length) writeCallbacks.shift()!();
-};
 const created: Array<{ options: Record<string, unknown> }> = [];
 
 vi.mock("@xterm/xterm", () => ({
@@ -36,9 +30,8 @@ vi.mock("@xterm/xterm", () => ({
       created.push(this);
     }
     open() {}
-    write(data: string, done?: () => void) {
+    write(data: string) {
       writes.push(data);
-      if (done) writeCallbacks.push(done);
     }
     onData(cb: (d: string) => void) {
       onDataHandlers.push(cb);
@@ -176,7 +169,6 @@ describe("Terminal", () => {
     markers.length = 0;
     decorations.length = 0;
     created.length = 0;
-    writeCallbacks.length = 0;
     disposed.count = 0;
     __setPlatformForTests(createWebPlatform());
     useAsk.setState({ pending: null });
@@ -243,10 +235,10 @@ describe("Terminal", () => {
     await waitFor(() => expect(panes).toEqual(["pane-7"]));
   });
 
-  it("draws neither old scrollback nor the banner over a shell it rejoined", async () => {
-    // A rejoined shell sends what it printed while nobody watched. Old
-    // scrollback above that would show the same session twice, and a banner
-    // would greet a shell that has been running for an hour.
+  it("greets a shell it rejoined with the banner, but does not redraw its old scrollback", async () => {
+    // A rejoined shell sends what it printed while nobody watched, so old
+    // scrollback above that would show the same session twice. The banner is
+    // different: it is how a terminal opens, whichever shell is behind it.
     const platform = createWebPlatform();
     __setPlatformForTests({
       ...platform,
@@ -259,8 +251,12 @@ describe("Terminal", () => {
 
     render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(writes.join("")).toContain("jky $"));
-    expect(writes.join("")).not.toContain("OLD-SESSION-TEXT");
-    expect(writes.join("")).not.toContain("Infinite Possibilities.");
+    const all = writes.join("");
+    expect(all).not.toContain("OLD-SESSION-TEXT");
+    expect(all).toContain("Infinite Possibilities.");
+    expect(all.indexOf("Infinite Possibilities."), "the banner came after the shell spoke").toBeLessThan(
+      all.indexOf("jky $"),
+    );
   });
 
   it("restores old scrollback above a shell that is new", async () => {
@@ -312,27 +308,42 @@ describe("Terminal", () => {
     }
   });
 
-  it("pins the emblem beside a new terminal's wordmark, and takes it down with the terminal", async () => {
+  it("pins the emblem where a banner marks its wordmark, and takes it down with the terminal", async () => {
     const { unmount } = render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(writes.some((w) => w.includes("Infinite Possibilities."))).toBe(true));
-    flushWrites();
+
+    // The app's own banner carries the mark; the terminal is what reads it.
+    expect(writes.join("")).toContain(`\u001b]${WORDMARK_OSC};${WORDMARK_MARK}\u0007`);
+    const mark = oscHandlers.get(WORDMARK_OSC);
+    expect(mark, "nothing listens for the wordmark's mark").toBeDefined();
+    expect(mark!(WORDMARK_MARK)).toBe(true);
 
     const emblem = decorations.find((d) => d.element.classList.contains("term__emblem"));
     expect(emblem, "no emblem beside the wordmark").toBeDefined();
     expect(emblem!.element.querySelector("svg.emblem")).not.toBeNull();
-
-    // On the wordmark's own line: back from where the banner left the cursor.
-    const banner = writes.find((w) => w.includes("Infinite Possibilities."))!;
-    expect((emblem!.marker as { offset: number }).offset).toBe(offsetToWordmark(banner));
+    // At the line the mark was read on, which is where the wordmark starts.
+    expect((emblem!.marker as { offset: number }).offset).toBe(0);
 
     unmount();
     expect(emblem!.disposed, "the emblem outlived its terminal").toBe(true);
   });
 
+  it("pins it wherever the banner came from, the shell's own `jky banner` included", async () => {
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(oscHandlers.get(WORDMARK_OSC)).toBeDefined());
+
+    // Twice, the way image two had it: the command run, and run again.
+    oscHandlers.get(WORDMARK_OSC)!(WORDMARK_MARK);
+    oscHandlers.get(WORDMARK_OSC)!(WORDMARK_MARK);
+
+    const emblems = decorations.filter((d) => d.element.classList.contains("term__emblem"));
+    expect(emblems).toHaveLength(2);
+  });
+
   it("sweeps light down the wordmark once, then takes the light away", async () => {
     render(<Terminal paneId="tab-1" />);
-    await waitFor(() => expect(writes.some((w) => w.includes("Infinite Possibilities."))).toBe(true));
-    flushWrites();
+    await waitFor(() => expect(oscHandlers.get(WORDMARK_OSC)).toBeDefined());
+    oscHandlers.get(WORDMARK_OSC)!(WORDMARK_MARK);
 
     const sweep = decorations.find((d) => d.element.classList.contains("term__sweep"));
     expect(sweep, "no light across the wordmark").toBeDefined();
@@ -342,21 +353,26 @@ describe("Terminal", () => {
     expect(sweep!.disposed, "the light stayed over the letters").toBe(true);
   });
 
-  it("pins nothing over a shell it rejoined, which has no banner to sit beside", async () => {
-    const platform = createWebPlatform();
-    __setPlatformForTests({
-      ...platform,
-      pty: {
-        ...platform.pty,
-        spawn: async () => ({ id: "held-1", reattached: true, survives: true }),
-      },
-    });
-
+  it("pins nothing for a mark it does not recognise", async () => {
     render(<Terminal paneId="tab-1" />);
-    await waitFor(() => expect(writes.join("")).toContain("jky $"));
-    flushWrites();
+    await waitFor(() => expect(oscHandlers.get(WORDMARK_OSC)).toBeDefined());
 
+    expect(oscHandlers.get(WORDMARK_OSC)!("something-else")).toBe(false);
     expect(decorations.filter((d) => d.element.classList.contains("term__emblem"))).toEqual([]);
+  });
+
+  it("keeps only the most recent emblems, however often the banner is printed", async () => {
+    // Each one is a drawing that moves. A script printing the banner in a loop
+    // must not leave a page full of them.
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(oscHandlers.get(WORDMARK_OSC)).toBeDefined());
+    for (let i = 0; i < 20; i++) oscHandlers.get(WORDMARK_OSC)!(WORDMARK_MARK);
+
+    const emblems = decorations.filter((d) => d.element.classList.contains("term__emblem"));
+    const alive = emblems.filter((d) => !d.disposed);
+    expect(alive).toHaveLength(6);
+    expect(emblems[0].disposed, "the oldest emblem was kept").toBe(true);
+    expect(emblems.at(-1)!.disposed, "the newest emblem was taken down").toBe(false);
   });
 
   it("tells the pty its real size once spawn completes", async () => {

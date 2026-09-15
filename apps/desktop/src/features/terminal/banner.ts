@@ -102,6 +102,20 @@ const BEVEL_SINK = 0.58;
 export const WORDMARK_LINE = 1;
 
 /**
+ * The private OSC a banner uses to say where its wordmark starts.
+ *
+ * Carried inside the banner itself, at the start of the wordmark's line, so a
+ * terminal that reads it finds the mark wherever the banner was printed — by
+ * this app when a terminal opens, or by the shell for `jky banner`. Any
+ * terminal that does not know the number ignores it, which is what an OSC is
+ * for. Terminated with BEL, like the shell integration's marks.
+ */
+export const WORDMARK_OSC = 7337;
+
+/** The payload, so a future mark on the same number is not mistaken for this one. */
+export const WORDMARK_MARK = "wordmark";
+
+/**
  * Draw one row of the wordmark.
  *
  * The gradient runs diagonally rather than straight across: sampling on
@@ -204,16 +218,6 @@ export function wordmarkLayout(cols: number): WordmarkLayout | null {
   };
 }
 
-/**
- * How far back from the cursor the wordmark is, once `banner` has been written.
- *
- * A marker is placed relative to the cursor, and writing the banner leaves the
- * cursor on its last line — so the wordmark is that many lines back, less the
- * line it starts on.
- */
-export function offsetToWordmark(banner: string): number {
-  return WORDMARK_LINE - (banner.split("\r\n").length - 1);
-}
 const TAGLINE = "AI Terminal. Infinite Possibilities.";
 /**
  * The shortcuts worth knowing on a fresh terminal.
@@ -299,5 +303,9 @@ export function buildBanner({ cols, version, palette }: BannerOptions): string {
     lines.push("");
   }
 
-  return lines.map((line) => fitToWidth(line, cols)).join("\r\n") + `\r\n${RESET}\r\n`;
+  const fitted = lines.map((line) => fitToWidth(line, cols));
+  // The mark goes on after fitting: it draws nothing, and fitting counts what
+  // is drawn. A compact banner has no wordmark, so it carries no mark.
+  if (!compact) fitted[WORDMARK_LINE] = `${ESC}]${WORDMARK_OSC};${WORDMARK_MARK}\u0007` + fitted[WORDMARK_LINE];
+  return fitted.join("\r\n") + `\r\n${RESET}\r\n`;
 }

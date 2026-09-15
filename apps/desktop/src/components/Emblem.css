@@ -21,7 +21,9 @@
   width: 100%;
   height: 100%;
   overflow: visible;
-  animation: jky-start 700ms var(--ease) both;
+  /* No fill before it starts: if an engine ever holds an animation back, the
+     emblem is simply there, rather than held at the first keyframe's zero. */
+  animation: jky-start 700ms var(--ease);
 }
 
 /* Each part turns about the emblem's centre, not about its own box. */
@@ -31,7 +33,6 @@
 .emblem__orbit {
   transform-box: view-box;
   transform-origin: 60px 60px;
-  will-change: transform;
 }
 
 .emblem__ring {

@@ -8,7 +8,7 @@ import { SerializeAddon } from "@xterm/addon-serialize";
 import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
-import { buildBanner, offsetToWordmark, wordmarkLayout } from "./banner";
+import { WORDMARK_MARK, WORDMARK_OSC, buildBanner, wordmarkLayout } from "./banner";
 import { WORDMARK } from "./wordmark";
 import { buildEmblem } from "../../components/emblemSvg";
 import { terminalColours } from "./termColours";
@@ -131,6 +131,14 @@ const MAX_MARKS = 500;
  */
 /** How long the light across a new wordmark may take before it is taken down anyway. */
 const SWEEP_DEADLINE_MS = 3000;
+
+/**
+ * How many banners' emblems one terminal keeps.
+ *
+ * Each is a drawing that moves. A script printing the banner in a loop must
+ * not leave a page full of them, so the oldest go first.
+ */
+const MAX_WORDMARKS = 6;
 
 export function useXterm(
   container: React.RefObject<HTMLDivElement | null>,
@@ -439,23 +447,25 @@ export function useXterm(
     });
 
     /*
-     * The emblem beside the wordmark, and one pass of light across it.
+     * The emblem beside a wordmark, and one pass of light across it.
      *
-     * Pinned once the banner has been parsed, because a marker is placed
-     * relative to the cursor and only then is the cursor where the banner left
-     * it. Decorations rather than anything of our own, for the reason the
-     * gutter marks give: they scroll, resize and reflow with the line.
+     * Found by the mark every banner carries on its wordmark's line, so it is
+     * pinned wherever a banner is printed: the one this terminal writes as it
+     * opens, and the one the shell prints for `jky banner`. The mark is read
+     * with the cursor at the start of that line, so the marker needs no
+     * arithmetic. Decorations rather than anything of our own, for the reason
+     * the gutter marks give: they scroll, resize and reflow with the line.
      */
-    const bannerMarks: Array<{ dispose(): void }> = [];
-    let sweepDeadline: ReturnType<typeof setTimeout> | undefined;
+    const bannerMarks: Array<Array<{ dispose(): void }>> = [];
+    const sweepDeadlines = new Set<ReturnType<typeof setTimeout>>();
 
-    function pinToWordmark(written: string) {
+    function pinToWordmark() {
       const layout = wordmarkLayout(xterm.cols);
       if (cancelled || !layout) return;
 
-      const marker = xterm.registerMarker(offsetToWordmark(written));
+      const marker = xterm.registerMarker(0);
       if (!marker) return;
-      bannerMarks.push(marker);
+      const pinned: Array<{ dispose(): void }> = [marker];
 
       if (layout.emblem) {
         const emblem = xterm.registerDecoration({
@@ -466,7 +476,7 @@ export function useXterm(
           height: WORDMARK.length,
         });
         if (emblem) {
-          bannerMarks.push(emblem);
+          pinned.push(emblem);
           emblem.onRender((element) => {
             // Called on every render, not once; the emblem is built once.
             if (element.dataset.emblem) return;
@@ -485,7 +495,7 @@ export function useXterm(
         height: WORDMARK.length,
       });
       if (sweep) {
-        bannerMarks.push(sweep);
+        pinned.push(sweep);
         sweep.onRender((element) => {
           if (element.dataset.sweep) return;
           element.dataset.sweep = "on";
@@ -494,9 +504,24 @@ export function useXterm(
         });
         // A wordmark scrolled away before it was ever drawn never animates, so
         // the light is taken down on a deadline too rather than waiting for ever.
-        sweepDeadline = setTimeout(() => sweep.dispose(), SWEEP_DEADLINE_MS);
+        const deadline = setTimeout(() => {
+          sweepDeadlines.delete(deadline);
+          sweep.dispose();
+        }, SWEEP_DEADLINE_MS);
+        sweepDeadlines.add(deadline);
+      }
+
+      bannerMarks.push(pinned);
+      while (bannerMarks.length > MAX_WORDMARKS) {
+        for (const mark of bannerMarks.shift()!) mark.dispose();
       }
     }
+
+    xterm.parser.registerOscHandler(WORDMARK_OSC, (payload) => {
+      if (payload !== WORDMARK_MARK) return false;
+      pinToWordmark();
+      return true;
+    });
     // The shell's semantic marks: where a prompt begins, where a command's
     // output begins, and the status it ended with. This is a shared
     // convention rather than something this app invented — see
@@ -729,21 +754,24 @@ export function useXterm(
       // Whether quitting would lose what this pane is doing.
       if (scrollbackKey) useActivity.getState().held(scrollbackKey, spawned.survives);
 
+      // Last session's output, then a rule, then the banner — so the
+      // scrollback reads as a history rather than as a terminal that
+      // mysteriously already has text in it. Only for a shell that is new:
+      // a rejoined one sends what it printed while nobody watched, and old
+      // scrollback above that would show the same session twice.
       if (!spawned.reattached) {
-        // Last session's output first, then a rule, then this session's
-        // banner. In that order the scrollback reads as a history rather than
-        // as a terminal that mysteriously already has text in it.
         if (previous) {
           xterm.write(previous.endsWith("\n") ? previous : `${previous}\r\n`);
           xterm.write(`\x1b[2m${"─".repeat(Math.max(8, xterm.cols - 2))}\x1b[0m\r\n`);
         }
-        // Greet before the shell speaks. Written into the terminal rather
-        // than overlaid, so it lives in the scrollback like a real MOTD, and
-        // coloured from the live theme tokens so it follows the active theme.
-        // The same banner went to the backend, which stores it so the
-        // `jky-terminal` shell command can reprint exactly what was shown.
-        if (!host) xterm.write(banner, () => pinToWordmark(banner));
       }
+      // Greet on every open, a rejoined shell included: the banner is how a
+      // terminal opens, whichever shell is behind it. Written into the
+      // terminal rather than overlaid, so it lives in the scrollback like a
+      // real MOTD, and coloured from the live theme tokens. The same banner
+      // went to the backend, which stores it for `jky banner` to reprint —
+      // and the mark inside it pins the emblem, here and there alike.
+      if (!host) xterm.write(banner);
       ptyId = id;
       ptyRef.current = id;
 
@@ -815,8 +843,8 @@ export function useXterm(
       // points at nothing.
       for (const mark of blockMarks.current) mark.dispose();
       blockMarks.current = [];
-      clearTimeout(sweepDeadline);
-      for (const mark of bannerMarks) mark.dispose();
+      for (const deadline of sweepDeadlines) clearTimeout(deadline);
+      for (const group of bannerMarks) for (const mark of group) mark.dispose();
       selectionSub.dispose();
       unlisten?.();
 

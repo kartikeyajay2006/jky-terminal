@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { DEFAULT_BINDINGS } from "../../platform/keymap";
 import {
   WORDMARK_LINE,
+  WORDMARK_MARK,
+  WORDMARK_OSC,
   buildBanner,
   hexToAnsi,
-  offsetToWordmark,
   parseHex,
   shade,
   wordmarkLayout,
@@ -13,9 +14,10 @@ import { WORDMARK, WORDMARK_WIDTH } from "./wordmark";
 
 const ESC = "\u001b";
 // Stripping ANSI is exactly a control-character match, so the rule is
-// disabled here rather than switched off for the project.
+// disabled here rather than switched off for the project. OSC sequences go
+// too: they draw nothing, and what these tests measure is what is drawn.
 // eslint-disable-next-line no-control-regex
-const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "");
+const strip = (s: string) => s.replace(/\u001b\[[0-9;]*m/g, "").replace(/\u001b\][^\u0007]*\u0007/g, "");
 
 describe("parseHex", () => {
   it("reads a six-digit hex colour", () => {
@@ -106,13 +108,22 @@ describe("buildBanner", () => {
     expect(lines[WORDMARK_LINE].trim()).toBe(WORDMARK[0].trim());
   });
 
-  it("finds the wordmark from the cursor the banner leaves behind", () => {
-    // A marker is placed relative to the cursor, and once the banner is
-    // written the cursor is on its last line.
-    const banner = buildBanner({ cols: 100, version: "0.1.0", palette });
-    const lines = strip(banner).split("\r\n");
-    const cursor = lines.length - 1;
-    expect(lines[cursor + offsetToWordmark(banner)].trim()).toBe(WORDMARK[0].trim());
+  it("marks the wordmark's line invisibly, so a terminal can find it wherever the banner is printed", () => {
+    // The app writes the banner, and so does `jky banner` in the shell. The
+    // mark travels inside the banner, so both lead the terminal to the same
+    // line without anyone having to know where the text landed.
+    const out = buildBanner({ cols: 100, version: "0.1.0", palette });
+    const mark = `\u001b]${WORDMARK_OSC};${WORDMARK_MARK}\u0007`;
+
+    expect(out.split(mark)).toHaveLength(2);
+    const line = out.split("\r\n")[WORDMARK_LINE];
+    expect(line.startsWith(mark), "the mark is not where the wordmark starts").toBe(true);
+    expect(strip(line).trim()).toBe(WORDMARK[0].trim());
+  });
+
+  it("carries no mark in a compact banner, which has no wordmark to find", () => {
+    const narrow = buildBanner({ cols: 20, version: "0.1.0", palette });
+    expect(narrow).not.toContain(`\u001b]${WORDMARK_OSC};`);
   });
 
   it("places an emblem beside the wordmark only where there is room for both", () => {
