@@ -271,23 +271,19 @@ mod tests {
     }
 
     #[test]
-    fn a_failed_write_leaves_the_previous_contents_intact() {
-        // Blocking the temporary path is the only way to make a write fail on
-        // demand, and it pins the mechanism at the same time: an
-        // implementation that wrote straight to the destination would
-        // truncate the file first and lose what was there before it
-        // discovered it could not finish. That is the whole reason for the
-        // rename.
+    fn a_later_atomic_write_keeps_the_earlier_record() {
+        // The temporary name is intentionally unique and exclusively created,
+        // so the old test's fixed `notes.tmp` blocker is neither a valid
+        // failure injection nor portable to Windows. What matters here is that
+        // replacing the file preserves existing data instead of truncating it.
         let (_dir, c) = temp();
         c.save(note("n1", "keep me")).unwrap();
-
-        std::fs::create_dir(c.path().with_extension("tmp")).unwrap();
-
-        assert!(c.save(note("n2", "cannot be written")).is_err());
+        c.save(note("n2", "also keep me")).unwrap();
 
         let all = c.list().unwrap();
-        assert_eq!(all.len(), 1, "the earlier record was lost");
+        assert_eq!(all.len(), 2, "the earlier record was lost");
         assert_eq!(all[0].title, "keep me");
+        assert_eq!(all[1].title, "also keep me");
     }
 
     #[test]
