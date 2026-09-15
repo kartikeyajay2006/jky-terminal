@@ -219,6 +219,22 @@
   100% { opacity: 0; }
 }
 
+/* A band of light crossing something that has just switched on — once. */
+@keyframes jky-scan {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  to {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+}
+
 /*
  * A thread of light along the top of the window while something is running.
  *

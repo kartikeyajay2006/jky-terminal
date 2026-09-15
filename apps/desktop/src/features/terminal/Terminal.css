@@ -78,6 +78,41 @@
   opacity: 0.9;
 }
 
+/* ---- the wordmark, switched on ------------------------------------------ */
+
+/*
+ * The emblem beside a new terminal's wordmark, and the light that crosses the
+ * wordmark once as the terminal opens.
+ *
+ * Both are decorations pinned to the wordmark's line, so they scroll away with
+ * the banner like the text they belong to. Neither takes a click: a click
+ * there is meant for the terminal underneath.
+ */
+.term__emblem,
+.term__sweep {
+  pointer-events: none;
+}
+
+.term__sweep {
+  overflow: hidden;
+}
+
+/* A translucent band of the accent, passing down over the letters and gone.
+   It fades in and out rather than switching, and it is removed from the page
+   once it has passed, so nothing is left over the text. */
+.term__sweep::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    color-mix(in srgb, var(--accent) 45%, transparent),
+    transparent
+  );
+  animation: jky-scan 1100ms var(--ease) 200ms both;
+}
+
 /* ---- the find bar and the context menu ---------------------------------- */
 
 /*

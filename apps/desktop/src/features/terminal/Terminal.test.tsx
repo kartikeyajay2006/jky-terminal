@@ -2,6 +2,7 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { encodeDone } from "./commandFailure";
+import { offsetToWordmark } from "./banner";
 
 const writes: string[] = [];
 const onDataHandlers: Array<(d: string) => void> = [];
@@ -9,12 +10,20 @@ const oscHandlers = new Map<number, (payload: string) => boolean>();
 const customKeyHandlers: Array<(e: KeyboardEvent) => boolean> = [];
 interface FakeDecoration {
   height?: number;
+  marker?: unknown;
+  options?: Record<string, unknown>;
   element: HTMLElement;
   disposed: boolean;
 }
 const markers: Array<{ disposed: boolean }> = [];
 const decorations: FakeDecoration[] = [];
 const disposed = { count: 0 };
+// What xterm calls once a write has been parsed. Held until a test says so,
+// so a test that does not care what happens after a write is unaffected.
+const writeCallbacks: Array<() => void> = [];
+const flushWrites = () => {
+  while (writeCallbacks.length) writeCallbacks.shift()!();
+};
 const created: Array<{ options: Record<string, unknown> }> = [];
 
 vi.mock("@xterm/xterm", () => ({
@@ -27,8 +36,9 @@ vi.mock("@xterm/xterm", () => ({
       created.push(this);
     }
     open() {}
-    write(data: string) {
+    write(data: string, done?: () => void) {
       writes.push(data);
+      if (done) writeCallbacks.push(done);
     }
     onData(cb: (d: string) => void) {
       onDataHandlers.push(cb);
@@ -82,6 +92,7 @@ vi.mock("@xterm/xterm", () => ({
       const decoration = {
         marker: options.marker,
         height: options.height,
+        options,
         element,
         disposed: false,
         onRender(cb: (el: HTMLElement) => void) {
@@ -165,6 +176,7 @@ describe("Terminal", () => {
     markers.length = 0;
     decorations.length = 0;
     created.length = 0;
+    writeCallbacks.length = 0;
     disposed.count = 0;
     __setPlatformForTests(createWebPlatform());
     useAsk.setState({ pending: null });
@@ -298,6 +310,53 @@ describe("Terminal", () => {
       root.style.removeProperty("--text");
       root.removeAttribute("data-theme");
     }
+  });
+
+  it("pins the emblem beside a new terminal's wordmark, and takes it down with the terminal", async () => {
+    const { unmount } = render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(writes.some((w) => w.includes("Infinite Possibilities."))).toBe(true));
+    flushWrites();
+
+    const emblem = decorations.find((d) => d.element.classList.contains("term__emblem"));
+    expect(emblem, "no emblem beside the wordmark").toBeDefined();
+    expect(emblem!.element.querySelector("svg.emblem")).not.toBeNull();
+
+    // On the wordmark's own line: back from where the banner left the cursor.
+    const banner = writes.find((w) => w.includes("Infinite Possibilities."))!;
+    expect((emblem!.marker as { offset: number }).offset).toBe(offsetToWordmark(banner));
+
+    unmount();
+    expect(emblem!.disposed, "the emblem outlived its terminal").toBe(true);
+  });
+
+  it("sweeps light down the wordmark once, then takes the light away", async () => {
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(writes.some((w) => w.includes("Infinite Possibilities."))).toBe(true));
+    flushWrites();
+
+    const sweep = decorations.find((d) => d.element.classList.contains("term__sweep"));
+    expect(sweep, "no light across the wordmark").toBeDefined();
+    expect(sweep!.disposed).toBe(false);
+
+    sweep!.element.dispatchEvent(new Event("animationend"));
+    expect(sweep!.disposed, "the light stayed over the letters").toBe(true);
+  });
+
+  it("pins nothing over a shell it rejoined, which has no banner to sit beside", async () => {
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      pty: {
+        ...platform.pty,
+        spawn: async () => ({ id: "held-1", reattached: true, survives: true }),
+      },
+    });
+
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(writes.join("")).toContain("jky $"));
+    flushWrites();
+
+    expect(decorations.filter((d) => d.element.classList.contains("term__emblem"))).toEqual([]);
   });
 
   it("tells the pty its real size once spawn completes", async () => {

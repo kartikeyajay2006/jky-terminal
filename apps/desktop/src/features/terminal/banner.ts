@@ -166,6 +166,54 @@ function fitToWidth(line: string, width: number): string {
 }
 
 const GUTTER = 2;
+
+/** Columns between the wordmark and the emblem beside it. */
+const EMBLEM_GAP = 4;
+
+/**
+ * Columns the emblem is given. It is as tall as the wordmark — six rows — and
+ * six rows make a square about eleven cells wide, so this leaves it room.
+ */
+const EMBLEM_WIDTH = 14;
+
+/** A run of columns: where it starts, and how many it takes. */
+export interface Span {
+  x: number;
+  width: number;
+}
+
+export interface WordmarkLayout {
+  wordmark: Span;
+  /** Absent when the pane has no room beside the wordmark for one. */
+  emblem: Span | null;
+}
+
+/**
+ * Where the wordmark is drawn, and where an emblem fits beside it.
+ *
+ * Null when the pane is too narrow for the wordmark at all, which is exactly
+ * when the banner prints its compact form instead — the two are decided here,
+ * in one place, so they cannot disagree.
+ */
+export function wordmarkLayout(cols: number): WordmarkLayout | null {
+  if (cols < WORDMARK_WIDTH + GUTTER * 2) return null;
+  const x = GUTTER + WORDMARK_WIDTH + EMBLEM_GAP;
+  return {
+    wordmark: { x: GUTTER, width: WORDMARK_WIDTH },
+    emblem: x + EMBLEM_WIDTH + GUTTER <= cols ? { x, width: EMBLEM_WIDTH } : null,
+  };
+}
+
+/**
+ * How far back from the cursor the wordmark is, once `banner` has been written.
+ *
+ * A marker is placed relative to the cursor, and writing the banner leaves the
+ * cursor on its last line — so the wordmark is that many lines back, less the
+ * line it starts on.
+ */
+export function offsetToWordmark(banner: string): number {
+  return WORDMARK_LINE - (banner.split("\r\n").length - 1);
+}
 const TAGLINE = "AI Terminal. Infinite Possibilities.";
 /**
  * The shortcuts worth knowing on a fresh terminal.
@@ -217,7 +265,7 @@ export function buildBanner({ cols, version, palette }: BannerOptions): string {
   const lines: string[] = [];
   const pad = " ".repeat(GUTTER);
   const inner = Math.max(0, cols - GUTTER * 2);
-  const compact = cols < WORDMARK_WIDTH + GUTTER * 2;
+  const compact = wordmarkLayout(cols) === null;
 
   if (compact) {
     // No room for the mark. Say who we are and get out of the way.

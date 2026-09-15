@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BINDINGS } from "../../platform/keymap";
-import { WORDMARK_LINE, buildBanner, hexToAnsi, parseHex, shade } from "./banner";
-import { WORDMARK } from "./wordmark";
+import {
+  WORDMARK_LINE,
+  buildBanner,
+  hexToAnsi,
+  offsetToWordmark,
+  parseHex,
+  shade,
+  wordmarkLayout,
+} from "./banner";
+import { WORDMARK, WORDMARK_WIDTH } from "./wordmark";
 
 const ESC = "\u001b";
 // Stripping ANSI is exactly a control-character match, so the rule is
@@ -96,6 +104,26 @@ describe("buildBanner", () => {
   it("says which line the wordmark starts on, so something can be pinned beside it", () => {
     const lines = strip(buildBanner({ cols: 100, version: "0.1.0", palette })).split("\r\n");
     expect(lines[WORDMARK_LINE].trim()).toBe(WORDMARK[0].trim());
+  });
+
+  it("finds the wordmark from the cursor the banner leaves behind", () => {
+    // A marker is placed relative to the cursor, and once the banner is
+    // written the cursor is on its last line.
+    const banner = buildBanner({ cols: 100, version: "0.1.0", palette });
+    const lines = strip(banner).split("\r\n");
+    const cursor = lines.length - 1;
+    expect(lines[cursor + offsetToWordmark(banner)].trim()).toBe(WORDMARK[0].trim());
+  });
+
+  it("places an emblem beside the wordmark only where there is room for both", () => {
+    const wide = wordmarkLayout(100)!;
+    expect(wide.wordmark).toEqual({ x: 2, width: WORDMARK_WIDTH });
+    expect(wide.emblem, "no emblem in a pane with room for one").not.toBeNull();
+    expect(wide.emblem!.x).toBeGreaterThan(wide.wordmark.x + wide.wordmark.width);
+    expect(wide.emblem!.x + wide.emblem!.width).toBeLessThanOrEqual(100);
+
+    expect(wordmarkLayout(40)!.emblem, "an emblem squeezed against the pane's edge").toBeNull();
+    expect(wordmarkLayout(20), "a compact banner has no wordmark to sit beside").toBeNull();
   });
 
   it("separates the mark from the hints with a rule", () => {

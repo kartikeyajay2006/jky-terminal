@@ -8,7 +8,9 @@ import { SerializeAddon } from "@xterm/addon-serialize";
 import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform } from "../../platform";
-import { buildBanner } from "./banner";
+import { buildBanner, offsetToWordmark, wordmarkLayout } from "./banner";
+import { WORDMARK } from "./wordmark";
+import { buildEmblem } from "../../components/emblemSvg";
 import { terminalColours } from "./termColours";
 import { isAppShortcut } from "../../app/shortcuts";
 import { overrideBytes } from "./inputKeys";
@@ -127,6 +129,9 @@ const MAX_MARKS = 500;
  * find, copy, paste, clear — because those all require the live xterm
  * instance, which never leaves this hook.
  */
+/** How long the light across a new wordmark may take before it is taken down anyway. */
+const SWEEP_DEADLINE_MS = 3000;
+
 export function useXterm(
   container: React.RefObject<HTMLDivElement | null>,
   /**
@@ -432,6 +437,66 @@ export function useXterm(
         ground: tokens.getPropertyValue("--ground"),
       },
     });
+
+    /*
+     * The emblem beside the wordmark, and one pass of light across it.
+     *
+     * Pinned once the banner has been parsed, because a marker is placed
+     * relative to the cursor and only then is the cursor where the banner left
+     * it. Decorations rather than anything of our own, for the reason the
+     * gutter marks give: they scroll, resize and reflow with the line.
+     */
+    const bannerMarks: Array<{ dispose(): void }> = [];
+    let sweepDeadline: ReturnType<typeof setTimeout> | undefined;
+
+    function pinToWordmark(written: string) {
+      const layout = wordmarkLayout(xterm.cols);
+      if (cancelled || !layout) return;
+
+      const marker = xterm.registerMarker(offsetToWordmark(written));
+      if (!marker) return;
+      bannerMarks.push(marker);
+
+      if (layout.emblem) {
+        const emblem = xterm.registerDecoration({
+          marker,
+          anchor: "left",
+          x: layout.emblem.x,
+          width: layout.emblem.width,
+          height: WORDMARK.length,
+        });
+        if (emblem) {
+          bannerMarks.push(emblem);
+          emblem.onRender((element) => {
+            // Called on every render, not once; the emblem is built once.
+            if (element.dataset.emblem) return;
+            element.dataset.emblem = "on";
+            element.classList.add("term__emblem");
+            element.append(buildEmblem());
+          });
+        }
+      }
+
+      const sweep = xterm.registerDecoration({
+        marker,
+        anchor: "left",
+        x: layout.wordmark.x,
+        width: layout.wordmark.width,
+        height: WORDMARK.length,
+      });
+      if (sweep) {
+        bannerMarks.push(sweep);
+        sweep.onRender((element) => {
+          if (element.dataset.sweep) return;
+          element.dataset.sweep = "on";
+          element.classList.add("term__sweep");
+          element.addEventListener("animationend", () => sweep.dispose(), { once: true });
+        });
+        // A wordmark scrolled away before it was ever drawn never animates, so
+        // the light is taken down on a deadline too rather than waiting for ever.
+        sweepDeadline = setTimeout(() => sweep.dispose(), SWEEP_DEADLINE_MS);
+      }
+    }
     // The shell's semantic marks: where a prompt begins, where a command's
     // output begins, and the status it ended with. This is a shared
     // convention rather than something this app invented — see
@@ -677,7 +742,7 @@ export function useXterm(
         // coloured from the live theme tokens so it follows the active theme.
         // The same banner went to the backend, which stores it so the
         // `jky-terminal` shell command can reprint exactly what was shown.
-        if (!host) xterm.write(banner);
+        if (!host) xterm.write(banner, () => pinToWordmark(banner));
       }
       ptyId = id;
       ptyRef.current = id;
@@ -750,6 +815,8 @@ export function useXterm(
       // points at nothing.
       for (const mark of blockMarks.current) mark.dispose();
       blockMarks.current = [];
+      clearTimeout(sweepDeadline);
+      for (const mark of bannerMarks) mark.dispose();
       selectionSub.dispose();
       unlisten?.();
 
