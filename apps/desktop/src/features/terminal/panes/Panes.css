@@ -136,6 +136,43 @@
   border-radius: var(--radius);
 }
 
+/*
+ * The focused pane's corners, marked like a viewfinder's.
+ *
+ * On top of the ring rather than instead of it: the ring still says where
+ * every pane's edge is, and the corners say which one has the keyboard. They
+ * settle in from just outside the pane rather than switching on, and they sit
+ * in the terminal's padding, clear of anything it draws.
+ */
+.term__wrap[data-ring="true"]::before {
+  --corner: 14px;
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: var(--radius);
+  background:
+    linear-gradient(var(--accent), var(--accent)) top left / var(--corner) 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top left / 2px var(--corner) no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top right / var(--corner) 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) top right / 2px var(--corner) no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom left / var(--corner) 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom left / 2px var(--corner) no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / var(--corner) 2px no-repeat,
+    linear-gradient(var(--accent), var(--accent)) bottom right / 2px var(--corner) no-repeat;
+  opacity: 0;
+  transform: scale(1.02);
+  transition:
+    opacity var(--motion-quick) var(--ease),
+    transform var(--motion-normal) var(--ease);
+}
+
+.panes__pane[data-focused="true"] .term__wrap[data-ring="true"]::before {
+  opacity: 1;
+  transform: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .panes__splitter::after {
     transition: none;

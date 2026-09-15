@@ -539,6 +539,10 @@
 
 .tabbar__tab[aria-selected="true"]::after {
   transform: scaleX(1);
+  /* The underline is lit, not painted: a glow in the theme's own accent. */
+  box-shadow:
+    0 0 10px var(--accent-glow),
+    0 0 3px var(--accent-glow);
 }
 
 .tabbar__close {
@@ -579,10 +583,40 @@
   inset: 0;
 }
 
+/*
+ * No terminal open.
+ *
+ * Centred in the space a terminal would fill, with the emblem as the one thing
+ * to look at and the way to open a terminal right under it.
+ */
 .workspace__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s3);
+  height: 100%;
   padding: var(--s6);
   color: var(--text-dim);
   font-family: var(--font-sans);
+  text-align: center;
+}
+
+.workspace__emblem {
+  width: 132px;
+  height: 132px;
+  margin-bottom: var(--s2);
+}
+
+.workspace__title {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.workspace__hint {
+  margin: 0;
 }
 
 .workspace__empty kbd {

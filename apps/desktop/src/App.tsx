@@ -5,6 +5,7 @@ import { useAsk } from "./app/askStore";
 import { runningCount, useActivity } from "./features/terminal/activity";
 import { usePaneDirs } from "./features/terminal/paneDirs";
 import { quitBody, quitTitle } from "./features/terminal/quitting";
+import { EmptyWorkspace } from "./app/EmptyWorkspace";
 import { useChat } from "./app/chatStore";
 import { allPaneKeys, useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
@@ -282,12 +283,7 @@ export function App() {
               />
             </div>
           ))}
-          {tabs.length === 0 && (
-            <p className="workspace__empty">
-              No terminal open. Choose <b>+ New terminal</b> above, or press{" "}
-              <kbd>Ctrl</kbd>+<kbd>T</kbd>.
-            </p>
-          )}
+          {tabs.length === 0 && <EmptyWorkspace />}
         </div>
       </div>
 
