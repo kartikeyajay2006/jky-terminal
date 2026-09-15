@@ -1,0 +1,59 @@
+/*
+ * The emblem's motion.
+ *
+ * Every moving part is a slow, linear turn — instruments do not ease — and
+ * each turns at its own speed, so the whole never lines up into a repeat the
+ * eye locks onto. It switches on once, the way a display warms.
+ *
+ * No keyframe of its own: a turn is `jky-spin`, warming up is `jky-start` and
+ * the cursor's breath is `jky-pulse`, all from motion.css. Which also means
+ * the one reduced-motion guard there stops every part of this dead.
+ */
+
+.emblem-host {
+  display: inline-block;
+  width: 100%;
+  height: 100%;
+}
+
+.emblem {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  animation: jky-start 700ms var(--ease) both;
+}
+
+/* Each part turns about the emblem's centre, not about its own box. */
+.emblem__ring,
+.emblem__sweep,
+.emblem__arcs,
+.emblem__orbit {
+  transform-box: view-box;
+  transform-origin: 60px 60px;
+  will-change: transform;
+}
+
+.emblem__ring {
+  opacity: 0.5;
+  animation: jky-spin 48s linear infinite;
+}
+
+.emblem__sweep {
+  animation: jky-spin 4.8s linear infinite;
+}
+
+.emblem__arcs {
+  animation: jky-spin 9s linear infinite reverse;
+}
+
+.emblem__orbit {
+  animation: jky-spin 16s linear infinite;
+}
+
+/* The mark's cursor, breathing: the one part that says "live". */
+.emblem__spark {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: jky-pulse var(--motion-loop) var(--ease) infinite;
+}

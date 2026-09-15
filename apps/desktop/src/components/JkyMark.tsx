@@ -1,4 +1,5 @@
 import { useId } from "react";
+import { JKY_GLYPH } from "./jkyGlyph";
 
 interface JkyMarkProps {
   size?: number;
@@ -47,11 +48,11 @@ export function JkyMark({ size = 48, animated = false }: JkyMarkProps) {
       <circle cx="32" cy="32" r="30" fill={`url(#${glowId})`} />
 
       <rect
-        x="3"
-        y="3"
-        width="58"
-        height="58"
-        rx="17"
+        x={JKY_GLYPH.frame.x}
+        y={JKY_GLYPH.frame.y}
+        width={JKY_GLYPH.frame.size}
+        height={JKY_GLYPH.frame.size}
+        rx={JKY_GLYPH.frame.radius}
         stroke={`url(#${gradientId})`}
         strokeWidth="2"
         opacity="0.45"
@@ -59,24 +60,30 @@ export function JkyMark({ size = 48, animated = false }: JkyMarkProps) {
 
       {/* The chevron: a shell prompt. */}
       <path
-        d="M19 22 L30 32 L19 42"
+        d={JKY_GLYPH.chevron}
         stroke={`url(#${gradientId})`}
-        strokeWidth="4.5"
+        strokeWidth={JKY_GLYPH.stroke}
         strokeLinecap="round"
         strokeLinejoin="round"
       />
 
       {/* The J: its stem drops from the prompt's line and hooks left. */}
       <path
-        d="M45 20 L45 38 Q45 46 37 46"
+        d={JKY_GLYPH.hook}
         stroke={`url(#${gradientId})`}
-        strokeWidth="4.5"
+        strokeWidth={JKY_GLYPH.stroke}
         strokeLinecap="round"
         fill="none"
       />
 
       {/* The cursor, where one would sit after the prompt. */}
-      <circle cx="45" cy="14" r="3" fill="var(--accent)" className="jkymark__spark" />
+      <circle
+        cx={JKY_GLYPH.spark.cx}
+        cy={JKY_GLYPH.spark.cy}
+        r={JKY_GLYPH.spark.r}
+        fill="var(--accent)"
+        className="jkymark__spark"
+      />
     </svg>
   );
 }
