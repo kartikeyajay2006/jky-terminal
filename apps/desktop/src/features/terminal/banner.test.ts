@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { DEFAULT_BINDINGS } from "../../platform/keymap";
-import { buildBanner, hexToAnsi, parseHex, shade } from "./banner";
+import { WORDMARK_LINE, buildBanner, hexToAnsi, parseHex, shade } from "./banner";
+import { WORDMARK } from "./wordmark";
 
 const ESC = "\u001b";
 // Stripping ANSI is exactly a control-character match, so the rule is
@@ -58,6 +59,43 @@ describe("buildBanner", () => {
     expect(face).not.toBe(bevel);
     expect(out).toContain(face);
     expect(out).toContain(bevel);
+  });
+
+  it("sinks the bevel toward the page it is drawn on, not toward black", () => {
+    // Darkening to black was a sink on a dark theme and a hard ink outline on
+    // a light one. Mixing toward the theme's own ground is the same depth in
+    // both. One readable stop keeps the face and bevel values exact.
+    const light = { accent: "#00e5ff", violet: "", magenta: "", ground: "#f7f7fa" };
+    const out = buildBanner({ cols: 100, version: "0.1.0", palette: light });
+
+    const face = hexToAnsi([0, 229, 255]);
+    // 58% of the way from the face to the ground #f7f7fa.
+    const sunk = hexToAnsi([143, 239, 252]);
+    expect(out).toContain(face);
+    expect(out).toContain(sunk);
+    expect(out).not.toContain(hexToAnsi(shade([0, 229, 255], 0.42)));
+  });
+
+  it("fades the rule from the accent into the page", () => {
+    const palette = { accent: "#00e5ff", violet: "", magenta: "", ground: "#08080c" };
+    const out = buildBanner({ cols: 100, version: "0.1.0", palette });
+    const rule = out.split("\r\n").find((line) => strip(line).includes("────"))!;
+
+    // Reading colours back out of ANSI is a control-character match, as `strip` is.
+    // eslint-disable-next-line no-control-regex
+    const colours = [...rule.matchAll(/\u001b\[38;2;(\d+);(\d+);(\d+)m/g)].map((m) =>
+      m.slice(1, 4).map(Number),
+    );
+    expect(colours.length, "the rule is drawn in one flat colour").toBeGreaterThan(2);
+
+    const ground = [8, 8, 12];
+    const distance = (c: number[]) => Math.hypot(c[0] - ground[0], c[1] - ground[1], c[2] - ground[2]);
+    expect(distance(colours[0])).toBeGreaterThan(distance(colours.at(-1)!));
+  });
+
+  it("says which line the wordmark starts on, so something can be pinned beside it", () => {
+    const lines = strip(buildBanner({ cols: 100, version: "0.1.0", palette })).split("\r\n");
+    expect(lines[WORDMARK_LINE].trim()).toBe(WORDMARK[0].trim());
   });
 
   it("separates the mark from the hints with a rule", () => {

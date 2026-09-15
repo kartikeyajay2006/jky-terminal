@@ -24,6 +24,12 @@ export interface BannerPalette {
   accent: string;
   violet: string;
   magenta: string;
+  /**
+   * The page the banner is drawn on. When it can be read, depth sinks toward
+   * it — which is the same depth on a dark theme and a light one — rather
+   * than toward black, which is only a sink on a dark one.
+   */
+  ground?: string;
 }
 
 export interface BannerOptions {
@@ -80,8 +86,20 @@ function ramp(stops: Rgb[], t: number): Rgb {
   return mix(stops[i], stops[i + 1], scaled - i);
 }
 
-/** How far the bevel is sunk behind the letter face. */
+/** How far the bevel is sunk behind the letter face, when there is no ground to sink toward. */
 const BEVEL_SHADE = 0.42;
+
+/** How far the bevel travels from the face toward the page, when the page is known. */
+const BEVEL_SINK = 0.58;
+
+/**
+ * The line of the banner the wordmark starts on.
+ *
+ * Exported because something is pinned beside the wordmark after the banner
+ * is written, and it has to find the mark by position: the banner is text in
+ * the scrollback, and a position is all text has.
+ */
+export const WORDMARK_LINE = 1;
 
 /**
  * Draw one row of the wordmark.
@@ -90,7 +108,13 @@ const BEVEL_SHADE = 0.42;
  * `x + y` means the ramp travels through the mark instead of banding each row
  * identically, which is what makes it read as lit rather than striped.
  */
-function drawRow(row: string, rowIndex: number, rows: number, stops: Rgb[]): string {
+function drawRow(
+  row: string,
+  rowIndex: number,
+  rows: number,
+  stops: Rgb[],
+  ground: Rgb | null,
+): string {
   let out = "";
   let current = "";
 
@@ -108,7 +132,8 @@ function drawRow(row: string, rowIndex: number, rows: number, stops: Rgb[]): str
       (rowIndex / Math.max(1, rows - 1)) * 0.18;
 
     const base = ramp(stops, t);
-    const colour = hexToAnsi(isBevel(ch) ? shade(base, BEVEL_SHADE) : base);
+    const sunk = ground ? mix(base, ground, BEVEL_SINK) : shade(base, BEVEL_SHADE);
+    const colour = hexToAnsi(isBevel(ch) ? sunk : base);
 
     if (colour !== current) {
       out += colour;
@@ -152,12 +177,40 @@ const TAGLINE = "AI Terminal. Infinite Possibilities.";
 const HINTS =
   "Ctrl+K  palette    Ctrl+T  new terminal    Ctrl+Shift+T  split    Ctrl+W  close    Ctrl+F  find";
 
+/** How many characters of the rule share one colour as it fades. */
+const RULE_STEP = 6;
+
+function drawRule(width: number, accent: Rgb | null, ground: Rgb | null): string {
+  if (!accent) return "─".repeat(width);
+  if (!ground) return hexToAnsi(shade(accent, 0.34)) + "─".repeat(width);
+
+  // From a little way into the page — never louder than the tagline above it —
+  // to almost nothing.
+  const start = mix(accent, ground, 0.2);
+  const end = mix(accent, ground, 0.94);
+  const steps = Math.max(2, Math.ceil(width / RULE_STEP));
+
+  let out = "";
+  let current = "";
+  for (let x = 0; x < width; x++) {
+    const step = Math.min(steps - 1, Math.floor(x / RULE_STEP));
+    const colour = hexToAnsi(mix(start, end, step / (steps - 1)));
+    if (colour !== current) {
+      out += colour;
+      current = colour;
+    }
+    out += "─";
+  }
+  return out;
+}
+
 export function buildBanner({ cols, version, palette }: BannerOptions): string {
   const stops = [palette.accent, palette.violet, palette.magenta]
     .map(parseHex)
     .filter((c): c is Rgb => c !== null);
 
   const hasColour = stops.length > 0;
+  const ground = palette.ground ? parseHex(palette.ground) : null;
   const tint = (text: string, colour?: Rgb) =>
     hasColour ? `${hexToAnsi(colour ?? stops[0])}${text}${RESET}` : text;
 
@@ -174,7 +227,7 @@ export function buildBanner({ cols, version, palette }: BannerOptions): string {
   } else {
     lines.push("");
     WORDMARK.forEach((row, i) => {
-      const drawn = hasColour ? drawRow(row, i, WORDMARK.length, stops) : row;
+      const drawn = hasColour ? drawRow(row, i, WORDMARK.length, stops, ground) : row;
       lines.push(pad + drawn + (hasColour ? RESET : ""));
     });
     lines.push("");
@@ -189,9 +242,10 @@ export function buildBanner({ cols, version, palette }: BannerOptions): string {
     );
 
     // A hairline the full width of the text block, sunk well back so it reads
-    // as a division rather than as content.
-    const ruleColour = hasColour ? hexToAnsi(shade(stops[0], 0.34)) : "";
-    lines.push(pad + ruleColour + "─".repeat(inner) + (hasColour ? RESET : ""));
+    // as a division rather than as content. Where the page is known the line
+    // is lit at the start and fades into it, so it reads as light running out
+    // rather than as a border that simply stops.
+    lines.push(pad + drawRule(inner, hasColour ? stops[0] : null, ground) + (hasColour ? RESET : ""));
 
     lines.push(pad + DIM + HINTS + RESET);
     lines.push("");

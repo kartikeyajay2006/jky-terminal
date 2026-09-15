@@ -429,6 +429,7 @@ export function useXterm(
         accent: tokens.getPropertyValue("--accent"),
         violet: tokens.getPropertyValue("--violet"),
         magenta: tokens.getPropertyValue("--magenta"),
+        ground: tokens.getPropertyValue("--ground"),
       },
     });
     // The shell's semantic marks: where a prompt begins, where a command's
