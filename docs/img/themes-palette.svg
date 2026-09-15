@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 380" width="900" height="380" role="img" aria-label="JKY Terminal 7 Built-In Design System Themes">
+  <title>Seven Built-In Themes — Zero Hard-Coded Colors</title>
+  <defs>
+    <linearGradient id="bgGradThemes" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08080c"/>
+      <stop offset="100%" stop-color="#0e0f18"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .f-mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+    .f-sans { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .th-title { font-size: 13px; font-weight: 700; font-family: Inter, sans-serif; }
+    .th-sub { font-size: 10px; font-family: 'JetBrains Mono', monospace; fill: #8b8ba0; }
+  </style>
+
+  <!-- Background Canvas -->
+  <rect width="900" height="380" rx="14" fill="url(#bgGradThemes)" stroke="#1a1b2c" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <g transform="translate(40, 42)">
+    <text x="0" y="0" class="f-sans" font-size="22" fill="#ffffff" font-weight="700">7 Built-In Themes · WCAG AAA Tested</text>
+    <text x="0" y="24" class="f-sans" font-size="13" fill="#8e8ea8">Every color is tokenized. Zero literal hexes in code. Tested for contrast and reduced-motion compliance.</text>
+  </g>
+
+  <!-- 7 Theme Cards Row -->
+  <!-- Theme 1: Cyberpunk -->
+  <g transform="translate(40, 95)">
+    <rect width="106" height="240" rx="8" fill="#08080c" stroke="#00e5ff" stroke-width="1.5"/>
+    <rect x="0" y="0" width="106" height="28" rx="8" fill="#121320"/>
+    <rect x="0" y="20" width="106" height="8" fill="#121320"/>
+    <text x="53" y="19" text-anchor="middle" class="th-title" fill="#00e5ff">Cyberpunk</text>
+    <text x="53" y="44" text-anchor="middle" class="th-sub">DEFAULT</text>
+
+    <!-- Swatches -->
+    <circle cx="28" cy="74" r="10" fill="#00e5ff"/>
+    <circle cx="53" cy="74" r="10" fill="#ff3cf0"/>
+    <circle cx="78" cy="74" r="10" fill="#7c3aed"/>
+    <circle cx="28" cy="102" r="10" fill="#3ddc97"/>
+    <circle cx="53" cy="102" r="10" fill="#ffb340"/>
+    <circle cx="78" cy="102" r="10" fill="#a3e635"/>
+
+    <rect x="12" y="130" width="82" height="60" rx="4" fill="#0e0e16" stroke="#1e1e2c" stroke-width="1"/>
+    <text x="18" y="150" class="f-mono" font-size="9" fill="#00e5ff">❯ ls -la</text>
+    <text x="18" y="165" class="f-mono" font-size="9" fill="#ff3cf0">drwx  src</text>
+    <text x="18" y="180" class="f-mono" font-size="9" fill="#3ddc97">-rw-  app</text>
+
+    <rect x="12" y="204" width="82" height="18" rx="3" fill="#002d33"/>
+    <text x="53" y="216.5" text-anchor="middle" class="f-mono" font-size="9" fill="#00e5ff" font-weight="bold">ACTIVE</text>
+  </g>
+
+  <!-- Theme 2: Dracula -->
+  <g transform="translate(160, 95)">
+    <rect width="106" height="240" rx="8" fill="#21222c" stroke="#3c3f51" stroke-width="1.2"/>
+    <rect x="0" y="0" width="106" height="28" rx="8" fill="#282a36"/>
+    <rect x="0" y="20" width="106" height="8" fill="#282a36"/>
+    <text x="53" y="19" text-anchor="middle" class="th-title" fill="#bd93f9">Dracula</text>
+    <text x="53" y="44" text-anchor="middle" class="th-sub">OFFICIAL</text>
+
+    <circle cx="28" cy="74" r="10" fill="#bd93f9"/>
+    <circle cx="53" cy="74" r="10" fill="#ff79c6"/>
+    <circle cx="78" cy="74" r="10" fill="#8be9fd"/>
+    <circle cx="28" cy="102" r="10" fill="#50fa7b"/>
+    <circle cx="53" cy="102" r="10" fill="#ffb86c"/>
+    <circle cx="78" cy="102" r="10" fill="#ff5555"/>
+
+    <rect x="12" y="130" width="82" height="60" rx="4" fill="#282a36" stroke="#3c3f51" stroke-width="1"/>
+    <text x="18" y="150" class="f-mono" font-size="9" fill="#8be9fd">❯ git log</text>
+    <text x="18" y="165" class="f-mono" font-size="9" fill="#bd93f9">* b7703</text>
+    <text x="18" y="180" class="f-mono" font-size="9" fill="#50fa7b">| fix-ui</text>
+
+    <rect x="12" y="204" width="82" height="18" rx="3" fill="#2d2242"/>
+    <text x="53" y="216.5" text-anchor="middle" class="f-mono" font-size="9" fill="#bd93f9" font-weight="bold">#bd93f9</text>
+  </g>
+
+  <!-- Theme 3: Nord -->
+  <g transform="translate(280, 95)">
+    <rect width="106" height="240" rx="8" fill="#2e3440" stroke="#434c5e" stroke-width="1.2"/>
+    <rect x="0" y="0" width="106" height="28" rx="8" fill="#3b4252"/>
+    <rect x="0" y="20" width="106" height="8" fill="#3b4252"/>
+    <text x="53" y="19" text-anchor="middle" class="th-title" fill="#88c0d0">Nord</text>
+    <text x="53" y="44" text-anchor="middle" class="th-sub">ARCTIC</text>
+
+    <circle cx="28" cy="74" r="10" fill="#88c0d0"/>
+    <circle cx="53" cy="74" r="10" fill="#81a1c1"/>
+    <circle cx="78" cy="74" r="10" fill="#5e81ac"/>
+    <circle cx="28" cy="102" r="10" fill="#a3be8c"/>
+    <circle cx="53" cy="102" r="10" fill="#ebcb8b"/>
+    <circle cx="78" cy="102" r="10" fill="#bf616a"/>
+
+    <rect x="12" y="130" width="82" height="60" rx="4" fill="#333b4a" stroke="#434c5e" stroke-width="1"/>
+    <text x="18" y="150" class="f-mono" font-size="9" fill="#88c0d0">❯ test</text>
+    <text x="18" y="165" class="f-mono" font-size="9" fill="#a3be8c">ok (3318)</text>
+    <text x="18" y="180" class="f-mono" font-size="9" fill="#81a1c1">in 0.4s</text>
+
+    <rect x="12" y="204" width="82" height="18" rx="3" fill="#253540"/>
+    <text x="53" y="216.5" text-anchor="middle" class="f-mono" font-size="9" fill="#88c0d0" font-weight="bold">#88c0d0</text>
+  </g>
+
+  <!-- Theme 4: Solarized -->
+  <g transform="translate(400, 95)">
+    <rect width="106" height="240" rx="8" fill="#002b36" stroke="#12525f" stroke-width="1.2"/>
+    <rect x="0" y="0" width="106" height="28" rx="8" fill="#073642"/>
+    <rect x="0" y="20" width="106" height="8" fill="#073642"/>
+    <text x="53" y="19" text-anchor="middle" class="th-title" fill="#2aa198">Solarized</text>
+    <text x="53" y="44" text-anchor="middle" class="th-sub">DARK</text>
+
+    <circle cx="28" cy="74" r="10" fill="#2aa198"/>
+    <circle cx="53" cy="74" r="10" fill="#268bd2"/>
+    <circle cx="78" cy="74" r="10" fill="#6c71c4"/>
+    <circle cx="28" cy="102" r="10" fill="#859900"/>
+    <circle cx="53" cy="102" r="10" fill="#b58900"/>
+    <circle cx="78" cy="102" r="10" fill="#dc322f"/>
+
+    <rect x="12" y="130" width="82" height="60" rx="4" fill="#073642" stroke="#12525f" stroke-width="1"/>
+    <text x="18" y="150" class="f-mono" font-size="9" fill="#2aa198">❯ ssh box</text>
+    <text x="18" y="165" class="f-mono" font-size="9" fill="#b58900">auth: pki</text>
+    <text x="18" y="180" class="f-mono" font-size="9" fill="#859900">connected</text>
+
+    <rect x="12" y="204" width="82" height="18" rx="3" fill="#08383e"/>
+    <text x="53" y="216.5" text-anchor="middle" class="f-mono" font-size="9" fill="#2aa198" font-weight="bold">#2aa198</text>
+  </g>
+
+  <!-- Theme 5: Light -->
+  <g transform="translate(520, 95)">
+    <rect width="106" height="240" rx="8" fill="#f7f7fa" stroke="#c9c9d6" stroke-width="1.2"/>
+    <rect x="0" y="0" width="106" height="28" rx="8" fill="#ffffff"/>
+    <rect x="0" y="20" width="106" height="8" fill="#ffffff"/>
+    <text x="53" y="19" text-anchor="middle" class="th-title" fill="#0f62fe">Light</text>
+    <text x="53" y="44" text-anchor="middle" class="th-sub" fill="#6b6b7b">CLEAN</text>
+
+    <circle cx="28" cy="74" r="10" fill="#0f62fe"/>
+    <circle cx="53" cy="74" r="10" fill="#6929c4"/>
+    <circle cx="78" cy="74" r="10" fill="#d02670"/>
+    <circle cx="28" cy="102" r="10" fill="#0f7b5f"/>
+    <circle cx="53" cy="102" r="10" fill="#8e6a00"/>
+    <circle cx="78" cy="102" r="10" fill="#da1e28"/>
+
+    <rect x="12" y="130" width="82" height="60" rx="4" fill="#ffffff" stroke="#e2e2ea" stroke-width="1"/>
+    <text x="18" y="150" class="f-mono" font-size="9" fill="#0f62fe">❯ diff file</text>
+    <text x="18" y="165" class="f-mono" font-size="9" fill="#0f7b5f">+ added</text>
+    <text x="18" y="180" class="f-mono" font-size="9" fill="#da1e28">- removed</text>
+
+    <rect x="12" y="204" width="82" height="18" rx="3" fill="#e6effe"/>
+    <text x="53" y="216.5" text-anchor="middle" class="f-mono" font-size="9" fill="#0f62fe" font-weight="bold">#0f62fe</text>
+  </g>
+
+  <!-- Theme 6: Gold -->
+  <g transform="translate(640, 95)">
+    <rect width="106" height="240" rx="8" fill="#120e06" stroke="#4a3710" stroke-width="1.2"/>
+    <rect x="0" y="0" width="106" height="28" rx="8" fill="#1c160a"/>
+    <rect x="0" y="20" width="106" height="8" fill="#1c160a"/>
+    <text x="53" y="19" text-anchor="middle" class="th-title" fill="#ffb340">Gold</text>
+    <text x="53" y="44" text-anchor="middle" class="th-sub">WARM</text>
+
+    <circle cx="28" cy="74" r="10" fill="#ffb340"/>
+    <circle cx="53" cy="74" r="10" fill="#d97706"/>
+    <circle cx="78" cy="74" r="10" fill="#f59e0b"/>
+    <circle cx="28" cy="102" r="10" fill="#10b981"/>
+    <circle cx="53" cy="102" r="10" fill="#f97316"/>
+    <circle cx="78" cy="102" r="10" fill="#ef4444"/>
+
+    <rect x="12" y="130" width="82" height="60" rx="4" fill="#181308" stroke="#36280b" stroke-width="1"/>
+    <text x="18" y="150" class="f-mono" font-size="9" fill="#ffb340">❯ cargo b</text>
+    <text x="18" y="165" class="f-mono" font-size="9" fill="#f59e0b">Finished</text>
+    <text x="18" y="180" class="f-mono" font-size="9" fill="#10b981">release [ok]</text>
+
+    <rect x="12" y="204" width="82" height="18" rx="3" fill="#312207"/>
+    <text x="53" y="216.5" text-anchor="middle" class="f-mono" font-size="9" fill="#ffb340" font-weight="bold">#ffb340</text>
+  </g>
+
+  <!-- Theme 7: High Contrast -->
+  <g transform="translate(760, 95)">
+    <rect width="106" height="240" rx="8" fill="#000000" stroke="#ffffff" stroke-width="1.8"/>
+    <rect x="0" y="0" width="106" height="28" rx="8" fill="#161616"/>
+    <rect x="0" y="20" width="106" height="8" fill="#161616"/>
+    <text x="53" y="19" text-anchor="middle" class="th-title" fill="#ffffff">Contrast</text>
+    <text x="53" y="44" text-anchor="middle" class="th-sub" fill="#ffffff">WCAG AAA</text>
+
+    <circle cx="28" cy="74" r="10" fill="#ffffff" stroke="#000000" stroke-width="1"/>
+    <circle cx="53" cy="74" r="10" fill="#ffff00"/>
+    <circle cx="78" cy="74" r="10" fill="#00ffff"/>
+    <circle cx="28" cy="102" r="10" fill="#00ff00"/>
+    <circle cx="53" cy="102" r="10" fill="#ff5555"/>
+    <circle cx="78" cy="102" r="10" fill="#ff00ff"/>
+
+    <rect x="12" y="130" width="82" height="60" rx="4" fill="#000000" stroke="#ffffff" stroke-width="1.5"/>
+    <text x="18" y="150" class="f-mono" font-size="9" fill="#00ffff">❯ 21:1</text>
+    <text x="18" y="165" class="f-mono" font-size="9" fill="#ffff00">max edge</text>
+    <text x="18" y="180" class="f-mono" font-size="9" fill="#ffffff">contrast</text>
+
+    <rect x="12" y="204" width="82" height="18" rx="3" fill="#ffffff"/>
+    <text x="53" y="216.5" text-anchor="middle" class="f-mono" font-size="9" fill="#000000" font-weight="bold">AAA 21:1</text>
+  </g>
+</svg>

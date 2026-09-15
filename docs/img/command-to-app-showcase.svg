@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 480" width="900" height="480" role="img" aria-label="JKY Terminal: Any Command Can Become An App">
+  <title>Any Command Can Become An App</title>
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08080c"/>
+      <stop offset="100%" stop-color="#0f101a"/>
+    </linearGradient>
+
+    <linearGradient id="cardGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#141524"/>
+      <stop offset="100%" stop-color="#0d0e18"/>
+    </linearGradient>
+
+    <linearGradient id="cyanBorder" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="100%" stop-color="#3ddc97"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .f-mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+    .f-sans { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .muted { fill: #8b8ba4; }
+    .bright { fill: #f0f0f8; font-weight: 600; }
+    .tag { font-size: 9.5px; font-weight: bold; font-family: 'JetBrains Mono', monospace; }
+  </style>
+
+  <!-- Background Canvas -->
+  <rect width="900" height="480" rx="14" fill="url(#bgGrad)" stroke="#1a1b2c" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <g transform="translate(40, 42)">
+    <text x="0" y="0" class="f-sans" font-size="22" fill="#ffffff" font-weight="700">Any command can become an interactive app</text>
+    <text x="0" y="24" class="f-sans" font-size="13" fill="#8e8ea8">Output flattened by shells is parsed deterministically into native interactive UI. No LLM hallucinations.</text>
+  </g>
+
+  <!-- 4 Cards Grid (2x2) -->
+
+  <!-- Card 1: git log -> Interactive Timeline -->
+  <g transform="translate(40, 95)">
+    <rect width="395" height="165" rx="10" fill="url(#cardGrad)" stroke="#27283e" stroke-width="1"/>
+    <!-- Top Bar -->
+    <path d="M 0 10 Q 0 0 10 0 L 385 0 Q 395 0 395 10 L 395 32 L 0 32 Z" fill="#171828"/>
+    <text x="14" y="20" class="f-mono" font-size="12" fill="#bd93f9" font-weight="bold">❯ git log</text>
+    <rect x="290" y="7" width="92" height="18" rx="4" fill="#251b3a"/>
+    <text x="336" y="19" text-anchor="middle" class="tag" fill="#bd93f9">VISUAL GRAPH</text>
+
+    <!-- Timeline Content -->
+    <g transform="translate(16, 48)">
+      <!-- Entry 1 -->
+      <circle cx="8" cy="8" r="4.5" fill="#00e5ff"/>
+      <line x1="8" y1="14" x2="8" y2="46" stroke="#2a2a3e" stroke-width="2"/>
+      <text x="24" y="11" class="f-mono" font-size="11" fill="#00e5ff">918ad1a</text>
+      <rect x="80" y="0" width="46" height="15" rx="3" fill="#002d33"/>
+      <text x="103" y="10.5" text-anchor="middle" class="tag" fill="#00e5ff">HEAD</text>
+      <text x="134" y="11" class="f-sans" font-size="11" fill="#e8e8f2">ci: initialize pnpm after Node</text>
+      <text x="365" y="11" text-anchor="end" class="f-mono" font-size="10" fill="#6e6e85">2h ago</text>
+
+      <!-- Entry 2 -->
+      <g transform="translate(0, 36)">
+        <circle cx="8" cy="8" r="4" fill="#3ddc97"/>
+        <line x1="8" y1="14" x2="8" y2="46" stroke="#2a2a3e" stroke-width="2"/>
+        <text x="24" y="11" class="f-mono" font-size="11" fill="#3ddc97">b7703cc</text>
+        <text x="80" y="11" class="f-sans" font-size="11" fill="#e8e8f2">ci: update Node 24 GH Actions</text>
+        <text x="365" y="11" text-anchor="end" class="f-mono" font-size="10" fill="#6e6e85">4h ago</text>
+      </g>
+
+      <!-- Entry 3 -->
+      <g transform="translate(0, 72)">
+        <circle cx="8" cy="8" r="4" fill="#ffb340"/>
+        <text x="24" y="11" class="f-mono" font-size="11" fill="#ffb340">5c1a102</text>
+        <text x="80" y="11" class="f-sans" font-size="11" fill="#e8e8f2">fix: harden terminal security &amp; PTY</text>
+        <text x="365" y="11" text-anchor="end" class="f-mono" font-size="10" fill="#6e6e85">1d ago</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Card 2: df -h -> Storage Meter -->
+  <g transform="translate(465, 95)">
+    <rect width="395" height="165" rx="10" fill="url(#cardGrad)" stroke="#27283e" stroke-width="1"/>
+    <path d="M 0 10 Q 0 0 10 0 L 385 0 Q 395 0 395 10 L 395 32 L 0 32 Z" fill="#171828"/>
+    <text x="14" y="20" class="f-mono" font-size="12" fill="#ff4d6a" font-weight="bold">❯ df -h</text>
+    <rect x="270" y="7" width="112" height="18" rx="4" fill="#2d151c"/>
+    <text x="326" y="19" text-anchor="middle" class="tag" fill="#ff4d6a">FULLEST FIRST</text>
+
+    <!-- Gauges Content -->
+    <g transform="translate(16, 46)">
+      <!-- Root partition -->
+      <text x="0" y="12" class="f-mono" font-size="11" fill="#e8e8f2">/dev/nvme0n1p2</text>
+      <text x="200" y="12" class="f-mono" font-size="10.5" fill="#8e8ea8">412G / 476G (87%)</text>
+      <rect x="0" y="18" width="360" height="9" rx="4.5" fill="#1c1d2c"/>
+      <rect x="0" y="18" width="313" height="9" rx="4.5" fill="#ff4d6a"/>
+
+      <!-- Home or Data partition -->
+      <g transform="translate(0, 36)">
+        <text x="0" y="12" class="f-mono" font-size="11" fill="#e8e8f2">/dev/nvme1n1p1</text>
+        <text x="200" y="12" class="f-mono" font-size="10.5" fill="#8e8ea8">520G / 950G (55%)</text>
+        <rect x="0" y="18" width="360" height="9" rx="4.5" fill="#1c1d2c"/>
+        <rect x="0" y="18" width="198" height="9" rx="4.5" fill="#ffb340"/>
+      </g>
+
+      <!-- Boot partition -->
+      <g transform="translate(0, 72)">
+        <text x="0" y="12" class="f-mono" font-size="11" fill="#e8e8f2">/dev/nvme0n1p1 (/boot)</text>
+        <text x="200" y="12" class="f-mono" font-size="10.5" fill="#8e8ea8">210M / 1024M (21%)</text>
+        <rect x="0" y="18" width="360" height="9" rx="4.5" fill="#1c1d2c"/>
+        <rect x="0" y="18" width="75" height="9" rx="4.5" fill="#3ddc97"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- Card 3: git status -s -> Staged / Unstaged Partitioned -->
+  <g transform="translate(40, 280)">
+    <rect width="395" height="165" rx="10" fill="url(#cardGrad)" stroke="#27283e" stroke-width="1"/>
+    <path d="M 0 10 Q 0 0 10 0 L 385 0 Q 395 0 395 10 L 395 32 L 0 32 Z" fill="#171828"/>
+    <text x="14" y="20" class="f-mono" font-size="12" fill="#3ddc97" font-weight="bold">❯ git status -s</text>
+    <rect x="290" y="7" width="92" height="18" rx="4" fill="#102b1f"/>
+    <text x="336" y="19" text-anchor="middle" class="tag" fill="#3ddc97">STAGED SPLIT</text>
+
+    <g transform="translate(16, 46)">
+      <!-- Staged header -->
+      <rect x="0" y="0" width="70" height="17" rx="3" fill="#152e22"/>
+      <text x="35" y="11.5" text-anchor="middle" class="tag" fill="#3ddc97">STAGED (2)</text>
+      <text x="80" y="12" class="f-mono" font-size="11" fill="#3ddc97">M  apps/desktop/src/app/theme.ts</text>
+      <text x="80" y="28" class="f-mono" font-size="11" fill="#3ddc97">A  crates/jky-detach/src/supervisor.rs</text>
+
+      <!-- Unstaged header -->
+      <g transform="translate(0, 44)">
+        <rect x="0" y="0" width="85" height="17" rx="3" fill="#332414"/>
+        <text x="42.5" y="11.5" text-anchor="middle" class="tag" fill="#ffb340">UNSTAGED (1)</text>
+        <text x="95" y="12" class="f-mono" font-size="11" fill="#ffb340"> M README.md</text>
+      </g>
+
+      <!-- Untracked -->
+      <g transform="translate(0, 78)">
+        <rect x="0" y="0" width="95" height="17" rx="3" fill="#2d1520"/>
+        <text x="47.5" y="11.5" text-anchor="middle" class="tag" fill="#ff4d6a">UNTRACKED (0)</text>
+        <text x="105" y="12" class="f-sans" font-size="11" fill="#71718c">clean working directory</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Card 4: Arbitrary JSON Output -> Tree & Inspect -->
+  <g transform="translate(465, 280)">
+    <rect width="395" height="165" rx="10" fill="url(#cardGrad)" stroke="#27283e" stroke-width="1"/>
+    <path d="M 0 10 Q 0 0 10 0 L 385 0 Q 395 0 395 10 L 395 32 L 0 32 Z" fill="#171828"/>
+    <text x="14" y="20" class="f-mono" font-size="12" fill="#00e5ff" font-weight="bold">❯ curl api.dev/telemetry</text>
+    <rect x="290" y="7" width="92" height="18" rx="4" fill="#002d33"/>
+    <text x="336" y="19" text-anchor="middle" class="tag" fill="#00e5ff">JSON VIEWER</text>
+
+    <g transform="translate(16, 46)">
+      <text x="0" y="12" class="f-mono" font-size="11" fill="#bd93f9">{</text>
+      <text x="16" y="28" class="f-mono" font-size="11" fill="#00e5ff">"version"</text>
+      <text x="80" y="28" class="f-mono" font-size="11" fill="#e8e8f2">: "0.1.0",</text>
+      <text x="16" y="44" class="f-mono" font-size="11" fill="#00e5ff">"supervisor"</text>
+      <text x="105" y="44" class="f-mono" font-size="11" fill="#3ddc97">{ "active": true, "sockets": 3 },</text>
+      <text x="16" y="60" class="f-mono" font-size="11" fill="#00e5ff">"security"</text>
+      <text x="90" y="60" class="f-mono" font-size="11" fill="#ffb340">{ "csp": "connect-src 'self'", "vault": "keychain" },</text>
+      <text x="16" y="76" class="f-mono" font-size="11" fill="#00e5ff">"performance"</text>
+      <text x="120" y="76" class="f-mono" font-size="11" fill="#ff79c6">{ "latency_ms": 0.4, "fps": 60 }</text>
+      <text x="0" y="92" class="f-mono" font-size="11" fill="#bd93f9">}</text>
+    </g>
+  </g>
+</svg>

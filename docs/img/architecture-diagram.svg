@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 440" width="900" height="440" role="img" aria-label="JKY Terminal Architecture: Zero-Ambient-Authority Security Perimeter">
+  <title>JKY Terminal Security &amp; Architecture Model</title>
+  <defs>
+    <linearGradient id="archBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08080c"/>
+      <stop offset="100%" stop-color="#0d0f1a"/>
+    </linearGradient>
+
+    <linearGradient id="layerUi" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#141525"/>
+      <stop offset="100%" stop-color="#191b30"/>
+    </linearGradient>
+
+    <linearGradient id="layerIpc" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1c162e"/>
+      <stop offset="100%" stop-color="#241b3c"/>
+    </linearGradient>
+
+    <linearGradient id="layerRust" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0c242c"/>
+      <stop offset="100%" stop-color="#10313c"/>
+    </linearGradient>
+
+    <linearGradient id="layerSupervisor" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#112b20"/>
+      <stop offset="100%" stop-color="#16382a"/>
+    </linearGradient>
+
+    <linearGradient id="layerOs" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#1e1e28"/>
+      <stop offset="100%" stop-color="#282836"/>
+    </linearGradient>
+  </defs>
+
+  <style>
+    .f-mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+    .f-sans { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+    .layer-title { font-family: Inter, sans-serif; font-size: 14px; font-weight: 700; fill: #ffffff; }
+    .layer-sub { font-family: 'JetBrains Mono', monospace; font-size: 11px; fill: #9a9ab2; }
+    .tag { font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: bold; }
+  </style>
+
+  <!-- Background Canvas -->
+  <rect width="900" height="440" rx="14" fill="url(#archBg)" stroke="#1a1b2c" stroke-width="1.5"/>
+
+  <!-- Header -->
+  <g transform="translate(40, 36)">
+    <text x="0" y="0" class="f-sans" font-size="20" fill="#ffffff" font-weight="700">The Window Can Ask. Only Rust Can Act.</text>
+    <text x="0" y="22" class="f-sans" font-size="12.5" fill="#8e8ea8">Zero ambient authority · Pinned IPC contracts · Sandboxed I/O · OS Keychain protection</text>
+  </g>
+
+  <!-- Left Side: Architectural Pillars -->
+  <g transform="translate(40, 90)">
+    <rect width="260" height="315" rx="8" fill="#0d0e17" stroke="#1f2034" stroke-width="1"/>
+    <text x="16" y="26" class="f-sans" font-size="12.5" fill="#00e5ff" font-weight="bold">THE 4 SECURITY INVARIANTS</text>
+
+    <!-- Invariant 1 -->
+    <g transform="translate(16, 44)">
+      <circle cx="6" cy="6" r="3.5" fill="#00e5ff"/>
+      <text x="16" y="9" class="f-sans" font-size="11.5" fill="#e8e8f2" font-weight="600">No Secret Getters</text>
+      <text x="16" y="24" class="f-sans" font-size="10" fill="#8e8ea8">No IPC command can ever return</text>
+      <text x="16" y="37" class="f-sans" font-size="10" fill="#8e8ea8">an API key or secret to the window.</text>
+    </g>
+
+    <!-- Invariant 2 -->
+    <g transform="translate(16, 110)">
+      <circle cx="6" cy="6" r="3.5" fill="#3ddc97"/>
+      <text x="16" y="9" class="f-sans" font-size="11.5" fill="#e8e8f2" font-weight="600">connect-src 'self'</text>
+      <text x="16" y="24" class="f-sans" font-size="10" fill="#8e8ea8">Frontend CSP allows no external</text>
+      <text x="16" y="37" class="f-sans" font-size="10" fill="#8e8ea8">network fetches. Exfiltration is void.</text>
+    </g>
+
+    <!-- Invariant 3 -->
+    <g transform="translate(16, 176)">
+      <circle cx="6" cy="6" r="3.5" fill="#bd93f9"/>
+      <text x="16" y="9" class="f-sans" font-size="11.5" fill="#e8e8f2" font-weight="600">Pinned Whitelists</text>
+      <text x="16" y="24" class="f-sans" font-size="10" fill="#8e8ea8">CI tests assert every IPC command</text>
+      <text x="16" y="37" class="f-sans" font-size="10" fill="#8e8ea8">and capability. No stealth backdoors.</text>
+    </g>
+
+    <!-- Invariant 4 -->
+    <g transform="translate(16, 242)">
+      <circle cx="6" cy="6" r="3.5" fill="#ffb340"/>
+      <text x="16" y="9" class="f-sans" font-size="11.5" fill="#e8e8f2" font-weight="600">Persistent Supervisor</text>
+      <text x="16" y="24" class="f-sans" font-size="10" fill="#8e8ea8">PTYs run under a daemon supervisor.</text>
+      <text x="16" y="37" class="f-sans" font-size="10" fill="#8e8ea8">Window close ≠ shell termination.</text>
+    </g>
+  </g>
+
+  <!-- Right Side: 5 Visual Stack Layers -->
+  <g transform="translate(325, 90)">
+
+    <!-- Layer 1: The Window (Frontend) -->
+    <g transform="translate(0, 0)">
+      <rect width="535" height="52" rx="7" fill="url(#layerUi)" stroke="#2f314d" stroke-width="1.2"/>
+      <text x="18" y="24" class="layer-title">The Window (Untrusted UI)</text>
+      <text x="18" y="40" class="layer-sub">React 18 · TypeScript · Vite · xterm.js WebGL2 · CodeMirror 6</text>
+      <rect x="395" y="14" width="125" height="22" rx="4" fill="#2d1a33"/>
+      <text x="457" y="28" text-anchor="middle" class="tag" fill="#ff79c6">ZERO AUTHORITY</text>
+    </g>
+
+    <!-- Flow Arrow 1 -->
+    <path d="M 267 53 L 267 63" stroke="#00e5ff" stroke-width="2" stroke-dasharray="3 3"/>
+
+    <!-- Layer 2: IPC Boundary -->
+    <g transform="translate(0, 65)">
+      <rect width="535" height="52" rx="7" fill="url(#layerIpc)" stroke="#4a3768" stroke-width="1.2"/>
+      <text x="18" y="24" class="layer-title">Tauri 2.0 IPC Firewall</text>
+      <text x="18" y="40" class="layer-sub">Pinned Command Whitelist · Strict Input Validation · No Ambient Egress</text>
+      <rect x="415" y="14" width="105" height="22" rx="4" fill="#382156"/>
+      <text x="467" y="28" text-anchor="middle" class="tag" fill="#bd93f9">TEST PINNED</text>
+    </g>
+
+    <!-- Flow Arrow 2 -->
+    <path d="M 267 118 L 267 128" stroke="#bd93f9" stroke-width="2" stroke-dasharray="3 3"/>
+
+    <!-- Layer 3: Rust Core Crates -->
+    <g transform="translate(0, 130)">
+      <rect width="535" height="52" rx="7" fill="url(#layerRust)" stroke="#1a5563" stroke-width="1.2"/>
+      <text x="18" y="24" class="layer-title">Rust Core Engine (19 Crates)</text>
+      <text x="18" y="40" class="layer-sub">jky-pty · jky-ai · jky-files · jky-live · jky-history · jky-tools · jky-audit</text>
+      <rect x="415" y="14" width="105" height="22" rx="4" fill="#00353d"/>
+      <text x="467" y="28" text-anchor="middle" class="tag" fill="#00e5ff">100% MEM-SAFE</text>
+    </g>
+
+    <!-- Flow Arrow 3 -->
+    <path d="M 267 183 L 267 193" stroke="#00e5ff" stroke-width="2" stroke-dasharray="3 3"/>
+
+    <!-- Layer 4: Terminal Supervisor -->
+    <g transform="translate(0, 195)">
+      <rect width="535" height="52" rx="7" fill="url(#layerSupervisor)" stroke="#225841" stroke-width="1.2"/>
+      <text x="18" y="24" class="layer-title">PTY Supervisor Daemon (jky-detach)</text>
+      <text x="18" y="40" class="layer-sub">Independent PTY Lifecycles · Unix Domain Sockets / Windows Named Pipes</text>
+      <rect x="405" y="14" width="115" height="22" rx="4" fill="#133d2c"/>
+      <text x="462" y="28" text-anchor="middle" class="tag" fill="#3ddc97">TMUX-LESS SHELLS</text>
+    </g>
+
+    <!-- Flow Arrow 4 -->
+    <path d="M 267 248 L 267 258" stroke="#3ddc97" stroke-width="2" stroke-dasharray="3 3"/>
+
+    <!-- Layer 5: Host OS & Hardware -->
+    <g transform="translate(0, 260)">
+      <rect width="535" height="52" rx="7" fill="url(#layerOs)" stroke="#3f3f54" stroke-width="1.2"/>
+      <text x="18" y="24" class="layer-title">Operating System &amp; Secure Vault</text>
+      <text x="18" y="40" class="layer-sub">macOS Keychain · Windows Credential Manager · Linux Secret Service D-Bus</text>
+      <rect x="410" y="14" width="110" height="22" rx="4" fill="#1e202f"/>
+      <text x="465" y="28" text-anchor="middle" class="tag" fill="#ffb340">ZEROIZE VAULT</text>
+    </g>
+
+  </g>
+</svg>

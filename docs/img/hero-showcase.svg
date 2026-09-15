@@ -1,0 +1,330 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 540" width="920" height="540" role="img" aria-label="JKY Terminal Interactive Showcase">
+  <title>JKY Terminal — AI Terminal. Infinite Possibilities.</title>
+  <defs>
+    <!-- Background Gradients -->
+    <linearGradient id="windowBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#08080c"/>
+      <stop offset="50%" stop-color="#0d0e17"/>
+      <stop offset="100%" stop-color="#050508"/>
+    </linearGradient>
+
+    <linearGradient id="neonCyanPurple" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#00e5ff"/>
+      <stop offset="50%" stop-color="#bd93f9"/>
+      <stop offset="100%" stop-color="#ff3cf0"/>
+    </linearGradient>
+
+    <linearGradient id="cardBg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#141422"/>
+      <stop offset="100%" stop-color="#0c0d15"/>
+    </linearGradient>
+
+    <linearGradient id="aiCardBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#161226"/>
+      <stop offset="100%" stop-color="#0f0b1a"/>
+    </linearGradient>
+
+    <filter id="cyanGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+
+    <filter id="subtleGlow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur stdDeviation="3" result="blur"/>
+      <feComposite in="SourceGraphic" in2="blur" operator="over"/>
+    </filter>
+  </defs>
+
+  <style>
+    @keyframes cycleText1 {
+      0%, 22% { opacity: 1; transform: translateY(0); }
+      25%, 100% { opacity: 0; transform: translateY(-4px); }
+    }
+    @keyframes cycleText2 {
+      0%, 24% { opacity: 0; transform: translateY(4px); }
+      27%, 47% { opacity: 1; transform: translateY(0); }
+      50%, 100% { opacity: 0; transform: translateY(-4px); }
+    }
+    @keyframes cycleText3 {
+      0%, 49% { opacity: 0; transform: translateY(4px); }
+      52%, 72% { opacity: 1; transform: translateY(0); }
+      75%, 100% { opacity: 0; transform: translateY(-4px); }
+    }
+    @keyframes cycleText4 {
+      0%, 74% { opacity: 0; transform: translateY(4px); }
+      77%, 97% { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-4px); }
+    }
+
+    @keyframes blinkCursor {
+      0%, 49% { opacity: 1; }
+      50%, 100% { opacity: 0; }
+    }
+
+    @keyframes pulseGlow {
+      0%, 100% { opacity: 0.8; filter: drop-shadow(0 0 8px rgba(0,229,255,0.6)); }
+      50% { opacity: 0.4; filter: drop-shadow(0 0 2px rgba(0,229,255,0.2)); }
+    }
+
+    @keyframes pulseAi {
+      0%, 100% { opacity: 0.9; }
+      50% { opacity: 0.5; }
+    }
+
+    .f-mono { font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+    .f-sans { font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+
+    .t1 { animation: cycleText1 16s infinite; }
+    .t2 { animation: cycleText2 16s infinite; }
+    .t3 { animation: cycleText3 16s infinite; }
+    .t4 { animation: cycleText4 16s infinite; }
+    .cursor { animation: blinkCursor 0.8s infinite; }
+    .pulse-dot { animation: pulseGlow 2.5s infinite; }
+    .pulse-ai { animation: pulseAi 3s infinite; }
+  </style>
+
+  <!-- Outer Canvas / Shadow -->
+  <rect x="10" y="10" width="900" height="520" rx="14" fill="#000000" opacity="0.6"/>
+
+  <!-- Main Window Frame -->
+  <rect x="10" y="10" width="900" height="520" rx="14" fill="url(#windowBg)" stroke="#1e1e32" stroke-width="1.5"/>
+  <!-- Top Neon Accent Border Line -->
+  <path d="M 24 10 L 896 10" stroke="url(#neonCyanPurple)" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Window Header / Titlebar -->
+  <rect x="10" y="10" width="900" height="42" rx="14" fill="#0c0d16"/>
+  <rect x="10" y="42" width="900" height="10" fill="#0c0d16"/>
+  <line x1="10" y1="52" x2="910" y2="52" stroke="#1c1d2e" stroke-width="1"/>
+
+  <!-- Window Traffic Lights (macOS style) -->
+  <circle cx="34" cy="31" r="6" fill="#ff5f56"/>
+  <circle cx="54" cy="31" r="6" fill="#ffbd2e"/>
+  <circle cx="74" cy="31" r="6" fill="#27c93f"/>
+
+  <!-- Tabs in Header -->
+  <rect x="102" y="18" width="138" height="26" rx="6" fill="#18192a" stroke="#2c2d46" stroke-width="1"/>
+  <circle cx="116" cy="31" r="3.5" fill="#00e5ff" class="pulse-dot"/>
+  <text x="128" y="35" class="f-mono" font-size="11" fill="#e8e8f2" font-weight="600">1: zsh [pty]</text>
+
+  <rect x="246" y="18" width="148" height="26" rx="6" fill="#0f101a"/>
+  <circle cx="260" cy="31" r="3.5" fill="#3ddc97"/>
+  <text x="272" y="35" class="f-mono" font-size="11" fill="#7d7d96">2: cargo test</text>
+
+  <rect x="400" y="18" width="154" height="26" rx="6" fill="#0f101a"/>
+  <circle cx="414" cy="31" r="3.5" fill="#bd93f9"/>
+  <text x="426" y="35" class="f-mono" font-size="11" fill="#7d7d96">3: remote:prod-1</text>
+
+  <!-- Title & Status right -->
+  <text x="640" y="35" class="f-mono" font-size="10.5" fill="#5e5e78">supervisor: active · pid 48291</text>
+  <rect x="802" y="21" width="94" height="20" rx="4" fill="#12252a" stroke="#00a3b5" stroke-width="0.8"/>
+  <text x="849" y="34" text-anchor="middle" class="f-mono" font-size="9.5" fill="#00e5ff" font-weight="600">WebGL2 · 60fps</text>
+
+  <!-- Left Sidebar Navigation Rail Mockup -->
+  <rect x="10" y="52" width="52" height="456" fill="#090a10"/>
+  <line x1="62" y1="52" x2="62" y2="508" stroke="#1a1b2a" stroke-width="1"/>
+
+  <!-- Rail Icons (Sections) -->
+  <text x="36" y="86" text-anchor="middle" class="f-mono" font-size="16" fill="#00e5ff" font-weight="bold">❯</text>
+  <circle cx="36" cy="81" r="14" fill="#00e5ff" opacity="0.12"/>
+
+  <text x="36" y="126" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">✎</text>
+  <text x="36" y="166" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">▦</text>
+  <text x="36" y="206" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">⇄</text>
+  <text x="36" y="246" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">↺</text>
+  <text x="36" y="286" text-anchor="middle" class="f-mono" font-size="15" fill="#bd93f9">✦</text>
+  <text x="36" y="326" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">⌂</text>
+  <text x="36" y="366" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">⌥</text>
+  <text x="36" y="406" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">⊞</text>
+  <text x="36" y="446" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">◈</text>
+  <text x="36" y="486" text-anchor="middle" class="f-mono" font-size="15" fill="#73738c">⚙</text>
+
+  <!-- Terminal Content Area -->
+  <!-- Top Prompt Line -->
+  <g transform="translate(80, 80)">
+    <text x="0" y="0" class="f-mono" font-size="12.5" fill="#3ddc97" font-weight="600">kartikeyajay2006</text>
+    <text x="122" y="0" class="f-mono" font-size="12.5" fill="#6e6e85">@</text>
+    <text x="134" y="0" class="f-mono" font-size="12.5" fill="#00e5ff" font-weight="600">workstation</text>
+    <text x="226" y="0" class="f-mono" font-size="12.5" fill="#6e6e85">in</text>
+    <text x="246" y="0" class="f-mono" font-size="12.5" fill="#ffb340" font-weight="600">~/jky-terminal</text>
+    <text x="352" y="0" class="f-mono" font-size="12.5" fill="#6e6e85">on</text>
+    <text x="372" y="0" class="f-mono" font-size="12.5" fill="#bd93f9" font-weight="600"> main</text>
+    <rect x="424" y="-11" width="34" height="15" rx="3" fill="#1e1528"/>
+    <text x="441" y="0" text-anchor="middle" class="f-mono" font-size="10" fill="#ff3cf0" font-weight="bold">CLEAN</text>
+  </g>
+
+  <!-- Dynamic Typing Prompt Line with Changing Commands -->
+  <g transform="translate(80, 106)">
+    <text x="0" y="0" class="f-mono" font-size="15" fill="#00e5ff" font-weight="bold">❯ </text>
+
+    <!-- Cycle 1 -->
+    <g class="t1">
+      <text x="20" y="0" class="f-mono" font-size="13.5" fill="#e8e8f2" font-weight="500">docker ps --format table</text>
+      <rect x="228" y="-12" width="8" height="16" fill="#00e5ff" class="cursor"/>
+    </g>
+
+    <!-- Cycle 2 -->
+    <g class="t2">
+      <text x="20" y="0" class="f-mono" font-size="13.5" fill="#bd93f9" font-weight="500">jky ai "Explain current telemetry &amp; security posture"</text>
+      <rect x="440" y="-12" width="8" height="16" fill="#bd93f9" class="cursor"/>
+    </g>
+
+    <!-- Cycle 3 -->
+    <g class="t3">
+      <text x="20" y="0" class="f-mono" font-size="13.5" fill="#3ddc97" font-weight="500">git log -n 3 --oneline --graph</text>
+      <rect x="275" y="-12" width="8" height="16" fill="#3ddc97" class="cursor"/>
+    </g>
+
+    <!-- Cycle 4 -->
+    <g class="t4">
+      <text x="20" y="0" class="f-mono" font-size="13.5" fill="#ffb340" font-weight="500">df -h /dev/nvme0n1p2</text>
+      <rect x="195" y="-12" width="8" height="16" fill="#ffb340" class="cursor"/>
+    </g>
+  </g>
+
+  <!-- Command Output / App Transformation Card (Any command can become an app) -->
+  <g transform="translate(80, 128)">
+    <!-- App Container Box -->
+    <rect x="0" y="0" width="510" height="240" rx="8" fill="url(#cardBg)" stroke="#222336" stroke-width="1.2"/>
+
+    <!-- App Card Header -->
+    <path d="M 0 8 Q 0 0 8 0 L 502 0 Q 510 0 510 8 L 510 32 L 0 32 Z" fill="#131420"/>
+    <line x1="0" y1="32" x2="510" y2="32" stroke="#25263a" stroke-width="1"/>
+
+    <!-- Live Parser Pill Badge -->
+    <rect x="12" y="7" width="108" height="18" rx="4" fill="#00353d" stroke="#00a3b5" stroke-width="0.8"/>
+    <text x="66" y="19.5" text-anchor="middle" class="f-mono" font-size="10" fill="#00e5ff" font-weight="bold">⚡ LIVE PARSER</text>
+    <text x="130" y="20" class="f-sans" font-size="11.5" fill="#c3ccd9" font-weight="600">Docker Containers (3 Active)</text>
+
+    <text x="496" y="20" text-anchor="end" class="f-mono" font-size="10" fill="#71718c">no model · pure rust parser</text>
+
+    <!-- Row 1: Container api-gateway -->
+    <g transform="translate(14, 46)">
+      <circle cx="6" cy="11" r="4" fill="#3ddc97"/>
+      <text x="18" y="15" class="f-mono" font-size="12" fill="#ffffff" font-weight="bold">api-gateway</text>
+      <rect x="110" y="3" width="52" height="16" rx="3" fill="#1b2a22"/>
+      <text x="136" y="14.5" text-anchor="middle" class="f-mono" font-size="9" fill="#3ddc97">UP 4h</text>
+      <text x="174" y="15" class="f-mono" font-size="11" fill="#8e8ea6">0.0.0.0:8080→80/tcp</text>
+
+      <!-- Memory Bar -->
+      <rect x="330" y="6" width="90" height="9" rx="4.5" fill="#1e1e2c"/>
+      <rect x="330" y="6" width="38" height="9" rx="4.5" fill="#00e5ff"/>
+      <text x="428" y="14" class="f-mono" font-size="10" fill="#7b7f96">42%</text>
+
+      <rect x="460" y="2" width="38" height="18" rx="3" fill="#1c1d2e" stroke="#2e3048" stroke-width="0.7"/>
+      <text x="479" y="14.5" text-anchor="middle" class="f-mono" font-size="9.5" fill="#c3ccd9">LOGS</text>
+    </g>
+
+    <!-- Row 2: Container postgres-db -->
+    <g transform="translate(14, 82)">
+      <circle cx="6" cy="11" r="4" fill="#3ddc97"/>
+      <text x="18" y="15" class="f-mono" font-size="12" fill="#ffffff" font-weight="bold">postgres-db</text>
+      <rect x="110" y="3" width="52" height="16" rx="3" fill="#1b2a22"/>
+      <text x="136" y="14.5" text-anchor="middle" class="f-mono" font-size="9" fill="#3ddc97">UP 18h</text>
+      <text x="174" y="15" class="f-mono" font-size="11" fill="#8e8ea6">127.0.0.1:5432→5432/tcp</text>
+
+      <!-- Memory Bar -->
+      <rect x="330" y="6" width="90" height="9" rx="4.5" fill="#1e1e2c"/>
+      <rect x="330" y="6" width="62" height="9" rx="4.5" fill="#bd93f9"/>
+      <text x="428" y="14" class="f-mono" font-size="10" fill="#7b7f96">68%</text>
+
+      <rect x="460" y="2" width="38" height="18" rx="3" fill="#1c1d2e" stroke="#2e3048" stroke-width="0.7"/>
+      <text x="479" y="14.5" text-anchor="middle" class="f-mono" font-size="9.5" fill="#c3ccd9">EXEC</text>
+    </g>
+
+    <!-- Row 3: Container redis-cache -->
+    <g transform="translate(14, 118)">
+      <circle cx="6" cy="11" r="4" fill="#3ddc97"/>
+      <text x="18" y="15" class="f-mono" font-size="12" fill="#ffffff" font-weight="bold">redis-cache</text>
+      <rect x="110" y="3" width="52" height="16" rx="3" fill="#1b2a22"/>
+      <text x="136" y="14.5" text-anchor="middle" class="f-mono" font-size="9" fill="#3ddc97">UP 18h</text>
+      <text x="174" y="15" class="f-mono" font-size="11" fill="#8e8ea6">127.0.0.1:6379→6379/tcp</text>
+
+      <!-- Memory Bar -->
+      <rect x="330" y="6" width="90" height="9" rx="4.5" fill="#1e1e2c"/>
+      <rect x="330" y="6" width="16" height="9" rx="4.5" fill="#3ddc97"/>
+      <text x="428" y="14" class="f-mono" font-size="10" fill="#7b7f96">18%</text>
+
+      <rect x="460" y="2" width="38" height="18" rx="3" fill="#1c1d2e" stroke="#2e3048" stroke-width="0.7"/>
+      <text x="479" y="14.5" text-anchor="middle" class="f-mono" font-size="9.5" fill="#c3ccd9">STOP</text>
+    </g>
+
+    <!-- Action Bar & Safety Contract -->
+    <line x1="0" y1="160" x2="510" y2="160" stroke="#1f2030" stroke-width="1"/>
+    <g transform="translate(14, 172)">
+      <text x="0" y="12" class="f-sans" font-size="10.5" fill="#83839c">Safety guarantee: </text>
+      <text x="100" y="12" class="f-sans" font-size="10.5" fill="#00e5ff">Never alters stdout · Actions type commands to prompt only · Declines on pipes</text>
+
+      <!-- Quick Action Buttons -->
+      <g transform="translate(0, 26)">
+        <rect x="0" y="0" width="108" height="24" rx="4" fill="#191a2a" stroke="#2e304a" stroke-width="1"/>
+        <text x="54" y="16" text-anchor="middle" class="f-mono" font-size="10.5" fill="#e8e8f2">docker compose ps</text>
+
+        <rect x="118" y="0" width="86" height="24" rx="4" fill="#191a2a" stroke="#2e304a" stroke-width="1"/>
+        <text x="161" y="16" text-anchor="middle" class="f-mono" font-size="10.5" fill="#e8e8f2">docker stats</text>
+
+        <rect x="214" y="0" width="76" height="24" rx="4" fill="#191a2a" stroke="#2e304a" stroke-width="1"/>
+        <text x="252" y="16" text-anchor="middle" class="f-mono" font-size="10.5" fill="#e8e8f2">prune -f</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Right Side: AI Assistant & Real-Time Hardware Telemetry Panel -->
+  <g transform="translate(605, 128)">
+    <!-- AI Assistant Floating Card -->
+    <rect x="0" y="0" width="285" height="138" rx="8" fill="url(#aiCardBg)" stroke="#382952" stroke-width="1.2"/>
+    <!-- Card Header -->
+    <path d="M 0 8 Q 0 0 8 0 L 277 0 Q 285 0 285 8 L 285 28 L 0 28 Z" fill="#19122c"/>
+    <line x1="0" y1="28" x2="285" y2="28" stroke="#362650" stroke-width="1"/>
+
+    <text x="12" y="19" class="f-mono" font-size="12" fill="#ff3cf0">✦</text>
+    <text x="28" y="19" class="f-sans" font-size="11" fill="#e8e8f2" font-weight="600">AI Assistant (Anthropic / Claude)</text>
+    <circle cx="270" cy="14" r="3.5" fill="#bd93f9" class="pulse-ai"/>
+
+    <text x="12" y="48" class="f-sans" font-size="11" fill="#bd93f9" font-weight="600">Secure Vault Connected</text>
+    <text x="12" y="66" class="f-sans" font-size="10.5" fill="#c3ccd9" width="260">
+      <tspan x="12" dy="0">Your API key is stored in the native OS</tspan>
+      <tspan x="12" dy="16">Keychain. The webview has zero access.</tspan>
+      <tspan x="12" dy="16">Destructive shell tools require confirmation.</tspan>
+    </text>
+    <rect x="12" y="104" width="112" height="20" rx="3" fill="#2d1b46"/>
+    <text x="68" y="117.5" text-anchor="middle" class="f-mono" font-size="9" fill="#ff79c6" font-weight="bold">ZERO AMBIENT CSP</text>
+
+    <!-- Telemetry & Supervisor Box -->
+    <g transform="translate(0, 150)">
+      <rect x="0" y="0" width="285" height="90" rx="8" fill="url(#cardBg)" stroke="#222336" stroke-width="1.2"/>
+      <path d="M 0 8 Q 0 0 8 0 L 277 0 Q 285 0 285 8 L 285 26 L 0 26 Z" fill="#131420"/>
+      <line x1="0" y1="26" x2="285" y2="26" stroke="#25263a" stroke-width="1"/>
+
+      <text x="12" y="18" class="f-sans" font-size="10.5" fill="#c3ccd9" font-weight="600">Session Supervisor (tmux-less)</text>
+      <circle cx="270" cy="13" r="3.5" fill="#3ddc97"/>
+
+      <text x="12" y="46" class="f-sans" font-size="10" fill="#9a9ab2">Shells outlive window closing.</text>
+      <text x="12" y="62" class="f-sans" font-size="10" fill="#9a9ab2">Reattaches tail buffer seamlessly.</text>
+
+      <g transform="translate(12, 70)">
+        <text x="0" y="10" class="f-mono" font-size="9.5" fill="#00e5ff">CPU: 4.2%</text>
+        <text x="75" y="10" class="f-mono" font-size="9.5" fill="#3ddc97">RAM: 142MB</text>
+        <text x="160" y="10" class="f-mono" font-size="9.5" fill="#ffb340">TESTS: 3,318 ✓</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- Bottom Interactive App Bar / Status Bar -->
+  <rect x="10" y="504" width="900" height="26" rx="0" fill="#0c0d16"/>
+  <rect x="10" y="516" width="900" height="14" rx="14" fill="#0c0d16"/>
+  <line x1="10" y1="504" x2="910" y2="504" stroke="#1c1d2e" stroke-width="1"/>
+
+  <g transform="translate(24, 521)">
+    <text x="0" y="0" class="f-mono" font-size="10.5" fill="#00e5ff" font-weight="600">⚡ JKY v0.1.0</text>
+    <text x="95" y="0" class="f-mono" font-size="10" fill="#6e6e85">|</text>
+    <text x="110" y="0" class="f-mono" font-size="10" fill="#9a9ab2">Theme: <tspan fill="#ff3cf0" font-weight="bold">Cyberpunk</tspan> (7 available)</text>
+    <text x="290" y="0" class="f-mono" font-size="10" fill="#6e6e85">|</text>
+    <text x="305" y="0" class="f-mono" font-size="10" fill="#3ddc97">Frontend: 2,229 tests</text>
+    <text x="445" y="0" class="f-mono" font-size="10" fill="#6e6e85">|</text>
+    <text x="460" y="0" class="f-mono" font-size="10" fill="#3ddc97">Rust: 1,089 tests</text>
+    <text x="590" y="0" class="f-mono" font-size="10" fill="#6e6e85">|</text>
+    <text x="605" y="0" class="f-mono" font-size="10" fill="#e8e8f2">Ctrl+K: Palette</text>
+    <text x="710" y="0" class="f-mono" font-size="10" fill="#6e6e85">|</text>
+    <text x="725" y="0" class="f-mono" font-size="10" fill="#bd93f9">kartikeyajay2006/jky-terminal</text>
+  </g>
+</svg>
