@@ -274,7 +274,12 @@ fn a_real_fish_emits_the_marks_through_a_real_pty() {
 
     let seen = watched.wait(
         |s| match s.find("MARK42END") {
-            Some(at) => s[at..].contains("\u{1b}]133;D;"),
+            // `D` is printed before the base64 report. Returning as soon as
+            // the first lands made the assertion below race the rest of the
+            // same fish postexec handler on a busy machine.
+            Some(at) => {
+                s[at..].contains("\u{1b}]133;D;") && s[at..].contains("]1337;JKYDone=")
+            }
             None => false,
         },
         Duration::from_secs(20),
