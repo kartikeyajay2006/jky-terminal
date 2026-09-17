@@ -21,10 +21,12 @@ fn writer_shell() -> ShellSpec {
     #[cfg(windows)]
     {
         ShellSpec {
-            program: "cmd.exe".into(),
+            program: "powershell.exe".into(),
             args: vec![
-                "/C".into(),
-                format!("for /L %i in (1,1,{LINES}) do @echo {MARKER}"),
+                "-NoProfile".into(),
+                "-NonInteractive".into(),
+                "-Command".into(),
+                format!("1..{LINES} | ForEach-Object {{ [Console]::WriteLine('{MARKER}') }}"),
             ],
         }
     }

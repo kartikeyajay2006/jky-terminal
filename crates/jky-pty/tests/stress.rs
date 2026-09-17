@@ -15,10 +15,20 @@ fn stress_shell() -> ShellSpec {
     #[cfg(windows)]
     {
         ShellSpec {
-            program: "cmd.exe".into(),
+            // `cmd` parses a `for` body differently depending on whether it
+            // was launched from a batch file or a direct CreateProcess call.
+            // That made the old loop print only a tiny prefix on GitHub's
+            // Windows runner and turned a transport test into a shell-parser
+            // test. PowerShell is present on every Windows version we ship
+            // to and gives the PTY one unambiguous writer.
+            program: "powershell.exe".into(),
             args: vec![
-                "/C".into(),
-                format!("echo {START} & for /L %i in (1,1,{LINES}) do @echo {BODY} & echo {END}"),
+                "-NoProfile".into(),
+                "-NonInteractive".into(),
+                "-Command".into(),
+                format!(
+                    "[Console]::WriteLine('{START}'); 1..{LINES} | ForEach-Object {{ [Console]::WriteLine('{BODY}') }}; [Console]::WriteLine('{END}')"
+                ),
             ],
         }
     }

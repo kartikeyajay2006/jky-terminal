@@ -115,12 +115,23 @@ fn terminate_tree(pid: u32) {
     #[cfg(unix)]
     {
         // Negative pid targets the dedicated process group established above.
-        let _ = Command::new("kill").arg("-TERM").arg(format!("-{pid}")).status();
+        // A command can finish in the gap before its timeout handler gets
+        // scheduled. That is already the desired end state; keep the benign
+        // race from printing a scary `kill` error into an otherwise clean
+        // test or application log.
+        let _ = Command::new("kill")
+            .arg("-TERM")
+            .arg(format!("-{pid}"))
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
     }
     #[cfg(windows)]
     {
         let _ = Command::new("taskkill")
             .args(["/PID", &pid.to_string(), "/T", "/F"])
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
             .status();
     }
 }
