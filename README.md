@@ -3,8 +3,8 @@
 # ⚡ JKY Terminal
 
 <p align="center">
-  <b>The AI Terminal. Infinite Possibilities.</b><br>
-  A high-performance, local-first terminal emulator, reactive editor, intelligent assistant, and developer cockpit — unified into a single memory-safe desktop application.
+  <b>The local-first, persistent AI terminal.</b><br>
+  A security-minded terminal that keeps your shells alive, turns trusted command output into useful views, and puts an approval-first assistant beside your work.
 </p>
 
 [![CI Workflow](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
@@ -73,12 +73,18 @@ JKY Terminal rethinks every assumption of command-line tools:
 
 ## ⚔️ Why JKY Terminal?
 
+JKY is not trying to replace every terminal for every person. Its focus is a
+local-first terminal workflow: persistent shells, deterministic command views,
+and an assistant that asks before it acts. Native-first terminals remain the
+better choice when maximum rendering performance or the broadest terminal
+protocol support is the priority.
+
 | Capability | **JKY Terminal** | Ghostty | Warp | Alacritty | WezTerm | VS Code Terminal |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **tmux-less Shell Persistence** | ✅ **Built-in Daemon** | ❌ Dies on close | ❌ Cloud dependent | ❌ Dies on close | ❌ Requires tmux | ❌ Session lost |
+| **tmux-less Shell Persistence** | ✅ **Built-in Daemon** | ❌ Requires external multiplexer | ⚠️ Product-managed workflows | ❌ Requires external multiplexer | ❌ Requires tmux or mux server | ❌ Session lost |
 | **Command-to-App Parsers** | ✅ **Deterministic Rust** | ❌ Plain text | ⚠️ Cloud AI | ❌ Plain text | ❌ Plain text | ❌ Plain text |
 | **Zero-Ambient-Authority CSP** | ✅ **`connect-src 'self'`** | N/A | ❌ Telemetry | N/A | N/A | ❌ Ambient Node |
-| **Local-First & 100% Free** | ✅ **MIT Open Source** | ✅ Free | ❌ Account Required | ✅ Free | ✅ Free | ✅ Free |
+| **Local-first default** | ✅ **MIT Open Source** | ✅ Free | ⚠️ Account and cloud features available | ✅ Free | ✅ Free | ✅ Free |
 | **Integrated Lightweight Editor** | ✅ **CodeMirror 6 (<35kB)** | ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Full IDE |
 | **Native Child Browser Webview** | ✅ **WebKitGTK / WebView2** | ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Simple Browser |
 | **AI Assistant with Keychain Vault** | ✅ **OS Keychain + Tool Approvals** | ❌ None | ⚠️ Cloud Account | ❌ None | ❌ None | ⚠️ Extension Based |
@@ -181,7 +187,7 @@ One cohesive desktop window holds everything you need for daily software enginee
 | **Dashboard** | `⌂` | Local-first personal workspace with Markdown notes, task boards, calendars, and reminders stored on disk. |
 | **Developer** | `⌥` | 11 instant offline tools: JSON formatter, YAML viewer, Diff, Hash, JWT inspector, Regex tester with worker timeout, HTTP tester, System Monitor, and DNS. |
 | **Apps** | `⊞` | GitHub pull requests, Gmail (read-only PKCE), native child browser webview (WebKitGTK/WebView2), Weather, News, and Map. |
-| **Games** | `◈` | 4 classic developer brain-teasers (Tetris, Snake, 2048, Minesweeper) with local high score tracking. |
+| **Games** | `◈` | Keyboard-first arcade: Dino Run, Snake, Tic-Tac-Toe, and Flappy Bird, with local records and play statistics. |
 
 → **[Detailed architectural rationale for each section](docs/FEATURES.md)**
 
