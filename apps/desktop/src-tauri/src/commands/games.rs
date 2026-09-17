@@ -47,6 +47,7 @@ mod tests {
                 "snake" => "Snake",
                 "tictactoe" => "Tic Tac Toe",
                 "flappy" => "Flappy Bird",
+                "2048" => "2048",
                 _ => unreachable!(),
             };
             assert!(text.contains(label), "{id} missing from: {text}");

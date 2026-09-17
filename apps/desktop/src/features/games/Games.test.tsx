@@ -23,7 +23,7 @@ function nav() {
 describe("the games section", () => {
   beforeEach(() => localStorage.clear());
 
-  it("lists all four games", () => {
+  it("lists every game", () => {
     render(<Games />);
     for (const game of GAMES) {
       expect(within(nav()).getByRole("button", { name: new RegExp(game.label, "i") }))
@@ -32,7 +32,7 @@ describe("the games section", () => {
   });
 
   it("lists them in the order the user asked for", () => {
-    expect(GAMES.map((g) => g.id)).toEqual(["dino", "snake", "tictactoe", "flappy"]);
+    expect(GAMES.map((g) => g.id)).toEqual(["dino", "snake", "tictactoe", "flappy", "2048"]);
   });
 
   it("opens on the arcade, so a first visit shows what is here", () => {

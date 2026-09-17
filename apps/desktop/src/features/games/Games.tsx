@@ -3,6 +3,7 @@ import { DinoRun } from "./dino/DinoRun";
 import { SnakeGame } from "./snake/SnakeGame";
 import { TicTacToe } from "./tictactoe/TicTacToe";
 import { FlappyBird } from "./flappy/FlappyBird";
+import { Game2048 } from "./2048/Game2048";
 import { Arcade } from "./Arcade";
 import { getPlatform } from "../../platform";
 import { highScore, padScore, type GameId } from "./scores";
@@ -32,8 +33,8 @@ function loadLastView(): View {
  * The Games section.
  *
  * Only the chosen game is mounted, which matters more here than anywhere else
- * in the app: each of the three action games runs a `requestAnimationFrame`
- * loop, and mounting all four would leave three of them painting boards
+ * in the app: each action game runs a `requestAnimationFrame` loop, and
+ * mounting every game would leave boards nobody is looking at
  * nobody is looking at. Unmounting is also what stops a game the moment you
  * walk away from it, so a dinosaur is not still running into cactuses while
  * you read your notes.
@@ -132,6 +133,7 @@ export function Games() {
         {view === "snake" && <SnakeGame />}
         {view === "tictactoe" && <TicTacToe />}
         {view === "flappy" && <FlappyBird />}
+        {view === "2048" && <Game2048 />}
       </div>
     </div>
   );

@@ -75,4 +75,20 @@ export const GAMES: ArcadeGame[] = [
       "▀▀▀▀▀▀▀▀▀▀▀▀▀ ",
     ],
   },
+  {
+    id: "2048",
+    label: "2048",
+    glyph: "▣",
+    blurb: "Slide, merge, and build the 2048 tile.",
+    scored: true,
+    keys: "↑ ↓ ← → · WASD",
+    tone: "violet",
+    art: [
+      "┌────┬────┐",
+      "│  2 │  4 │",
+      "├────┼────┤",
+      "│ 16 │ 32 │",
+      "└────┴────┘",
+    ],
+  },
 ];

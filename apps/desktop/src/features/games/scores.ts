@@ -10,7 +10,7 @@
  * already live here.
  */
 
-export type GameId = "dino" | "snake" | "tictactoe" | "flappy";
+export type GameId = "dino" | "snake" | "tictactoe" | "flappy" | "2048";
 
 const HIGH_SCORE_KEY = "jky.games.highscores";
 const TALLY_KEY = "jky.games.tictactoe";

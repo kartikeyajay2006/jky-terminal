@@ -9,10 +9,11 @@ describe("decoding a game from the shell", () => {
     expect(decodeGamePayload("JKYGame=2")).toBe("snake");
     expect(decodeGamePayload("JKYGame=3")).toBe("tictactoe");
     expect(decodeGamePayload("JKYGame=4")).toBe("flappy");
+    expect(decodeGamePayload("JKYGame=5")).toBe("2048");
   });
 
-  it("ignores a number outside the four games", () => {
-    for (const payload of ["JKYGame=0", "JKYGame=5", "JKYGame=-1", "JKYGame=99"]) {
+  it("ignores a number outside the five games", () => {
+    for (const payload of ["JKYGame=0", "JKYGame=6", "JKYGame=-1", "JKYGame=99"]) {
       expect(decodeGamePayload(payload)).toBeNull();
     }
   });
@@ -46,7 +47,7 @@ describe("the shell's numbering", () => {
   });
 
   it("matches the order the section lists them in", () => {
-    // The nav is numbered 1–4 on screen, and those numbers are what someone
+    // The nav is numbered on screen, and those numbers are what someone
     // will type. If the two ever disagree the command opens the wrong game.
     expect(SHELL_ORDER).toEqual(GAMES.map((g) => g.id));
   });

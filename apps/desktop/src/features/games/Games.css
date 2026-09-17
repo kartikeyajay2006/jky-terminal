@@ -544,6 +544,63 @@
   text-align: center;
 }
 
+/* ---- 2048 ---------------------------------------------------------------- */
+
+.g2048 {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(58px, 86px));
+  gap: var(--s2);
+  align-self: center;
+  padding: var(--s3);
+  border: 1px solid color-mix(in srgb, var(--violet) 55%, var(--line-strong));
+  border-radius: var(--radius-lg);
+  background: color-mix(in srgb, var(--violet) 7%, var(--ground));
+  box-shadow: 0 0 30px color-mix(in srgb, var(--violet) 12%, transparent);
+}
+
+.g2048__row { display: contents; }
+
+.g2048__tile {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: clamp(18px, 3vw, 30px);
+  font-weight: 800;
+  letter-spacing: -0.06em;
+  transition: background var(--fast) var(--ease), color var(--fast) var(--ease), transform var(--fast) var(--ease);
+}
+
+.g2048__tile[data-tier="1"] { background: color-mix(in srgb, var(--accent) 18%, var(--surface)); color: var(--accent); }
+.g2048__tile[data-tier="2"] { background: color-mix(in srgb, var(--mint) 20%, var(--surface)); color: var(--mint); }
+.g2048__tile[data-tier="3"] { background: color-mix(in srgb, var(--violet) 25%, var(--surface)); color: var(--violet); }
+.g2048__tile[data-tier="4"] { background: color-mix(in srgb, var(--magenta) 28%, var(--surface)); color: var(--magenta); }
+.g2048__tile[data-tier="5"] { background: color-mix(in srgb, var(--warn) 30%, var(--surface)); color: var(--warn); }
+.g2048__tile[data-tier="6"],
+.g2048__tile[data-tier="7"],
+.g2048__tile[data-tier="8"],
+.g2048__tile[data-tier="9"],
+.g2048__tile[data-tier="10"],
+.g2048__tile[data-tier="11"] {
+  border-color: var(--warn);
+  background: var(--warn);
+  color: var(--ground);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--warn) 42%, transparent);
+}
+
+.g2048__strip { justify-content: center; }
+.g2048__strip .game-tip { min-width: 220px; }
+
+@media (max-width: 560px) {
+  .g2048 { grid-template-columns: repeat(4, minmax(48px, 1fr)); width: min(100%, 380px); }
+  .g2048__strip { align-items: stretch; flex-direction: column; }
+  .g2048__strip .gpanel { min-width: 0; }
+}
+
 /* ---- tic tac toe -------------------------------------------------------- */
 
 .ttt__tagline {

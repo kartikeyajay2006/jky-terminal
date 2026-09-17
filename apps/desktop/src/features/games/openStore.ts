@@ -30,13 +30,13 @@ export const useOpenGame = create<OpenGameState>((set, get) => ({
 export const GAME_PREFIX = "JKYGame=";
 
 /**
- * The four games in the order the shell numbers them.
+ * The five games in the order the shell numbers them.
  *
  * This ordering is the command's contract — `jky games 2` has to keep meaning
  * Snake — so it lives here beside the decoder rather than being derived from
  * a list that exists to drive a nav and could be reordered for looks.
  */
-export const SHELL_ORDER: GameId[] = ["dino", "snake", "tictactoe", "flappy"];
+export const SHELL_ORDER: GameId[] = ["dino", "snake", "tictactoe", "flappy", "2048"];
 
 /**
  * Decode an OSC 1337 payload into a game to open, or null if it is not one

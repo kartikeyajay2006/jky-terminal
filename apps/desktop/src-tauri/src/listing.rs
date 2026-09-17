@@ -265,12 +265,12 @@ pub fn render_todo(t: &Todo, short: &str, accent: Option<(u8, u8, u8)>) -> Strin
     )
 }
 
-/// The four games, in the order the Games section lists them.
+/// The games, in the order the Games section lists them.
 ///
 /// Named here as well as in the frontend because the shell listing is
 /// rendered by Rust: the window sends scores, and a score for a game this
 /// does not know about is refused rather than printed.
-pub const GAME_IDS: [&str; 4] = ["dino", "snake", "tictactoe", "flappy"];
+pub const GAME_IDS: [&str; 5] = ["dino", "snake", "tictactoe", "flappy", "2048"];
 
 /// A game's best score, as the window reports it.
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -286,6 +286,7 @@ fn game_label(id: &str) -> Option<(&'static str, &'static str)> {
         "snake" => Some(("Snake", "eat, grow, do not corner yourself")),
         "tictactoe" => Some(("Tic Tac Toe", "two players, one keyboard")),
         "flappy" => Some(("Flappy Bird", "mind the gap")),
+        "2048" => Some(("2048", "slide, merge, build the 2048 tile")),
         _ => None,
     }
 }
@@ -668,4 +669,3 @@ mod tests {
         assert!(!data_dir(&bin).join("events.ansi").exists());
     }
 }
-
