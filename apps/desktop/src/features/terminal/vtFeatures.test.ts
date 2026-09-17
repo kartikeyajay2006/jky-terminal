@@ -28,6 +28,11 @@ async function askAboutMode(mode: number): Promise<string> {
   return replies.join("");
 }
 
+/** Write through xterm's real parser, then let its asynchronous write settle. */
+async function write(term: Xterm, data: string): Promise<void> {
+  await new Promise<void>((resolve) => term.write(data, resolve));
+}
+
 /**
  * DECRPM answers `CSI ? mode ; state $ y`, and state 0 is the one that
  * matters: it means the terminal does not know the mode at all.
@@ -64,5 +69,24 @@ describe("the terminal underneath", () => {
     const reply = await askAboutMode(64123);
     const state = stateOf(reply, 64123);
     expect(state === null || state === 0).toBe(true);
+  });
+
+  it("keeps an OSC 8 hyperlink out of the visible command output", async () => {
+    const term = new Xterm({ cols: 80, rows: 3, allowProposedApi: true });
+    const esc = String.fromCharCode(27);
+    await write(term, `open ${esc}]8;;https://example.test${esc}\\docs${esc}]8;;${esc}\\ now`);
+
+    const line = term.buffer.active.getLine(0)?.translateToString(true) ?? "";
+    term.dispose();
+    expect(line).toBe("open docs now");
+  });
+
+  it("keeps wide Unicode glyphs intact in the terminal grid", async () => {
+    const term = new Xterm({ cols: 80, rows: 3, allowProposedApi: true });
+    await write(term, "build ✓ 東京 🚀");
+
+    const line = term.buffer.active.getLine(0)?.translateToString(true) ?? "";
+    term.dispose();
+    expect(line).toBe("build ✓ 東京 🚀");
   });
 });
