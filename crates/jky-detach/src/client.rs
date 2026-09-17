@@ -290,8 +290,20 @@ mod tests {
 
         let second = open(&dir, "s", never, WITHIN).expect("reopen");
         assert!(second.reattached, "leaving and coming back started over");
-        let replay = String::from_utf8_lossy(&second.replay).into_owned();
-        assert!(replay.contains("MISSED"), "what happened while away was lost: {replay:?}");
+        let mut received = second.replay.clone();
+        // The writer and the reattach are deliberately concurrent. Depending
+        // on which thread wins, the byte is either in the handshake replay or
+        // the first live frame after it; both are correct, but neither may be
+        // lost. Looking only at `replay` made this test a timing lottery.
+        if !received.windows(b"MISSED".len()).any(|window| window == b"MISSED") {
+            let mut frames = second.client.take_frames().expect("the reattached client has frames");
+            match Frame::read_from(&mut frames).expect("first live frame") {
+                Frame::Data(bytes) => received.extend(bytes),
+                other => panic!("expected output after reattaching, got {other:?}"),
+            }
+        }
+        let text = String::from_utf8_lossy(&received);
+        assert!(text.contains("MISSED"), "what happened while away was lost: {text:?}");
         let _ = std::fs::remove_dir_all(&dir);
     }
 
