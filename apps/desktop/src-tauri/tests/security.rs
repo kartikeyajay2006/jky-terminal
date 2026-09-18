@@ -543,6 +543,14 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "workspace_leave".to_string(),
         "workspace_list".to_string(),
         "workspace_save".to_string(),
+        // Worktree paths are not arbitrary filesystem capability. Each call
+        // first requires an already-open workspace root, invokes Git with a
+        // fixed argument vector (never a shell), and refuses to remove that
+        // main root. Creation is restricted to a simple sibling folder and a
+        // Git-valid branch; listing reads Git's own porcelain output.
+        "worktree_create".to_string(),
+        "worktree_list".to_string(),
+        "worktree_remove".to_string(),
     ];
 
     assert_eq!(
