@@ -19,6 +19,10 @@ export interface Session {
   title: string;
   turns: Turn[];
   createdAt: number;
+  /** The workspace this conversation belongs to, kept locally with it. */
+  project: string | null;
+  /** User-written durable context. It is not sent until this chat is sent. */
+  memory: string;
 }
 
 interface ChatState {
@@ -31,6 +35,7 @@ interface ChatState {
   error: string | null;
   /** Which provider the assistant talks to. */
   provider: string;
+  project: string | null;
   newSession: () => string;
   switchTo: (id: string) => void;
   deleteSession: (id: string) => void;
@@ -43,6 +48,8 @@ interface ChatState {
   addTool: (request: ToolRequest) => void;
   clearTool: (id: string) => void;
   setProvider: (provider: string) => void;
+  setProject: (project: string | null) => void;
+  setMemory: (memory: string) => void;
   restore: () => void;
   history: () => AiMessage[];
 }
@@ -74,7 +81,12 @@ export function loadSessions(): Session[] {
           typeof (s as Session).id === "string" &&
           Array.isArray((s as Session).turns),
       )
-      .slice(-MAX_SESSIONS);
+      .slice(-MAX_SESSIONS)
+      .map((session) => ({
+        ...session,
+        project: typeof session.project === "string" ? session.project : null,
+        memory: typeof session.memory === "string" ? session.memory : "",
+      }));
   } catch {
     return [];
   }
@@ -105,10 +117,18 @@ export const useChat = create<ChatState>((set, get) => ({
   tools: [],
   error: null,
   provider: "openai",
+  project: null,
 
   newSession: () => {
     const id = nextId();
-    const session: Session = { id, title: UNTITLED, turns: [], createdAt: Date.now() };
+    const session: Session = {
+      id,
+      title: UNTITLED,
+      turns: [],
+      createdAt: Date.now(),
+      project: get().project,
+      memory: "",
+    };
     set((s) => ({
       // Prune from the front: oldest first, newest kept.
       sessions: [...s.sessions, session].slice(-MAX_SESSIONS),
@@ -204,6 +224,20 @@ export const useChat = create<ChatState>((set, get) => ({
 
   setProvider: (provider) => set({ provider }),
 
+  setProject: (project) => set({ project }),
+
+  setMemory: (memory) => {
+    const activeId = get().activeId;
+    if (!activeId) return;
+    // A modest bound keeps a local note from silently becoming a huge prompt.
+    const clean = memory.slice(0, 6000);
+    set((state) => ({
+      sessions: state.sessions.map((session) =>
+        session.id === activeId ? { ...session, memory: clean } : session,
+      ),
+    }));
+  },
+
   /** Load saved conversations. Called once at startup. */
   restore: () => {
     const sessions = loadSessions();
@@ -218,11 +252,22 @@ export const useChat = create<ChatState>((set, get) => ({
    */
   history: () => {
     const { sessions, activeId } = get();
-    const turns = sessions.find((s) => s.id === activeId)?.turns ?? [];
-    return turns.map((turn) => ({
+    const session = sessions.find((s) => s.id === activeId);
+    const turns = session?.turns ?? [];
+    const memory = session?.memory.trim();
+    const context = memory
+      ? [{
+          role: "user" as const,
+          content: [{
+            type: "text" as const,
+            text: `Project context saved locally by the user. Use it as background; do not repeat it unless relevant:\n${memory}`,
+          }],
+        }]
+      : [];
+    return [...context, ...turns.map((turn) => ({
       role: turn.role,
       content: [{ type: "text" as const, text: turn.text }],
-    }));
+    }))];
   },
 }));
 

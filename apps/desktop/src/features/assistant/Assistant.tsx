@@ -25,6 +25,20 @@ export function Assistant() {
   const turns = sessions.find((s) => s.id === activeId)?.turns ?? [];
   const tools = useChat((s) => s.tools);
   const error = useChat((s) => s.error);
+  const project = useChat((s) => s.project);
+  const memory = sessions.find((s) => s.id === activeId)?.memory ?? "";
+
+  // Workspace selection is the project boundary. The note stays in local
+  // storage; it only joins an outgoing request after the user sends.
+  useEffect(() => {
+    void getPlatform()
+      .workspaces.list()
+      .then(({ workspaces, active }) => {
+        const workspace = workspaces.find((item) => item.id === active);
+        useChat.getState().setProject(workspace?.name ?? null);
+      })
+      .catch(() => useChat.getState().setProject(null));
+  }, []);
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
@@ -70,6 +84,23 @@ export function Assistant() {
       <ConversationHeader />
 
       <div className="chat__log">
+        {activeId && (
+          <section className="chat__memory" aria-labelledby="project-memory-heading">
+            <div>
+              <h2 id="project-memory-heading">Local project context</h2>
+              <p>{project ? `Stored with this conversation for ${project}.` : "Stored with this conversation on this device."}</p>
+            </div>
+            <textarea
+              className="input"
+              aria-label="Local project context"
+              value={memory}
+              maxLength={6000}
+              placeholder="Goals, conventions, decisions, or constraints to remember…"
+              onChange={(event) => useChat.getState().setMemory(event.target.value)}
+            />
+            <p>Never sent by itself. It is included only when you send this assistant a message.</p>
+          </section>
+        )}
         {turns.length === 0 && tools.length === 0 ? (
           <Welcome onPick={setDraft} />
         ) : (
