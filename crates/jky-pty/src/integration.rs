@@ -15,9 +15,9 @@
 //! It rides the OSC the app already listens on rather than claiming a second
 //! one, beside `JKYAsk=` and `JKYCmd=`.
 //!
-//! Two shells are hooked, by two different mechanisms, because they offer two
-//! different ones. Anything else is left alone rather than half-hooked — the
-//! feature is absent there, which is a thing the panel can say.
+//! Each shell is hooked through the mechanism it actually offers. Anything
+//! else is left alone rather than half-hooked — the feature is absent there,
+//! which is a thing the panel can say.
 
 use std::collections::HashMap;
 use std::io;
@@ -258,6 +258,10 @@ pub fn install_shell_integration(config_dir: &Path, user_zdotdir: &Path) -> io::
     // runs on macOS and Linux too, and a file nobody dot-sources costs a few
     // hundred bytes on disk.
     std::fs::write(dir.join(POWERSHELL_FILE), powershell_hook())?;
+    std::fs::write(
+        dir.join(NUSHELL_FILE),
+        nushell_hook(nushell_user_config().as_deref()),
+    )?;
     Ok(())
 }
 
@@ -316,6 +320,93 @@ end",
 
 /// The name the PowerShell hook is written under.
 pub const POWERSHELL_FILE: &str = "jky-integration.ps1";
+
+/// The Nushell configuration overlay, loaded after the user's own config.
+pub const NUSHELL_FILE: &str = "jky-integration.nu";
+
+/// Nushell's configuration normally lives in a platform-specific directory.
+///
+/// We need the original config path because `nu --config` replaces its normal
+/// `config.nu` discovery. The overlay we pass to Nu sources this file first,
+/// then appends its hooks — preserving themes, aliases, prompts, and plugins.
+fn nushell_user_config() -> Option<PathBuf> {
+    #[cfg(windows)]
+    {
+        std::env::var_os("APPDATA")
+            .map(PathBuf::from)
+            .map(|dir| dir.join("nushell").join("config.nu"))
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        std::env::var_os("HOME")
+            .map(PathBuf::from)
+            .map(|dir| {
+                dir.join("Library")
+                    .join("Application Support")
+                    .join("nushell")
+                    .join("config.nu")
+            })
+    }
+
+    #[cfg(all(not(windows), not(target_os = "macos")))]
+    {
+        std::env::var_os("XDG_CONFIG_HOME")
+            .map(PathBuf::from)
+            .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))
+            .map(|dir| dir.join("nushell").join("config.nu"))
+    }
+}
+
+/// A Nushell source operand. `source` resolves its input while parsing, so a
+/// runtime environment variable is not enough; it must be a literal path or
+/// the documented `null` no-op.
+fn nu_source(path: Option<&Path>) -> String {
+    path.filter(|path| path.is_file())
+        // Rust's debug string is a double-quoted literal with backslashes and
+        // quotes escaped, which is also the string syntax Nu accepts here.
+        .map(|path| format!("{:?}", path.to_string_lossy()))
+        .unwrap_or_else(|| "null".to_string())
+}
+
+/// The Nushell overlay, loaded with `nu --config`.
+///
+/// Nu's interactive hooks are precisely the prompt and pre-execution hooks
+/// this terminal needs. The overlay deliberately loads the original config
+/// first and *appends* to its hook lists. That means a user's prompt, Starship
+/// setup, aliases, and hooks keep their own order and behaviour.
+pub fn nushell_hook(user_config: Option<&Path>) -> String {
+    let source = nu_source(user_config);
+    r#"# JKY Terminal shell integration.
+#
+# This overlay is passed only to Nu started by JKY. It sources your normal
+# config first, then adds telemetry hooks without editing your dotfiles.
+source __JKY_USER_CONFIG__
+
+$env.config.hooks.pre_execution = (
+  ($env.config.hooks.pre_execution? | default [])
+  | append {||
+      $env.JKY_NU_LAST_COMMAND = (commandline)
+      print -n $"(char esc)]133;C(char bel)"
+    }
+)
+
+$env.config.hooks.pre_prompt = (
+  ($env.config.hooks.pre_prompt? | default [])
+  | append {||
+      let status = ($env.LAST_EXIT_CODE? | default 0)
+      let cwd = ($env.PWD | into string)
+      let command = ($env.JKY_NU_LAST_COMMAND? | default "")
+      let payload = ([$status $cwd $command] | str join (char newline) | encode base64)
+      let host = ($env.HOSTNAME? | default "")
+      print -n $"(char esc)]133;D;($status)(char bel)"
+      print -n $"(char esc)]7;file://($host)($cwd)(char bel)"
+      print -n $"(char esc)]1337;JKYDone=($payload)(char bel)"
+      print -n $"(char esc)]133;A(char bel)"
+    }
+)
+"#.replace("__JKY_USER_CONFIG__", &source)
+}
 
 /// The PowerShell hooks, as a file to be dot-sourced after the profile.
 ///
@@ -414,6 +505,13 @@ pub fn integration_args(shell: &str, config_dir: &Path) -> Vec<String> {
             "-NoExit".to_string(),
             "-Command".to_string(),
             format!(". {}", ps_quote(&integration_dir(config_dir).join(POWERSHELL_FILE))),
+        ],
+        // `--config` is an overlay rather than a replacement: the overlay
+        // sources the platform's usual config.nu before it appends hooks.
+        // Unlike `-c`, this leaves Nu in its interactive REPL where hooks run.
+        "nu" => vec![
+            "--config".to_string(),
+            integration_dir(config_dir).join(NUSHELL_FILE).display().to_string(),
         ],
         _ => Vec::new(),
     }
@@ -772,11 +870,35 @@ mod tests {
     // rather than one meant for a different shell.
     #[test]
     fn a_shell_that_cannot_be_hooked_is_left_alone() {
-        for shell in ["nu", ""] {
+        for shell in [""] {
             let env = integration_env(shell, Path::new("/cfg"), Some(Path::new("/home")));
             assert!(env.is_empty(), "{shell} got {env:?}");
             assert!(integration_args(shell, Path::new("/cfg")).is_empty(), "{shell} got arguments");
         }
+    }
+
+    #[test]
+    fn nushell_uses_an_interactive_overlay_that_keeps_user_configuration() {
+        let args = integration_args("/usr/bin/nu", Path::new("/cfg"));
+        assert_eq!(args.first().map(String::as_str), Some("--config"));
+        assert!(args.last().is_some_and(|arg| arg.ends_with(NUSHELL_FILE)));
+
+        let hook = nushell_hook(Some(Path::new("/home/someone/.config/nushell/config.nu")));
+        assert!(hook.contains("source null"), "missing user config should be a no-op");
+        assert!(!hook.contains("source \"/home/someone/.config/nushell/config.nu\""),
+            "a missing config cannot be resolved at Nu parse time");
+        let existing = tempfile::tempdir().expect("temp dir");
+        let config = existing.path().join("config.nu");
+        std::fs::write(&config, "# user config").expect("config");
+        let hook = nushell_hook(Some(&config));
+        assert!(
+            hook.contains(&format!("source {:?}", config.to_string_lossy())),
+            "user config is replaced"
+        );
+        assert!(hook.contains("pre_execution"), "no command boundary");
+        assert!(hook.contains("pre_prompt"), "no completion boundary");
+        assert!(hook.contains("]133;C"), "no output mark");
+        assert!(hook.contains("]1337;JKYDone="), "no command report");
     }
 
     // fish is hooked by argument, so an empty environment is the right answer

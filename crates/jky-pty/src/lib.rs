@@ -8,8 +8,8 @@ mod start_dir;
 
 pub use commands::{CommandSpec, commands, parse_accent, render_commands};
 pub use integration::{
-    DONE_PREFIX, POWERSHELL_FILE, fish_hook, install_shell_integration, integration_args,
-    integration_dir, integration_env, powershell_hook,
+    DONE_PREFIX, NUSHELL_FILE, POWERSHELL_FILE, fish_hook, install_shell_integration,
+    integration_args, integration_dir, integration_env, nushell_hook, powershell_hook,
 };
 pub use launcher::{ASK_OSC, LAUNCHER_NAMES, install_launchers, launcher_dir, path_with};
 pub use registry::PtyRegistry;
