@@ -500,6 +500,8 @@ export interface ToolRequest {
   command: string;
   reason: string;
   destructive: boolean;
+  /** The strongest side effect recognised before the command is approved. */
+  risk?: "runs locally" | "writes files" | "network" | "publish" | "destructive";
 }
 
 export interface ToolRan {

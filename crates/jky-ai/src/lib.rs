@@ -15,5 +15,5 @@ pub use sandbox::{SandboxError, resolve_within};
 pub use shell_exec::{COMMAND_TIMEOUT, run_approved_command};
 pub use provider::{AIProvider, AiError};
 pub use sse::SseDecoder;
-pub use tools::{assistant_tools, is_destructive, requires_approval};
+pub use tools::{assistant_tools, command_risk, is_destructive, requires_approval};
 pub use types::{ChatRequest, ContentBlock, Message, Role, StreamEvent, ToolSpec};

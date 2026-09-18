@@ -10,6 +10,9 @@ interface ToolCardProps {
 export function ToolCard({ request, onApprove, onReject }: ToolCardProps) {
   const confirmId = useId();
   const [typed, setTyped] = useState("");
+  // Older persisted approval cards predate risk labels. They remain fully
+  // gated and get the conservative label rather than rendering a blank tag.
+  const risk = request.risk ?? (request.destructive ? "destructive" : "runs locally");
 
   // A destructive command needs more than a click. Retyping it is the
   // cheapest friction that still requires reading what you are agreeing to.
@@ -19,10 +22,13 @@ export function ToolCard({ request, onApprove, onReject }: ToolCardProps) {
     <div className="tool" data-destructive={request.destructive}>
       <div className="tool__head">
         <span className="tool__name">{request.name}</span>
-        {request.destructive && <span className="tool__warn">destructive</span>}
+        <span className="tool__warn" data-risk={risk}>{risk}</span>
       </div>
 
       <pre className="tool__cmd">{request.command}</pre>
+      <p className="tool__scope">
+        This exact command runs only after approval. Review its risk label and reason before deciding.
+      </p>
       {request.reason && <p className="tool__why">{request.reason}</p>}
 
       {request.destructive && (

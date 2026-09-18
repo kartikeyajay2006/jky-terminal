@@ -5,7 +5,7 @@ use std::sync::{Arc, Mutex};
 
 use jky_ai::{
     AIProvider, AnthropicProvider, ChatRequest, ContentBlock, Message, OpenAiProvider,
-    StreamEvent, OLLAMA_CHAT_URL, assistant_tools, execute_read_tool, is_destructive, requires_approval,
+    StreamEvent, OLLAMA_CHAT_URL, assistant_tools, command_risk, execute_read_tool, is_destructive, requires_approval,
     run_approved_command, COMMAND_TIMEOUT,
 };
 use jky_audit::{AuditEvent, AuditKind, AuditLog};
@@ -32,6 +32,7 @@ struct ToolRequest {
     command: String,
     reason: String,
     destructive: bool,
+    risk: String,
 }
 
 #[derive(Clone, Serialize)]
@@ -223,6 +224,7 @@ async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
                         id: id.clone(),
                         name: name.clone(),
                         destructive: is_destructive(&command),
+                        risk: command_risk(&command).to_string(),
                         command,
                         reason,
                     },

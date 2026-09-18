@@ -69,6 +69,18 @@
   letter-spacing: 0.08em;
 }
 
+.tool__warn[data-risk="network"],
+.tool__warn[data-risk="publish"],
+.tool__warn[data-risk="writes files"] {
+  color: var(--warn);
+}
+
+.tool__scope {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+
 .tool__cmd {
   margin: 0;
   padding: var(--s3);

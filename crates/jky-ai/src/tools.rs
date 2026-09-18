@@ -103,6 +103,42 @@ pub fn is_destructive(command: &str) -> bool {
     DESTRUCTIVE.iter().any(|pattern| squeezed.contains(pattern))
 }
 
+/// The clearest reason a proposed command needs attention.
+///
+/// Approval is required for every command regardless of this label. The
+/// label is for a person deciding, not a policy exception: an unfamiliar
+/// command is still never silently safe just because it lacks a keyword.
+pub fn command_risk(command: &str) -> &'static str {
+    let normalised = command.to_lowercase();
+    let squeezed = normalised.split_whitespace().collect::<Vec<_>>().join(" ");
+    if is_destructive(&squeezed) {
+        "destructive"
+    } else if squeezed.starts_with("git push")
+        || squeezed.starts_with("gh pr ")
+        || squeezed.starts_with("npm publish")
+        || squeezed.starts_with("cargo publish")
+    {
+        "publish"
+    } else if squeezed.starts_with("curl ")
+        || squeezed.starts_with("wget ")
+        || squeezed.starts_with("ssh ")
+        || squeezed.starts_with("scp ")
+        || squeezed.contains(" curl ")
+        || squeezed.contains(" wget ")
+    {
+        "network"
+    } else if squeezed.contains(">")
+        || squeezed.contains(" tee ")
+        || squeezed.contains("sed -i")
+        || squeezed.starts_with("git commit")
+        || squeezed.starts_with("git checkout")
+    {
+        "writes files"
+    } else {
+        "runs locally"
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -186,5 +222,14 @@ mod tests {
     fn extra_whitespace_between_words_does_not_hide_a_match() {
         // `rm   -rf` is the same command to a shell and must be to us too.
         assert!(is_destructive("rm    -rf   /tmp/x"));
+    }
+
+    #[test]
+    fn permission_cards_name_the_riskiest_effect() {
+        assert_eq!(command_risk("cargo test"), "runs locally");
+        assert_eq!(command_risk("curl https://example.test"), "network");
+        assert_eq!(command_risk("git commit -am fix"), "writes files");
+        assert_eq!(command_risk("git push origin main"), "publish");
+        assert_eq!(command_risk("rm -rf build"), "destructive");
     }
 }
