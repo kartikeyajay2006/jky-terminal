@@ -195,6 +195,38 @@
   flex-wrap: wrap;
 }
 
+/* Worktrees sit with saved workspaces because opening one becomes a saved,
+   restartable workspace; they are not a second, competing project model. */
+.wt {
+  display: grid;
+  gap: var(--s3);
+  padding: var(--s4);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.wt__head { display: flex; justify-content: space-between; gap: var(--s3); }
+.wt__head h2, .wt__head p { margin: 0; }
+.wt__head h2 { font-size: 15px; color: var(--text); }
+.wt__head p, .wt__identity span { color: var(--text-dim); font-size: 12px; }
+.wt__root { margin: 0; }
+.wt__create { display: grid; grid-template-columns: 1fr 1fr minmax(8ch, .55fr) auto; gap: var(--s2); align-items: end; }
+.wt__create label { display: grid; gap: var(--s1); color: var(--text-dim); font-size: 11px; }
+.wt__list { display: grid; gap: var(--s2); margin: 0; padding: 0; list-style: none; }
+.wt__row { display: flex; justify-content: space-between; gap: var(--s3); padding: var(--s3); border: 1px solid var(--line); border-radius: var(--radius); }
+.wt__row[data-main] { border-left: 2px solid var(--accent); }
+.wt__identity { display: grid; min-width: 0; gap: 2px; }
+.wt__identity strong { color: var(--text); }
+.wt__identity code { overflow: hidden; color: var(--text-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.wt__actions { display: flex; align-items: center; gap: var(--s2); flex: 0 0 auto; }
+
+@media (max-width: 720px) {
+  .wt__head, .wt__row { display: grid; }
+  .wt__create { grid-template-columns: 1fr; }
+  .wt__actions { justify-content: start; flex-wrap: wrap; }
+}
+
 /* ---- the form ------------------------------------------------------------ */
 
 .wsp__form {

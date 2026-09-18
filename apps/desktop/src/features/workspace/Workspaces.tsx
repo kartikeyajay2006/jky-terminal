@@ -8,6 +8,7 @@ import {
 import { useTabs } from "../../app/tabStore";
 import { useNav } from "../../app/navStore";
 import { WorkspaceForm } from "./WorkspaceForm";
+import { WorktreePanel } from "./WorktreePanel";
 import "./Workspaces.css";
 
 /** A workspace with nothing in it, ready to be filled in. */
@@ -40,6 +41,7 @@ function blank(): SavedWorkspace {
 export function Workspaces() {
   const [saved, setSaved] = useState<Saved>({ workspaces: [], active: null });
   const [hosts, setHosts] = useState<RemoteHost[]>([]);
+  const [roots, setRoots] = useState<string[]>([]);
   const [editing, setEditing] = useState<SavedWorkspace | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -64,6 +66,10 @@ export function Workspaces() {
       .remote.list()
       .then(setHosts)
       .catch(() => setHosts([]));
+    void getPlatform()
+      .files.folders()
+      .then((folders) => setRoots(folders.filter((folder) => folder.available).map((folder) => folder.root)))
+      .catch(() => setRoots([]));
   }, [load]);
 
   async function save(workspace: SavedWorkspace) {
@@ -165,6 +171,26 @@ export function Workspaces() {
   }
 
   const active = saved.workspaces.find((w) => w.id === saved.active) ?? null;
+
+  async function openWorktree(root: string, worktree: { path: string; branch: string | null }) {
+    const branch = worktree.branch ?? "detached";
+    const workspace: SavedWorkspace = {
+      id: `worktree-${worktree.path}`,
+      name: branch,
+      folders: [worktree.path],
+      terminal_dir: worktree.path,
+      terminals: 1,
+      host: null,
+      note: `Git worktree from ${root}`,
+      last_used: 0,
+    };
+    try {
+      await getPlatform().workspaces.save(workspace);
+      await activate(workspace);
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause));
+    }
+  }
 
   return (
     <div className="board wsp">
@@ -284,6 +310,11 @@ export function Workspaces() {
           </li>
         ))}
       </ul>
+
+      <WorktreePanel
+        roots={roots}
+        onOpen={(root, worktree) => void openWorktree(root, worktree)}
+      />
 
       {!editing && (
         <div className="wsp__actions">
