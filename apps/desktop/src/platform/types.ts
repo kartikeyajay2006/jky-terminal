@@ -349,6 +349,30 @@ export interface WorkspaceApi {
   leave(): Promise<Workspaces>;
 }
 
+/** One checkout attached to a Git repository. */
+export interface GitWorktree {
+  /** Absolute path reported by Git. */
+  path: string;
+  /** The checked-out local branch, when Git reports one. */
+  branch: string | null;
+  /** Commit currently checked out, useful when detached. */
+  head: string;
+  /** Git will not remove a locked worktree without an explicit force. */
+  locked: boolean;
+}
+
+/**
+ * Git worktrees belonging to an editor folder the person already opened.
+ *
+ * The window supplies a branch and a simple folder name, never a shell
+ * command. The desktop backend invokes Git with fixed argument boundaries.
+ */
+export interface WorktreeApi {
+  list(root: string): Promise<GitWorktree[]>;
+  create(root: string, name: string, branch: string, base: string): Promise<GitWorktree>;
+  remove(root: string, path: string, force?: boolean): Promise<void>;
+}
+
 /**
  * The window's own life.
  *
@@ -1235,6 +1259,8 @@ export interface Platform {
   readonly files: FilesApi;
   /** Saved project setups. */
   readonly workspaces: WorkspaceApi;
+  /** Parallel Git checkouts for the current project. */
+  readonly worktrees: WorktreeApi;
   /** Being told before the window closes, so unsaved work can be rescued. */
   readonly lifecycle: LifecycleApi;
   readonly pty: PtyApi;

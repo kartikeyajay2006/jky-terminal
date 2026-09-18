@@ -21,3 +21,4 @@ pub mod system;
 pub mod tools;
 pub mod vault;
 pub mod workspace;
+pub mod worktree;

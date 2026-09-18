@@ -24,6 +24,8 @@ export type {
   LiveRun,
   LiveSource,
   SavedWorkspace,
+  GitWorktree,
+  WorktreeApi,
   WorkspaceApi,
   WorkspaceApplied,
   Workspaces,

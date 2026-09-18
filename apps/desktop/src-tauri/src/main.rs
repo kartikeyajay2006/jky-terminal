@@ -9,7 +9,7 @@ mod supervisor;
 
 use commands::{
     advice, ai, apps, browser, capture, complete, files, games, github, gmail, history, keys, open,
-    live, pty, remote, scrollback, settings, store, system, tools, vault, workspace,
+    live, pty, remote, scrollback, settings, store, system, tools, vault, workspace, worktree,
 };
 use state::AppState;
 use tauri::Manager;
@@ -57,6 +57,9 @@ fn main() {
             workspace::workspace_forget,
             workspace::workspace_activate,
             workspace::workspace_leave,
+            worktree::worktree_list,
+            worktree::worktree_create,
+            worktree::worktree_remove,
             files::files_folders,
             files::files_open_folder,
             files::files_close_folder,

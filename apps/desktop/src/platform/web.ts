@@ -9,6 +9,7 @@ import type {
   Folder,
   SavedWorkspace,
   WorkspaceApi,
+  WorktreeApi,
   Workspaces,
   RemoteApi,
   RemoteHost,
@@ -796,6 +797,20 @@ export function createWebPlatform(): Platform {
     },
   };
 
+  // A browser cannot safely invoke the machine's Git binary. Refusing is
+  // clearer than rendering project-looking mock worktrees that cannot open.
+  const worktrees: WorktreeApi = {
+    async list() {
+      throw new Error("Git worktrees are available in the desktop app");
+    },
+    async create() {
+      throw new Error("Git worktrees are available in the desktop app");
+    },
+    async remove() {
+      throw new Error("Git worktrees are available in the desktop app");
+    },
+  };
+
   /*
    * The window's life, in a browser.
    *
@@ -1452,6 +1467,7 @@ const NEWS_SOURCES = [
     live,
     files,
     workspaces,
+    worktrees,
     lifecycle,
     pty,
     ai,

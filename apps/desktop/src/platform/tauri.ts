@@ -58,6 +58,8 @@ import type {
   LiveRun,
   LiveSource,
   WorkspaceApi,
+  WorktreeApi,
+  GitWorktree,
   WorkspaceApplied,
   Workspaces,
   RemoteApi,
@@ -267,6 +269,14 @@ export function createTauriPlatform(): Platform {
     },
   };
 
+  const worktrees: WorktreeApi = {
+    list: (root) => invoke<GitWorktree[]>("worktree_list", { root }),
+    create: (root, name, branch, base) =>
+      invoke<GitWorktree>("worktree_create", { root, name, branch, base }),
+    remove: (root, path, force = false) =>
+      invoke<void>("worktree_remove", { root, path, force }),
+  };
+
   const live: LiveApi = {
     async sources() {
       return invoke<LiveSource[]>("live_sources");
@@ -465,6 +475,7 @@ export function createTauriPlatform(): Platform {
     live,
     files,
     workspaces,
+    worktrees,
     lifecycle,
     pty,
     ai,
