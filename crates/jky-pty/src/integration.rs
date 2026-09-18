@@ -870,11 +870,10 @@ mod tests {
     // rather than one meant for a different shell.
     #[test]
     fn a_shell_that_cannot_be_hooked_is_left_alone() {
-        for shell in [""] {
-            let env = integration_env(shell, Path::new("/cfg"), Some(Path::new("/home")));
-            assert!(env.is_empty(), "{shell} got {env:?}");
-            assert!(integration_args(shell, Path::new("/cfg")).is_empty(), "{shell} got arguments");
-        }
+        let shell = "";
+        let env = integration_env(shell, Path::new("/cfg"), Some(Path::new("/home")));
+        assert!(env.is_empty(), "{shell} got {env:?}");
+        assert!(integration_args(shell, Path::new("/cfg")).is_empty(), "{shell} got arguments");
     }
 
     #[test]
