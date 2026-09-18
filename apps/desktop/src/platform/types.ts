@@ -359,6 +359,8 @@ export interface GitWorktree {
   head: string;
   /** Git will not remove a locked worktree without an explicit force. */
   locked: boolean;
+  /** Whether Git reports uncommitted or untracked changes. */
+  dirty: boolean;
 }
 
 /**

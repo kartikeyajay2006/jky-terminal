@@ -19,6 +19,7 @@ pub struct Worktree {
     pub branch: Option<String>,
     pub head: String,
     pub locked: bool,
+    pub dirty: bool,
 }
 
 fn git(root: &Path, args: &[&str]) -> Result<String, String> {
@@ -45,7 +46,7 @@ fn parse_list(text: &str) -> Vec<Worktree> {
         }
         if let Some(path) = line.strip_prefix("worktree ") {
             if let Some(entry) = current.take() { out.push(entry); }
-            current = Some(Worktree { path: path.to_string(), branch: None, head: String::new(), locked: false });
+            current = Some(Worktree { path: path.to_string(), branch: None, head: String::new(), locked: false, dirty: false });
         } else if let Some(entry) = current.as_mut() {
             if let Some(head) = line.strip_prefix("HEAD ") { entry.head = head.to_string(); }
             if let Some(branch) = line.strip_prefix("branch refs/heads/") { entry.branch = Some(branch.to_string()); }
@@ -57,7 +58,16 @@ fn parse_list(text: &str) -> Vec<Worktree> {
 }
 
 fn list(root: &Path) -> Result<Vec<Worktree>, String> {
-    Ok(parse_list(&git(root, &["worktree", "list", "--porcelain"])?))
+    let mut entries = parse_list(&git(root, &["worktree", "list", "--porcelain"])?);
+    // One cheap porcelain query per checkout. It is intentionally not a
+    // watcher: refresh is explicit, and a hidden panel must not wake every
+    // repository just to animate a badge.
+    for entry in &mut entries {
+        entry.dirty = !git(Path::new(&entry.path), &["status", "--porcelain"])?
+            .trim()
+            .is_empty();
+    }
+    Ok(entries)
 }
 
 fn safe_name(name: &str) -> Result<&str, String> {

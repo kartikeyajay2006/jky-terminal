@@ -142,7 +142,11 @@ export function WorktreePanel({
                   <div className="wt__identity">
                     <strong>{label}</strong>
                     <code title={entry.path}>{entry.path}</code>
-                    <span>{entry.head.slice(0, 10)}{entry.locked ? " · locked" : ""}</span>
+                    <span>
+                      {entry.head.slice(0, 10)}
+                      {entry.dirty ? " · uncommitted changes" : " · clean"}
+                      {entry.locked ? " · locked" : ""}
+                    </span>
                   </div>
                   <div className="wt__actions">
                     <button type="button" className="btn" onClick={() => onOpen(root, entry)}>Open workspace</button>
