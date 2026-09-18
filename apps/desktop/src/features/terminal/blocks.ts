@@ -106,6 +106,33 @@ export function transcript(command: string, output: string): string {
 }
 
 /**
+ * A portable command record for an issue, chat, or incident note.
+ *
+ * This deliberately describes only facts the shell supplied. It does not
+ * claim a directory, branch, or remote host from a guess made off the prompt.
+ */
+export function markdownRecord(block: CommandBlock, output: string): string {
+  const status = block.exitCode === null ? "still running or not reported" : `exit ${block.exitCode}`;
+  const duration = tookText(tookOf(block));
+  const command = block.command.trim() || "(command was not reported by this shell)";
+  const body = output.replace(/\s+$/, "") || "(no output)";
+  return [
+    "## JKY command record",
+    "",
+    `- Result: ${status}`,
+    `- Duration: ${duration}`,
+    "",
+    "```sh",
+    command,
+    "```",
+    "",
+    "```text",
+    body,
+    "```",
+  ].join("\n");
+}
+
+/**
  * The lines a block's output occupies, for reading them out of a buffer.
  *
  * Null when the shell never said where output began — under a shell with no
@@ -137,4 +164,3 @@ export function questionFor(block: CommandBlock, output: string): string {
     ? `This failed with exit ${block.exitCode}. What went wrong, and how do I fix it?\n\n${said}`
     : `What is this telling me?\n\n${said}`;
 }
-

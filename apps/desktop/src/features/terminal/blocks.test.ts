@@ -8,6 +8,7 @@ import {
   tookOf,
   tookText,
   transcript,
+  markdownRecord,
 } from "./blocks";
 import type { CommandBlock } from "./marks";
 
@@ -126,6 +127,25 @@ describe("transcript", () => {
 
   it("copies just the output when the shell never named the command", () => {
     expect(transcript("", "some output")).toBe("some output");
+  });
+});
+
+describe("markdownRecord", () => {
+  it("exports command, outcome, duration, and output as a portable record", () => {
+    expect(markdownRecord(block(), "45 passed\n")).toBe([
+      "## JKY command record",
+      "",
+      "- Result: exit 0",
+      "- Duration: 2.5s",
+      "",
+      "```sh",
+      "cargo test",
+      "```",
+      "",
+      "```text",
+      "45 passed",
+      "```",
+    ].join("\n"));
   });
 });
 

@@ -15,7 +15,7 @@ import { useLivePanel } from "./useLivePanel";
 import { useAsk } from "../../app/askStore";
 import { copyText } from "./clipboard";
 import { Timeline } from "./Timeline";
-import { actionsFor, questionFor, tookOf, tookText, transcript } from "./blocks";
+import { actionsFor, markdownRecord, questionFor, tookOf, tookText, transcript } from "./blocks";
 import type { BlockPick } from "./useXterm";
 import { pushTick, type Tick } from "./ticks";
 import { Suggestions } from "./complete/Suggestions";
@@ -164,6 +164,11 @@ export function Terminal({
           label: "Copy both",
           disabled: !can.copyOutput && !can.copyCommand,
           run: () => void copyText(transcript(block.command, output)),
+        },
+        {
+          label: "Export record · Markdown",
+          disabled: !can.copyCommand && !can.copyOutput,
+          run: () => void copyText(markdownRecord(block, output)),
         },
         {
           label: "Run it again",
