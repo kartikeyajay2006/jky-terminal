@@ -180,6 +180,12 @@ describe("Terminal", () => {
     expect(await screen.findByRole("application", { name: /terminal/i })).toBeInTheDocument();
   });
 
+  it("blocks OSC 52 clipboard writes from terminal output", async () => {
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(oscHandlers.get(52)).toBeDefined());
+    expect(oscHandlers.get(52)?.("c;YWJj")).toBe(true);
+  });
+
   it("greets with the JKY wordmark before the shell speaks", async () => {
     render(<Terminal paneId="tab-1" />);
     await waitFor(() => expect(writes.join("")).toContain("Infinite Possibilities."));

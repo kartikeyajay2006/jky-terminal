@@ -263,6 +263,15 @@ describe("terminal font settings", () => {
     expect(heard).toHaveBeenCalled();
     window.removeEventListener(TERM_FONT_EVENT, heard);
   });
+
+  it("shows an honest power-user capability checklist", async () => {
+    await openTerminalPanel();
+    const checklist = screen.getByRole("list", { name: /power-user essentials checklist/i });
+    expect(within(checklist).getByText(/image protocols/i)).toBeInTheDocument();
+    expect(within(checklist).getByText(/OSC 52 clipboard policy/i)).toBeInTheDocument();
+    expect(within(checklist).getByText(/SSH and worktrees/i)).toBeInTheDocument();
+    expect(within(checklist).getByText(/not rendered yet/i)).toBeInTheDocument();
+  });
 });
 
 describe("only offering faces this machine has", () => {

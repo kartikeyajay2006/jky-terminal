@@ -63,7 +63,9 @@ export function SnakeGame() {
       }
     }
 
-    // Food, with a little stalk.
+    // Food, with a little stalk and a glint. That gives the target a distinct
+    // silhouette from the snake even when a theme makes red and green close.
+    if (s.food.y > 0) g.set(s.food.x + PAD_X, s.food.y + PAD_Y - 1, "┴", "mint");
     g.set(s.food.x + PAD_X, s.food.y + PAD_Y, "◆", "danger");
 
     // The snake: a brighter head, so which way it is going is never in doubt.
@@ -72,8 +74,8 @@ export function SnakeGame() {
       g.set(
         p.x + PAD_X,
         p.y + PAD_Y,
-        i === 0 ? "█" : "▓",
-        i === 0 ? "accent" : "mint",
+        i === 0 ? "◆" : i % 4 === 0 ? "▒" : "▓",
+        i === 0 ? "accent" : i % 4 === 0 ? "accentDim" : "mint",
       );
     }
 

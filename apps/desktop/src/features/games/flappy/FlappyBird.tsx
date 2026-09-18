@@ -70,6 +70,10 @@ export function FlappyBird() {
       for (let row = 0; row < b.h; row += 1) {
         g.hLine(x, top + row, b.w, "▒", "dim");
       }
+      // A roof edge and occasional antenna stop the skyline reading as a row
+      // of anonymous rectangles at terminal resolution.
+      g.hLine(x, top, b.w, "▀", "muted");
+      if (b.w >= 7) g.set(x + Math.floor(b.w / 2), top - 1, "┬", "muted");
       // Windows on a fixed lattice keyed to the building's own position, so
       // they stay put as the city scrolls rather than twinkling randomly.
       for (let wy = top + 1; wy < GROUND_Y - 1; wy += 2) {
@@ -84,8 +88,16 @@ export function FlappyBird() {
       const x = Math.round(p.x);
       const gapEnd = p.gapTop + p.gapHeight;
 
-      for (let y = 1; y < p.gapTop; y += 1) g.hLine(x, y, PIPE_W, "█", "mint");
-      for (let y = gapEnd; y < GROUND_Y; y += 1) g.hLine(x, y, PIPE_W, "█", "mint");
+      for (let y = 1; y < p.gapTop; y += 1) {
+        g.hLine(x, y, PIPE_W, "█", "mint");
+        g.set(x, y, "▌", "accent");
+        g.set(x + PIPE_W - 1, y, "▓", "accentDim");
+      }
+      for (let y = gapEnd; y < GROUND_Y; y += 1) {
+        g.hLine(x, y, PIPE_W, "█", "mint");
+        g.set(x, y, "▌", "accent");
+        g.set(x + PIPE_W - 1, y, "▓", "accentDim");
+      }
 
       // Lips, one cell wider than the shaft, which is what makes a pipe read
       // as a pipe rather than as a green column.
@@ -112,6 +124,7 @@ export function FlappyBird() {
     const climbing = s.vy < 0;
     const sprite = s.phase === "over" ? BIRD_DEAD : climbing ? BIRD_UP : BIRD_DOWN;
     g.sprite(BIRD_X, Math.round(s.y), sprite, s.phase === "over" ? "danger" : "warn");
+    if (s.phase !== "over") g.set(BIRD_X + 2, Math.round(s.y), "•", "text");
 
     // A little motion trail, so speed is visible even against a plain sky.
     if (s.phase === "running") {

@@ -187,9 +187,39 @@ fn find_git_dir(from: &Path) -> Option<PathBuf> {
         if candidate.is_dir() {
             return Some(candidate);
         }
-        // A worktree's `.git` is a file pointing elsewhere. Not followed:
-        // resolving it means parsing a path out of a file and trusting it,
-        // and offering no branches is better than offering the wrong repo's.
+        // A linked worktree has a `.git` *file* such as
+        // `gitdir: /repo/.git/worktrees/feature`. Git puts a `commondir` file
+        // there which points back to the shared metadata directory where the
+        // branches live. This is read, never executed, and malformed links
+        // deliberately decline completion rather than guessing a repository.
+        if candidate.is_file() {
+            let raw = std::fs::read_to_string(&candidate).ok()?;
+            let linked = raw
+                .lines()
+                .next()?
+                .strip_prefix("gitdir:")?
+                .trim();
+            if linked.is_empty() {
+                return None;
+            }
+            let linked = PathBuf::from(linked);
+            let linked = if linked.is_absolute() { linked } else { dir.join(linked) };
+            if !linked.is_dir() {
+                return None;
+            }
+            let common = linked.join("commondir");
+            if let Ok(raw) = std::fs::read_to_string(common) {
+                let target = raw.lines().next().unwrap_or("").trim();
+                if !target.is_empty() {
+                    let target = PathBuf::from(target);
+                    let target = if target.is_absolute() { target } else { linked.join(target) };
+                    if target.is_dir() {
+                        return Some(target);
+                    }
+                }
+            }
+            return None;
+        }
         here = dir.parent();
     }
     None
@@ -372,6 +402,24 @@ mod tests {
         std::fs::create_dir_all(&deep).unwrap();
 
         assert_eq!(values(&git_branches(&deep)), ["main"]);
+    }
+
+    #[test]
+    fn finds_branches_from_a_linked_worktree() {
+        let d = TempDir::new().unwrap();
+        let common = d.path().join("main/.git");
+        std::fs::create_dir_all(common.join("refs/heads")).unwrap();
+        std::fs::write(common.join("refs/heads/main"), "abc\n").unwrap();
+
+        let linked = common.join("worktrees/feature");
+        std::fs::create_dir_all(&linked).unwrap();
+        std::fs::write(linked.join("commondir"), "../..\n").unwrap();
+
+        let worktree = d.path().join("feature");
+        std::fs::create_dir_all(&worktree).unwrap();
+        std::fs::write(worktree.join(".git"), format!("gitdir: {}\n", linked.display())).unwrap();
+
+        assert_eq!(values(&git_branches(&worktree)), ["main"]);
     }
 
     #[test]

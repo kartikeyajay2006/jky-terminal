@@ -98,6 +98,10 @@ export function DinoRun() {
       const h = 3 + Math.sin(world * 0.09) * 2 + Math.sin(world * 0.031) * 2.2;
       const top = Math.round(GROUND_Y - 6 - h);
       g.set(x, top, "▀", "dim");
+      // A nearer, slower-moving ridge gives the desert depth without adding
+      // state or affecting the collision plane.
+      const foreground = 2 + Math.sin(world * 0.17) * 1.4;
+      g.set(x, Math.round(GROUND_Y - 3 - foreground), "▄", "muted");
     }
 
     for (const cloud of s.clouds) {
@@ -118,6 +122,10 @@ export function DinoRun() {
       for (let row = 0; row < c.h; row += 1) {
         const y = GROUND_Y - 1 - row;
         g.hLine(x, y, c.w, "█", "mint");
+        // One lit edge and one shaded edge make obstacles feel like plants
+        // in the landscape instead of flat collision bars.
+        g.set(x, y, "▌", "accent");
+        g.set(x + c.w - 1, y, "▓", "accentDim");
         // Arms on the taller cacti, so they are not just green rectangles.
         if (c.w >= 5 && row === Math.floor(c.h / 2)) {
           g.set(x - 1, y, "╱", "mint");
@@ -144,6 +152,10 @@ export function DinoRun() {
     const hidden = s.invulnerableMs > 0 && Math.floor(s.invulnerableMs / 90) % 2 === 0;
     if (!hidden) {
       g.sprite(DINO_X, top, sprite, s.phase === "over" ? "danger" : "mint");
+      if (!s.ducking && s.phase !== "over") {
+        g.set(DINO_X + 6, top + 1, "•", "text");
+        g.set(DINO_X + 5, top + 3, "▀", "accent");
+      }
     }
 
     // --- overlays ---

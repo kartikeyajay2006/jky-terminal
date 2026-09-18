@@ -286,6 +286,58 @@ drwxr-xr-x  1 you  staff   4096 Aug 30 12:04 .
 if (x >= 1 && y !== 2) { /* -> */ }`}
         </pre>
       </div>
+
+      <section className="essentials" aria-labelledby="essentials-heading">
+        <div className="essentials__head">
+          <div>
+            <h3 id="essentials-heading">Power-user essentials</h3>
+            <p>What this terminal does today, with unsupported features stated plainly.</p>
+          </div>
+          <span className="essentials__count">4 ready · 1 planned</span>
+        </div>
+        <ul className="essentials__list" aria-label="Power-user essentials checklist">
+          <li>
+            <span className="essentials__mark" data-state="planned" aria-hidden="true">○</span>
+            <div>
+              <strong>Image protocols</strong>
+              <p>Kitty graphics, Sixel, and iTerm inline images are not rendered yet.</p>
+            </div>
+            <span className="essentials__state" data-state="planned">Planned</span>
+          </li>
+          <li>
+            <span className="essentials__mark" data-state="ready" aria-hidden="true">✓</span>
+            <div>
+              <strong>Font fallback</strong>
+              <p>Every offered stack ends in a monospace fallback; ligatures remain off to preserve terminal cell width.</p>
+            </div>
+            <span className="essentials__state" data-state="ready">Ready</span>
+          </li>
+          <li>
+            <span className="essentials__mark" data-state="ready" aria-hidden="true">✓</span>
+            <div>
+              <strong>OSC 52 clipboard policy</strong>
+              <p>Escape-sequence clipboard writes are blocked. Copy and paste are explicit, user-initiated actions.</p>
+            </div>
+            <span className="essentials__state" data-state="ready">Blocked</span>
+          </li>
+          <li>
+            <span className="essentials__mark" data-state="ready" aria-hidden="true">✓</span>
+            <div>
+              <strong>Shell integration</strong>
+              <p>Prompt, command, exit-status, and working-directory marks are integrated for bash, zsh, fish, and PowerShell.</p>
+            </div>
+            <span className="essentials__state" data-state="ready">Ready</span>
+          </li>
+          <li>
+            <span className="essentials__mark" data-state="ready" aria-hidden="true">✓</span>
+            <div>
+              <strong>SSH and worktrees</strong>
+              <p>Uses native SSH config and agent; branch completion follows Git worktree links as well as regular repositories.</p>
+            </div>
+            <span className="essentials__state" data-state="ready">Ready</span>
+          </li>
+        </ul>
+      </section>
     </section>
   );
 }

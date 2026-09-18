@@ -259,6 +259,12 @@ export function useXterm(
     });
     term.current = xterm;
 
+    // OSC 52 can ask an emulator to alter the host clipboard. That is a
+    // surprising privilege for command output to have: a remote host or a
+    // pasted log could otherwise replace the next thing a person pastes.
+    // JKY makes clipboard transfer an explicit copy/paste action instead.
+    xterm.parser.registerOscHandler(52, () => true);
+
     // Repaint when the theme changes. A terminal opened under one theme and
     // kept under another would otherwise be the one surface still wearing
     // the old colours.
