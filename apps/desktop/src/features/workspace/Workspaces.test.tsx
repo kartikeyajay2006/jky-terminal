@@ -121,7 +121,7 @@ describe("the workspaces section", () => {
     render(<Workspaces />);
     await screen.findByText(/None yet/);
 
-    await user.click(screen.getByRole("button", { name: "Save what is open" }));
+    await user.click(screen.getByRole("button", { name: "Capture current work" }));
     expect(await screen.findByText("/tmp/sample")).toBeInTheDocument();
     expect(screen.getByLabelText("Terminals to open")).toHaveValue(1);
   });
@@ -138,6 +138,30 @@ describe("the workspaces section", () => {
     await waitFor(() => expect(screen.getByText("active")).toBeInTheDocument());
     const folders = await getPlatform().files.folders();
     expect(folders.map((f) => f.root)).toEqual(["/tmp/sample"]);
+  });
+
+  it("puts the active project in a dedicated resume panel", async () => {
+    await getPlatform().workspaces.save(
+      project("w1", "one", { terminal_dir: "/tmp/sample", note: "fix the release" }),
+    );
+    await getPlatform().workspaces.activate("w1");
+    render(<Workspaces />);
+
+    expect(await screen.findByRole("heading", { name: "one" })).toBeInTheDocument();
+    expect(screen.getAllByText("fix the release")).toHaveLength(2);
+    expect(screen.getByRole("button", { name: "Resume workspace" })).toBeInTheDocument();
+  });
+
+  it("filters the workspace library without hiding the current work panel", async () => {
+    await getPlatform().workspaces.save(project("w1", "frontend", { note: "design" }));
+    await getPlatform().workspaces.save(project("w2", "backend", { note: "api" }));
+    const user = userEvent.setup();
+    render(<Workspaces />);
+
+    await screen.findByText("frontend");
+    await user.type(screen.getByRole("searchbox", { name: "Filter workspaces" }), "api");
+    expect(screen.queryByText("frontend")).toBeNull();
+    expect(screen.getByText("backend")).toBeInTheDocument();
   });
 
   it("switching opens the terminals it asks for and lands you in them", async () => {

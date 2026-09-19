@@ -43,6 +43,7 @@ export function Workspaces() {
   const [hosts, setHosts] = useState<RemoteHost[]>([]);
   const [roots, setRoots] = useState<string[]>([]);
   const [editing, setEditing] = useState<SavedWorkspace | null>(null);
+  const [query, setQuery] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
@@ -171,6 +172,10 @@ export function Workspaces() {
   }
 
   const active = saved.workspaces.find((w) => w.id === saved.active) ?? null;
+  const visible = saved.workspaces.filter((workspace) => {
+    const words = `${workspace.name} ${workspace.note} ${workspace.folders.join(" ")}`.toLocaleLowerCase();
+    return words.includes(query.trim().toLocaleLowerCase());
+  });
 
   async function openWorktree(root: string, worktree: { path: string; branch: string | null }) {
     const branch = worktree.branch ?? "detached";
@@ -215,9 +220,8 @@ export function Workspaces() {
         </p>
         <h1 className="board__title">Workspaces</h1>
         <p className="board__lede">
-          What you are working on, saved under a name: which folders the editor
-          opens, where terminals start and how many, and which machine, if any.
-          Switching applies all of it at once.
+          Return to a project exactly where you left it: folders, terminals,
+          machine, and its Git worktrees. Everything here is local and can be changed.
         </p>
       </header>
 
@@ -232,15 +236,74 @@ export function Workspaces() {
         </p>
       )}
 
-      {!busy && saved.workspaces.length === 0 && !editing && (
-        <p className="wsp__empty">
-          None yet. Save what you have open now, and one click puts you back
-          here later.
-        </p>
+      {active && !editing && (
+        <section className="wsp__now" aria-labelledby="current-workspace">
+          <div className="wsp__now-copy">
+            <p className="wsp__kicker">Current work</p>
+            <h2 id="current-workspace">{active.name}</h2>
+            <p>{active.note || "A saved local workspace, ready to continue."}</p>
+            <span className="wsp__path" title={active.terminal_dir ?? active.folders[0] ?? undefined}>
+              {active.terminal_dir ?? active.folders[0] ?? "No starting folder set"}
+            </span>
+          </div>
+          <div className="wsp__now-actions">
+            <button type="button" className="btn btn--primary" onClick={() => void activate(active)}>
+              Resume workspace
+            </button>
+            <button type="button" className="btn" onClick={() => setEditing(active)}>Edit</button>
+            <button type="button" className="btn" aria-label={`Leave ${active.name}`} onClick={() => void leave()}>Leave</button>
+          </div>
+        </section>
       )}
 
-      <ul className="wsp__list">
-        {saved.workspaces.map((workspace) => (
+      {!editing && (
+        <section className="wsp__library" aria-labelledby="workspace-library">
+          <div className="wsp__library-head">
+            <div>
+              <p className="wsp__kicker">Workspace library</p>
+              <h2 id="workspace-library">Choose the work to resume</h2>
+            </div>
+            <div className="wsp__actions">
+              {saved.workspaces.length > 0 && (
+                <button type="button" className="btn" onClick={() => void fromWhatIsOpen()}>
+                  Capture current work
+                </button>
+              )}
+              <button type="button" className="btn btn--primary" onClick={() => setEditing(blank())}>
+                + New workspace
+              </button>
+            </div>
+          </div>
+
+          {saved.workspaces.length > 1 && (
+            <label className="wsp__search">
+              <span className="sr-only">Filter workspaces</span>
+              <input
+                className="input"
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Filter by project, purpose, or folder..."
+              />
+            </label>
+          )}
+
+          {!busy && saved.workspaces.length === 0 && (
+            <div className="wsp__empty">
+              <strong>None yet. Start from the work already open.</strong>
+              <span>Capture it once; then Resume brings back its folders, terminal setup, and remote host.</span>
+              <button type="button" className="btn btn--primary" onClick={() => void fromWhatIsOpen()}>
+                Capture current work
+              </button>
+            </div>
+          )}
+
+          {saved.workspaces.length > 0 && visible.length === 0 && (
+            <p className="wsp__empty">No saved workspace matches “{query}”.</p>
+          )}
+
+          <ul className="wsp__list">
+        {visible.map((workspace) => (
           <li
             key={workspace.id}
             className="wsp__row"
@@ -310,27 +373,13 @@ export function Workspaces() {
           </li>
         ))}
       </ul>
+        </section>
+      )}
 
       <WorktreePanel
         roots={roots}
         onOpen={(root, worktree) => void openWorktree(root, worktree)}
       />
-
-      {!editing && (
-        <div className="wsp__actions">
-          <button type="button" className="btn" onClick={() => setEditing(blank())}>
-            + New workspace
-          </button>
-          <button type="button" className="btn" onClick={() => void fromWhatIsOpen()}>
-            Save what is open
-          </button>
-          {active && (
-            <button type="button" className="btn" onClick={() => void leave()}>
-              Leave {active.name}
-            </button>
-          )}
-        </div>
-      )}
 
       {editing && (
         <WorkspaceForm
