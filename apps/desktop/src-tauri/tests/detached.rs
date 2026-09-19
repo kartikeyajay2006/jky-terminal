@@ -12,7 +12,7 @@ use std::process::{Child, Command};
 use interprocess::local_socket::traits::Stream as _;
 use std::time::{Duration, Instant};
 
-use jky_detach::{Frame, attach, sessions};
+use jky_detach::{Client, Frame, Joined, attach, join, sessions};
 
 fn binary() -> PathBuf {
     // The test binary sits beside the one under test.
@@ -45,6 +45,24 @@ fn wait_for(mut done: impl FnMut() -> bool) -> bool {
         std::thread::sleep(Duration::from_millis(100));
     }
     false
+}
+
+/// Reattach through the same handshake-and-retry path the desktop uses.
+///
+/// The first connection can race a just-sent `Detach`: the old window owns
+/// the session until the supervisor reads that frame, so it is correctly
+/// reported Busy rather than being treated as a working terminal. Retrying
+/// that short handoff is part of the product protocol, not a test delay.
+fn reattach(recorded: &Path, session: &str) -> Client {
+    let until = Instant::now() + Duration::from_secs(5);
+    loop {
+        match join(recorded, session) {
+            Joined::Attached { client, .. } => return client,
+            Joined::Busy if Instant::now() < until => std::thread::sleep(Duration::from_millis(25)),
+            Joined::Busy => panic!("the previous window never released the session"),
+            Joined::Absent => panic!("the session disappeared while reattaching"),
+        }
+    }
 }
 
 /// A supervisor that is killed when the test ends, however it ends.
@@ -120,16 +138,14 @@ fn a_shell_outlives_the_process_that_asked_for_it() {
         "the session died with its window"
     );
 
-    let again = attach(&recorded, "one").expect("reattach");
-    let (reading, mut writing) = again.split();
-    Frame::Data(b"echo MARKER-AGAIN\r".to_vec())
-        .write_to(&mut writing)
-        .expect("type again");
+    let again = reattach(&recorded, "one");
+    let reading = again.take_frames().expect("one reader");
+    again.input(b"echo MARKER-AGAIN\r").expect("type again");
     let seen = read_until(reading, "MARKER-AGAIN", Duration::from_secs(25));
     assert!(seen.contains("MARKER-AGAIN"), "the reattached shell was deaf:\n{seen}");
 
     // And it ends when told to, taking its record with it.
-    Frame::Data(b"exit\r".to_vec()).write_to(&mut writing).ok();
+    again.input(b"exit\r").ok();
     assert!(
         wait_for(|| sessions(&recorded).is_empty()),
         "the session outlived its shell"
