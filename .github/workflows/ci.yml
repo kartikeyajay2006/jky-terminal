@@ -81,8 +81,12 @@ jobs:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with: { components: clippy }
+      - name: Install Linux native dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libdbus-1-dev pkg-config
       - uses: Swatinem/rust-cache@v2
-        with: { key: ubuntu-libraries }
+        with: { key: ubuntu-linux }
       - name: Test Rust libraries on Linux
         run: cargo test --workspace --exclude jky-terminal
       - name: Clippy Rust libraries on Linux
@@ -92,18 +96,22 @@ jobs:
     name: Native desktop build (ubuntu-latest)
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    needs: native-linux-tests
     steps:
       - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
       - name: Install Tauri system dependencies
         run: |
-          # Hosted images start with a usable package index; avoiding a refresh
-          # leaves headroom for a cold GTK/WebKit desktop compilation.
+          # The hosted image can have package metadata older than its mirrors.
+          # Refresh before installing so a missing archive is a hard failure,
+          # never a flaky native build.
+          sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev build-essential curl wget file \
-            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+            libdbus-1-dev pkg-config
       - uses: Swatinem/rust-cache@v2
-        with: { key: ubuntu-desktop }
+        with: { key: ubuntu-linux }
       - name: Compile the real Linux desktop binary
         run: cargo build -p jky-terminal
 
