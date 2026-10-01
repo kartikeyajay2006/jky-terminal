@@ -23,6 +23,7 @@
 <p align="center">
   <a href="#-quick-start">⚡ Quick Start</a> &nbsp;•&nbsp;
   <a href="#-interactive-showcase">✨ Interactive Showcase</a> &nbsp;•&nbsp;
+  <a href="#-documentation">📚 Documentation</a> &nbsp;•&nbsp;
   <a href="#-why-jky-terminal">⚔️ Why JKY Terminal</a> &nbsp;•&nbsp;
   <a href="#-the-ten-sections">▦ 10 Sections</a> &nbsp;•&nbsp;
   <a href="#-any-command-can-become-an-app">⚡ Command to App</a> &nbsp;•&nbsp;
@@ -59,6 +60,26 @@ pnpm dev:desktop
 ## ✨ Interactive Showcase
 
 > 📖 **Want the comprehensive visual walkthrough? Explore the full [JKY Terminal Showcase & Tour](docs/SHOWCASE.md).**
+
+## 📚 Documentation
+
+Beautiful product visuals are useful; dependable operating guidance is essential. The new documentation hub is written around the actual application, with clear boundaries between current capabilities and planned work.
+
+<p align="center">
+  <a href="docs/README.md"><img src="docs/img/terminal-studio-hero.png" alt="Colourful JKY Terminal documentation hero showing a professional developer workstation" width="900"></a>
+</p>
+
+| Read | What you will learn |
+|---|---|
+| [Documentation home](docs/README.md) | A guided map of every user and maintainer guide. |
+| [Getting started](docs/getting-started.md) | Source setup, first launch, safe first-session checks, and troubleshooting. |
+| [Terminal guide](docs/terminal-guide.md) | Tabs, panes, persistent sessions, remote work, history, and command views. |
+| [Workspaces and editor](docs/workspaces-and-editor.md) | Project boundaries, safe file editing, and restoration habits. |
+| [Assistant and approvals](docs/assistant-and-approvals.md) | Provider context, visible approvals, and practical AI safety. |
+| [Security and privacy](docs/security-and-privacy.md) | Native boundaries, secrets, files, audit records, and known limits. |
+| [Operations and releases](docs/operations-and-releases.md) | CI, validation, packaging, signing status, and release smoke tests. |
+
+The [product roadmap](docs/product-roadmap.md) explains what is genuinely current, what needs hardening next, and what is deliberately planned rather than promised.
 
 JKY Terminal rethinks every assumption of command-line tools:
 
@@ -155,6 +176,12 @@ JKY Terminal ships with **seven production-grade themes**, each mathematically v
     <img src="docs/img/themes-palette.svg" alt="Seven Built-In Themes — Cyberpunk, Dracula, Nord, Solarized, Light, Gold, High Contrast" width="900">
   </a>
 </p>
+
+<p align="center">
+  <img src="docs/img/themes-live.svg" alt="Animated preview of all seven colourful JKY Terminal themes" width="900">
+</p>
+
+<p align="center"><sub>Animated theme preview — designed to feel alive while keeping every terminal state legible.</sub></p>
 
 1. **Cyberpunk (Default):** Synthwave dark ground (`#08080c`) with vibrant neon cyan (`#00e5ff`) and magenta (`#ff3cf0`) accents.
 2. **Dracula:** Official midnight purple palette (`#282a36`) with soft lilac (`#bd93f9`) and pastel green (`#50fa7b`).
@@ -283,13 +310,17 @@ Every commit runs rigorous validation on **Linux, macOS, and Windows** with `fai
 
 ## 🗺️ Roadmap & Honest Scope
 
-We believe in complete engineering honesty. A README that only promises features is marketing fiction:
+We believe documentation should make the product easier to trust, not merely easier to market. JKY already has a substantial terminal, workspace, assistant, remote, editor, and developer-tool foundation. The work that still matters most is proving the core under real load, testing real desktop workflows end-to-end, and shipping verifiable releases.
 
-- ⏳ **YouTube in Apps:** Requires Google OAuth loopback (already architected for Gmail). Deliberately omits ad-stripping to comply with terms of service.
-- 🔒 **Read-Only Gmail Scope:** Gmail integration is strictly bound to `gmail.readonly` (asserted by automated tests). Reading mail is useful; auto-sending from a terminal is dangerous.
-- 🚀 **Database Cockpit:** Native PostgreSQL, SQLite, and Redis connection explorers scheduled for **v0.2**.
-- 🔌 **Sandboxed Plugin Architecture:** WASM-based extension runtime scheduled for **v0.3**.
-- 🏷️ **Code Signing:** Binaries are currently unsigned; automated code signing certificate integration is documented in [`docs/RELEASING.md`](docs/RELEASING.md).
+| Area | Honest status | What must happen next |
+|---|---|---|
+| Terminal reliability | Current core product | Publish performance budgets and add native E2E coverage for interactive shells, resize, persistence, Unicode, and high output. |
+| Gmail and account integrations | Deliberately limited | Gmail remains read-only; every future provider needs least-privilege scopes and a documented data boundary. |
+| Database cockpit | Planned | PostgreSQL, SQLite, Redis, and other data explorers need a purpose-built, safe design before being advertised as part of the terminal. |
+| Plugin SDK | Planned | A public extension system needs sandboxing, visible permissions, compatibility guarantees, and supply-chain governance. |
+| Signed distribution and updates | In progress | Packages are currently unsigned. Complete Windows signing, macOS notarisation, signed update metadata, rollback policy, and package provenance. |
+
+Read the full [product roadmap and scope](docs/product-roadmap.md) for the priorities, explicit non-promises, and the concrete definition of a world-class JKY Terminal.
 
 ---
 
