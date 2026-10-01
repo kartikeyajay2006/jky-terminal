@@ -29,6 +29,10 @@ jobs:
   native:
     name: Native (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    # State the intended ceiling explicitly. A cold Linux Tauri build is
+    # expected to take several minutes; it must never inherit a short runner
+    # default and be canceled while otherwise-passing tests are still running.
+    timeout-minutes: 15
     strategy:
       fail-fast: false          # one platform failing must not hide the others
       matrix:
@@ -49,7 +53,8 @@ jobs:
       - name: Install Tauri system dependencies (Linux)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          sudo apt-get update
+          # GitHub's hosted image already has a current package index. Refreshing
+          # it adds avoidable cold-start time before the native test suite.
           sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev \
             libjavascriptcoregtk-4.1-dev build-essential curl wget file \
             libssl-dev libayatana-appindicator3-dev librsvg2-dev
