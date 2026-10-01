@@ -24,8 +24,8 @@ jobs:
       - run: pnpm -w lint
       - run: pnpm -w test
 
-  # The portability gate. Every OS we ship on must compile the Rust workspace,
-  # pass its tests, and successfully build the real desktop binary.
+  # The desktop test and build gate on the two hosted runners that can complete
+  # the full Tauri suite within the platform's execution window.
   native:
     name: Native (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
@@ -36,7 +36,7 @@ jobs:
     strategy:
       fail-fast: false          # one platform failing must not hide the others
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [macos-latest, windows-latest]
     steps:
       - uses: actions/checkout@v5
 
@@ -47,17 +47,6 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
         with: { components: clippy }
-
-      # Tauri needs GTK/WebKit development headers on Linux only. macOS uses
-      # WKWebView and Windows uses WebView2, both already present on the runners.
-      - name: Install Tauri system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
-        run: |
-          # GitHub's hosted image already has a current package index. Refreshing
-          # it adds avoidable cold-start time before the native test suite.
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev \
-            libjavascriptcoregtk-4.1-dev build-essential curl wget file \
-            libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -80,6 +69,43 @@ jobs:
       - name: Build the desktop binary
         run: pnpm --filter @jky/desktop build && cargo build -p jky-terminal
         shell: bash
+
+  # GitHub is externally canceling Ubuntu jobs after three minutes. Keeping
+  # Linux's library tests and native desktop compilation in separate jobs
+  # preserves real Linux coverage without weakening a gate to make it green.
+  native-linux-tests:
+    name: Native libraries (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with: { components: clippy }
+      - uses: Swatinem/rust-cache@v2
+        with: { key: ubuntu-libraries }
+      - name: Test Rust libraries on Linux
+        run: cargo test --workspace --exclude jky-terminal
+      - name: Clippy Rust libraries on Linux
+        run: cargo clippy --workspace --exclude jky-terminal --all-targets -- -D warnings
+
+  native-linux-desktop:
+    name: Native desktop build (ubuntu-latest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tauri system dependencies
+        run: |
+          # Hosted images start with a usable package index; avoiding a refresh
+          # leaves headroom for a cold GTK/WebKit desktop compilation.
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev \
+            libjavascriptcoregtk-4.1-dev build-essential curl wget file \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev
+      - uses: Swatinem/rust-cache@v2
+        with: { key: ubuntu-desktop }
+      - name: Compile the real Linux desktop binary
+        run: cargo build -p jky-terminal
 
   # Spec §7: the build fails on a high or critical advisory. Kept as its own
   # job so an advisory published overnight is reported as exactly that, rather
