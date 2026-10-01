@@ -6,7 +6,7 @@
     <linearGradient id="line" x1="0" x2="1"><stop stop-color="#00e5ff"/><stop offset=".5" stop-color="#ff3cf0"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
     <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
     <style>
-      .label{font:600 12px Inter,Arial,sans-serif;fill:#f5f5fa}.small{font:10px ui-monospace,monospace;fill:#a9afc4}.card{animation:pulse 10.5s infinite;transform-origin:center}.c1{animation-delay:0s}.c2{animation-delay:1.5s}.c3{animation-delay:3s}.c4{animation-delay:4.5s}.c5{animation-delay:6s}.c6{animation-delay:7.5s}.c7{animation-delay:9s}.scan{animation:scan 10.5s linear infinite}.cursor{animation:blink .85s steps(1) infinite}@keyframes pulse{0%,9%,100%{opacity:.68;transform:translateY(0)}3%,7%{opacity:1;transform:translateY(-5px)}}@keyframes scan{0%{transform:translateX(0);opacity:0}4%,92%{opacity:1}100%{transform:translateX(770px);opacity:0}}@keyframes blink{50%{opacity:0}}
+      .label{font:600 12px Inter,Arial,sans-serif;fill:#f5f5fa}.small{font:10px ui-monospace,monospace;fill:#a9afc4}.card{animation:pulse 10.5s infinite}.c1{animation-delay:0s}.c2{animation-delay:1.5s}.c3{animation-delay:3s}.c4{animation-delay:4.5s}.c5{animation-delay:6s}.c6{animation-delay:7.5s}.c7{animation-delay:9s}.scan{animation:scan 10.5s linear infinite}.cursor{animation:blink .85s steps(1) infinite}@keyframes pulse{0%,9%,100%{opacity:.72}3%,7%{opacity:1}}@keyframes scan{0%{transform:translateX(0);opacity:0}4%,92%{opacity:1}100%{transform:translateX(770px);opacity:0}}@keyframes blink{50%{opacity:0}}
     </style>
   </defs>
   <rect width="920" height="360" rx="18" fill="url(#bg)"/>

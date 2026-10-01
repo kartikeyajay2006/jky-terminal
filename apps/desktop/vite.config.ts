@@ -19,6 +19,10 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     globals: true,
+    // Hundreds of jsdom UI tests contend for timers and the event loop when
+    // they all start at once. A small fixed worker pool keeps async tests
+    // deterministic on developer machines and CI without serialising them.
+    maxWorkers: 4,
     setupFiles: ["./src/test/setup.ts"],
   },
 });
