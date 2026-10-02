@@ -334,6 +334,9 @@ Open **History** (`↺`), or run `jky history <text>` from any terminal.
   logarithm, so an `ls` run five hundred times does not bury everything else), and how recently.
 - **One row per command**, with a count, rather than forty identical lines.
 - **Choosing one types it** at the prompt. It never runs it.
+- **Secrets are redacted before they are written.** A token typed into a command — `ghp_…`,
+  `sk-ant-…`, an `Authorization:` header, a `*_TOKEN=` assignment — is kept as
+  `[redacted github-token]` and so on. See [what is recognised](security-and-privacy.md#secrets-in-history-and-scrollback).
 - **Forget** removes *every* run of that command — someone deleting a line with a credential in it
   means all of them.
 

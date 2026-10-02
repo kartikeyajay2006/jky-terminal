@@ -2310,6 +2310,7 @@ name = "jky-history"
 version = "0.1.0"
 dependencies = [
  "jky-persist",
+ "jky-redact",
  "serde",
  "serde_json",
  "tempfile",
@@ -2366,6 +2367,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "jky-redact"
+version = "0.1.0"
+dependencies = [
+ "regex",
+]
+
+[[package]]
 name = "jky-remote"
 version = "0.1.0"
 dependencies = [
@@ -2402,6 +2410,7 @@ name = "jky-store"
 version = "0.1.0"
 dependencies = [
  "jky-persist",
+ "jky-redact",
  "serde",
  "serde_json",
  "tempfile",

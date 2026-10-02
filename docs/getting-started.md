@@ -277,11 +277,11 @@ configuration directory for the app id `dev.jky.terminal`:
 |---|---|
 | `settings.json` | Non-secret preferences: chosen models, active provider, terminal start folder, open editor folders. |
 | `keymap.json` | Only the shortcuts you changed. Defaults are not written, so improved defaults still reach you. |
-| `history.jsonl` | Commands you ran, where, and how they ended. Capped at 100,000 entries. |
+| `history.jsonl` | Commands you ran, where, and how they ended — with recognisable secrets replaced by labels before they are written. Capped at 100,000 entries. |
 | `workspaces.json` | Saved workspaces. Plain JSON you can edit. |
 | `hosts.json` | Saved SSH hosts — addresses and options, **never** a password or key. |
 | `notes.json`, `todos.json`, `events.json`, `reminders.json` | The Dashboard's notes, todos, calendar events and daily reminders. |
-| `scrollback/` | Each pane's scrollback, up to 256 KB per pane, so a restart restores it. |
+| `scrollback/` | Each pane's scrollback, up to 256 KB per pane, so a restart restores it — with recognisable secrets redacted. |
 | `detached/` | Records for the supervisors holding your shells. |
 | `shell/`, `bin/` | The shell-integration startup files and the `jky` launcher scripts. |
 | `audit.jsonl` | An append-only log of privileged actions: key reads, tool calls, approvals, sign-ins, captures. |

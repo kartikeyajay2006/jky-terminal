@@ -79,7 +79,11 @@ pub fn save(config_dir: &Path, key: &str, text: &str) -> Result<(), ScrollbackEr
     let path = path_for(&dir, key)?;
     std::fs::create_dir_all(&dir)?;
 
-    let kept = tail(text, MAX_BYTES);
+    // What a command printed can include a secret — `cat .env`, a token in
+    // a curl response. Redacted before the tail is taken, so a cut can never
+    // land in the middle of one and leave half of it recognisable.
+    let cleaned = jky_redact::redact(text).text;
+    let kept = tail(&cleaned, MAX_BYTES);
 
     // Atomic and flushed, through `jky-persist`: an interrupted save leaves
     // the previous scrollback intact rather than a half-written one that
@@ -170,6 +174,15 @@ mod tests {
 
     fn dir() -> tempfile::TempDir {
         tempfile::tempdir().unwrap()
+    }
+
+    #[test]
+    fn a_secret_printed_to_the_screen_is_not_kept_in_saved_scrollback() {
+        let d = dir();
+        save(d.path(), "tab-1", "$ cat .env\r\nOPENAI=sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345\r\n$ ").unwrap();
+        let back = load(d.path(), "tab-1").unwrap();
+        assert!(!back.contains("sk-proj-AbCd"), "{back}");
+        assert!(back.contains("[redacted openai-key]"), "{back}");
     }
 
     #[test]

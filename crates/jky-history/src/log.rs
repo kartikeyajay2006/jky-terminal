@@ -76,7 +76,9 @@ impl History {
     /// them is a history that has to be scrolled past.
     pub fn record(&self, mut entry: Entry) -> Result<(), HistoryError> {
         let _guard = self.mutation.lock().map_err(|e| HistoryError::Write(e.to_string()))?;
-        entry.command = entry.command.trim().to_string();
+        // Before anything else touches it: a token typed into a command is
+        // replaced by a label here, so it never reaches the disk at all.
+        entry.command = jky_redact::redact(entry.command.trim()).text;
         if entry.command.is_empty() {
             return Err(HistoryError::Empty);
         }
@@ -175,6 +177,23 @@ mod tests {
             session: "pane-1".into(),
             host: None,
         }
+    }
+
+    #[test]
+    fn a_secret_typed_in_a_command_never_reaches_the_disk() {
+        let (dir, h) = history();
+        h.record(entry("export GITHUB_TOKEN=ghp_0123456789abcdefghijklmnopqrstuvwxyz && gh pr list")).unwrap();
+        let raw = std::fs::read_to_string(dir.path().join("history.jsonl")).unwrap();
+        assert!(!raw.contains("ghp_0123456789"), "the token was written: {raw}");
+        let kept = &h.all().unwrap()[0].command;
+        assert_eq!(kept, "export GITHUB_TOKEN=[redacted github-token] && gh pr list");
+    }
+
+    #[test]
+    fn an_ordinary_command_is_kept_exactly() {
+        let (_dir, h) = history();
+        h.record(entry("git log --oneline -5")).unwrap();
+        assert_eq!(h.all().unwrap()[0].command, "git log --oneline -5");
     }
 
     #[test]

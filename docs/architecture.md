@@ -108,6 +108,7 @@ jky-terminal/
 | 🔵 **jky-settings** | Non-secret preferences. |
 | 🔵 **jky-store** | Dashboard data and scrollback. |
 | 🟣 **jky-ai** | Providers (Anthropic, OpenAI-compatible incl. Ollama), streaming, tools, the path sandbox, risk labels, approved-command execution. |
+| 🟣 **jky-redact** | Recognising secrets in text — keys, tokens, JWTs, private keys, credentials in context — and replacing them with labels. |
 | 🟣 **jky-secrets** | The keychain, the provider and model catalogue, key shape checks, a zeroising secret type. |
 | 🟣 **jky-audit** | The append-only, hash-chained audit log, its keychain anchor and its verifier. |
 | 🟠 **jky-remote** | Saved hosts and the `ssh` argument validation. |

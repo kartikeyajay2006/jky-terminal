@@ -196,6 +196,36 @@ paths containing a NUL byte.
 
 ---
 
+## Secrets in history and scrollback
+
+Commands and their output are exactly where tokens end up — `export GITHUB_TOKEN=…`, a
+`curl -H "Authorization: Bearer …"`, `cat .env`. So before a command reaches `history.jsonl`, and
+before a pane's scrollback is saved for the next launch, the `jky-redact` crate replaces every secret
+it recognises with a label:
+
+```text
+export GITHUB_TOKEN=ghp_0123…wxyz && gh pr list          ← what you typed
+export GITHUB_TOKEN=[redacted github-token] && gh pr list ← what is kept
+```
+
+| Recognised | Examples |
+|---|---|
+| AI provider keys | Anthropic `sk-ant-…`, OpenAI `sk-proj-…` and legacy `sk-…`, OpenRouter `sk-or-…`, Groq `gsk_…`, xAI `xai-…`, Google `AIza…` |
+| Platform tokens | GitHub `ghp_…` / `github_pat_…`, AWS access keys `AKIA…`, Slack `xox…-`, Stripe `sk_live_…` |
+| Structured secrets | JWTs, `-----BEGIN … PRIVATE KEY-----` blocks |
+| Secrets in context | the value of an `Authorization:` / `X-Api-Key:` header, a password in a URL (`https://user:…@host` keeps the user), `--password=…` / `--token …` flags, and `*_TOKEN=` / `*_SECRET=` / `*_PASSWORD=` / `*_API_KEY=` assignments |
+
+What it deliberately leaves alone: numbers (`MAX_TOKENS=4096`), variable references
+(`API_KEY=$API_KEY`), git SHAs, UUIDs and ordinary words. Your live terminal still shows what was
+printed; only what is *kept* is redacted, so a restored pane shows the label instead.
+
+> [!WARNING]
+> Redaction recognises **shapes**, not meaning. A password typed as a bare word — `mysql -p hunter2` —
+> has no shape to recognise and is kept. Use **Forget** in History for anything it missed, and rotate
+> a secret that reached a terminal at all.
+
+---
+
 ## Terminal output is untrusted input
 
 Output can come from anywhere — a remote machine, a build log, a package script, a model. JKY treats it
