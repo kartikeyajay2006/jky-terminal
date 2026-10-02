@@ -454,17 +454,19 @@ failing never hides another:
 
 ```mermaid
 flowchart LR
-    P([push · pull request]):::ink --> FE & MAC & WIN & LIN & AUD
+    P([push · pull request]):::ink --> FE & MAC & WIN & LIN & SEC & AUD
     FE["🧪 Frontend<br/>typecheck · lint<br/>2,267 tests"]:::violet
     MAC["🍎 macOS<br/>every Rust test · clippy<br/>desktop binary links"]:::cyan
     WIN["🪟 Windows<br/>every Rust test · clippy<br/>desktop binary links"]:::cyan
     LIN["🐧 Linux<br/>crate tests · clippy"]:::cyan --> LDB["🐧 Linux desktop binary<br/>against WebKitGTK"]:::cyan
+    SEC["🔐 Security assertions<br/>bundle scan · repo secret scan"]:::red
     AUD["🛡️ Dependency audit<br/>pnpm audit · cargo audit"]:::amber
 
     classDef ink fill:#14141f,stroke:#2a2a3c,color:#e8e8f2
     classDef cyan fill:#00e5ff,stroke:#00a3b5,color:#06141a
     classDef amber fill:#ffb340,stroke:#d18a12,color:#1f1300
     classDef violet fill:#7c3aed,stroke:#5b21b6,color:#ffffff
+    classDef red fill:#ff4d6a,stroke:#d91f3d,color:#ffffff
 ```
 
 | Check | What it guarantees |
@@ -473,6 +475,7 @@ flowchart LR
 | **Lint rules** | No component calls Tauri directly; no component contains a literal colour. |
 | **Theme test** | Every theme's text meets WCAG contrast on its own ground. |
 | **`scan:bundle`** | No credential-shaped string ships, and the entry bundle stays within its budget. |
+| **Repository secret scan** | No API key for any supported provider is committed outside `docs/`. |
 | **Binary link proof** | The real desktop binary links on each OS — where keychain and webview bindings actually fail. |
 
 ---

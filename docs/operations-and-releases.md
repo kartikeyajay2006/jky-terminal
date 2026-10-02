@@ -55,18 +55,20 @@ Every push to `main` and every pull request runs [`ci.yml`](../.github/workflows
 
 ```mermaid
 flowchart TB
-    P([push · pull request]):::ink --> FE & NM & NW & LT & AU
+    P([push · pull request]):::ink --> FE & NM & NW & LT & SA & AU
     FE["Frontend · ubuntu<br/>typecheck · lint · test"]:::violet
     NM["Native · macOS<br/>cargo test · clippy · build binary"]:::cyan
     NW["Native · Windows<br/>cargo test · clippy · build binary"]:::cyan
     LT["Native libraries · ubuntu<br/>cargo test · clippy (libraries)"]:::cyan
     LT --> LD["Native desktop build · ubuntu<br/>WebKitGTK · real Linux binary"]:::cyan
+    SA["Security assertions · ubuntu<br/>bundle scan · repository secret scan"]:::red
     AU["Dependency audit<br/>pnpm audit · cargo audit"]:::amber
 
     classDef ink fill:#14141f,stroke:#2a2a3c,color:#e8e8f2
     classDef cyan fill:#00e5ff,stroke:#00a3b5,color:#06141a
     classDef amber fill:#ffb340,stroke:#d18a12,color:#1f1300
     classDef violet fill:#7c3aed,stroke:#5b21b6,color:#ffffff
+    classDef red fill:#ff4d6a,stroke:#d91f3d,color:#ffffff
 ```
 
 | Job | Runs on | Proves |
@@ -75,6 +77,7 @@ flowchart TB
 | **Native** | macOS, Windows | Every Rust test and clippy pass, and **the shippable binary links** — where a keychain backend or webview binding actually fails. |
 | **Native libraries** | Ubuntu | Rust tests and clippy for the crates on Linux. |
 | **Native desktop build** | Ubuntu | The real Linux desktop binary compiles against WebKitGTK. |
+| **Security assertions** | Ubuntu | A clean production build passes `scan:bundle`, and no API key for any supported provider — Anthropic, OpenAI, Groq, xAI, OpenRouter, Google, GitHub, AWS — is committed outside `docs/`. |
 | **Dependency audit** | Ubuntu | `pnpm audit --audit-level high` and `cargo audit` fail on high or critical advisories; lower levels are reported. |
 
 > [!NOTE]

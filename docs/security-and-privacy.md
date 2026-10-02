@@ -112,6 +112,7 @@ the macOS and Windows jobs; Linux CI tests the libraries and compiles the deskto
 | `the_browser_webview_is_granted_no_capability_at_all` | The Browser app's webview cannot call a single command. |
 | `the_audit_log_is_written_but_never_handed_to_the_renderer` | The audit log is write-only from the window's point of view. |
 | `pnpm run scan:bundle` | Fails if anything shaped like an Anthropic, OpenAI, GitHub or AWS key, or a private key block, is in the shipped bundle. |
+| CI repository scan | Fails if an Anthropic, OpenAI, Groq, xAI, OpenRouter, Google, GitHub or AWS key is committed anywhere outside `docs/`. |
 | ESLint rule | A component calling Tauri's `invoke()` directly is a lint error — every native call goes through `src/platform/`. |
 | CI audit job | `pnpm audit --audit-level high` and `cargo audit` on every push. |
 
