@@ -1,45 +1,59 @@
 # JKY Terminal — Showcase & Tour
 
 <p align="center">
-  <img src="img/hero-showcase.svg" alt="JKY Terminal Interactive Hero Showcase" width="900">
+  <img src="img/hero.svg" alt="An animated tour of JKY Terminal in four scenes: output becomes a panel, shells outlive the window, the assistant has to ask, and one command changes the whole theme" width="100%">
 </p>
 
-Welcome to the definitive visual and architectural showcase of **JKY Terminal**. 
+A visual tour of what makes JKY Terminal different, in the order you would meet it. Every animation on
+this page shows behaviour the app really has; the [documentation](README.md) has the details, the
+limits and the reasoning.
 
-Traditional terminal emulators are passive windows into a TTY pipe. When a command finishes, its rich structured data is crushed into plain ASCII text. When you close the window, your running jobs die. When you need an editor, an AI helper, or developer utilities, you're forced to switch windows.
-
-**JKY Terminal redesigns the terminal experience from first principles.**
+**On this page:** [Panels](#1-any-command-can-become-an-app) · [Persistence](#2-shells-outlive-the-window) ·
+[Themes](#3-seven-purpose-built-design-themes) · [Security](#4-zero-ambient-authority-security-model) ·
+[One window](#5-ten-sections-in-one-window) · [Workflows](#6-real-world-workflows)
 
 ---
 
-## 1. Any Command Can Become An App
+## 1. Any command can become an app
 
-When commands like `docker ps`, `df -h`, `git log`, or `ls -l` run in standard terminals, their tabular output is flattened into text columns. JKY Terminal includes deterministic Rust-based recognizers that parse structured output into reactive, interactive GUI widgets directly below the text stream.
+A shell answers in text because a pipe is the only thing it can answer in. `df` reports how full your
+disks are and `docker ps` the state of your containers — both are tables flattened on the way out. JKY
+reads the flattening back and draws a panel **beneath** the raw output.
 
 <p align="center">
-  <img src="img/command-to-app-showcase.svg" alt="Command to App Showcase" width="900">
+  <img src="img/command-panels.svg" alt="Four panels building themselves: git log as a timeline, df -h as disk bars fullest first, git status -s split into staged and unstaged, and JSON as a tree" width="100%">
 </p>
 
-### The Three Safety Rules
-1. **Never Replaces Output**: The raw stdout/stderr remains unaltered in the scrollback. You can dismiss the app card at any time.
-2. **Actions Type, Never Silently Run**: Clicking an action button (such as stopping a container or switching a branch) pre-populates your shell prompt buffer so you retain 100% control before pressing <kbd>Enter</kbd>.
-3. **Pipes Decline**: Commands connected with pipes (e.g. `docker ps | grep api`) are deliberately bypassed to ensure only true, authoritative output is parsed.
+Eight deterministic recognisers — `git status`, `git log`, `docker ps`, `df`, `ps`, `ls`, `mkdir` and
+JSON — run in the interface over text the window already has. No model is involved, and three rules
+make them safe to leave on:
+
+1. **Never replaces output.** The raw text stays in the scrollback; a panel can be dismissed.
+2. **Actions type, never run.** A button places a command at your prompt. You press <kbd>Enter</kbd>.
+3. **Pipes decline.** `docker ps | grep api` prints grep's output, so every recogniser declines.
+
+`df -h`, `ps aux` and `docker ps` can also stay **live**: Rust re-runs one of those three fixed commands
+itself, with no shell in between. [More →](terminal-guide.md#every-command-can-become-a-panel)
 
 ---
 
-## 2. Shells Outlive The Window (tmux-less Persistence)
+## 2. Shells outlive the window
 
-In standard terminal apps, closing the window sends `SIGHUP` and terminates your running builds and background processes. 
+In most terminals, closing the window ends every shell in it. In JKY, each pane's shell is held by a
+small **supervisor** — the same binary run with `--supervise` — and the window is only a client of it.
 
-JKY Terminal introduces a lightweight, background **Session Supervisor** (`jky-detach`):
-- Each shell pane is supervised by an independent background daemon process communicating over secure Unix domain sockets or Windows named pipes.
-- Closing the window merely disconnects the UI client. Your long-running builds, servers, and scripts continue uninhibited.
-- When you reopen JKY Terminal, it automatically rejoins the supervisor and streams the tail of everything printed while you were away.
-- Sockets are strictly locked down to your local user UID with zero ambient network exposure.
+- Close the window mid-build and the build keeps going.
+- Reopen JKY and each pane rejoins its shell, drawing the tail of what it printed while you were away.
+- **Closing a pane ends its shell; quitting does not.** They are different acts.
+- Supervisor sockets live in a directory only your user can enter; on Windows each named pipe admits
+  only its owner.
+- A reboot or logging out still ends shells — this is continuity for the window, not immortality.
+
+[More →](terminal-guide.md#shells-that-outlive-the-window)
 
 ---
 
-## 3. Seven Purpose-Built Design Themes
+## 3. Seven purpose-built design themes
 
 JKY Terminal ships with **seven themes**, and every one of them is a set of values for the same design
 tokens. No component contains a literal colour — a lint rule rejects one — and a test checks every
@@ -59,65 +73,76 @@ theme's text contrast against its own ground.
 | **Gold** | light · warm parchment, amber to bronze | ![#fbf7ef](https://img.shields.io/badge/%23fbf7ef-fbf7ef?style=flat-square) | ![#8a6108](https://img.shields.io/badge/%238a6108-8a6108?style=flat-square) | ![#2f7d55](https://img.shields.io/badge/%232f7d55-2f7d55?style=flat-square) | **14.0 : 1** |
 | **High Contrast** | WCAG AAA · loud borders, no shadows | ![#000000](https://img.shields.io/badge/%23000000-000000?style=flat-square) | ![#00ffff](https://img.shields.io/badge/%2300ffff-00ffff?style=flat-square) | ![#ffd24d](https://img.shields.io/badge/%23ffd24d-ffd24d?style=flat-square) | **21.0 : 1** |
 
+Switch from **Settings → Appearance**, or from any terminal with `jky theme <name>`.
 
 ---
 
-## 4. Zero-Ambient-Authority Security Model
-
-Security is not a plugin in JKY Terminal—it is the foundational boundary of the entire codebase.
+## 4. Zero-ambient-authority security model
 
 <p align="center">
-  <img src="img/architecture-diagram.svg" alt="Architecture &amp; Zero-Trust Security Perimeter" width="900">
+  <img src="img/security-flow.svg" alt="A file request travels down through the window, the pinned IPC commands and the Rust core to the machine and back; the window's own attempt to reach the internet is blocked; the API key stays in the keychain" width="100%">
 </p>
 
-- **`connect-src 'self'`**: The webview frontend has zero ambient networking authority. Even if an untrusted npm package or malicious escape code was injected, it cannot transmit a single byte to an external server.
-- **Zero Secret Getters**: No IPC command exists to read secrets back into the frontend. API keys (e.g. Anthropic, OpenAI) are saved in the OS-native Keychain (Apple Keychain, Windows Credential Manager, Linux Secret Service over D-Bus) and handled exclusively inside Rust with memory zeroization (`zeroize`).
-- **Bounded Filesystem Access**: The built-in editor and file tools can only read folders explicitly opened by the user, canonicalized and verified on every single syscall to prevent symlink traversal and relative path exploits (`../`).
-- **Local-Only Audit Log**: Every privileged operation and shell execution is recorded in a tamper-resistant local audit log for full visibility.
+- **`connect-src 'self'`.** The webview can connect to the app itself and Tauri's IPC channel, nothing
+  else. Even code injected into the window would have nowhere to send anything.
+- **No secret getters.** No IPC command returns a key. Keys live in the OS keychain and are read only by
+  Rust, only to make a request, in a type that is zeroed when dropped.
+- **113 commands, pinned.** A test lists every IPC command by name; adding one fails the build until it
+  is justified.
+- **Folders you open.** The editor and the assistant's file tools reach only folders you chose, checked
+  after canonicalising on every call so `../` and symlinks out are refused.
+- **A local audit log** records key reads, provider requests, the assistant's tool calls, approved and
+  declined commands, account links and captures. It is append-only, and the window cannot read it.
+
+[More →](security-and-privacy.md)
 
 ---
 
-## 5. Ten Integrated Workspaces in One Window
+## 5. Ten sections in one window
 
-Why juggle 6 different applications when your development environment can be unified into a single lightweight desktop app?
-
-```
-┌────────────────────────────────────────────────────────────────────────┐
-│                              JKY TERMINAL                              │
-├────────────┬───────────────────────────────────────────────────────────┤
-│ ❯ Terminal │ WebGL-accelerated xterm.js · Geometric splits · SSH       │
-│ ✎ Editor   │ CodeMirror 6 · Multi-root · Image viewer · Inline PDFs    │
-│ ▦ Workspaces│ Session state snapshots (folders, panes, SSH connections) │
-│ ⇄ Remote   │ Native SSH with ~/.ssh/config & system key agent           │
-│ ↺ History  │ Subsequence fuzzy search (dkrps → docker ps)              │
-│ ✦ Assistant│ Claude / OpenAI streaming · Tool sandboxing · Safe auth   │
-│ ⌂ Dashboard│ Local-first markdown notes, Kanban todos, calendar        │
-│ ⌥ Developer│ 11 offline tools: JSON, YAML, JWT, Hash, Diff, Regex      │
-│ ⊞ Apps     │ GitHub PRs, Gmail (read-only PKCE), Native Browser, Maps  │
-│ ◈ Games    │ Built-in terminal games with persistent scorekeeping      │
-└────────────┴───────────────────────────────────────────────────────────┘
-```
+| | Section | What is in it |
+|:-:|---|---|
+| `❯` | **Terminal** | xterm.js with WebGL2, geometric splits, supervised shells, panels, completions |
+| `✎` | **Editor** | CodeMirror 6 over several folders; images and PDFs preview |
+| `▦` | **Workspaces** | Named setups — folders, start folder, terminals, a host — and Git worktrees |
+| `⇄` | **Remote** | Saved SSH hosts run through your own `ssh`, agent and config |
+| `↺` | **History** | Subsequence search: `dkrps` finds `docker ps` |
+| `✦` | **Assistant** | Anthropic, OpenAI or local Ollama; every command waits for approval |
+| `⌂` | **Dashboard** | Notes, todos, a calendar and daily reminders, also scriptable with `jky` |
+| `⌥` | **Developer** | Twelve tools — JSON, YAML, Diff, Hash, JWT, Regex, HTTP, System Monitor, Processes, Ports, Environment, DNS |
+| `⊞` | **Apps** | GitHub, Gmail (read-only), Browser, Weather, News, Map, Calculator, Timer |
+| `◈` | **Games** | Dino Run, Snake, Tic Tac Toe, Flappy Bird, 2048 |
 
 ---
 
-## 6. Real-World Developer Workflows
+## 6. Real-world workflows
 
-### The Fullstack Engineer
-1. Launch JKY Terminal: Workspace automatically restores the client Vite server, backend Rust API, and Docker database container in a 3-way split.
-2. Edit configuration files in the integrated CodeMirror editor without spinning up a heavy IDE.
-3. Open the **Developer Tools** tab to inspect and format an API response JSON or test a JWT token offline.
+### The full-stack engineer
 
-### The DevOps / Infrastructure Lead
-1. Connect to production clusters via **Remote** using your system SSH key agent without ever copying private keys into the terminal.
-2. Monitor host disk space (`df -h`) and Docker workloads with automatic interactive visual panels.
-3. If your workstation reboots or your laptop lid closes, the background supervisor maintains your server shells undisturbed.
+1. Save a workspace for the project: its folders, a start folder, and three terminals.
+2. Switch to it from the palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>) — the editor opens the folders and three
+   terminals start in the right place. Split them how you like with <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd>.
+3. Run the server, the tests and the database client. Close the app at lunch; they keep running.
+4. Paste an API response into **Developer → JSON**, or decode a token in **JWT** — offline.
 
-### The AI-Powered Hacker
-1. Activate **Assistant** with <kbd>Ctrl</kbd>+<kbd>K</kbd>.
-2. Stream suggestions and shell commands directly against local code context.
-3. All destructive commands require a physical click on the tool approval card—preventing accidental deletions.
+### The infrastructure lead
+
+1. Save production hosts in **Remote**. JKY uses your own `ssh`, agent and `known_hosts`; it stores no
+   credential and never reconnects on its own after a restart.
+2. Watch `df -h` and `docker ps` as **live** panels while you work.
+3. Give production its own workspace, with a note that says so.
+
+### The AI-assisted developer
+
+1. Open the **Assistant** from the rail, or ask from any terminal: `jky ask why is this slow`.
+2. It reads the project freely to understand the problem — inside the project folder only.
+3. **Every command it proposes waits for you**, labelled by risk; destructive ones must be typed back.
+4. Prefer it offline? Choose **Ollama** in Settings → Providers.
 
 ---
+
+<p align="center">
+  <a href="README.md">📚 Documentation home</a> &nbsp;·&nbsp; <a href="comparison.md">⚖️ How JKY compares</a>
+</p>
 
 *Authored and engineered by **kartikeyajay2006** under the MIT License.*
-

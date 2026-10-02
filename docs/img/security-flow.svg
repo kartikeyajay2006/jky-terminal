@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 600" width="1200" height="600" role="img" aria-labelledby="t d">
+<title id="t">The window can ask. Only Rust can act.</title>
+<desc id="d">Four layers: the window, 113 pinned IPC commands, the Rust core, and your machine. A file request travels down through every layer and the answer travels back. A request from the window straight to the internet is blocked by the content security policy. The API key stays in the OS keychain; only Rust reads it, only to call a provider.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d0d17"/><stop offset="1" stop-color="#05050a"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#3ddc97"/><stop offset=".5" stop-color="#00e5ff"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
+<filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="50"/></filter>
+<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#fff" fill-opacity=".05"/></pattern>
+<clipPath id="card"><rect width="1200" height="600" rx="24"/></clipPath>
+</defs>
+<style>.m{font-family:'JetBrains Mono','SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace}.s{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}@keyframes sh1{0%{opacity:0}1.11%{opacity:0}4.44%{opacity:1}22.22%{opacity:1}25.56%{opacity:0}100%{opacity:0}}.sh1{opacity:0;animation:sh1 9s ease infinite}@keyframes sh2{0%{opacity:0}24.44%{opacity:0}27.78%{opacity:1}45.56%{opacity:1}48.89%{opacity:0}100%{opacity:0}}.sh2{opacity:0;animation:sh2 9s ease infinite}@keyframes sh3{0%{opacity:0}47.78%{opacity:0}51.11%{opacity:1}68.89%{opacity:1}72.22%{opacity:0}100%{opacity:0}}.sh3{opacity:0;animation:sh3 9s ease infinite}@keyframes sh4{0%{opacity:0}71.11%{opacity:0}74.44%{opacity:1}92.22%{opacity:1}95.56%{opacity:0}100%{opacity:0}}.sh4{opacity:0;animation:sh4 9s ease infinite}@keyframes sh5{0%{opacity:0}0.00%{opacity:0}0.11%{opacity:1}99.89%{opacity:1}100.00%{opacity:0}100%{opacity:0}}.sh5{opacity:0;animation:sh5 9s ease infinite}@keyframes mv6{0%{transform:translate(550px,178px);opacity:0}2.11%{transform:translate(550px,178px);opacity:0}2.22%{transform:translate(550px,178px);opacity:1}11.11%{transform:translate(550px,288px);opacity:1}20.00%{transform:translate(550px,398px);opacity:1}28.89%{transform:translate(550px,508px);opacity:1}31.67%{transform:translate(550px,508px);opacity:0}100%{transform:translate(550px,508px);opacity:0}}.mv6{animation:mv6 9s cubic-bezier(.45,0,.25,1) infinite;opacity:0}@keyframes mv7{0%{transform:translate(590px,508px);opacity:0}32.11%{transform:translate(590px,508px);opacity:0}32.22%{transform:translate(590px,508px);opacity:1}40.00%{transform:translate(590px,398px);opacity:1}47.78%{transform:translate(590px,288px);opacity:1}55.56%{transform:translate(590px,178px);opacity:1}58.33%{transform:translate(590px,178px);opacity:0}100%{transform:translate(590px,178px);opacity:0}}.mv7{animation:mv7 9s cubic-bezier(.45,0,.25,1) infinite;opacity:0}@keyframes sh8{0%{opacity:0}3.33%{opacity:0}6.11%{opacity:1}29.44%{opacity:1}32.22%{opacity:0}100%{opacity:0}}.sh8{opacity:0;animation:sh8 9s ease infinite}@keyframes sh9{0%{opacity:0}18.89%{opacity:0}21.67%{opacity:1}29.44%{opacity:1}32.22%{opacity:0}100%{opacity:0}}.sh9{opacity:0;animation:sh9 9s ease infinite}@keyframes sh10{0%{opacity:0}40.00%{opacity:0}42.78%{opacity:1}56.11%{opacity:1}58.89%{opacity:0}100%{opacity:0}}.sh10{opacity:0;animation:sh10 9s ease infinite}@keyframes mv11{0%{transform:translate(950px,178px);opacity:0}57.67%{transform:translate(950px,178px);opacity:0}57.78%{transform:translate(950px,178px);opacity:1}66.67%{transform:translate(988px,178px);opacity:1}69.44%{transform:translate(960px,178px);opacity:1}72.22%{transform:translate(960px,178px);opacity:0}100%{transform:translate(960px,178px);opacity:0}}.mv11{animation:mv11 9s cubic-bezier(.45,0,.25,1) infinite;opacity:0}@keyframes sh12{0%{opacity:0}66.67%{opacity:0}69.44%{opacity:1}88.33%{opacity:1}91.11%{opacity:0}100%{opacity:0}}.sh12{opacity:0;animation:sh12 9s ease infinite}@keyframes mv13{0%{transform:translate(906px,508px);opacity:0}73.22%{transform:translate(906px,508px);opacity:0}73.33%{transform:translate(906px,508px);opacity:1}80.00%{transform:translate(890px,398px);opacity:1}82.78%{transform:translate(890px,398px);opacity:0}100%{transform:translate(890px,398px);opacity:0}}.mv13{animation:mv13 9s cubic-bezier(.45,0,.25,1) infinite;opacity:0}@keyframes mv14{0%{transform:translate(950px,398px);opacity:0}81.00%{transform:translate(950px,398px);opacity:0}81.11%{transform:translate(950px,398px);opacity:1}93.33%{transform:translate(1090px,224px);opacity:1}96.11%{transform:translate(1090px,224px);opacity:0}100%{transform:translate(1090px,224px);opacity:0}}.mv14{animation:mv14 9s cubic-bezier(.45,0,.25,1) infinite;opacity:0}@keyframes sh15{0%{opacity:0}77.78%{opacity:0}80.56%{opacity:1}97.22%{opacity:1}100.00%{opacity:0}100%{opacity:0}}.sh15{opacity:0;animation:sh15 9s ease infinite}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style>
+<g clip-path="url(#card)">
+<rect width="1200" height="600" fill="url(#bg)"/>
+<g filter="url(#blur)" opacity=".4"><ellipse cx="200" cy="520" rx="260" ry="110" fill="#3ddc97"/><ellipse cx="1050" cy="90" rx="260" ry="100" fill="#ff4d6a"/><ellipse cx="700" cy="560" rx="260" ry="90" fill="#7c3aed"/></g>
+<rect width="1200" height="600" fill="url(#dots)"/>
+</g>
+<rect x=".75" y=".75" width="1198.5" height="598.5" rx="23.5" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="1.5"/>
+<rect x="56" y="0" width="1088" height="3" rx="1.5" fill="url(#edge)"/>
+<text x="56" y="60" class="m" font-size="13" letter-spacing="3" fill="#a9a9c2">JKY TERMINAL  <tspan fill="#3ddc97">/</tspan>  SECURITY MODEL</text>
+<text x="54" y="102" class="s" font-size="34" font-weight="800" fill="#f2f2f8" letter-spacing="-.6">The window can ask. <tspan fill="#3ddc97">Only Rust can act.</tspan></text>
+<rect x="56" y="136" width="330" height="88" rx="14" fill="#fff" fill-opacity=".035" stroke="#fff" stroke-opacity=".09"/>
+<g class="sh1"><rect x="56" y="136" width="330" height="88" rx="14" fill="none" stroke="#00e5ff" stroke-width="1.6"/></g>
+<circle cx="84" cy="166" r="7" fill="#00e5ff"/>
+<text x="102" y="172" class="s" font-size="18" font-weight="700" fill="#f2f2f8">No secret getters</text>
+<text x="80" y="200" class="m" font-size="12.5" fill="#a3a3bb">No IPC command returns a key.</text>
+<rect x="56" y="240" width="330" height="88" rx="14" fill="#fff" fill-opacity=".035" stroke="#fff" stroke-opacity=".09"/>
+<g class="sh2"><rect x="56" y="240" width="330" height="88" rx="14" fill="none" stroke="#3ddc97" stroke-width="1.6"/></g>
+<circle cx="84" cy="270" r="7" fill="#3ddc97"/>
+<text x="102" y="276" class="s" font-size="18" font-weight="700" fill="#f2f2f8">connect-src 'self'</text>
+<text x="80" y="304" class="m" font-size="12.5" fill="#a3a3bb">The window cannot reach the network.</text>
+<rect x="56" y="344" width="330" height="88" rx="14" fill="#fff" fill-opacity=".035" stroke="#fff" stroke-opacity=".09"/>
+<g class="sh3"><rect x="56" y="344" width="330" height="88" rx="14" fill="none" stroke="#bd93f9" stroke-width="1.6"/></g>
+<circle cx="84" cy="374" r="7" fill="#bd93f9"/>
+<text x="102" y="380" class="s" font-size="18" font-weight="700" fill="#f2f2f8">113 commands, pinned</text>
+<text x="80" y="408" class="m" font-size="12.5" fill="#a3a3bb">A test lists every one by name.</text>
+<rect x="56" y="448" width="330" height="88" rx="14" fill="#fff" fill-opacity=".035" stroke="#fff" stroke-opacity=".09"/>
+<g class="sh4"><rect x="56" y="448" width="330" height="88" rx="14" fill="none" stroke="#ffb340" stroke-width="1.6"/></g>
+<circle cx="84" cy="478" r="7" fill="#ffb340"/>
+<text x="102" y="484" class="s" font-size="18" font-weight="700" fill="#f2f2f8">Folders you open</text>
+<text x="80" y="512" class="m" font-size="12.5" fill="#a3a3bb">Paths are canonicalised and contained.</text>
+<rect x="430" y="136" width="520" height="84" rx="14" fill="#0e0e18" stroke="#ff4d6a" stroke-opacity=".55"/>
+<rect x="430" y="136" width="6" height="84" rx="3" fill="#ff4d6a"/>
+<text x="456" y="168" class="m" font-size="12" letter-spacing="2" fill="#ff4d6a" font-weight="700">WINDOW</text>
+<text x="456" y="196" class="s" font-size="18" font-weight="700" fill="#f2f2f8">React · xterm.js · the editor</text>
+<text x="930" y="168" text-anchor="end" class="m" font-size="12" fill="#8b8ba4">untrusted by design</text>
+<rect x="430" y="246" width="520" height="84" rx="14" fill="#0e0e18" stroke="#bd93f9" stroke-opacity=".55"/>
+<rect x="430" y="246" width="6" height="84" rx="3" fill="#bd93f9"/>
+<text x="456" y="278" class="m" font-size="12" letter-spacing="2" fill="#bd93f9" font-weight="700">IPC</text>
+<text x="456" y="306" class="s" font-size="18" font-weight="700" fill="#f2f2f8">113 pinned commands</text>
+<text x="930" y="278" text-anchor="end" class="m" font-size="12" fill="#8b8ba4">thin wrappers · no secret types</text>
+<rect x="430" y="356" width="520" height="84" rx="14" fill="#0e0e18" stroke="#00e5ff" stroke-opacity=".55"/>
+<rect x="430" y="356" width="6" height="84" rx="3" fill="#00e5ff"/>
+<text x="456" y="388" class="m" font-size="12" letter-spacing="2" fill="#00e5ff" font-weight="700">RUST</text>
+<text x="456" y="416" class="s" font-size="18" font-weight="700" fill="#f2f2f8">19 crates</text>
+<text x="930" y="388" text-anchor="end" class="m" font-size="12" fill="#8b8ba4">PTYs · files · keys · audit</text>
+<rect x="430" y="466" width="520" height="84" rx="14" fill="#0e0e18" stroke="#3ddc97" stroke-opacity=".55"/>
+<rect x="430" y="466" width="6" height="84" rx="3" fill="#3ddc97"/>
+<text x="456" y="498" class="m" font-size="12" letter-spacing="2" fill="#3ddc97" font-weight="700">YOUR MACHINE</text>
+<text x="456" y="526" class="s" font-size="18" font-weight="700" fill="#f2f2f8">shells · files · OS keychain</text>
+<text x="930" y="498" text-anchor="end" class="m" font-size="12" fill="#8b8ba4">your permissions, unchanged</text>
+<line x1="550" y1="220" x2="550" y2="246" stroke="#fff" stroke-opacity=".25" stroke-dasharray="3 4"/>
+<line x1="550" y1="330" x2="550" y2="356" stroke="#fff" stroke-opacity=".25" stroke-dasharray="3 4"/>
+<line x1="550" y1="440" x2="550" y2="466" stroke="#fff" stroke-opacity=".25" stroke-dasharray="3 4"/>
+<circle cx="1090" cy="178" r="44" fill="#fff" fill-opacity=".04" stroke="#fff" stroke-opacity=".2"/>
+<text x="1090" y="174" text-anchor="middle" class="s" font-size="22">🌐</text>
+<text x="1090" y="200" text-anchor="middle" class="m" font-size="11.5" fill="#c9c9dc">internet</text>
+<line x1="1000" y1="130" x2="1000" y2="230" stroke="#ff4d6a" stroke-width="3" stroke-dasharray="8 6"/>
+<text x="1000" y="122" text-anchor="middle" class="m" font-size="11" fill="#ff4d6a" font-weight="700">CSP</text>
+<path d="M950 398 C 1030 398, 1090 330, 1090 224" fill="none" stroke="#ffb340" stroke-opacity=".35" stroke-width="2" stroke-dasharray="4 6"/>
+<text x="906" y="528" text-anchor="middle" class="s" font-size="26">🔑</text>
+<g class="mv6"><circle r="16.8" fill="#00e5ff" opacity=".25"/><circle r="7" fill="#00e5ff"/></g>
+<g class="mv7"><circle r="16.8" fill="#3ddc97" opacity=".25"/><circle r="7" fill="#3ddc97"/></g>
+<g class="sh8"><text x="570" y="238" class="m" font-size="12" fill="#00e5ff">files_read(root, "src/app.ts")</text></g>
+<g class="sh9"><text x="570" y="458" class="m" font-size="12" fill="#00e5ff">canonicalise → inside the folder? ✓</text></g>
+<g class="sh10"><text x="610" y="348" class="m" font-size="12" fill="#3ddc97">↑ the text, and nothing more</text></g>
+<g class="mv11"><circle r="16.8" fill="#ff4d6a" opacity=".25"/><circle r="7" fill="#ff4d6a"/></g>
+<g class="sh12"><rect x="670" y="104" width="300" height="30" rx="10" fill="#ff4d6a" fill-opacity=".14" stroke="#ff4d6a" stroke-opacity=".6"/><text x="820" y="124" text-anchor="middle" class="m" font-size="12.5" fill="#ff8a9b">✗ blocked — the window has no network</text></g>
+<g class="mv13"><circle r="14.399999999999999" fill="#bd93f9" opacity=".25"/><circle r="6" fill="#bd93f9"/></g>
+<g class="mv14"><circle r="16.8" fill="#ffb340" opacity=".25"/><circle r="7" fill="#ffb340"/></g>
+<g class="sh15"><text x="970" y="470" class="m" font-size="12" fill="#ffb340">provider call —</text><text x="970" y="488" class="m" font-size="12" fill="#ffb340">only when you ask</text></g>
+<text x="56" y="574" class="m" font-size="12.5" fill="#8b8ba4">Enforced by apps/desktop/src-tauri/tests/security.rs — the IPC list, the CSP and the capabilities are all pinned.</text>
+</svg>

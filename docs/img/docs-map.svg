@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" width="1200" height="520" role="img" aria-labelledby="t d">
+<title id="t">JKY Terminal documentation map</title>
+<desc id="d">Twelve documentation areas in a grid, lighting up one after another: getting started, terminal guide, shells and the jky command, keyboard and settings, workspaces and editor, assistant and approvals, apps tools and games, security and privacy, architecture, troubleshooting, questions and glossary, comparison and roadmap.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d0d17"/><stop offset="1" stop-color="#05050a"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00e5ff"/><stop offset=".35" stop-color="#7c3aed"/><stop offset=".7" stop-color="#ff3cf0"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
+<linearGradient id="ttl" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset=".6" stop-color="#bfefff"/><stop offset="1" stop-color="#e6c8ff"/></linearGradient>
+<filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="50"/></filter>
+<filter id="glow" x="-20%" y="-40%" width="140%" height="180%"><feGaussianBlur stdDeviation="9"/></filter>
+<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#fff" fill-opacity=".05"/></pattern>
+<clipPath id="card"><rect width="1200" height="520" rx="24"/></clipPath>
+</defs>
+<style>.m{font-family:'JetBrains Mono','SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace}.s{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}@keyframes lit{0%{opacity:0}2.08%{opacity:1}13.33%{opacity:1}21.67%{opacity:0}100%{opacity:0}}.lit{opacity:0;animation:lit 9s ease-in-out infinite}@keyframes drift{0%,100%{transform:translate(0,0)}50%{transform:translate(60px,-20px)}}.drift{animation:drift 16s ease-in-out infinite}@keyframes drift2{0%,100%{transform:translate(0,0)}50%{transform:translate(-70px,24px)}}.drift2{animation:drift2 19s ease-in-out infinite}@keyframes dash{to{stroke-dashoffset:-400}}.flow{stroke-dasharray:6 10;animation:dash 9s linear infinite}@media (prefers-reduced-motion:reduce){*{animation:none!important}}</style>
+<g clip-path="url(#card)">
+<rect width="1200" height="520" fill="url(#bg)"/>
+<g filter="url(#blur)" opacity=".45"><ellipse class="drift" cx="220" cy="80" rx="280" ry="110" fill="#00e5ff"/><ellipse class="drift2" cx="1000" cy="460" rx="300" ry="120" fill="#ff3cf0"/><ellipse class="drift" cx="640" cy="520" rx="260" ry="90" fill="#7c3aed"/></g>
+<rect width="1200" height="520" fill="url(#dots)"/>
+</g>
+<rect x=".75" y=".75" width="1198.5" height="518.5" rx="23.5" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="1.5"/>
+<rect x="56" y="0" width="1088" height="3" rx="1.5" fill="url(#edge)"/>
+<text x="56" y="62" class="m" font-size="13" letter-spacing="3" fill="#a9a9c2">JKY TERMINAL  <tspan fill="#00e5ff">/</tspan>  DOCS</text>
+<text x="54" y="108" class="s" font-size="38" font-weight="800" letter-spacing="-.8" fill="url(#ttl)">Eighteen guides. Every claim checked against the code.</text>
+<text x="56" y="138" class="s" font-size="17" fill="#c4c4d6">Real shortcuts, real file names, real limits — and plain words wherever JKY falls short.</text>
+<g class="lit" style="animation-delay:0.00s"><rect x="56" y="168" width="261" height="96" rx="14" fill="#3ddc97" opacity=".35" filter="url(#glow)"/></g>
+<rect x="56" y="168" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:0.00s"><rect x="56" y="168" width="261" height="96" rx="14" fill="none" stroke="#3ddc97" stroke-width="1.8"/></g>
+<rect x="72" y="186" width="36" height="36" rx="10" fill="#3ddc97" fill-opacity=".16" stroke="#3ddc97" stroke-opacity=".6"/>
+<text x="90" y="209" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#3ddc97">01</text>
+<text x="120" y="210" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Getting started</text>
+<text x="72" y="246" class="m" font-size="11.5" fill="#a3a3bb">Install, launch, first ten minutes</text>
+<g class="lit" style="animation-delay:0.75s"><rect x="332" y="168" width="261" height="96" rx="14" fill="#00e5ff" opacity=".35" filter="url(#glow)"/></g>
+<rect x="332" y="168" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:0.75s"><rect x="332" y="168" width="261" height="96" rx="14" fill="none" stroke="#00e5ff" stroke-width="1.8"/></g>
+<rect x="348" y="186" width="36" height="36" rx="10" fill="#00e5ff" fill-opacity=".16" stroke="#00e5ff" stroke-opacity=".6"/>
+<text x="366" y="209" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#00e5ff">02</text>
+<text x="396" y="210" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Terminal guide</text>
+<text x="348" y="246" class="m" font-size="11.5" fill="#a3a3bb">Panes, persistence, panels</text>
+<g class="lit" style="animation-delay:1.50s"><rect x="608" y="168" width="261" height="96" rx="14" fill="#a3e635" opacity=".35" filter="url(#glow)"/></g>
+<rect x="608" y="168" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:1.50s"><rect x="608" y="168" width="261" height="96" rx="14" fill="none" stroke="#a3e635" stroke-width="1.8"/></g>
+<rect x="624" y="186" width="36" height="36" rx="10" fill="#a3e635" fill-opacity=".16" stroke="#a3e635" stroke-opacity=".6"/>
+<text x="642" y="209" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#a3e635">03</text>
+<text x="672" y="210" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Shells &amp; jky</text>
+<text x="624" y="246" class="m" font-size="11.5" fill="#a3a3bb">Five shells · every jky command</text>
+<g class="lit" style="animation-delay:2.25s"><rect x="884" y="168" width="261" height="96" rx="14" fill="#ff3cf0" opacity=".35" filter="url(#glow)"/></g>
+<rect x="884" y="168" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:2.25s"><rect x="884" y="168" width="261" height="96" rx="14" fill="none" stroke="#ff3cf0" stroke-width="1.8"/></g>
+<rect x="900" y="186" width="36" height="36" rx="10" fill="#ff3cf0" fill-opacity=".16" stroke="#ff3cf0" stroke-opacity=".6"/>
+<text x="918" y="209" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#ff3cf0">04</text>
+<text x="948" y="210" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Keyboard &amp; settings</text>
+<text x="900" y="246" class="m" font-size="11.5" fill="#a3a3bb">Sixteen actions, every panel</text>
+<g class="lit" style="animation-delay:3.00s"><rect x="56" y="279" width="261" height="96" rx="14" fill="#7c3aed" opacity=".35" filter="url(#glow)"/></g>
+<rect x="56" y="279" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:3.00s"><rect x="56" y="279" width="261" height="96" rx="14" fill="none" stroke="#7c3aed" stroke-width="1.8"/></g>
+<rect x="72" y="297" width="36" height="36" rx="10" fill="#7c3aed" fill-opacity=".16" stroke="#7c3aed" stroke-opacity=".6"/>
+<text x="90" y="320" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#7c3aed">05</text>
+<text x="120" y="321" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Workspaces &amp; editor</text>
+<text x="72" y="357" class="m" font-size="11.5" fill="#a3a3bb">Folders, worktrees, safe saving</text>
+<g class="lit" style="animation-delay:3.75s"><rect x="332" y="279" width="261" height="96" rx="14" fill="#bd93f9" opacity=".35" filter="url(#glow)"/></g>
+<rect x="332" y="279" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:3.75s"><rect x="332" y="279" width="261" height="96" rx="14" fill="none" stroke="#bd93f9" stroke-width="1.8"/></g>
+<rect x="348" y="297" width="36" height="36" rx="10" fill="#bd93f9" fill-opacity=".16" stroke="#bd93f9" stroke-opacity=".6"/>
+<text x="366" y="320" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#bd93f9">06</text>
+<text x="396" y="321" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Assistant &amp; approvals</text>
+<text x="348" y="357" class="m" font-size="11.5" fill="#a3a3bb">Tools, risk labels, what is sent</text>
+<g class="lit" style="animation-delay:4.50s"><rect x="608" y="279" width="261" height="96" rx="14" fill="#ffb340" opacity=".35" filter="url(#glow)"/></g>
+<rect x="608" y="279" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:4.50s"><rect x="608" y="279" width="261" height="96" rx="14" fill="none" stroke="#ffb340" stroke-width="1.8"/></g>
+<rect x="624" y="297" width="36" height="36" rx="10" fill="#ffb340" fill-opacity=".16" stroke="#ffb340" stroke-opacity=".6"/>
+<text x="642" y="320" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#ffb340">07</text>
+<text x="672" y="321" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Apps, tools &amp; games</text>
+<text x="624" y="357" class="m" font-size="11.5" fill="#a3a3bb">12 tools · 8 apps · 5 games</text>
+<g class="lit" style="animation-delay:5.25s"><rect x="884" y="279" width="261" height="96" rx="14" fill="#3ddc97" opacity=".35" filter="url(#glow)"/></g>
+<rect x="884" y="279" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:5.25s"><rect x="884" y="279" width="261" height="96" rx="14" fill="none" stroke="#3ddc97" stroke-width="1.8"/></g>
+<rect x="900" y="297" width="36" height="36" rx="10" fill="#3ddc97" fill-opacity=".16" stroke="#3ddc97" stroke-opacity=".6"/>
+<text x="918" y="320" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#3ddc97">08</text>
+<text x="948" y="321" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Security &amp; privacy</text>
+<text x="900" y="357" class="m" font-size="11.5" fill="#a3a3bb">The boundary, as tests</text>
+<g class="lit" style="animation-delay:6.00s"><rect x="56" y="390" width="261" height="96" rx="14" fill="#00e5ff" opacity=".35" filter="url(#glow)"/></g>
+<rect x="56" y="390" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:6.00s"><rect x="56" y="390" width="261" height="96" rx="14" fill="none" stroke="#00e5ff" stroke-width="1.8"/></g>
+<rect x="72" y="408" width="36" height="36" rx="10" fill="#00e5ff" fill-opacity=".16" stroke="#00e5ff" stroke-opacity=".6"/>
+<text x="90" y="431" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#00e5ff">09</text>
+<text x="120" y="432" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Architecture</text>
+<text x="72" y="468" class="m" font-size="11.5" fill="#a3a3bb">Three layers, nineteen crates</text>
+<g class="lit" style="animation-delay:6.75s"><rect x="332" y="390" width="261" height="96" rx="14" fill="#ff4d6a" opacity=".35" filter="url(#glow)"/></g>
+<rect x="332" y="390" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:6.75s"><rect x="332" y="390" width="261" height="96" rx="14" fill="none" stroke="#ff4d6a" stroke-width="1.8"/></g>
+<rect x="348" y="408" width="36" height="36" rx="10" fill="#ff4d6a" fill-opacity=".16" stroke="#ff4d6a" stroke-opacity=".6"/>
+<text x="366" y="431" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#ff4d6a">10</text>
+<text x="396" y="432" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Troubleshooting</text>
+<text x="348" y="468" class="m" font-size="11.5" fill="#a3a3bb">Symptom → cause → fix</text>
+<g class="lit" style="animation-delay:7.50s"><rect x="608" y="390" width="261" height="96" rx="14" fill="#ff3cf0" opacity=".35" filter="url(#glow)"/></g>
+<rect x="608" y="390" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:7.50s"><rect x="608" y="390" width="261" height="96" rx="14" fill="none" stroke="#ff3cf0" stroke-width="1.8"/></g>
+<rect x="624" y="408" width="36" height="36" rx="10" fill="#ff3cf0" fill-opacity=".16" stroke="#ff3cf0" stroke-opacity=".6"/>
+<text x="642" y="431" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#ff3cf0">11</text>
+<text x="672" y="432" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Q&amp;A · Glossary</text>
+<text x="624" y="468" class="m" font-size="11.5" fill="#a3a3bb">Short answers, every term</text>
+<g class="lit" style="animation-delay:8.25s"><rect x="884" y="390" width="261" height="96" rx="14" fill="#ffb340" opacity=".35" filter="url(#glow)"/></g>
+<rect x="884" y="390" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
+<g class="lit" style="animation-delay:8.25s"><rect x="884" y="390" width="261" height="96" rx="14" fill="none" stroke="#ffb340" stroke-width="1.8"/></g>
+<rect x="900" y="408" width="36" height="36" rx="10" fill="#ffb340" fill-opacity=".16" stroke="#ffb340" stroke-opacity=".6"/>
+<text x="918" y="431" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#ffb340">12</text>
+<text x="948" y="432" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Comparison · Roadmap</text>
+<text x="900" y="468" class="m" font-size="11.5" fill="#a3a3bb">Where it stands, and what is next</text>
+<path d="M56 486 H1144" stroke="url(#edge)" stroke-width="1.5" fill="none" opacity=".55" class="flow"/>
+</svg>

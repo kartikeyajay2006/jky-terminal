@@ -1,0 +1,261 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 660" width="1200" height="660" role="img" aria-labelledby="t d">
+<title id="t">JKY Terminal — what it does, in four scenes</title>
+<desc id="d">An animated JKY Terminal window. Scene one: docker ps output becomes a panel beneath the raw text, and a panel action types a command without running it. Scene two: the window closes while a build runs, a supervisor keeps the shell alive, and reopening shows the output that was missed. Scene three: the assistant searches the code freely but must ask before running a command. Scene four: the jky theme command changes the whole window's theme.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d0d17"/><stop offset="1" stop-color="#05050a"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00e5ff"/><stop offset=".35" stop-color="#7c3aed"/><stop offset=".7" stop-color="#ff3cf0"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
+<filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="55"/></filter>
+<filter id="sh" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000" flood-opacity=".6"/></filter>
+<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#fff" fill-opacity=".05"/></pattern>
+<clipPath id="win"><rect x="50" y="70" width="1100" height="540" rx="16"/></clipPath>
+<clipPath id="card"><rect width="1200" height="660" rx="26"/></clipPath>
+</defs>
+<style>.m{font-family:'JetBrains Mono','SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace}.s{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}@keyframes f-ground{0%{fill:#08080c}81.458%{fill:#08080c}83.125%{fill:#21222c}90.625%{fill:#21222c}92.292%{fill:#f7f7fa}97.708%{fill:#f7f7fa}99.375%{fill:#08080c}100%{fill:#08080c}}.f-ground{fill:#08080c;animation:f-ground 24s linear infinite}@keyframes s-ground{0%{stroke:#08080c}81.458%{stroke:#08080c}83.125%{stroke:#21222c}90.625%{stroke:#21222c}92.292%{stroke:#f7f7fa}97.708%{stroke:#f7f7fa}99.375%{stroke:#08080c}100%{stroke:#08080c}}.s-ground{stroke:#08080c;animation:s-ground 24s linear infinite}@keyframes f-surface{0%{fill:#0e0e16}81.458%{fill:#0e0e16}83.125%{fill:#282a36}90.625%{fill:#282a36}92.292%{fill:#ffffff}97.708%{fill:#ffffff}99.375%{fill:#0e0e16}100%{fill:#0e0e16}}.f-surface{fill:#0e0e16;animation:f-surface 24s linear infinite}@keyframes s-surface{0%{stroke:#0e0e16}81.458%{stroke:#0e0e16}83.125%{stroke:#282a36}90.625%{stroke:#282a36}92.292%{stroke:#ffffff}97.708%{stroke:#ffffff}99.375%{stroke:#0e0e16}100%{stroke:#0e0e16}}.s-surface{stroke:#0e0e16;animation:s-surface 24s linear infinite}@keyframes f-raised{0%{fill:#14141f}81.458%{fill:#14141f}83.125%{fill:#343746}90.625%{fill:#343746}92.292%{fill:#ffffff}97.708%{fill:#ffffff}99.375%{fill:#14141f}100%{fill:#14141f}}.f-raised{fill:#14141f;animation:f-raised 24s linear infinite}@keyframes s-raised{0%{stroke:#14141f}81.458%{stroke:#14141f}83.125%{stroke:#343746}90.625%{stroke:#343746}92.292%{stroke:#ffffff}97.708%{stroke:#ffffff}99.375%{stroke:#14141f}100%{stroke:#14141f}}.s-raised{stroke:#14141f;animation:s-raised 24s linear infinite}@keyframes f-line{0%{fill:#1e1e2c}81.458%{fill:#1e1e2c}83.125%{fill:#3c3f51}90.625%{fill:#3c3f51}92.292%{fill:#e2e2ea}97.708%{fill:#e2e2ea}99.375%{fill:#1e1e2c}100%{fill:#1e1e2c}}.f-line{fill:#1e1e2c;animation:f-line 24s linear infinite}@keyframes s-line{0%{stroke:#1e1e2c}81.458%{stroke:#1e1e2c}83.125%{stroke:#3c3f51}90.625%{stroke:#3c3f51}92.292%{stroke:#e2e2ea}97.708%{stroke:#e2e2ea}99.375%{stroke:#1e1e2c}100%{stroke:#1e1e2c}}.s-line{stroke:#1e1e2c;animation:s-line 24s linear infinite}@keyframes f-strong{0%{fill:#2a2a3c}81.458%{fill:#2a2a3c}83.125%{fill:#4c5064}90.625%{fill:#4c5064}92.292%{fill:#c9c9d6}97.708%{fill:#c9c9d6}99.375%{fill:#2a2a3c}100%{fill:#2a2a3c}}.f-strong{fill:#2a2a3c;animation:f-strong 24s linear infinite}@keyframes s-strong{0%{stroke:#2a2a3c}81.458%{stroke:#2a2a3c}83.125%{stroke:#4c5064}90.625%{stroke:#4c5064}92.292%{stroke:#c9c9d6}97.708%{stroke:#c9c9d6}99.375%{stroke:#2a2a3c}100%{stroke:#2a2a3c}}.s-strong{stroke:#2a2a3c;animation:s-strong 24s linear infinite}@keyframes f-dim{0%{fill:#6e6e85}81.458%{fill:#6e6e85}83.125%{fill:#7b7f96}90.625%{fill:#7b7f96}92.292%{fill:#6b6b7b}97.708%{fill:#6b6b7b}99.375%{fill:#6e6e85}100%{fill:#6e6e85}}.f-dim{fill:#6e6e85;animation:f-dim 24s linear infinite}@keyframes s-dim{0%{stroke:#6e6e85}81.458%{stroke:#6e6e85}83.125%{stroke:#7b7f96}90.625%{stroke:#7b7f96}92.292%{stroke:#6b6b7b}97.708%{stroke:#6b6b7b}99.375%{stroke:#6e6e85}100%{stroke:#6e6e85}}.s-dim{stroke:#6e6e85;animation:s-dim 24s linear infinite}@keyframes f-muted{0%{fill:#9a9ab2}81.458%{fill:#9a9ab2}83.125%{fill:#a6abc8}90.625%{fill:#a6abc8}92.292%{fill:#4a4a58}97.708%{fill:#4a4a58}99.375%{fill:#9a9ab2}100%{fill:#9a9ab2}}.f-muted{fill:#9a9ab2;animation:f-muted 24s linear infinite}@keyframes s-muted{0%{stroke:#9a9ab2}81.458%{stroke:#9a9ab2}83.125%{stroke:#a6abc8}90.625%{stroke:#a6abc8}92.292%{stroke:#4a4a58}97.708%{stroke:#4a4a58}99.375%{stroke:#9a9ab2}100%{stroke:#9a9ab2}}.s-muted{stroke:#9a9ab2;animation:s-muted 24s linear infinite}@keyframes f-text{0%{fill:#e8e8f2}81.458%{fill:#e8e8f2}83.125%{fill:#f8f8f2}90.625%{fill:#f8f8f2}92.292%{fill:#16161d}97.708%{fill:#16161d}99.375%{fill:#e8e8f2}100%{fill:#e8e8f2}}.f-text{fill:#e8e8f2;animation:f-text 24s linear infinite}@keyframes s-text{0%{stroke:#e8e8f2}81.458%{stroke:#e8e8f2}83.125%{stroke:#f8f8f2}90.625%{stroke:#f8f8f2}92.292%{stroke:#16161d}97.708%{stroke:#16161d}99.375%{stroke:#e8e8f2}100%{stroke:#e8e8f2}}.s-text{stroke:#e8e8f2;animation:s-text 24s linear infinite}@keyframes f-accent{0%{fill:#00e5ff}81.458%{fill:#00e5ff}83.125%{fill:#8be9fd}90.625%{fill:#8be9fd}92.292%{fill:#0f62fe}97.708%{fill:#0f62fe}99.375%{fill:#00e5ff}100%{fill:#00e5ff}}.f-accent{fill:#00e5ff;animation:f-accent 24s linear infinite}@keyframes s-accent{0%{stroke:#00e5ff}81.458%{stroke:#00e5ff}83.125%{stroke:#8be9fd}90.625%{stroke:#8be9fd}92.292%{stroke:#0f62fe}97.708%{stroke:#0f62fe}99.375%{stroke:#00e5ff}100%{stroke:#00e5ff}}.s-accent{stroke:#00e5ff;animation:s-accent 24s linear infinite}@keyframes f-violet{0%{fill:#7c3aed}81.458%{fill:#7c3aed}83.125%{fill:#bd93f9}90.625%{fill:#bd93f9}92.292%{fill:#6929c4}97.708%{fill:#6929c4}99.375%{fill:#7c3aed}100%{fill:#7c3aed}}.f-violet{fill:#7c3aed;animation:f-violet 24s linear infinite}@keyframes s-violet{0%{stroke:#7c3aed}81.458%{stroke:#7c3aed}83.125%{stroke:#bd93f9}90.625%{stroke:#bd93f9}92.292%{stroke:#6929c4}97.708%{stroke:#6929c4}99.375%{stroke:#7c3aed}100%{stroke:#7c3aed}}.s-violet{stroke:#7c3aed;animation:s-violet 24s linear infinite}@keyframes f-magenta{0%{fill:#ff3cf0}81.458%{fill:#ff3cf0}83.125%{fill:#ff79c6}90.625%{fill:#ff79c6}92.292%{fill:#d02670}97.708%{fill:#d02670}99.375%{fill:#ff3cf0}100%{fill:#ff3cf0}}.f-magenta{fill:#ff3cf0;animation:f-magenta 24s linear infinite}@keyframes s-magenta{0%{stroke:#ff3cf0}81.458%{stroke:#ff3cf0}83.125%{stroke:#ff79c6}90.625%{stroke:#ff79c6}92.292%{stroke:#d02670}97.708%{stroke:#d02670}99.375%{stroke:#ff3cf0}100%{stroke:#ff3cf0}}.s-magenta{stroke:#ff3cf0;animation:s-magenta 24s linear infinite}@keyframes f-danger{0%{fill:#ff4d6a}81.458%{fill:#ff4d6a}83.125%{fill:#ff5555}90.625%{fill:#ff5555}92.292%{fill:#da1e28}97.708%{fill:#da1e28}99.375%{fill:#ff4d6a}100%{fill:#ff4d6a}}.f-danger{fill:#ff4d6a;animation:f-danger 24s linear infinite}@keyframes s-danger{0%{stroke:#ff4d6a}81.458%{stroke:#ff4d6a}83.125%{stroke:#ff5555}90.625%{stroke:#ff5555}92.292%{stroke:#da1e28}97.708%{stroke:#da1e28}99.375%{stroke:#ff4d6a}100%{stroke:#ff4d6a}}.s-danger{stroke:#ff4d6a;animation:s-danger 24s linear infinite}@keyframes f-mint{0%{fill:#3ddc97}81.458%{fill:#3ddc97}83.125%{fill:#50fa7b}90.625%{fill:#50fa7b}92.292%{fill:#0f7b5f}97.708%{fill:#0f7b5f}99.375%{fill:#3ddc97}100%{fill:#3ddc97}}.f-mint{fill:#3ddc97;animation:f-mint 24s linear infinite}@keyframes s-mint{0%{stroke:#3ddc97}81.458%{stroke:#3ddc97}83.125%{stroke:#50fa7b}90.625%{stroke:#50fa7b}92.292%{stroke:#0f7b5f}97.708%{stroke:#0f7b5f}99.375%{stroke:#3ddc97}100%{stroke:#3ddc97}}.s-mint{stroke:#3ddc97;animation:s-mint 24s linear infinite}@keyframes f-warn{0%{fill:#ffb340}81.458%{fill:#ffb340}83.125%{fill:#ffb86c}90.625%{fill:#ffb86c}92.292%{fill:#8e6a00}97.708%{fill:#8e6a00}99.375%{fill:#ffb340}100%{fill:#ffb340}}.f-warn{fill:#ffb340;animation:f-warn 24s linear infinite}@keyframes s-warn{0%{stroke:#ffb340}81.458%{stroke:#ffb340}83.125%{stroke:#ffb86c}90.625%{stroke:#ffb86c}92.292%{stroke:#8e6a00}97.708%{stroke:#8e6a00}99.375%{stroke:#ffb340}100%{stroke:#ffb340}}.s-warn{stroke:#ffb340;animation:s-warn 24s linear infinite}@keyframes f-lime{0%{fill:#a3e635}81.458%{fill:#a3e635}83.125%{fill:#c3f36b}90.625%{fill:#c3f36b}92.292%{fill:#4d7c0f}97.708%{fill:#4d7c0f}99.375%{fill:#a3e635}100%{fill:#a3e635}}.f-lime{fill:#a3e635;animation:f-lime 24s linear infinite}@keyframes s-lime{0%{stroke:#a3e635}81.458%{stroke:#a3e635}83.125%{stroke:#c3f36b}90.625%{stroke:#c3f36b}92.292%{stroke:#4d7c0f}97.708%{stroke:#4d7c0f}99.375%{stroke:#a3e635}100%{stroke:#a3e635}}.s-lime{stroke:#a3e635;animation:s-lime 24s linear infinite}@keyframes v1{0%{opacity:1;transform:translateY(0)}1.667%{opacity:1;transform:translateY(0)}23.333%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v1{opacity:0;animation:v1 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v3{0%{opacity:0;transform:translateY(0px)}0.625%{opacity:0;transform:translateY(0px)}0.833%{opacity:1;transform:translateY(0)}6.25%{opacity:1;transform:translateY(0)}6.458%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v3{opacity:0;animation:v3 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v4{0%{opacity:0;transform:translateY(8px)}6.458%{opacity:0;transform:translateY(8px)}7.917%{opacity:1;transform:translateY(0)}23.542%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v4{opacity:0;animation:v4 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v5{0%{opacity:0;transform:translateY(14px)}9.583%{opacity:0;transform:translateY(14px)}11.042%{opacity:1;transform:translateY(0)}23.542%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v5{opacity:0;animation:v5 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v6{0%{opacity:0;transform:translateY(8px)}11.667%{opacity:0;transform:translateY(8px)}13.125%{opacity:1;transform:translateY(0)}23.542%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v6{opacity:0;animation:v6 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v7{0%{opacity:0;transform:translateY(8px)}12.292%{opacity:0;transform:translateY(8px)}13.75%{opacity:1;transform:translateY(0)}23.542%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v7{opacity:0;animation:v7 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v8{0%{opacity:0;transform:translateY(0px)}15%{opacity:0;transform:translateY(0px)}15.625%{opacity:1;transform:translateY(0)}17.292%{opacity:1;transform:translateY(0)}17.917%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v8{opacity:0;animation:v8 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v9{0%{opacity:0;transform:translateY(8px)}16.25%{opacity:0;transform:translateY(8px)}17.708%{opacity:1;transform:translateY(0)}23.542%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v9{opacity:0;animation:v9 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v11{0%{opacity:0;transform:translateY(0px)}15.208%{opacity:0;transform:translateY(0px)}15.417%{opacity:1;transform:translateY(0)}24.792%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v11{opacity:0;animation:v11 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v12{0%{opacity:0;transform:translateY(8px)}19.167%{opacity:0;transform:translateY(8px)}20.625%{opacity:1;transform:translateY(0)}23.542%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v12{opacity:0;animation:v12 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v13{0%{opacity:0;transform:translateY(0px)}25%{opacity:0;transform:translateY(0px)}26.667%{opacity:1;transform:translateY(0)}48.333%{opacity:1;transform:translateY(0)}50%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v13{opacity:0;animation:v13 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v15{0%{opacity:0;transform:translateY(0px)}25.208%{opacity:0;transform:translateY(0px)}25.417%{opacity:1;transform:translateY(0)}30.625%{opacity:1;transform:translateY(0)}30.833%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v15{opacity:0;animation:v15 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v16{0%{opacity:0;transform:translateY(8px)}30.833%{opacity:0;transform:translateY(8px)}32.292%{opacity:1;transform:translateY(0)}48.542%{opacity:1;transform:translateY(0)}50%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v16{opacity:0;animation:v16 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v17{0%{opacity:0;transform:translateY(8px)}32.083%{opacity:0;transform:translateY(8px)}33.542%{opacity:1;transform:translateY(0)}48.542%{opacity:1;transform:translateY(0)}50%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v17{opacity:0;animation:v17 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v18{0%{opacity:0;transform:translateY(8px)}33.333%{opacity:0;transform:translateY(8px)}34.792%{opacity:1;transform:translateY(0)}48.542%{opacity:1;transform:translateY(0)}50%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v18{opacity:0;animation:v18 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v19{0%{opacity:0;transform:translateY(8px)}34.583%{opacity:0;transform:translateY(8px)}36.042%{opacity:1;transform:translateY(0)}35.667%{opacity:1;transform:translateY(0)}37.125%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v19{opacity:0;animation:v19 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v20{0%{opacity:0;transform:translateY(0px)}37.083%{opacity:0;transform:translateY(0px)}38.333%{opacity:1;transform:translateY(0)}41.875%{opacity:1;transform:translateY(0)}43.125%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v20{opacity:0;animation:v20 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v21{0%{opacity:0;transform:translateY(8px)}43.125%{opacity:0;transform:translateY(8px)}44.583%{opacity:1;transform:translateY(0)}48.542%{opacity:1;transform:translateY(0)}50%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v21{opacity:0;animation:v21 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v22{0%{opacity:0;transform:translateY(0px)}50%{opacity:0;transform:translateY(0px)}51.667%{opacity:1;transform:translateY(0)}73.333%{opacity:1;transform:translateY(0)}75%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v22{opacity:0;animation:v22 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v24{0%{opacity:0;transform:translateY(0px)}50.208%{opacity:0;transform:translateY(0px)}50.417%{opacity:1;transform:translateY(0)}56.458%{opacity:1;transform:translateY(0)}56.667%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v24{opacity:0;animation:v24 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v25{0%{opacity:0;transform:translateY(8px)}56.667%{opacity:0;transform:translateY(8px)}58.125%{opacity:1;transform:translateY(0)}73.542%{opacity:1;transform:translateY(0)}75%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v25{opacity:0;animation:v25 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v26{0%{opacity:0;transform:translateY(0px)}57.083%{opacity:0;transform:translateY(0px)}58.542%{opacity:1;transform:translateY(0)}73.542%{opacity:1;transform:translateY(0)}75%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v26{opacity:0;animation:v26 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v27{0%{opacity:0;transform:translateY(8px)}59.583%{opacity:0;transform:translateY(8px)}61.042%{opacity:1;transform:translateY(0)}73.542%{opacity:1;transform:translateY(0)}75%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v27{opacity:0;animation:v27 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v28{0%{opacity:0;transform:translateY(12px)}62.083%{opacity:0;transform:translateY(12px)}63.542%{opacity:1;transform:translateY(0)}73.542%{opacity:1;transform:translateY(0)}75%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v28{opacity:0;animation:v28 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v29{0%{opacity:0;transform:translateY(0px)}67.5%{opacity:0;transform:translateY(0px)}68%{opacity:1;transform:translateY(0)}69.083%{opacity:1;transform:translateY(0)}69.583%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v29{opacity:0;animation:v29 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v30{0%{opacity:0;transform:translateY(8px)}69.583%{opacity:0;transform:translateY(8px)}71.042%{opacity:1;transform:translateY(0)}73.542%{opacity:1;transform:translateY(0)}75%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v30{opacity:0;animation:v30 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v31{0%{opacity:0;transform:translateY(0px)}75%{opacity:0;transform:translateY(0px)}76.667%{opacity:1;transform:translateY(0)}98.333%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v31{opacity:0;animation:v31 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v33{0%{opacity:0;transform:translateY(0px)}75.208%{opacity:0;transform:translateY(0px)}75.417%{opacity:1;transform:translateY(0)}81.25%{opacity:1;transform:translateY(0)}81.458%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v33{opacity:0;animation:v33 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v34{0%{opacity:0;transform:translateY(8px)}81.458%{opacity:0;transform:translateY(8px)}82.917%{opacity:1;transform:translateY(0)}98.542%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v34{opacity:0;animation:v34 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v35{0%{opacity:0;transform:translateY(8px)}84.167%{opacity:0;transform:translateY(8px)}85.625%{opacity:1;transform:translateY(0)}98.542%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v35{opacity:0;animation:v35 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v37{0%{opacity:0;transform:translateY(0px)}83.542%{opacity:0;transform:translateY(0px)}83.75%{opacity:1;transform:translateY(0)}88.958%{opacity:1;transform:translateY(0)}89.167%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v37{opacity:0;animation:v37 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v38{0%{opacity:0;transform:translateY(8px)}89.167%{opacity:0;transform:translateY(8px)}90.625%{opacity:1;transform:translateY(0)}98.542%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v38{opacity:0;animation:v38 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v39{0%{opacity:0;transform:translateY(8px)}75.833%{opacity:0;transform:translateY(8px)}77.292%{opacity:1;transform:translateY(0)}98.542%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v39{opacity:0;animation:v39 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v40{0%{opacity:1;transform:translateY(0)}1.458%{opacity:1;transform:translateY(0)}23.542%{opacity:1;transform:translateY(0)}25%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v40{opacity:0;animation:v40 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v41{0%{opacity:0;transform:translateY(6px)}25%{opacity:0;transform:translateY(6px)}26.458%{opacity:1;transform:translateY(0)}48.542%{opacity:1;transform:translateY(0)}50%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v41{opacity:0;animation:v41 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v42{0%{opacity:0;transform:translateY(6px)}50%{opacity:0;transform:translateY(6px)}51.458%{opacity:1;transform:translateY(0)}73.542%{opacity:1;transform:translateY(0)}75%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v42{opacity:0;animation:v42 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes v43{0%{opacity:0;transform:translateY(6px)}75%{opacity:0;transform:translateY(6px)}76.458%{opacity:1;transform:translateY(0)}98.542%{opacity:1;transform:translateY(0)}100%{opacity:0;transform:translateY(0)}100%{opacity:0}}.v43{opacity:0;animation:v43 24s cubic-bezier(.2,.7,.2,1) infinite}@keyframes p44{0%{transform:scaleX(0)}0%{transform:scaleX(0)}25%{transform:scaleX(1)}25.042%{transform:scaleX(0)}100%{transform:scaleX(0)}}.p44{transform-box:fill-box;transform-origin:left center;transform:scaleX(0);animation:p44 24s linear infinite}@keyframes p45{0%{transform:scaleX(0)}25%{transform:scaleX(0)}50%{transform:scaleX(1)}50.042%{transform:scaleX(0)}100%{transform:scaleX(0)}}.p45{transform-box:fill-box;transform-origin:left center;transform:scaleX(0);animation:p45 24s linear infinite}@keyframes p46{0%{transform:scaleX(0)}50%{transform:scaleX(0)}75%{transform:scaleX(1)}75.042%{transform:scaleX(0)}100%{transform:scaleX(0)}}.p46{transform-box:fill-box;transform-origin:left center;transform:scaleX(0);animation:p46 24s linear infinite}@keyframes p47{0%{transform:scaleX(0)}75%{transform:scaleX(0)}100%{transform:scaleX(1)}100%{transform:scaleX(0)}100%{transform:scaleX(0)}}.p47{transform-box:fill-box;transform-origin:left center;transform:scaleX(0);animation:p47 24s linear infinite}@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}.blink{animation:blink 1.05s steps(1) infinite, f-accent 24s linear infinite}@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}.pulse{animation:pulse 1.4s ease-in-out infinite}@keyframes au1{0%,100%{transform:translate(0,0)}50%{transform:translate(90px,-30px)}}.au1{animation:au1 17s ease-in-out infinite}@keyframes au2{0%,100%{transform:translate(0,0)}50%{transform:translate(-110px,24px)}}.au2{animation:au2 21s ease-in-out infinite}@keyframes au3{0%,100%{transform:translate(0,0)}50%{transform:translate(-60px,-36px)}}.au3{animation:au3 15s ease-in-out infinite}@media (prefers-reduced-motion:reduce){*{animation:none!important}.r{opacity:1!important;transform:none!important}}</style>
+<g clip-path="url(#card)">
+<rect width="1200" height="660" fill="url(#bg)"/>
+<g filter="url(#blur)" opacity=".5"><ellipse class="au1" cx="230" cy="560" rx="300" ry="140" fill="#00e5ff"/><ellipse class="au2" cx="640" cy="40" rx="340" ry="110" fill="#7c3aed"/><ellipse class="au3" cx="1050" cy="560" rx="260" ry="130" fill="#ff3cf0"/></g>
+<rect width="1200" height="660" fill="url(#dots)"/>
+</g>
+<rect x="1" y="1" width="1198" height="658" rx="25" fill="none" stroke="#fff" stroke-opacity=".08"/>
+<rect x="60" y="0" width="1080" height="3" rx="1.5" fill="url(#edge)"/>
+<rect x="50" y="70" width="1100" height="540" rx="16" fill="#000" filter="url(#sh)"/>
+<g clip-path="url(#win)">
+<rect x="50" y="70" width="1100" height="540" class="f-ground"/>
+<rect x="50" y="70" width="1100" height="44" class="f-raised"/>
+<rect x="50" y="113" width="1100" height="1" class="f-line"/>
+<circle cx="74" cy="92" r="6" class="f-danger"/>
+<circle cx="92" cy="92" r="6" class="f-warn"/>
+<circle cx="110" cy="92" r="6" class="f-mint"/>
+<rect x="146" y="77" width="137" height="37" rx="8" class="f-ground"/>
+<rect x="146" y="111" width="137" height="3" class="f-accent"/>
+<text x="161" y="98" class="m f-text" font-size="13">❯ zsh · ~/api</text>
+<text x="303.6" y="98" class="m f-dim" font-size="13">● cargo build</text>
+<text x="446.20000000000005" y="98" class="m f-dim" font-size="13">⇄ staging</text>
+<rect x="50" y="114" width="56" height="468" class="f-surface"/>
+<rect x="106" y="114" width="1" height="468" class="f-line"/>
+<text x="78" y="148" text-anchor="middle" class="s f-dim" font-size="15">⌂</text>
+<rect x="59" y="167" width="38" height="32" rx="8" class="f-accent" opacity=".16"/>
+<rect x="50" y="169" width="3" height="28" rx="1.5" class="f-accent"/>
+<text x="78" y="188" text-anchor="middle" class="s f-accent" font-size="17">❯</text>
+<text x="78" y="228" text-anchor="middle" class="s f-dim" font-size="15">↺</text>
+<text x="78" y="268" text-anchor="middle" class="s f-dim" font-size="15">⇄</text>
+<text x="78" y="308" text-anchor="middle" class="s f-dim" font-size="15">✎</text>
+<text x="78" y="348" text-anchor="middle" class="s f-dim" font-size="15">▦</text>
+<text x="78" y="388" text-anchor="middle" class="s f-dim" font-size="15">✦</text>
+<text x="78" y="428" text-anchor="middle" class="s f-dim" font-size="15">◈</text>
+<text x="78" y="468" text-anchor="middle" class="s f-dim" font-size="15">⊞</text>
+<text x="78" y="508" text-anchor="middle" class="s f-dim" font-size="15">⌥</text>
+<rect x="50" y="582" width="1100" height="28" class="f-surface"/>
+<rect x="50" y="582" width="1100" height="1" class="f-line"/>
+<text x="66" y="601" class="m f-accent" font-size="12" font-weight="700">◆ JKY</text>
+<text x="126" y="601" class="m f-muted" font-size="12">zsh · ~/api · main</text>
+<text x="1134" y="601" text-anchor="end" class="m f-dim" font-size="12">3 shells · supervised</text>
+<g class="v1 r">
+<text x="128" y="148" class="m" font-size="13"><tspan class="f-accent">~/api</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯</tspan></text>
+<clipPath id="c2"><rect x="233.39999999999998" y="135" height="19" width="0"><animate attributeName="width" dur="24s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.8;15.6;23.4;31.2;39.0;46.8;54.6;62.4;70.2;0.0;0.0" keyTimes="0.00000;0.02083;0.02454;0.02824;0.03194;0.03565;0.03935;0.04306;0.04676;0.05046;0.05417;0.25000;1.00000"/></rect></clipPath>
+<text x="233.39999999999998" y="148" class="m f-text" font-size="13" textLength="70.2" lengthAdjust="spacingAndGlyphs" clip-path="url(#c2)">docker ps</text>
+<g class="v3 r"><rect y="137" width="7.8" height="15" rx="1" class="f-accent blink" x="233.39999999999998"><animate attributeName="x" dur="24s" repeatCount="indefinite" calcMode="discrete" values="233.4;233.4;241.2;249.0;256.8;264.6;272.4;280.2;288.0;295.8;303.6;233.4;233.4" keyTimes="0.00000;0.02083;0.02454;0.02824;0.03194;0.03565;0.03935;0.04306;0.04676;0.05046;0.05417;0.25000;1.00000"/></rect></g>
+<g class="v4 r">
+<text x="128" y="170" class="m f-dim" font-size="12.5" xml:space="preserve">CONTAINER ID   IMAGE          STATUS           PORTS                     NAMES</text>
+<text x="128" y="192" class="m f-text" font-size="12.5" xml:space="preserve">3f2a9c1d0b7e   api:latest     Up 4 hours       0.0.0.0:8080-&gt;80/tcp      api</text>
+<text x="128" y="214" class="m f-text" font-size="12.5" xml:space="preserve">9b8e7d6c5a4f   postgres:16    Up 18 hours      127.0.0.1:5432-&gt;5432/tcp  db</text>
+<text x="128" y="236" class="m f-text" font-size="12.5" xml:space="preserve">1c2d3e4f5a6b   redis:7        Exited (0) 2m                              cache</text>
+</g>
+<g class="v5 r">
+<rect x="122" y="262" width="720" height="176" rx="12" class="f-surface"/>
+<rect x="122" y="262" width="720" height="176" rx="12" fill="none" class="s-line"/>
+<rect x="136" y="275" width="92" height="22" rx="6" class="f-accent" opacity=".16"/>
+<text x="182" y="290.5" text-anchor="middle" class="m f-accent" font-size="11" font-weight="700" letter-spacing="1">DOCKER PS</text>
+<text x="240" y="291" class="m f-muted" font-size="12">2 running · 1 stopped</text>
+<text x="828" y="291" text-anchor="end" class="m f-dim" font-size="11.5">a panel · the raw output stays above</text>
+<rect x="136" y="310" width="222" height="114" rx="10" class="f-raised"/>
+<rect x="136" y="310" width="222" height="114" rx="10" fill="none" class="s-line"/>
+<circle cx="154" cy="332" r="5" class="f-mint"/>
+<text x="166" y="337" class="m f-text" font-size="14" font-weight="700">api</text>
+<text x="346" y="337" text-anchor="end" class="m f-mint" font-size="11">Up 4 hours</text>
+<text x="150" y="360" class="m f-muted" font-size="11.5">api:latest  ·  :8080 → 80</text>
+<rect x="150" y="372" width="194" height="6" rx="3" class="f-line"/>
+<g class="v6 r"><rect x="150" y="372" width="120" height="6" rx="3" class="f-accent"/></g>
+<rect x="150" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="150" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="179" y="405" text-anchor="middle" class="m f-text" font-size="11">logs</text>
+<rect x="216" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="216" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="245" y="405" text-anchor="middle" class="m f-text" font-size="11">exec</text>
+<rect x="282" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="282" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="311" y="405" text-anchor="middle" class="m f-text" font-size="11">stop</text>
+<rect x="370" y="310" width="222" height="114" rx="10" class="f-raised"/>
+<rect x="370" y="310" width="222" height="114" rx="10" fill="none" class="s-line"/>
+<circle cx="388" cy="332" r="5" class="f-mint"/>
+<text x="400" y="337" class="m f-text" font-size="14" font-weight="700">db</text>
+<text x="580" y="337" text-anchor="end" class="m f-mint" font-size="11">Up 18 hours</text>
+<text x="384" y="360" class="m f-muted" font-size="11.5">postgres:16  ·  :5432</text>
+<rect x="384" y="372" width="194" height="6" rx="3" class="f-line"/>
+<g class="v7 r"><rect x="384" y="372" width="167" height="6" rx="3" class="f-violet"/></g>
+<rect x="384" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="384" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="413" y="405" text-anchor="middle" class="m f-text" font-size="11">logs</text>
+<rect x="450" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="450" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="479" y="405" text-anchor="middle" class="m f-text" font-size="11">exec</text>
+<rect x="516" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="516" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="545" y="405" text-anchor="middle" class="m f-text" font-size="11">stop</text>
+<rect x="604" y="310" width="222" height="114" rx="10" class="f-raised"/>
+<rect x="604" y="310" width="222" height="114" rx="10" fill="none" class="s-line"/>
+<circle cx="622" cy="332" r="5" class="f-dim"/>
+<text x="634" y="337" class="m f-text" font-size="14" font-weight="700">cache</text>
+<text x="814" y="337" text-anchor="end" class="m f-dim" font-size="11">Exited (0) 2m</text>
+<text x="618" y="360" class="m f-muted" font-size="11.5">redis:7  ·  —</text>
+<rect x="618" y="372" width="194" height="6" rx="3" class="f-line"/>
+<rect x="618" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="618" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="647" y="405" text-anchor="middle" class="m f-text" font-size="11">logs</text>
+<rect x="684" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="684" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="713" y="405" text-anchor="middle" class="m f-text" font-size="11">start</text>
+<rect x="750" y="390" width="58" height="22" rx="6" class="f-ground"/>
+<rect x="750" y="390" width="58" height="22" rx="6" fill="none" class="s-strong"/>
+<text x="779" y="405" text-anchor="middle" class="m f-text" font-size="11">rm</text>
+</g>
+<g class="v8"><circle cx="179" cy="401" r="16" class="f-accent" opacity=".35"/></g>
+<g class="v9 r"><text x="128" y="468" class="m" font-size="13"><tspan class="f-accent">~/api</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯</tspan></text></g>
+<clipPath id="c10"><rect x="233.39999999999998" y="455" height="19" width="0"><animate attributeName="width" dur="24s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.8;15.6;23.4;31.2;39.0;46.8;54.6;62.4;70.2;78.0;85.8;93.6;101.4;109.2;117.0;0.0;0.0" keyTimes="0.00000;0.16667;0.16806;0.16944;0.17083;0.17222;0.17361;0.17500;0.17639;0.17778;0.17917;0.18056;0.18194;0.18333;0.18472;0.18611;0.18750;0.25000;1.00000"/></rect></clipPath>
+<text x="233.39999999999998" y="468" class="m f-text" font-size="13" textLength="117.0" lengthAdjust="spacingAndGlyphs" clip-path="url(#c10)">docker logs api</text>
+<g class="v11 r"><rect y="457" width="7.8" height="15" rx="1" class="f-accent blink" x="233.39999999999998"><animate attributeName="x" dur="24s" repeatCount="indefinite" calcMode="discrete" values="233.4;233.4;241.2;249.0;256.8;264.6;272.4;280.2;288.0;295.8;303.6;311.4;319.2;327.0;334.8;342.6;350.4;233.4;233.4" keyTimes="0.00000;0.16667;0.16806;0.16944;0.17083;0.17222;0.17361;0.17500;0.17639;0.17778;0.17917;0.18056;0.18194;0.18333;0.18472;0.18611;0.18750;0.25000;1.00000"/></rect></g>
+<g class="v12 r"><text x="372.4" y="468" class="m f-warn" font-size="12">← typed for you · nothing runs until you press Enter</text></g>
+</g>
+<g class="v13">
+<text x="128" y="148" class="m" font-size="13"><tspan class="f-accent">~/api</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯</tspan></text>
+<clipPath id="c14"><rect x="233.39999999999998" y="135" height="19" width="0"><animate attributeName="width" dur="24s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.8;15.6;23.4;31.2;39.0;46.8;54.6;62.4;70.2;78.0;85.8;93.6;101.4;109.2;117.0;124.8;132.6;140.4;148.2;156.0;163.8;0.0;0.0" keyTimes="0.00000;0.26667;0.26825;0.26984;0.27143;0.27302;0.27460;0.27619;0.27778;0.27937;0.28095;0.28254;0.28413;0.28571;0.28730;0.28889;0.29048;0.29206;0.29365;0.29524;0.29683;0.29841;0.30000;0.50000;1.00000"/></rect></clipPath>
+<text x="233.39999999999998" y="148" class="m f-text" font-size="13" textLength="163.8" lengthAdjust="spacingAndGlyphs" clip-path="url(#c14)">cargo build --release</text>
+<g class="v15"><rect y="137" width="7.8" height="15" rx="1" class="f-accent blink" x="233.39999999999998"><animate attributeName="x" dur="24s" repeatCount="indefinite" calcMode="discrete" values="233.4;233.4;241.2;249.0;256.8;264.6;272.4;280.2;288.0;295.8;303.6;311.4;319.2;327.0;334.8;342.6;350.4;358.2;366.0;373.8;381.6;389.4;397.2;233.4;233.4" keyTimes="0.00000;0.26667;0.26825;0.26984;0.27143;0.27302;0.27460;0.27619;0.27778;0.27937;0.28095;0.28254;0.28413;0.28571;0.28730;0.28889;0.29048;0.29206;0.29365;0.29524;0.29683;0.29841;0.30000;0.50000;1.00000"/></rect></g>
+<g class="v16"><text x="158" y="170" class="m" font-size="12.5" xml:space="preserve"><tspan class="f-mint" font-weight="700"> Compiling</tspan><tspan class="f-text"> jky-pty v0.1.0</tspan></text></g>
+<g class="v17"><text x="158" y="192" class="m" font-size="12.5" xml:space="preserve"><tspan class="f-mint" font-weight="700"> Compiling</tspan><tspan class="f-text"> jky-detach v0.1.0</tspan></text></g>
+<g class="v18"><text x="158" y="214" class="m" font-size="12.5" xml:space="preserve"><tspan class="f-mint" font-weight="700"> Compiling</tspan><tspan class="f-text"> jky-ai v0.1.0</tspan></text></g>
+<g class="v19"><text x="158" y="236" class="m f-accent" font-size="12.5" xml:space="preserve">  Building [=========&gt;          ] 212/397</text></g>
+<g class="v20">
+<rect x="110" y="114" width="1040" height="468" fill="#04040a" opacity=".86"/>
+<rect x="350" y="248" width="460" height="150" rx="16" fill="#0e0e16" stroke="#ff4d6a" stroke-opacity=".6"/>
+<text x="580" y="294" text-anchor="middle" class="s" font-size="22" font-weight="800" fill="#f2f2f8">Window closed</text>
+<circle cx="430" cy="332" r="6" fill="#3ddc97" class="pulse"/>
+<text x="444" y="337" class="m" font-size="13" fill="#c9c9dc">the supervisor is still holding tab-2</text>
+<text x="580" y="368" text-anchor="middle" class="m" font-size="12" fill="#7c7c96">jky-terminal --supervise tab-2  ·  cargo keeps building</text>
+</g>
+<g class="v21">
+<rect x="122" y="221" width="560" height="26" rx="7" class="f-accent" opacity=".12"/>
+<text x="134" y="238" class="m f-accent" font-size="12.5">↻ reopened · rejoined tab-2 · drawing what it printed while you were away</text>
+<text x="158" y="264" class="m" font-size="12.5" xml:space="preserve"><tspan class="f-mint" font-weight="700"> Compiling</tspan><tspan class="f-text"> jky-terminal v0.1.0</tspan></text>
+<text x="158" y="286" class="m" font-size="12.5" xml:space="preserve"><tspan class="f-mint" font-weight="700">  Finished</tspan><tspan class="f-text"> `release` profile [optimized] target(s) in 3m 12s</tspan></text>
+<text x="128" y="328" class="m f-muted" font-size="12.5">same shell · same process · same directory — no tmux involved</text>
+</g>
+</g>
+<g class="v22">
+<text x="128" y="148" class="m" font-size="13"><tspan class="f-accent">~/api</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯</tspan></text>
+<clipPath id="c23"><rect x="233.39999999999998" y="135" height="19" width="0"><animate attributeName="width" dur="24s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.8;15.6;23.4;31.2;39.0;46.8;54.6;62.4;70.2;78.0;85.8;93.6;101.4;109.2;117.0;124.8;132.6;140.4;148.2;156.0;163.8;171.6;179.4;187.2;195.0;202.8;210.6;218.4;226.2;234.0;241.8;249.6;257.4;265.2;273.0;0.0;0.0" keyTimes="0.00000;0.51667;0.51786;0.51905;0.52024;0.52143;0.52262;0.52381;0.52500;0.52619;0.52738;0.52857;0.52976;0.53095;0.53214;0.53333;0.53452;0.53571;0.53690;0.53810;0.53929;0.54048;0.54167;0.54286;0.54405;0.54524;0.54643;0.54762;0.54881;0.55000;0.55119;0.55238;0.55357;0.55476;0.55595;0.55714;0.55833;0.75000;1.00000"/></rect></clipPath>
+<text x="233.39999999999998" y="148" class="m f-text" font-size="13" textLength="273.0" lengthAdjust="spacingAndGlyphs" clip-path="url(#c23)">jky ask why does the auth test fail</text>
+<g class="v24"><rect y="137" width="7.8" height="15" rx="1" class="f-accent blink" x="233.39999999999998"><animate attributeName="x" dur="24s" repeatCount="indefinite" calcMode="discrete" values="233.4;233.4;241.2;249.0;256.8;264.6;272.4;280.2;288.0;295.8;303.6;311.4;319.2;327.0;334.8;342.6;350.4;358.2;366.0;373.8;381.6;389.4;397.2;405.0;412.8;420.6;428.4;436.2;444.0;451.8;459.6;467.4;475.2;483.0;490.8;498.6;506.4;233.4;233.4" keyTimes="0.00000;0.51667;0.51786;0.51905;0.52024;0.52143;0.52262;0.52381;0.52500;0.52619;0.52738;0.52857;0.52976;0.53095;0.53214;0.53333;0.53452;0.53571;0.53690;0.53810;0.53929;0.54048;0.54167;0.54286;0.54405;0.54524;0.54643;0.54762;0.54881;0.55000;0.55119;0.55238;0.55357;0.55476;0.55595;0.55714;0.55833;0.75000;1.00000"/></rect></g>
+<g class="v25"><text x="128" y="170" class="m f-dim" font-size="12.5"># opened in the Assistant →</text></g>
+<g class="v26">
+<rect x="530" y="130" width="600" height="436" rx="14" class="f-surface"/>
+<rect x="530" y="130" width="600" height="436" rx="14" fill="none" class="s-line"/>
+<text x="550" y="162" class="s f-violet" font-size="16" font-weight="800">✦ Assistant</text>
+<text x="1110" y="162" text-anchor="end" class="m f-dim" font-size="12">Anthropic · your key · keychain</text>
+<rect x="780" y="180" width="330" height="34" rx="10" class="f-accent" opacity=".14"/>
+<text x="796" y="202" class="m f-text" font-size="13">why does the auth test fail</text>
+</g>
+<g class="v27">
+<rect x="550" y="228" width="400" height="30" rx="8" class="f-raised"/>
+<text x="564" y="248" class="m f-muted" font-size="12.5">search_codebase("expires_at")</text>
+<text x="936" y="248" text-anchor="end" class="m f-mint" font-size="12">✓ ran freely</text>
+</g>
+<g class="v28">
+<rect x="550" y="272" width="560" height="168" rx="12" class="f-raised"/>
+<rect x="550" y="272" width="560" height="168" rx="12" fill="none" class="s-warn" stroke-width="1.4"/>
+<text x="568" y="300" class="m f-text" font-size="13" font-weight="700">run_command</text>
+<rect x="970" y="284" width="122" height="24" rx="12" class="f-mint" opacity=".16"/>
+<text x="1031" y="301" text-anchor="middle" class="m f-mint" font-size="11.5" font-weight="700">runs locally</text>
+<rect x="568" y="316" width="524" height="30" rx="7" class="f-ground"/>
+<text x="582" y="336" class="m f-text" font-size="13">cargo test -p auth -- token_expiry</text>
+<text x="568" y="368" class="m f-muted" font-size="12">Why: reproduce the failure before proposing a fix.</text>
+<rect x="568" y="388" width="86" height="34" rx="8" class="f-accent"/>
+<text x="611" y="410" text-anchor="middle" class="m f-ground" font-size="13" font-weight="800">Run</text>
+<rect x="664" y="388" width="116" height="34" rx="8" class="f-ground"/>
+<rect x="664" y="388" width="116" height="34" rx="8" fill="none" class="s-danger"/>
+<text x="722" y="410" text-anchor="middle" class="m f-danger" font-size="13">Don’t run</text>
+<text x="1092" y="410" text-anchor="end" class="m f-dim" font-size="11.5">waits for you · no “always allow”</text>
+</g>
+<g class="v29"><rect x="562" y="382" width="98" height="46" rx="11" fill="none" class="s-accent" stroke-width="3"/></g>
+<g class="v30">
+<text x="554" y="468" class="m f-danger" font-size="12.5">✗ 1 failed — token_expiry: expected 3600, got 3600000</text>
+<text x="554" y="494" class="s f-text" font-size="14">The issuer writes milliseconds; the check reads seconds.</text>
+<text x="554" y="516" class="s f-muted" font-size="14">Divide by 1000 in <tspan class="m f-accent">token.rs:42</tspan> — want me to show the diff?</text>
+</g>
+</g>
+<g class="v31">
+<text x="128" y="148" class="m" font-size="13"><tspan class="f-accent">~/api</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯</tspan></text>
+<clipPath id="c32"><rect x="233.39999999999998" y="135" height="19" width="0"><animate attributeName="width" dur="24s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.8;15.6;23.4;31.2;39.0;46.8;54.6;62.4;70.2;78.0;85.8;93.6;101.4;109.2;117.0;124.8;132.6;0.0;0.0" keyTimes="0.00000;0.76667;0.76863;0.77059;0.77255;0.77451;0.77647;0.77843;0.78039;0.78235;0.78431;0.78627;0.78824;0.79020;0.79216;0.79412;0.79608;0.79804;0.80000;1.00000;1.00000"/></rect></clipPath>
+<text x="233.39999999999998" y="148" class="m f-text" font-size="13" textLength="132.6" lengthAdjust="spacingAndGlyphs" clip-path="url(#c32)">jky theme dracula</text>
+<g class="v33"><rect y="137" width="7.8" height="15" rx="1" class="f-accent blink" x="233.39999999999998"><animate attributeName="x" dur="24s" repeatCount="indefinite" calcMode="discrete" values="233.4;233.4;241.2;249.0;256.8;264.6;272.4;280.2;288.0;295.8;303.6;311.4;319.2;327.0;334.8;342.6;350.4;358.2;366.0;233.4;233.4" keyTimes="0.00000;0.76667;0.76863;0.77059;0.77255;0.77451;0.77647;0.77843;0.78039;0.78235;0.78431;0.78627;0.78824;0.79020;0.79216;0.79412;0.79608;0.79804;0.80000;1.00000;1.00000"/></rect></g>
+<g class="v34"><text x="128" y="170" class="m" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Dracula</tspan></text></g>
+<g class="v35"><text x="128" y="198" class="m" font-size="13"><tspan class="f-accent">~/api</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯</tspan></text></g>
+<clipPath id="c36"><rect x="233.39999999999998" y="185" height="19" width="0"><animate attributeName="width" dur="24s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.8;15.6;23.4;31.2;39.0;46.8;54.6;62.4;70.2;78.0;85.8;93.6;101.4;109.2;117.0;0.0;0.0" keyTimes="0.00000;0.85000;0.85194;0.85389;0.85583;0.85778;0.85972;0.86167;0.86361;0.86556;0.86750;0.86944;0.87139;0.87333;0.87528;0.87722;0.87917;1.00000;1.00000"/></rect></clipPath>
+<text x="233.39999999999998" y="198" class="m f-text" font-size="13" textLength="117.0" lengthAdjust="spacingAndGlyphs" clip-path="url(#c36)">jky theme light</text>
+<g class="v37"><rect y="187" width="7.8" height="15" rx="1" class="f-accent blink" x="233.39999999999998"><animate attributeName="x" dur="24s" repeatCount="indefinite" calcMode="discrete" values="233.4;233.4;241.2;249.0;256.8;264.6;272.4;280.2;288.0;295.8;303.6;311.4;319.2;327.0;334.8;342.6;350.4;233.4;233.4" keyTimes="0.00000;0.85000;0.85194;0.85389;0.85583;0.85778;0.85972;0.86167;0.86361;0.86556;0.86750;0.86944;0.87139;0.87333;0.87528;0.87722;0.87917;1.00000;1.00000"/></rect></g>
+<g class="v38"><text x="128" y="220" class="m" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Light</tspan></text></g>
+<g class="v39">
+<text x="128" y="258" class="m f-dim" font-size="12"># every colour in the window is one of these tokens — they change together</text>
+<circle cx="152" cy="298" r="20" class="f-ground"/>
+<circle cx="152" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="152" y="336" text-anchor="middle" class="m f-muted" font-size="11">ground</text>
+<circle cx="216" cy="298" r="20" class="f-surface"/>
+<circle cx="216" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="216" y="336" text-anchor="middle" class="m f-muted" font-size="11">surface</text>
+<circle cx="280" cy="298" r="20" class="f-text"/>
+<circle cx="280" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="280" y="336" text-anchor="middle" class="m f-muted" font-size="11">text</text>
+<circle cx="344" cy="298" r="20" class="f-accent"/>
+<circle cx="344" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="344" y="336" text-anchor="middle" class="m f-muted" font-size="11">accent</text>
+<circle cx="408" cy="298" r="20" class="f-violet"/>
+<circle cx="408" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="408" y="336" text-anchor="middle" class="m f-muted" font-size="11">violet</text>
+<circle cx="472" cy="298" r="20" class="f-magenta"/>
+<circle cx="472" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="472" y="336" text-anchor="middle" class="m f-muted" font-size="11">magenta</text>
+<circle cx="536" cy="298" r="20" class="f-mint"/>
+<circle cx="536" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="536" y="336" text-anchor="middle" class="m f-muted" font-size="11">mint</text>
+<circle cx="600" cy="298" r="20" class="f-warn"/>
+<circle cx="600" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="600" y="336" text-anchor="middle" class="m f-muted" font-size="11">warn</text>
+<circle cx="664" cy="298" r="20" class="f-danger"/>
+<circle cx="664" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="664" y="336" text-anchor="middle" class="m f-muted" font-size="11">danger</text>
+<circle cx="728" cy="298" r="20" class="f-lime"/>
+<circle cx="728" cy="298" r="20" fill="none" class="s-strong"/>
+<text x="728" y="336" text-anchor="middle" class="m f-muted" font-size="11">lime</text>
+<text x="128" y="378" class="m f-muted" font-size="12.5">7 themes · each one tested for WCAG AAA text contrast · <tspan class="f-accent">Settings → Appearance</tspan></text>
+</g>
+</g>
+</g>
+<rect x="50" y="70" width="1100" height="540" rx="16" fill="none" class="s-strong" stroke-width="1.2"/>
+<g class="v40 r"><text x="1150" y="48" text-anchor="end" class="s" font-size="19" font-weight="800" fill="#00e5ff"><tspan fill="#8b8ba4" font-weight="600" class="m" font-size="14">01 / 04  </tspan>Output becomes a panel</text></g>
+<g class="v41"><text x="1150" y="48" text-anchor="end" class="s" font-size="19" font-weight="800" fill="#3ddc97"><tspan fill="#8b8ba4" font-weight="600" class="m" font-size="14">02 / 04  </tspan>Shells outlive the window</text></g>
+<g class="v42"><text x="1150" y="48" text-anchor="end" class="s" font-size="19" font-weight="800" fill="#bd93f9"><tspan fill="#8b8ba4" font-weight="600" class="m" font-size="14">03 / 04  </tspan>The assistant has to ask</text></g>
+<g class="v43"><text x="1150" y="48" text-anchor="end" class="s" font-size="19" font-weight="800" fill="#ff3cf0"><tspan fill="#8b8ba4" font-weight="600" class="m" font-size="14">04 / 04  </tspan>Seven themes, one set of tokens</text></g>
+<text x="50" y="48" class="m" font-size="14" fill="#a9a9c2" letter-spacing="2.5">JKY TERMINAL  <tspan fill="#00e5ff">·</tspan>  LIVE TOUR</text>
+<rect x="56" y="628" width="263" height="4" rx="2" fill="#ffffff" fill-opacity=".1"/>
+<rect x="56" y="628" width="263" height="4" rx="2" fill="#00e5ff" class="p44"/>
+<text x="56" y="650" class="m" font-size="12" fill="#8b8ba4">Output becomes a panel</text>
+<rect x="331" y="628" width="263" height="4" rx="2" fill="#ffffff" fill-opacity=".1"/>
+<rect x="331" y="628" width="263" height="4" rx="2" fill="#3ddc97" class="p45"/>
+<text x="331" y="650" class="m" font-size="12" fill="#8b8ba4">Shells outlive the window</text>
+<rect x="606" y="628" width="263" height="4" rx="2" fill="#ffffff" fill-opacity=".1"/>
+<rect x="606" y="628" width="263" height="4" rx="2" fill="#bd93f9" class="p46"/>
+<text x="606" y="650" class="m" font-size="12" fill="#8b8ba4">The assistant has to ask</text>
+<rect x="881" y="628" width="263" height="4" rx="2" fill="#ffffff" fill-opacity=".1"/>
+<rect x="881" y="628" width="263" height="4" rx="2" fill="#ff3cf0" class="p47"/>
+<text x="881" y="650" class="m" font-size="12" fill="#8b8ba4">Seven themes, one set of tokens</text>
+</svg>

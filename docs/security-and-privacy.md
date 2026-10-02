@@ -92,9 +92,10 @@ web pages, model responses. So it is given nothing it could misuse:
 
 ## Enforced by tests
 
-Claims in a README are promises with nothing keeping them. These are checked on every push, on Linux,
-macOS and Windows, by [`apps/desktop/src-tauri/tests/security.rs`](../apps/desktop/src-tauri/tests/security.rs)
-and the build scripts.
+Claims in a README are promises with nothing keeping them. These are checked by
+[`apps/desktop/src-tauri/tests/security.rs`](../apps/desktop/src-tauri/tests/security.rs) and the build
+scripts — locally with `cargo test --workspace`, and in CI on every push (the desktop crate's tests run on
+the macOS and Windows jobs; Linux CI tests the libraries and compiles the desktop binary).
 
 | Test or check | What it guarantees |
 |---|---|

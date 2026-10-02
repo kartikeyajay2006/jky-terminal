@@ -3,34 +3,34 @@
 # ⚡ JKY Terminal
 
 <p align="center">
-  <b>The local-first, persistent AI terminal.</b><br>
-  A security-minded terminal that keeps your shells alive, turns trusted command output into useful views, and puts an approval-first assistant beside your work.
+  <b>The local-first terminal that keeps your shells alive, reads your output, and asks before it acts.</b><br>
+  Built on a Rust core and your system's own webview. Open source, no account, no telemetry.
 </p>
 
 [![CI Workflow](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
-[![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff?style=flat-square&logo=linux&logoColor=white)](https://github.com/kartikeyajay2006/jky-terminal/releases)
-[![Tests Suite](https://img.shields.io/badge/tests-2%2C267%20frontend%20%C2%B7%201%2C097%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](https://github.com/kartikeyajay2006/jky-terminal)
-[![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20zero--ambient-bd93f9?style=flat-square&logo=shield&logoColor=white)](docs/SHOWCASE.md#4-zero-ambient-authority-security-model)
+[![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff?style=flat-square&logo=linux&logoColor=white)](docs/getting-started.md)
+[![Tests Suite](https://img.shields.io/badge/tests-2%2C267%20frontend%20%C2%B7%201%2C097%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](docs/operations-and-releases.md#the-verification-ladder)
+[![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20113%20pinned%20commands-bd93f9?style=flat-square)](docs/security-and-privacy.md)
 [![WCAG Contrast](https://img.shields.io/badge/contrast-WCAG%20AAA%20tested-ffb340?style=flat-square)](#-seven-themes-one-set-of-tokens)
 [![License: MIT](https://img.shields.io/badge/license-MIT-ff3cf0?style=flat-square)](LICENSE)
 
 <br>
 
-<a href="docs/SHOWCASE.md">
-  <img src="docs/img/hero-showcase.svg" alt="JKY Terminal Interactive Hero Showcase — Animated Terminal with Changing Text and Reactive App Cards" width="900">
+<a href="docs/README.md">
+  <img src="docs/img/hero.svg" alt="An animated tour of JKY Terminal in four scenes: docker ps output becomes a panel; a build keeps running after the window closes and the output is there on reopening; the assistant searches freely but must ask before running a command; one command switches the whole app's theme" width="100%">
 </a>
 
 <p align="center">
   <a href="#-quick-start">⚡ Quick Start</a> &nbsp;•&nbsp;
-  <a href="#-interactive-showcase">✨ Interactive Showcase</a> &nbsp;•&nbsp;
-  <a href="#-documentation">📚 Documentation</a> &nbsp;•&nbsp;
+  <a href="#-why-jky">✨ Why JKY</a> &nbsp;•&nbsp;
+  <a href="#-documentation">📚 Docs</a> &nbsp;•&nbsp;
   <a href="#%EF%B8%8F-how-jky-compares--honestly">⚖️ Honest Comparison</a> &nbsp;•&nbsp;
-  <a href="#-the-ten-sections">▦ 10 Sections</a> &nbsp;•&nbsp;
   <a href="#-any-command-can-become-an-app">⚡ Command to App</a> &nbsp;•&nbsp;
-  <a href="#-zero-ambient-authority-security">🛡️ Zero-Trust Security</a> &nbsp;•&nbsp;
+  <a href="#%EF%B8%8F-zero-ambient-authority-security">🛡️ Security</a> &nbsp;•&nbsp;
   <a href="#-seven-themes-one-set-of-tokens">🎨 Themes</a> &nbsp;•&nbsp;
-  <a href="#-installation">📦 Downloads</a> &nbsp;•&nbsp;
-  <a href="#%EF%B8%8F-keyboard-shortcuts">⌨️ Shortcuts</a>
+  <a href="#-the-ten-sections">▦ 10 Sections</a> &nbsp;•&nbsp;
+  <a href="#%EF%B8%8F-keyboard-shortcuts">⌨️ Shortcuts</a> &nbsp;•&nbsp;
+  <a href="#-installation">📦 Install</a>
 </p>
 
 </div>
@@ -39,56 +39,143 @@
 
 ## ⚡ Quick Start
 
-Experience the future of terminals in under two minutes:
+Four commands, once [the prerequisites](docs/getting-started.md#1-prerequisites) are installed:
 
 ```sh
-# Clone and enter the repository
 git clone https://github.com/kartikeyajay2006/jky-terminal.git
 cd jky-terminal
-
-# Enable corepack and install dependencies
 corepack enable && pnpm install
-
-# Launch the full desktop application with native Rust PTYs
-pnpm dev:desktop
+pnpm dev:desktop          # the real desktop app, with native shells
 ```
 
-> **Testing UI only in a browser?** Run `pnpm dev` to launch Vite without recompiling the Rust backend.
+The first build compiles the Rust core and takes a few minutes; later launches take seconds.
+`pnpm dev` starts only the interface in a browser, for UI work. The
+[Getting started guide](docs/getting-started.md) walks through a safe first session.
 
 ---
 
-## ✨ Interactive Showcase
+## ✨ Why JKY
 
-> 📖 **Want the comprehensive visual walkthrough? Explore the full [JKY Terminal Showcase & Tour](docs/SHOWCASE.md).**
+<table>
+<tr>
+<td width="33%" valign="top">
+
+### 🔄 Shells outlive the window
+
+Close the app mid-build and the build keeps going. Each pane's shell is held by a small supervisor;
+reopen JKY and the pane rejoins it, showing what it printed while you were away. No tmux to learn.
+
+<sub>→ [How it works](docs/terminal-guide.md#shells-that-outlive-the-window)</sub>
+
+</td>
+<td width="33%" valign="top">
+
+### ⚡ Output becomes a panel
+
+`git status`, `git log`, `docker ps`, `df`, `ps`, `ls`, `mkdir` and JSON get a structured panel
+**beneath** the raw text — eight deterministic parsers, no model. Buttons only *type* commands.
+
+<sub>→ [Command panels](docs/terminal-guide.md#every-command-can-become-a-panel)</sub>
+
+</td>
+<td width="33%" valign="top">
+
+### ✦ The assistant has to ask
+
+Reading the project is free; **every command waits for your approval**, and destructive ones must be
+typed back. Your own Anthropic or OpenAI key — or a local Ollama model, fully offline.
+
+<sub>→ [Assistant & approvals](docs/assistant-and-approvals.md)</sub>
+
+</td>
+</tr>
+<tr>
+<td width="33%" valign="top">
+
+### 🛡️ The window has no network
+
+`connect-src 'self'`. Keys live in the OS keychain; no command can return one. All 113 IPC commands
+are pinned by name in a test that CI runs on every push.
+
+<sub>→ [Security & privacy](docs/security-and-privacy.md)</sub>
+
+</td>
+<td width="33%" valign="top">
+
+### 🧰 One window, optional extras
+
+A CodeMirror editor, workspaces and Git worktrees, SSH hosts, twelve developer tools, eight apps, a
+dashboard — each loaded only when opened.
+
+<sub>→ [Apps, tools & games](docs/apps-and-tools.md)</sub>
+
+</td>
+<td width="33%" valign="top">
+
+### 🦀 Rust does the real work
+
+Nineteen focused crates own PTYs, files, keys, history and the audit log. The interface asks through a
+thin IPC layer and renders with xterm.js and WebGL2.
+
+<sub>→ [Architecture](docs/architecture.md)</sub>
+
+</td>
+</tr>
+</table>
+
+---
 
 ## 📚 Documentation
 
-Beautiful product visuals are useful; dependable operating guidance is essential. The new documentation hub is written around the actual application, with clear boundaries between current capabilities and planned work.
-
 <p align="center">
-  <a href="docs/README.md"><img src="docs/img/terminal-studio-hero.png" alt="Colourful JKY Terminal documentation hero showing a professional developer workstation" width="900"></a>
+  <a href="docs/README.md"><img src="docs/img/docs-map.svg" alt="The JKY Terminal documentation: eighteen guides, from getting started to architecture, lighting up one after another" width="100%"></a>
 </p>
 
-| Read | What you will learn |
-|---|---|
-| [Documentation home](docs/README.md) | A guided map of every user and maintainer guide. |
-| [Getting started](docs/getting-started.md) | Source setup, first launch, safe first-session checks, and troubleshooting. |
-| [Terminal guide](docs/terminal-guide.md) | Tabs, panes, persistent sessions, remote work, history, and command views. |
-| [Workspaces and editor](docs/workspaces-and-editor.md) | Project boundaries, safe file editing, and restoration habits. |
-| [Assistant and approvals](docs/assistant-and-approvals.md) | Provider context, visible approvals, and practical AI safety. |
-| [Security and privacy](docs/security-and-privacy.md) | Native boundaries, secrets, files, audit records, and known limits. |
-| [Operations and releases](docs/operations-and-releases.md) | CI, validation, packaging, signing status, and release smoke tests. |
+Every shortcut, file name, limit and command in the docs was checked against the code — and every place
+JKY falls short is written down next to what it does well.
 
-The [product roadmap](docs/product-roadmap.md) explains what is genuinely current, what needs hardening next, and what is deliberately planned rather than promised.
+<table>
+<tr>
+<td width="33%" valign="top">
 
-JKY Terminal rethinks every assumption of command-line tools:
+**🚀 Use it**
 
-- 🔄 **Shells Outlive The Window:** Background supervisor daemon (`jky-detach`) keeps long-running builds, compilation jobs, and servers alive across window closes and restarts. Rejoining a pane restores the missed buffer seamlessly.
-- ⚡ **Every Command Can Become An App:** Recognizers parse structured output from `docker`, `git`, `df`, `ps`, and `ls` into interactive visual cards without LLM hallucinations.
-- 🛡️ **Zero Ambient Authority:** Built on the principle that *the window can ask, but only Rust can act*. Frontend CSP strictly enforces `connect-src 'self'`.
-- 🔐 **Zero Secret Exposure:** Your Anthropic/OpenAI API keys live directly in your native OS Keychain with zeroize memory protection. The webview can never read a secret.
-- 🦀 **Rust Does The Real Work:** 19 focused Rust crates own the PTYs, files, keys, history and audit log behind a thin IPC layer; the terminal itself renders through xterm.js with WebGL2.
-- 🪶 **Featherweight Editor:** CodeMirror 6 loaded dynamically by chunk, adding a mere 33 kB to the entry bundle instead of a bloated 15 MB Monaco editor.
+- [Getting started](docs/getting-started.md)
+- [Terminal guide](docs/terminal-guide.md)
+- [Shells & the `jky` command](docs/shell-integration.md)
+- [Keyboard & settings](docs/keyboard-and-settings.md)
+- [Workspaces & editor](docs/workspaces-and-editor.md)
+- [Apps, tools & games](docs/apps-and-tools.md)
+
+</td>
+<td width="33%" valign="top">
+
+**🛡️ Trust it**
+
+- [Assistant & approvals](docs/assistant-and-approvals.md)
+- [Security & privacy](docs/security-and-privacy.md)
+- [How JKY compares](docs/comparison.md)
+- [Product roadmap](docs/product-roadmap.md)
+- [Questions & answers](docs/faq.md)
+- [Glossary](docs/glossary.md)
+
+</td>
+<td width="33%" valign="top">
+
+**🛠️ Build it**
+
+- [Architecture](docs/architecture.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Operations & releases](docs/operations-and-releases.md)
+- [Releasing](docs/RELEASING.md)
+- [Features in full](docs/FEATURES.md)
+- [Visual showcase](docs/SHOWCASE.md)
+
+</td>
+</tr>
+</table>
+
+<p align="center"><a href="docs/README.md"><b>→ Open the documentation home</b></a></p>
 
 ---
 
@@ -169,21 +256,25 @@ Shells communicate over text pipes because historically that was all they could 
 JKY Terminal reads that structure back. When command output matches a recognizable schema, a reactive GUI panel renders directly beneath the output:
 
 <p align="center">
-  <a href="docs/SHOWCASE.md#1-any-command-can-become-an-app">
-    <img src="docs/img/command-to-app-showcase.svg" alt="Command to App Visual Showcase — Visual Timeline, Storage Meter, Staged Split, JSON Viewer" width="900">
+  <a href="docs/terminal-guide.md#every-command-can-become-a-panel">
+    <img src="docs/img/command-panels.svg" alt="Four panels building themselves beneath their commands: git log as a timeline, df -h as disk bars fullest first with live refresh, git status -s split into staged and unstaged, and JSON as a tree" width="100%">
   </a>
 </p>
 
-| Typed Command | Instant Reactive Transformation |
+| You type | You also get, beneath the raw output |
 |---|---|
-| `docker ps` | Running/stopped container cards, memory gauges, port mappings, one-click logs/exec |
-| `git log` | Interactive commit timeline with branch topology, hashes, and humanized timestamps |
-| `df -h` | Visual disk volume utilization bars sorted fullest first with warning thresholds |
-| `git status -s` | Clean partition between staged and unstaged changes with file type chips |
-| `ps aux` | Searchable process monitor with PID inspection and graceful stop signals |
-| `ls -l` | Rich folder file list with permissions, sizes, and file kind badges |
-| `mkdir <dir>` | Visual confirmation banner with directory jump shortcut |
-| *arbitrary JSON* | Interactive tree viewer with syntax coloration and field extraction |
+| `git status -s` | Staged and unstaged, kept apart, with file-kind chips |
+| `git log` | A commit timeline |
+| `docker ps` | Container cards, running and stopped — can stay **live** |
+| `df -h` | Disk bars, fullest first — can stay **live** |
+| `ps aux` | A searchable process table — can stay **live** |
+| `ls -l` | A listing with kinds, sizes and dates |
+| `mkdir <dir>` | The confirmation `mkdir` never prints, with a way to jump in |
+| anything that prints **JSON** | A collapsible tree |
+
+**No model is involved** — these are parsers, checked against real recorded `zsh` and `bash` sessions. A
+live panel re-runs one of three fixed commands itself, with no shell in between, so a refresh button can
+never become a way to run arbitrary commands.
 
 ### The Three Inviolable Safety Guarantees
 1. **Never Replaces Output:** Raw text stays untouched in the scrollback. App panels can be toggled or dismissed at will.
@@ -197,8 +288,8 @@ JKY Terminal reads that structure back. When command output matches a recognizab
 Most modern desktop apps bundle a webview and grant it broad native permissions. JKY Terminal rejects this entirely.
 
 <p align="center">
-  <a href="docs/SHOWCASE.md#4-zero-ambient-authority-security-model">
-    <img src="docs/img/architecture-diagram.svg" alt="JKY Terminal Architecture and Security Perimeter" width="900">
+  <a href="docs/security-and-privacy.md">
+    <img src="docs/img/security-flow.svg" alt="The window can ask, only Rust can act: a file request travels through the window, the pinned IPC commands, the Rust core and the machine and back; the window's own attempt to reach the internet is blocked by the CSP; the API key stays in the keychain and only Rust reads it to call a provider" width="100%">
   </a>
 </p>
 
@@ -256,16 +347,16 @@ One cohesive desktop window holds everything you need for daily software enginee
 |---|:---:|---|
 | **Terminal** | `❯` | Real PTY with 2D geometric splits, WebGL2 acceleration, persistent background supervisors, and live command-to-app parsing. |
 | **Editor** | `✎` | CodeMirror 6 multi-root editor. Supports code syntax, image previewing, and native canvas PDF rendering within strict CSP boundaries. |
-| **Workspaces** | `▦` | Save and restore exact layouts, folder trees, and terminal tabs under friendly project names. |
+| **Workspaces** | `▦` | Named setups — editor folders, where terminals start and how many, and an SSH host — switched in one step. Plus Git worktrees, created and opened as workspaces. |
 | **Remote** | `⇄` | First-class SSH manager leveraging your native `~/.ssh/config` and system key agent. Never stores raw passwords. |
 | **History** | `↺` | Subsequence fuzzy matching (`dkrps` finds `docker ps`) ranked by recency and logarithmic frequency. One-click forget. |
 | **Assistant** | `✦` | Streaming assistant on Anthropic, OpenAI, or a local Ollama model. Read-only tools run freely; every command it proposes waits for your approval, and destructive ones need typed confirmation. |
-| **Dashboard** | `⌂` | Local-first personal workspace with Markdown notes, task boards, calendars, and reminders stored on disk. |
+| **Dashboard** | `⌂` | Notes, todos, a calendar and daily reminders, stored locally — and scriptable from any shell with `jky note`, `jky todo` and `jky reminder`. |
 | **Developer** | `⌥` | 12 tools: JSON, YAML, Diff, Hash, JWT (decodes, never verifies), Regex (in a killable worker), HTTP, System Monitor, Processes, Ports, Environment and DNS. HTTP and DNS go through Rust; the rest run locally. |
 | **Apps** | `⊞` | GitHub (device-code sign-in), Gmail (read-only, PKCE), a native browser webview (WebKitGTK / WKWebView / WebView2), Weather, News, Map, Calculator and Timer. |
 | **Games** | `◈` | Keyboard-first arcade: Dino Run, Snake, Tic-Tac-Toe, Flappy Bird and 2048, with local records and play statistics. |
 
-→ **[Detailed architectural rationale for each section](docs/FEATURES.md)**
+→ **[Every section in depth](docs/README.md)** &nbsp;·&nbsp; **[The reasoning behind each design decision](docs/FEATURES.md)**
 
 ---
 
@@ -306,16 +397,27 @@ All sixteen actions are rebindable in **Settings → Keyboard** by pressing the 
 
 ### Building From Source
 
-#### 1. Install System Webview Dependencies (Linux only)
-```sh
-# Fedora / RHEL:
-sudo dnf install webkit2gtk4.1-devel libsoup3-devel openssl-devel \
-  curl wget file libappindicator-gtk3-devel librsvg2-devel
+#### 1. Install System Dependencies
 
-# Ubuntu / Debian:
+You need Node.js 22+, Rust stable and Git everywhere. Then, per platform:
+
+```sh
+# Ubuntu / Debian — the same packages CI installs
 sudo apt install libwebkit2gtk-4.1-dev libsoup-3.0-dev \
-  libjavascriptcoregtk-4.1-dev build-essential libssl-dev \
-  libayatana-appindicator3-dev librsvg2-dev
+  libjavascriptcoregtk-4.1-dev build-essential curl wget file \
+  libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+  libdbus-1-dev pkg-config
+
+# Fedora / RHEL
+sudo dnf install webkit2gtk4.1-devel libsoup3-devel openssl-devel \
+  curl wget file libappindicator-gtk3-devel librsvg2-devel \
+  dbus-devel pkgconf-pkg-config
+
+# macOS
+xcode-select --install
+
+# Windows: Microsoft C++ Build Tools ("Desktop development with C++");
+# WebView2 already ships with Windows 10 and 11.
 ```
 
 #### 2. Install & Run
@@ -347,20 +449,31 @@ cargo build --release -p jky-terminal --features tauri/custom-protocol
 
 ## 🧪 Verified Engineering & CI
 
-Every push runs validation on **Linux, macOS, and Windows** with `fail-fast: false`:
+Every push runs validation on **Linux, macOS and Windows** with `fail-fast: false`, so one platform
+failing never hides another:
 
+```mermaid
+flowchart LR
+    P([push · pull request]):::ink --> FE & MAC & WIN & LIN & AUD
+    FE["🧪 Frontend<br/>typecheck · lint<br/>2,267 tests"]:::violet
+    MAC["🍎 macOS<br/>every Rust test · clippy<br/>desktop binary links"]:::cyan
+    WIN["🪟 Windows<br/>every Rust test · clippy<br/>desktop binary links"]:::cyan
+    LIN["🐧 Linux<br/>crate tests · clippy"]:::cyan --> LDB["🐧 Linux desktop binary<br/>against WebKitGTK"]:::cyan
+    AUD["🛡️ Dependency audit<br/>pnpm audit · cargo audit"]:::amber
+
+    classDef ink fill:#14141f,stroke:#2a2a3c,color:#e8e8f2
+    classDef cyan fill:#00e5ff,stroke:#00a3b5,color:#06141a
+    classDef amber fill:#ffb340,stroke:#d18a12,color:#1f1300
+    classDef violet fill:#7c3aed,stroke:#5b21b6,color:#ffffff
 ```
-┌─────────────────────────┬────────────────────────────────────────────────────────┐
-│ Verification Suite      │ Scope & Assertions                                     │
-├─────────────────────────┼────────────────────────────────────────────────────────┤
-│ Frontend Test Suite     │ Typecheck, ESLint, 2,267 Vitest tests                  │
-│ Native Rust Engine      │ cargo test --workspace (1,097 tests)                   │
-│ Linter & Style Guard    │ cargo clippy --workspace --all-targets -- -D warnings  │
-│ Security Assertions     │ Pinned IPC commands, CSP compliance, Keychain checks   │
-│ Bundle Footprint Budget │ scan:bundle enforces max size limit on entry chunks    │
-│ Binary Link Proof       │ Shipped executable links against real OS keychains     │
-└─────────────────────────┴────────────────────────────────────────────────────────┘
-```
+
+| Check | What it guarantees |
+|---|---|
+| **Security tests** | The IPC command list, the CSP and the window's capabilities are pinned; no command returns a secret. |
+| **Lint rules** | No component calls Tauri directly; no component contains a literal colour. |
+| **Theme test** | Every theme's text meets WCAG contrast on its own ground. |
+| **`scan:bundle`** | No credential-shaped string ships, and the entry bundle stays within its budget. |
+| **Binary link proof** | The real desktop binary links on each OS — where keychain and webview bindings actually fail. |
 
 ---
 
