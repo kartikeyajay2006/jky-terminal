@@ -166,6 +166,10 @@ flowchart LR
     classDef magenta fill:#ff3cf0,stroke:#c026d3,color:#1a0618
 ```
 
+On **Windows**, `jky` is a one-line `jky.cmd` that hands its arguments to a generated PowerShell script
+with `-File`, so every word arrives exactly as typed and is never evaluated as PowerShell — `$5` stays
+`$5`.
+
 The launcher only *packages* what you typed. Every rule about what a note, todo or theme may be lives in
 the app, which is why the shell scripts stay tiny and identical in spirit across bash, zsh, fish, Nushell
 and PowerShell.

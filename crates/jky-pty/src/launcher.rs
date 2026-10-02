@@ -287,6 +287,20 @@ esac
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))
 }
 
+/// The Windows `jky`: a one-line `jky.cmd` that hands every argument to a
+/// PowerShell script with `-File`.
+///
+/// `-File` matters. The script used to run as `powershell -Command "<code>"
+/// %*`, and with `-Command` PowerShell appends the arguments to the *code*
+/// rather than binding them to `$args` — so `$args` was always empty, every
+/// verb that takes words (`ask`, `theme`, `note`, …) sent nothing, and a
+/// word containing `$(...)` would have been run as PowerShell. With `-File`
+/// each argument arrives in `$args` exactly as typed and is never evaluated.
+///
+/// The script is named `jky-run.ps1`, not `jky.ps1`, so PowerShell's own
+/// command lookup never prefers it over `jky.cmd` and trips over the
+/// execution policy; the shim passes `-ExecutionPolicy Bypass` for this one
+/// process instead.
 #[cfg(windows)]
 fn write_ask_launcher(
     bin_dir: &Path,
@@ -296,79 +310,143 @@ fn write_ask_launcher(
     verifier: Option<&Path>,
     config_dir: &Path,
 ) -> io::Result<()> {
-    let script = bin_dir.join("jky.cmd");
+    let lit = |p: &Path| format!("'{}'", p.display().to_string().replace('\'', "''"));
     let audit = match verifier {
-        Some(exe) => format!("\"{}\" --verify-audit --config-dir \"{}\"", exe.display(), config_dir.display()),
-        None => "echo jky: audit checking is not available from this shell 1>&2 & exit /b 1".to_string(),
+        // Start-Process waits for a GUI-subsystem build and hands back its
+        // exit code; a bare `&` would not wait for one.
+        Some(exe) => format!(
+            "$p = Start-Process -FilePath {} -ArgumentList @('--verify-audit', '--config-dir', ('\"' + {} + '\"')) -NoNewWindow -Wait -PassThru; exit $p.ExitCode",
+            lit(exe),
+            lit(config_dir)
+        ),
+        None => "Fail 'jky: audit checking is not available from this shell'".to_string(),
     };
-    let body = format!(
-        "@echo off\r\n\
-         if /i \"%1\"==\"audit\" goto audit\r\n\
-         if /i \"%1\"==\"ask\" goto ask\r\n\
-         if /i \"%1\"==\"asks\" goto ask\r\n\
-         if /i \"%1\"==\"commands\" goto cmds\r\n\
-         if /i \"%1\"==\"command\" goto cmds\r\n\
-         if /i \"%1\"==\"help\" goto cmds\r\n\
-         if /i \"%1\"==\"games\" goto games\r\n\
-         if /i \"%1\"==\"game\" goto games\r\n\
-         if /i \"%1\"==\"theme\" goto send\r\n\
-         if /i \"%1\"==\"open\" goto send\r\n\
-         if /i \"%1\"==\"go\" goto send\r\n\
-         if /i \"%1\"==\"split\" goto send\r\n\
-         if /i \"%1\"==\"history\" goto send\r\n\
-         if /i \"%1\"==\"hist\" goto send\r\n\
-         if /i \"%1\"==\"workspace\" goto send\r\n\
-         if /i \"%1\"==\"ws\" goto send\r\n\
-         if /i \"%1\"==\"host\" goto send\r\n\
-         if /i \"%1\"==\"hosts\" goto send\r\n\
-         if /i \"%1\"==\"note\" if not \"%2\"==\"\" goto send\r\n\
-         if /i \"%1\"==\"todo\" if not \"%2\"==\"\" goto send\r\n\
-         if /i \"%1\"==\"reminder\" if not \"%2\"==\"\" goto send\r\n\
-         if /i \"%1\"==\"notes\" set KIND=notes&& goto data\r\n\
-         if /i \"%1\"==\"note\" set KIND=notes&& goto data\r\n\
-         if /i \"%1\"==\"reminders\" set KIND=reminders&& goto data\r\n\
-         if /i \"%1\"==\"reminder\" set KIND=reminders&& goto data\r\n\
-         if /i \"%1\"==\"todos\" set KIND=todos&& goto data\r\n\
-         if /i \"%1\"==\"todo\" set KIND=todos&& goto data\r\n\
-         type \"{banner}\"\r\n\
-         goto :eof\r\n\
-         :data\r\n\
-         if \"%2\"==\"\" (\r\n\
-         if exist \"{data}\\%KIND%.ansi\" (type \"{data}\\%KIND%.ansi\") else (echo jky: nothing saved yet. Add something from the Dashboard. 1>&2)\r\n\
-         ) else (\r\n\
-         if exist \"{data}\\%KIND%\\%2.ansi\" (type \"{data}\\%KIND%\\%2.ansi\") else (echo jky: no %KIND% entry '%2' 1>&2 & if exist \"{data}\\%KIND%.ansi\" type \"{data}\\%KIND%.ansi\" 1>&2)\r\n\
-         )\r\n\
-         goto :eof\r\n\
-         :cmds\r\n\
-         type \"{commands}\"\r\n\
-         goto :eof\r\n\
-         :games\r\n\
-         if \"%2\"==\"\" (\r\n\
-         if exist \"{data}\\games.ansi\" (type \"{data}\\games.ansi\") else (echo jky: open the Games section once so the listing is written. 1>&2)\r\n\
-         ) else (\r\n\
-         powershell -NoProfile -Command \"if ('%2' -match '^[1-{game_count}]$') {{ [Console]::Write([char]27 + ']{osc};JKYGame=%2' + [char]7) }} else {{ [Console]::Error.WriteLine('jky: no game %2. Choose 1 to {game_count}.'); exit 1 }}\"\r\n\
-         )\r\n\
-         goto :eof\r\n\
-         :send\r\n\
-         powershell -NoProfile -Command \"$a = $args; $noun = $a[0].ToLower();          $verb = if ($a.Count -gt 1) {{ $a[1].ToLower() }} else {{ '' }};          $rest = if ($a.Count -gt 2) {{ @($a[2..($a.Count-1)]) }} else {{ @() }};          $map = @{{ 'new'='new'; 'add'='new'; 'write'='write'; 'append'='write';          'rename'='rename'; 'rm'='rm'; 'delete'='rm'; 'del'='rm';          'done'='done'; 'tick'='done'; 'undone'='undone'; 'untick'='undone' }};          if ('theme','open','go','split','history','hist','workspace','ws','host','hosts' -contains $noun) {{          $full = $(switch ($noun) {{ 'go' {{ 'open' }} 'hist' {{ 'history' }} 'ws' {{ 'workspace' }} 'hosts' {{ 'host' }} default {{ $noun }} }});          $rest = if ($a.Count -gt 1) {{ @($a[1..($a.Count-1)]) }} else {{ @() }} }}          else {{ $tail = $map[$verb];          if (-not $tail) {{ [Console]::Error.WriteLine('jky: unknown command'); exit 1 }};          if ($noun -eq 'todo' -and $tail -eq 'new') {{ $tail = 'add' }};          if ($noun -eq 'reminder' -and $tail -eq 'new') {{ $tail = 'add' }};          $full = \"$noun.$tail\" }};          $json = (@{{ verb = $full; args = @($rest) }} | ConvertTo-Json -Compress);          $b = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json));          [Console]::Write([char]27 + ']{osc};JKYCmd=' + $b + [char]7)\" %*\r\n\
-         goto :eof\r\n\
-         :audit\r\n\
-         {audit}\r\n\
-         goto :eof\r\n\
-         :ask\r\n\
-         shift\r\n\
-         powershell -NoProfile -Command \"$q = $args -join ' '; $b = \
-         [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($q)); \
-         [Console]::Write([char]27 + ']{osc};JKYAsk=' + $b + [char]7)\" %*\r\n",
-        osc = ASK_OSC,
-        audit = audit,
-        game_count = SHELL_GAMES,
-        banner = banner_path.display(),
-        commands = commands_path.display(),
-        data = data_dir.display()
-    );
-    std::fs::write(script, body)
+    let script = WINDOWS_SCRIPT
+        .replace("__DATA__", &lit(data_dir))
+        .replace("__BANNER__", &lit(banner_path))
+        .replace("__COMMANDS__", &lit(commands_path))
+        .replace("__OSC__", &ASK_OSC.to_string())
+        .replace("__GAMES__", &SHELL_GAMES.to_string())
+        .replace("__AUDIT__", &audit);
+    std::fs::write(bin_dir.join("jky-run.ps1"), script.replace('\n', "\r\n"))?;
+    std::fs::write(
+        bin_dir.join("jky.cmd"),
+        "@echo off\r\npowershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File \"%~dp0jky-run.ps1\" %*\r\nexit /b %ERRORLEVEL%\r\n",
+    )
 }
+
+#[cfg(windows)]
+const WINDOWS_SCRIPT: &str = r#"# Generated by JKY Terminal on every terminal start. Do not edit.
+# Run by jky.cmd with -File, so every argument arrives in $args exactly as
+# typed and none is ever evaluated as code.
+$ErrorActionPreference = 'Stop'
+$Data = __DATA__
+$Banner = __BANNER__
+$Commands = __COMMANDS__
+$Osc = __OSC__
+$Games = __GAMES__
+$a = @($args | ForEach-Object { [string]$_ })
+
+function Emit([string]$Kind, [string]$Payload) {
+    [Console]::Write([string][char]27 + ']' + $Osc + ';' + $Kind + '=' + $Payload + [string][char]7)
+}
+function Base64([string]$Text) {
+    [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Text))
+}
+# Bytes, unchanged, the way `type` copies them: re-encoding the banner
+# through the console code page would garble its Unicode.
+function Copy-Bytes([string]$Path, [IO.Stream]$To) {
+    $bytes = [IO.File]::ReadAllBytes($Path)
+    $To.Write($bytes, 0, $bytes.Length)
+    $To.Flush()
+}
+function Show([string]$Path) {
+    Copy-Bytes $Path ([Console]::OpenStandardOutput())
+}
+function Fail([string]$Message) {
+    [Console]::Error.WriteLine($Message)
+    exit 1
+}
+function Words([int]$From) {
+    if ($a.Count -gt $From) { $a[$From..($a.Count - 1)] }
+}
+# Each argument becomes one JSON string, so a quote, a newline or the
+# sequence terminator stays inside the argument it was typed in.
+function JsonString([string]$Text) {
+    ConvertTo-Json -InputObject $Text -Compress
+}
+function Send([string]$Verb, [int]$From) {
+    $items = @(Words $From | ForEach-Object { JsonString $_ })
+    $json = '{"verb":' + (JsonString $Verb) + ',"args":[' + ($items -join ',') + ']}'
+    Emit 'JKYCmd' (Base64 $json)
+}
+function ShowAll([string]$Kind) {
+    $path = Join-Path $Data "$Kind.ansi"
+    if (Test-Path -LiteralPath $path) { Show $path; return }
+    Fail "jky: nothing saved yet. Add one with jky $Kind add, or from the Dashboard."
+}
+function ShowOne([string]$Kind, [string]$Handle) {
+    $one = Join-Path (Join-Path $Data $Kind) "$Handle.ansi"
+    if (Test-Path -LiteralPath $one) { Show $one; return }
+    [Console]::Error.WriteLine("jky: no $Kind entry '$Handle'")
+    $all = Join-Path $Data "$Kind.ansi"
+    if (Test-Path -LiteralPath $all) { Copy-Bytes $all ([Console]::OpenStandardError()) }
+    exit 1
+}
+
+$noun = if ($a.Count -gt 0) { $a[0].ToLowerInvariant() } else { '' }
+$verb = if ($a.Count -gt 1) { $a[1].ToLowerInvariant() } else { '' }
+$records = @{ 'note' = 'notes'; 'todo' = 'todos'; 'reminder' = 'reminders' }
+$verbs = @{
+    'note'     = @{ 'new' = 'note.new'; 'add' = 'note.new'; 'write' = 'note.write'; 'append' = 'note.write'; 'rename' = 'note.rename'; 'rm' = 'note.rm'; 'delete' = 'note.rm'; 'del' = 'note.rm' }
+    'todo'     = @{ 'add' = 'todo.add'; 'new' = 'todo.add'; 'done' = 'todo.done'; 'tick' = 'todo.done'; 'undone' = 'todo.undone'; 'untick' = 'todo.undone'; 'rm' = 'todo.rm'; 'delete' = 'todo.rm'; 'del' = 'todo.rm' }
+    'reminder' = @{ 'add' = 'reminder.add'; 'new' = 'reminder.add'; 'done' = 'reminder.done'; 'tick' = 'reminder.done'; 'undone' = 'reminder.undone'; 'untick' = 'reminder.undone'; 'rm' = 'reminder.rm'; 'delete' = 'reminder.rm'; 'del' = 'reminder.rm' }
+}
+
+switch ($noun) {
+    { $_ -in 'ask', 'asks' } {
+        $question = (Words 1) -join ' '
+        if (-not $question.Trim()) { Fail 'usage: jky ask <question>' }
+        Emit 'JKYAsk' (Base64 $question)
+        exit 0
+    }
+    { $_ -in 'commands', 'command', 'help', '--help', '-h' } { Show $Commands; exit 0 }
+    { $_ -in 'games', 'game' } {
+        if ($a.Count -lt 2) {
+            $list = Join-Path $Data 'games.ansi'
+            if (Test-Path -LiteralPath $list) { Show $list; exit 0 }
+            Fail 'jky: open the Games section once so the listing is written.'
+        }
+        $n = $a[1]
+        if ($n -match '^[0-9]+$' -and [int]$n -ge 1 -and [int]$n -le $Games) { Emit 'JKYGame' $n; exit 0 }
+        Fail "jky: no game $n. Choose 1 to $Games."
+    }
+    { $_ -in 'note', 'todo', 'reminder' } {
+        if ($verb -eq '') { ShowAll $records[$noun]; exit 0 }
+        $full = $verbs[$noun][$verb]
+        if ($full) { Send $full 2; exit 0 }
+        ShowOne $records[$noun] $a[1]
+        exit 0
+    }
+    { $_ -in 'notes', 'todos', 'reminders' } {
+        if ($a.Count -lt 2) { ShowAll $noun } else { ShowOne $noun $a[1] }
+        exit 0
+    }
+    'theme' { Send 'theme' 1; exit 0 }
+    { $_ -in 'open', 'go' } { Send 'open' 1; exit 0 }
+    'split' { Send 'split' 1; exit 0 }
+    { $_ -in 'history', 'hist' } { Send 'history' 1; exit 0 }
+    { $_ -in 'workspace', 'ws' } { Send 'workspace' 1; exit 0 }
+    { $_ -in 'host', 'hosts' } { Send 'host' 1; exit 0 }
+    'audit' { __AUDIT__ }
+    { $_ -in '', 'banner' } { Show $Banner; exit 0 }
+    default {
+        [Console]::Error.WriteLine("jky: unknown command '$noun'")
+        Copy-Bytes $Commands ([Console]::OpenStandardError())
+        exit 1
+    }
+}
+"#;
 
 #[cfg(windows)]
 fn write_launcher(bin_dir: &Path, name: &str, banner_path: &Path) -> io::Result<()> {
@@ -1096,6 +1174,45 @@ mod windows_launcher_tests {
             let expected: Vec<&str> = typed[1..].to_vec();
             assert_eq!(sent["args"], serde_json::json!(expected), "`jky {}` sent {sent}", typed.join(" "));
         }
+    }
+
+    fn decoded(stdout: &str, marker: &str) -> String {
+        let start = stdout.find(marker).unwrap_or_else(|| panic!("no {marker} in {stdout:?}")) + marker.len();
+        let end = stdout[start..].find('\u{7}').map(|e| start + e).unwrap_or(stdout.len());
+        let bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, stdout[start..end].trim())
+            .expect("base64");
+        String::from_utf8(bytes).expect("utf-8")
+    }
+
+    #[test]
+    fn ask_sends_every_word_of_the_question_on_windows() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        let (stdout, stderr, ok) = run(dir.path(), &["ask", "why", "does", "the", "build", "fail"]);
+        assert!(ok, "`jky ask` failed: {stderr}");
+        assert_eq!(decoded(&stdout, "JKYAsk="), "why does the build fail");
+    }
+
+    #[test]
+    fn arguments_reach_the_app_literally_and_are_never_evaluated_on_windows() {
+        // `$5` and `$(...)` would be expanded — or run — if the script ever
+        // treated arguments as PowerShell code again.
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        let (stdout, stderr, ok) = run(dir.path(), &["note", "write", "1", "cost is $5 not $(whoami)"]);
+        assert!(ok, "`jky note write` failed: {stderr}");
+        let sent: serde_json::Value = serde_json::from_str(&decoded(&stdout, "JKYCmd=")).unwrap();
+        assert_eq!(sent["verb"], "note.write");
+        assert_eq!(sent["args"], serde_json::json!(["1", "cost is $5 not $(whoami)"]));
+    }
+
+    #[test]
+    fn theme_reaches_the_app_on_windows() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        let (stdout, stderr, ok) = run(dir.path(), &["theme", "dracula"]);
+        assert!(ok, "`jky theme` failed: {stderr}");
+        assert_eq!(decoded_command(&stdout), serde_json::json!({ "verb": "theme", "args": ["dracula"] }));
     }
 
     #[test]
