@@ -350,10 +350,9 @@ updater, SBOMs and provenance, fuzzing of the boundary parsers, and a published 
 
 ## Reporting a security issue
 
-**Please do not open a public issue** for a suspected vulnerability. Contact the maintainer privately
-through GitHub ([@kartikeyajay2006](https://github.com/kartikeyajay2006)) and include a minimal
-reproduction — with no real keys, tokens or private data. A published security policy is on the
-roadmap.
+**Please do not open a public issue** for a suspected vulnerability. [SECURITY.md](../SECURITY.md)
+explains how to report one privately, what is in scope, and what to expect — acknowledgement within
+seven days, and coordinated disclosure after a fix, credited to you unless you prefer otherwise.
 
 For ordinary bugs, include your OS, JKY commit, steps to reproduce, what you expected and what
 happened, with logs redacted.
