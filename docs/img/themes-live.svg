@@ -1,26 +1,263 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 360" role="img" aria-labelledby="title desc">
-  <title id="title">JKY Terminal animated theme gallery</title>
-  <desc id="desc">Seven colourful JKY Terminal theme cards glow in sequence while a terminal command line changes colour.</desc>
-  <defs>
-    <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#0a0b12"/><stop offset="1" stop-color="#14101e"/></linearGradient>
-    <linearGradient id="line" x1="0" x2="1"><stop stop-color="#00e5ff"/><stop offset=".5" stop-color="#ff3cf0"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
-    <filter id="glow"><feGaussianBlur stdDeviation="4" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
-    <style>
-      .label{font:600 12px Inter,Arial,sans-serif;fill:#f5f5fa}.small{font:10px ui-monospace,monospace;fill:#a9afc4}.card{animation:pulse 10.5s infinite}.c1{animation-delay:0s}.c2{animation-delay:1.5s}.c3{animation-delay:3s}.c4{animation-delay:4.5s}.c5{animation-delay:6s}.c6{animation-delay:7.5s}.c7{animation-delay:9s}.scan{animation:scan 10.5s linear infinite}.cursor{animation:blink .85s steps(1) infinite}@keyframes pulse{0%,9%,100%{opacity:.72}3%,7%{opacity:1}}@keyframes scan{0%{transform:translateX(0);opacity:0}4%,92%{opacity:1}100%{transform:translateX(770px);opacity:0}}@keyframes blink{50%{opacity:0}}
-    </style>
-  </defs>
-  <rect width="920" height="360" rx="18" fill="url(#bg)"/>
-  <rect x="22" y="20" width="876" height="3" rx="2" fill="url(#line)"/>
-  <text x="38" y="62" font-family="Inter,Arial,sans-serif" font-size="25" font-weight="700" fill="#f6f7ff">Seven themes, one focused terminal</text>
-  <text x="38" y="85" class="small">Animated colour response · token-driven interface · accessible contrast targets</text>
-  <g transform="translate(37 114)">
-    <g class="card c1"><rect width="112" height="156" rx="10" fill="#08080c" stroke="#00e5ff" stroke-width="2"/><circle cx="16" cy="18" r="6" fill="#00e5ff" filter="url(#glow)"/><text x="28" y="22" class="label" fill="#00e5ff">Cyberpunk</text><rect x="12" y="42" width="88" height="63" rx="5" fill="#111321"/><text x="18" y="64" class="small" fill="#00e5ff">› git status</text><text x="18" y="81" class="small" fill="#ff3cf0">+ changed</text><text x="18" y="98" class="small" fill="#9dff45">✓ clean</text><rect x="12" y="122" width="88" height="20" rx="4" fill="#003b44"/><text x="56" y="136" text-anchor="middle" class="small" fill="#00e5ff">ACTIVE</text></g>
-    <g class="card c2" transform="translate(125)"><rect width="112" height="156" rx="10" fill="#282a36" stroke="#bd93f9" stroke-width="2"/><circle cx="16" cy="18" r="6" fill="#bd93f9"/><text x="28" y="22" class="label">Dracula</text><rect x="12" y="42" width="88" height="63" rx="5" fill="#22232d"/><text x="18" y="64" class="small" fill="#bd93f9">› git log</text><text x="18" y="81" class="small" fill="#ff79c6">● b7703</text><text x="18" y="98" class="small" fill="#50fa7b">✓ passed</text><rect x="12" y="122" width="88" height="20" rx="4" fill="#43365c"/></g>
-    <g class="card c3" transform="translate(250)"><rect width="112" height="156" rx="10" fill="#2e3440" stroke="#88c0d0" stroke-width="2"/><circle cx="16" cy="18" r="6" fill="#88c0d0"/><text x="28" y="22" class="label">Nord</text><rect x="12" y="42" width="88" height="63" rx="5" fill="#394250"/><text x="18" y="64" class="small" fill="#88c0d0">› test</text><text x="18" y="81" class="small" fill="#a3be8c">ok (3318)</text><text x="18" y="98" class="small">in 04.5s</text><rect x="12" y="122" width="88" height="20" rx="4" fill="#3d5265"/></g>
-    <g class="card c4" transform="translate(375)"><rect width="112" height="156" rx="10" fill="#002b36" stroke="#2aa198" stroke-width="2"/><circle cx="16" cy="18" r="6" fill="#2aa198"/><text x="28" y="22" class="label">Solarized</text><rect x="12" y="42" width="88" height="63" rx="5" fill="#073640"/><text x="18" y="64" class="small" fill="#2aa198">› ssh box</text><text x="18" y="81" class="small" fill="#b58900">auth: pki</text><text x="18" y="98" class="small" fill="#859900">connected</text><rect x="12" y="122" width="88" height="20" rx="4" fill="#074b55"/></g>
-    <g class="card c5" transform="translate(500)"><rect width="112" height="156" rx="10" fill="#f8f8fc" stroke="#0f62fe" stroke-width="2"/><circle cx="16" cy="18" r="6" fill="#0f62fe"/><text x="28" y="22" class="label" fill="#1d2433">Light</text><rect x="12" y="42" width="88" height="63" rx="5" fill="#fff"/><text x="18" y="64" class="small" fill="#0f62fe">› diff file</text><text x="18" y="81" class="small" fill="#198754">+ added</text><text x="18" y="98" class="small" fill="#d12745">− removed</text><rect x="12" y="122" width="88" height="20" rx="4" fill="#e2ecff"/></g>
-    <g class="card c6" transform="translate(625)"><rect width="112" height="156" rx="10" fill="#120e06" stroke="#ffb340" stroke-width="2"/><circle cx="16" cy="18" r="6" fill="#ffb340"/><text x="28" y="22" class="label" fill="#ffcb6b">Gold</text><rect x="12" y="42" width="88" height="63" rx="5" fill="#1e1709"/><text x="18" y="64" class="small" fill="#ffb340">› cargo b</text><text x="18" y="81" class="small" fill="#f28c18">Finished</text><text x="18" y="98" class="small" fill="#10b981">release [ok]</text><rect x="12" y="122" width="88" height="20" rx="4" fill="#3d2a04"/></g>
-    <g class="card c7" transform="translate(750)"><rect width="112" height="156" rx="10" fill="#000" stroke="#fff" stroke-width="2"/><circle cx="16" cy="18" r="6" fill="#00ffff"/><text x="28" y="22" class="label">Contrast</text><rect x="12" y="42" width="88" height="63" rx="5" fill="#080808"/><text x="18" y="64" class="small" fill="#00ffff">› 21:1</text><text x="18" y="81" class="small" fill="#ffff00">max edge</text><text x="18" y="98" class="small" fill="#fff">contrast</text><rect x="12" y="122" width="88" height="20" rx="4" fill="#fff"/></g>
-  </g>
-  <g transform="translate(55 314)"><text class="small" fill="#00e5ff">› theme --cycle</text><text x="127" class="small" fill="#f6f7ff">live palette preview</text><rect x="274" y="-10" width="2" height="14" fill="#f6f7ff" class="cursor"/><rect x="0" y="16" width="4" height="2" rx="1" fill="#00e5ff" filter="url(#glow)" class="scan"/></g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560" role="img" aria-labelledby="t d">
+<title id="t">JKY Terminal themes, live</title>
+<desc id="d">One JKY Terminal window cycling through its seven built-in themes — Cyberpunk, Dracula, Nord, Solarized, Light, Gold and High Contrast. Every colour is a design token, so the whole window changes together. A meter shows each theme's measured text-on-ground contrast ratio.</desc>
+<defs>
+<linearGradient id="card" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0d0d16"/><stop offset="1" stop-color="#06060a"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#00e5ff"/><stop offset=".33" stop-color="#bd93f9"/><stop offset=".66" stop-color="#ff3cf0"/><stop offset="1" stop-color="#ffb340"/></linearGradient>
+<linearGradient id="beam" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset=".5" stop-color="#fff" stop-opacity=".34"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+<pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1.5" cy="1.5" r="1.1" fill="#ffffff" fill-opacity=".05"/></pattern>
+<filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="38"/></filter>
+<filter id="shadow" x="-10%" y="-10%" width="120%" height="130%"><feDropShadow dx="0" dy="14" stdDeviation="16" flood-color="#000" flood-opacity=".55"/></filter>
+<clipPath id="win"><rect x="36" y="96" width="584" height="420" rx="14"/></clipPath>
+</defs>
+<style>.mono{font-family:'JetBrains Mono','SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace}.sans{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}@keyframes f-ground{0%{fill:#08080c}12.386%{fill:#08080c}14.286%{fill:#21222c}26.671%{fill:#21222c}28.571%{fill:#2e3440}40.957%{fill:#2e3440}42.857%{fill:#002b36}55.243%{fill:#002b36}57.143%{fill:#f7f7fa}69.529%{fill:#f7f7fa}71.429%{fill:#fbf7ef}83.814%{fill:#fbf7ef}85.714%{fill:#000000}98.1%{fill:#000000}100%{fill:#08080c}}.f-ground{fill:#08080c;animation:f-ground 28s ease-in-out infinite}@keyframes s-ground{0%{stroke:#08080c}12.386%{stroke:#08080c}14.286%{stroke:#21222c}26.671%{stroke:#21222c}28.571%{stroke:#2e3440}40.957%{stroke:#2e3440}42.857%{stroke:#002b36}55.243%{stroke:#002b36}57.143%{stroke:#f7f7fa}69.529%{stroke:#f7f7fa}71.429%{stroke:#fbf7ef}83.814%{stroke:#fbf7ef}85.714%{stroke:#000000}98.1%{stroke:#000000}100%{stroke:#08080c}}.s-ground{stroke:#08080c;animation:s-ground 28s ease-in-out infinite}@keyframes f-surface{0%{fill:#0e0e16}12.386%{fill:#0e0e16}14.286%{fill:#282a36}26.671%{fill:#282a36}28.571%{fill:#333b4a}40.957%{fill:#333b4a}42.857%{fill:#073642}55.243%{fill:#073642}57.143%{fill:#ffffff}69.529%{fill:#ffffff}71.429%{fill:#fffdf8}83.814%{fill:#fffdf8}85.714%{fill:#000000}98.1%{fill:#000000}100%{fill:#0e0e16}}.f-surface{fill:#0e0e16;animation:f-surface 28s ease-in-out infinite}@keyframes s-surface{0%{stroke:#0e0e16}12.386%{stroke:#0e0e16}14.286%{stroke:#282a36}26.671%{stroke:#282a36}28.571%{stroke:#333b4a}40.957%{stroke:#333b4a}42.857%{stroke:#073642}55.243%{stroke:#073642}57.143%{stroke:#ffffff}69.529%{stroke:#ffffff}71.429%{stroke:#fffdf8}83.814%{stroke:#fffdf8}85.714%{stroke:#000000}98.1%{stroke:#000000}100%{stroke:#0e0e16}}.s-surface{stroke:#0e0e16;animation:s-surface 28s ease-in-out infinite}@keyframes f-raised{0%{fill:#14141f}12.386%{fill:#14141f}14.286%{fill:#343746}26.671%{fill:#343746}28.571%{fill:#3b4252}40.957%{fill:#3b4252}42.857%{fill:#0b414f}55.243%{fill:#0b414f}57.143%{fill:#ffffff}69.529%{fill:#ffffff}71.429%{fill:#ffffff}83.814%{fill:#ffffff}85.714%{fill:#0c0c0c}98.1%{fill:#0c0c0c}100%{fill:#14141f}}.f-raised{fill:#14141f;animation:f-raised 28s ease-in-out infinite}@keyframes s-raised{0%{stroke:#14141f}12.386%{stroke:#14141f}14.286%{stroke:#343746}26.671%{stroke:#343746}28.571%{stroke:#3b4252}40.957%{stroke:#3b4252}42.857%{stroke:#0b414f}55.243%{stroke:#0b414f}57.143%{stroke:#ffffff}69.529%{stroke:#ffffff}71.429%{stroke:#ffffff}83.814%{stroke:#ffffff}85.714%{stroke:#0c0c0c}98.1%{stroke:#0c0c0c}100%{stroke:#14141f}}.s-raised{stroke:#14141f;animation:s-raised 28s ease-in-out infinite}@keyframes f-line{0%{fill:#1e1e2c}12.386%{fill:#1e1e2c}14.286%{fill:#3c3f51}26.671%{fill:#3c3f51}28.571%{fill:#434c5e}40.957%{fill:#434c5e}42.857%{fill:#12525f}55.243%{fill:#12525f}57.143%{fill:#e2e2ea}69.529%{fill:#e2e2ea}71.429%{fill:#e8dfc9}83.814%{fill:#e8dfc9}85.714%{fill:#6a6a6a}98.1%{fill:#6a6a6a}100%{fill:#1e1e2c}}.f-line{fill:#1e1e2c;animation:f-line 28s ease-in-out infinite}@keyframes s-line{0%{stroke:#1e1e2c}12.386%{stroke:#1e1e2c}14.286%{stroke:#3c3f51}26.671%{stroke:#3c3f51}28.571%{stroke:#434c5e}40.957%{stroke:#434c5e}42.857%{stroke:#12525f}55.243%{stroke:#12525f}57.143%{stroke:#e2e2ea}69.529%{stroke:#e2e2ea}71.429%{stroke:#e8dfc9}83.814%{stroke:#e8dfc9}85.714%{stroke:#6a6a6a}98.1%{stroke:#6a6a6a}100%{stroke:#1e1e2c}}.s-line{stroke:#1e1e2c;animation:s-line 28s ease-in-out infinite}@keyframes f-strong{0%{fill:#2a2a3c}12.386%{fill:#2a2a3c}14.286%{fill:#4c5064}26.671%{fill:#4c5064}28.571%{fill:#4c566a}40.957%{fill:#4c566a}42.857%{fill:#586e75}55.243%{fill:#586e75}57.143%{fill:#c9c9d6}69.529%{fill:#c9c9d6}71.429%{fill:#cfc1a0}83.814%{fill:#cfc1a0}85.714%{fill:#9a9a9a}98.1%{fill:#9a9a9a}100%{fill:#2a2a3c}}.f-strong{fill:#2a2a3c;animation:f-strong 28s ease-in-out infinite}@keyframes s-strong{0%{stroke:#2a2a3c}12.386%{stroke:#2a2a3c}14.286%{stroke:#4c5064}26.671%{stroke:#4c5064}28.571%{stroke:#4c566a}40.957%{stroke:#4c566a}42.857%{stroke:#586e75}55.243%{stroke:#586e75}57.143%{stroke:#c9c9d6}69.529%{stroke:#c9c9d6}71.429%{stroke:#cfc1a0}83.814%{stroke:#cfc1a0}85.714%{stroke:#9a9a9a}98.1%{stroke:#9a9a9a}100%{stroke:#2a2a3c}}.s-strong{stroke:#2a2a3c;animation:s-strong 28s ease-in-out infinite}@keyframes f-dim{0%{fill:#6e6e85}12.386%{fill:#6e6e85}14.286%{fill:#7b7f96}26.671%{fill:#7b7f96}28.571%{fill:#8b94a5}40.957%{fill:#8b94a5}42.857%{fill:#7d949b}55.243%{fill:#7d949b}57.143%{fill:#6b6b7b}69.529%{fill:#6b6b7b}71.429%{fill:#7a6c50}83.814%{fill:#7a6c50}85.714%{fill:#c8c8c8}98.1%{fill:#c8c8c8}100%{fill:#6e6e85}}.f-dim{fill:#6e6e85;animation:f-dim 28s ease-in-out infinite}@keyframes s-dim{0%{stroke:#6e6e85}12.386%{stroke:#6e6e85}14.286%{stroke:#7b7f96}26.671%{stroke:#7b7f96}28.571%{stroke:#8b94a5}40.957%{stroke:#8b94a5}42.857%{stroke:#7d949b}55.243%{stroke:#7d949b}57.143%{stroke:#6b6b7b}69.529%{stroke:#6b6b7b}71.429%{stroke:#7a6c50}83.814%{stroke:#7a6c50}85.714%{stroke:#c8c8c8}98.1%{stroke:#c8c8c8}100%{stroke:#6e6e85}}.s-dim{stroke:#6e6e85;animation:s-dim 28s ease-in-out infinite}@keyframes f-muted{0%{fill:#9a9ab2}12.386%{fill:#9a9ab2}14.286%{fill:#a6abc8}26.671%{fill:#a6abc8}28.571%{fill:#c3ccd9}40.957%{fill:#c3ccd9}42.857%{fill:#a4b3b6}55.243%{fill:#a4b3b6}57.143%{fill:#4a4a58}69.529%{fill:#4a4a58}71.429%{fill:#5f5540}83.814%{fill:#5f5540}85.714%{fill:#e4e4e4}98.1%{fill:#e4e4e4}100%{fill:#9a9ab2}}.f-muted{fill:#9a9ab2;animation:f-muted 28s ease-in-out infinite}@keyframes s-muted{0%{stroke:#9a9ab2}12.386%{stroke:#9a9ab2}14.286%{stroke:#a6abc8}26.671%{stroke:#a6abc8}28.571%{stroke:#c3ccd9}40.957%{stroke:#c3ccd9}42.857%{stroke:#a4b3b6}55.243%{stroke:#a4b3b6}57.143%{stroke:#4a4a58}69.529%{stroke:#4a4a58}71.429%{stroke:#5f5540}83.814%{stroke:#5f5540}85.714%{stroke:#e4e4e4}98.1%{stroke:#e4e4e4}100%{stroke:#9a9ab2}}.s-muted{stroke:#9a9ab2;animation:s-muted 28s ease-in-out infinite}@keyframes f-text{0%{fill:#e8e8f2}12.386%{fill:#e8e8f2}14.286%{fill:#f8f8f2}26.671%{fill:#f8f8f2}28.571%{fill:#eceff4}40.957%{fill:#eceff4}42.857%{fill:#eee8d5}55.243%{fill:#eee8d5}57.143%{fill:#16161d}69.529%{fill:#16161d}71.429%{fill:#2e2617}83.814%{fill:#2e2617}85.714%{fill:#ffffff}98.1%{fill:#ffffff}100%{fill:#e8e8f2}}.f-text{fill:#e8e8f2;animation:f-text 28s ease-in-out infinite}@keyframes s-text{0%{stroke:#e8e8f2}12.386%{stroke:#e8e8f2}14.286%{stroke:#f8f8f2}26.671%{stroke:#f8f8f2}28.571%{stroke:#eceff4}40.957%{stroke:#eceff4}42.857%{stroke:#eee8d5}55.243%{stroke:#eee8d5}57.143%{stroke:#16161d}69.529%{stroke:#16161d}71.429%{stroke:#2e2617}83.814%{stroke:#2e2617}85.714%{stroke:#ffffff}98.1%{stroke:#ffffff}100%{stroke:#e8e8f2}}.s-text{stroke:#e8e8f2;animation:s-text 28s ease-in-out infinite}@keyframes f-accent{0%{fill:#00e5ff}12.386%{fill:#00e5ff}14.286%{fill:#8be9fd}26.671%{fill:#8be9fd}28.571%{fill:#88c0d0}40.957%{fill:#88c0d0}42.857%{fill:#2aa198}55.243%{fill:#2aa198}57.143%{fill:#0f62fe}69.529%{fill:#0f62fe}71.429%{fill:#8a6108}83.814%{fill:#8a6108}85.714%{fill:#00ffff}98.1%{fill:#00ffff}100%{fill:#00e5ff}}.f-accent{fill:#00e5ff;animation:f-accent 28s ease-in-out infinite}@keyframes s-accent{0%{stroke:#00e5ff}12.386%{stroke:#00e5ff}14.286%{stroke:#8be9fd}26.671%{stroke:#8be9fd}28.571%{stroke:#88c0d0}40.957%{stroke:#88c0d0}42.857%{stroke:#2aa198}55.243%{stroke:#2aa198}57.143%{stroke:#0f62fe}69.529%{stroke:#0f62fe}71.429%{stroke:#8a6108}83.814%{stroke:#8a6108}85.714%{stroke:#00ffff}98.1%{stroke:#00ffff}100%{stroke:#00e5ff}}.s-accent{stroke:#00e5ff;animation:s-accent 28s ease-in-out infinite}@keyframes f-violet{0%{fill:#7c3aed}12.386%{fill:#7c3aed}14.286%{fill:#bd93f9}26.671%{fill:#bd93f9}28.571%{fill:#b48ead}40.957%{fill:#b48ead}42.857%{fill:#6c71c4}55.243%{fill:#6c71c4}57.143%{fill:#6929c4}69.529%{fill:#6929c4}71.429%{fill:#a34608}83.814%{fill:#a34608}85.714%{fill:#d0a0ff}98.1%{fill:#d0a0ff}100%{fill:#7c3aed}}.f-violet{fill:#7c3aed;animation:f-violet 28s ease-in-out infinite}@keyframes s-violet{0%{stroke:#7c3aed}12.386%{stroke:#7c3aed}14.286%{stroke:#bd93f9}26.671%{stroke:#bd93f9}28.571%{stroke:#b48ead}40.957%{stroke:#b48ead}42.857%{stroke:#6c71c4}55.243%{stroke:#6c71c4}57.143%{stroke:#6929c4}69.529%{stroke:#6929c4}71.429%{stroke:#a34608}83.814%{stroke:#a34608}85.714%{stroke:#d0a0ff}98.1%{stroke:#d0a0ff}100%{stroke:#7c3aed}}.s-violet{stroke:#7c3aed;animation:s-violet 28s ease-in-out infinite}@keyframes f-magenta{0%{fill:#ff3cf0}12.386%{fill:#ff3cf0}14.286%{fill:#ff79c6}26.671%{fill:#ff79c6}28.571%{fill:#b48ead}40.957%{fill:#b48ead}42.857%{fill:#d33682}55.243%{fill:#d33682}57.143%{fill:#d02670}69.529%{fill:#d02670}71.429%{fill:#8a4b0d}83.814%{fill:#8a4b0d}85.714%{fill:#ff8ae2}98.1%{fill:#ff8ae2}100%{fill:#ff3cf0}}.f-magenta{fill:#ff3cf0;animation:f-magenta 28s ease-in-out infinite}@keyframes s-magenta{0%{stroke:#ff3cf0}12.386%{stroke:#ff3cf0}14.286%{stroke:#ff79c6}26.671%{stroke:#ff79c6}28.571%{stroke:#b48ead}40.957%{stroke:#b48ead}42.857%{stroke:#d33682}55.243%{stroke:#d33682}57.143%{stroke:#d02670}69.529%{stroke:#d02670}71.429%{stroke:#8a4b0d}83.814%{stroke:#8a4b0d}85.714%{stroke:#ff8ae2}98.1%{stroke:#ff8ae2}100%{stroke:#ff3cf0}}.s-magenta{stroke:#ff3cf0;animation:s-magenta 28s ease-in-out infinite}@keyframes f-danger{0%{fill:#ff4d6a}12.386%{fill:#ff4d6a}14.286%{fill:#ff5555}26.671%{fill:#ff5555}28.571%{fill:#bf616a}40.957%{fill:#bf616a}42.857%{fill:#dc322f}55.243%{fill:#dc322f}57.143%{fill:#da1e28}69.529%{fill:#da1e28}71.429%{fill:#a91414}83.814%{fill:#a91414}85.714%{fill:#ff8080}98.1%{fill:#ff8080}100%{fill:#ff4d6a}}.f-danger{fill:#ff4d6a;animation:f-danger 28s ease-in-out infinite}@keyframes s-danger{0%{stroke:#ff4d6a}12.386%{stroke:#ff4d6a}14.286%{stroke:#ff5555}26.671%{stroke:#ff5555}28.571%{stroke:#bf616a}40.957%{stroke:#bf616a}42.857%{stroke:#dc322f}55.243%{stroke:#dc322f}57.143%{stroke:#da1e28}69.529%{stroke:#da1e28}71.429%{stroke:#a91414}83.814%{stroke:#a91414}85.714%{stroke:#ff8080}98.1%{stroke:#ff8080}100%{stroke:#ff4d6a}}.s-danger{stroke:#ff4d6a;animation:s-danger 28s ease-in-out infinite}@keyframes f-mint{0%{fill:#3ddc97}12.386%{fill:#3ddc97}14.286%{fill:#50fa7b}26.671%{fill:#50fa7b}28.571%{fill:#a3be8c}40.957%{fill:#a3be8c}42.857%{fill:#2aa198}55.243%{fill:#2aa198}57.143%{fill:#0f7b5f}69.529%{fill:#0f7b5f}71.429%{fill:#2f7d55}83.814%{fill:#2f7d55}85.714%{fill:#4ee88a}98.1%{fill:#4ee88a}100%{fill:#3ddc97}}.f-mint{fill:#3ddc97;animation:f-mint 28s ease-in-out infinite}@keyframes s-mint{0%{stroke:#3ddc97}12.386%{stroke:#3ddc97}14.286%{stroke:#50fa7b}26.671%{stroke:#50fa7b}28.571%{stroke:#a3be8c}40.957%{stroke:#a3be8c}42.857%{stroke:#2aa198}55.243%{stroke:#2aa198}57.143%{stroke:#0f7b5f}69.529%{stroke:#0f7b5f}71.429%{stroke:#2f7d55}83.814%{stroke:#2f7d55}85.714%{stroke:#4ee88a}98.1%{stroke:#4ee88a}100%{stroke:#3ddc97}}.s-mint{stroke:#3ddc97;animation:s-mint 28s ease-in-out infinite}@keyframes f-warn{0%{fill:#ffb340}12.386%{fill:#ffb340}14.286%{fill:#ffb86c}26.671%{fill:#ffb86c}28.571%{fill:#ebcb8b}40.957%{fill:#ebcb8b}42.857%{fill:#b58900}55.243%{fill:#b58900}57.143%{fill:#8e6a00}69.529%{fill:#8e6a00}71.429%{fill:#8a5a05}83.814%{fill:#8a5a05}85.714%{fill:#ffd24d}98.1%{fill:#ffd24d}100%{fill:#ffb340}}.f-warn{fill:#ffb340;animation:f-warn 28s ease-in-out infinite}@keyframes s-warn{0%{stroke:#ffb340}12.386%{stroke:#ffb340}14.286%{stroke:#ffb86c}26.671%{stroke:#ffb86c}28.571%{stroke:#ebcb8b}40.957%{stroke:#ebcb8b}42.857%{stroke:#b58900}55.243%{stroke:#b58900}57.143%{stroke:#8e6a00}69.529%{stroke:#8e6a00}71.429%{stroke:#8a5a05}83.814%{stroke:#8a5a05}85.714%{stroke:#ffd24d}98.1%{stroke:#ffd24d}100%{stroke:#ffb340}}.s-warn{stroke:#ffb340;animation:s-warn 28s ease-in-out infinite}@keyframes f-lime{0%{fill:#a3e635}12.386%{fill:#a3e635}14.286%{fill:#c3f36b}26.671%{fill:#c3f36b}28.571%{fill:#aceb88}40.957%{fill:#aceb88}42.857%{fill:#859900}55.243%{fill:#859900}57.143%{fill:#4d7c0f}69.529%{fill:#4d7c0f}71.429%{fill:#5c7a12}83.814%{fill:#5c7a12}85.714%{fill:#b8ff5c}98.1%{fill:#b8ff5c}100%{fill:#a3e635}}.f-lime{fill:#a3e635;animation:f-lime 28s ease-in-out infinite}@keyframes s-lime{0%{stroke:#a3e635}12.386%{stroke:#a3e635}14.286%{stroke:#c3f36b}26.671%{stroke:#c3f36b}28.571%{stroke:#aceb88}40.957%{stroke:#aceb88}42.857%{stroke:#859900}55.243%{stroke:#859900}57.143%{stroke:#4d7c0f}69.529%{stroke:#4d7c0f}71.429%{stroke:#5c7a12}83.814%{stroke:#5c7a12}85.714%{stroke:#b8ff5c}98.1%{stroke:#b8ff5c}100%{stroke:#a3e635}}.s-lime{stroke:#a3e635;animation:s-lime 28s ease-in-out infinite}@keyframes show{0%{opacity:1;transform:translateY(0)}12.386%{opacity:1;transform:translateY(0)}13.336%{opacity:0;transform:translateY(-6px)}99.05%{opacity:0;transform:translateY(7px)}100%{opacity:1;transform:translateY(0)}}.th{opacity:0;animation:show 28s cubic-bezier(.2,.7,.2,1) infinite}.th0{animation-delay:-28s}.th1{animation-delay:-24s}.th2{animation-delay:-20s}.th3{animation-delay:-16s}.th4{animation-delay:-12s}.th5{animation-delay:-8s}.th6{animation-delay:-4s}.th0{opacity:1}@keyframes ring{0%{transform:translateX(0px)}12.386%{transform:translateX(0px)}14.286%{transform:translateX(37px)}26.671%{transform:translateX(37px)}28.571%{transform:translateX(74px)}40.957%{transform:translateX(74px)}42.857%{transform:translateX(111px)}55.243%{transform:translateX(111px)}57.143%{transform:translateX(148px)}69.529%{transform:translateX(148px)}71.429%{transform:translateX(185px)}83.814%{transform:translateX(185px)}85.714%{transform:translateX(222px)}98.1%{transform:translateX(222px)}100%{transform:translateX(0)}}.ring{animation:ring 28s cubic-bezier(.6,0,.2,1) infinite}@keyframes cbar{0%{transform:scaleX(0.7823)}12.386%{transform:scaleX(0.7823)}14.286%{transform:scaleX(0.7054)}26.671%{transform:scaleX(0.7054)}28.571%{transform:scaleX(0.5160)}40.957%{transform:scaleX(0.5160)}42.857%{transform:scaleX(0.5834)}55.243%{transform:scaleX(0.5834)}57.143%{transform:scaleX(0.8016)}69.529%{transform:scaleX(0.8016)}71.429%{transform:scaleX(0.6657)}83.814%{transform:scaleX(0.6657)}85.714%{transform:scaleX(1.0000)}98.1%{transform:scaleX(1.0000)}100%{transform:scaleX(0.7823)}}.cbar{transform-box:fill-box;transform-origin:left center;transform:scaleX(0.7823);animation:cbar 28s cubic-bezier(.6,0,.2,1) infinite}@keyframes sweep{0%{transform:translateX(-260px) skewX(-18deg);opacity:0}4%{opacity:.85}30%{transform:translateX(700px) skewX(-18deg);opacity:0}100%{transform:translateX(700px) skewX(-18deg);opacity:0}}.sweep{opacity:0;animation:sweep 4s linear 3.32s infinite}@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}.blink{animation:blink 1.05s steps(1) infinite}@keyframes pulse{0%,100%{opacity:.35;transform:scale(1)}50%{opacity:1;transform:scale(1.35)}}.pulse{transform-box:fill-box;transform-origin:center;animation:pulse 2s ease-in-out infinite}@keyframes rise{0%{transform:translateY(0);opacity:0}15%{opacity:.9}100%{transform:translateY(-90px);opacity:0}}.mote{opacity:0;animation:rise 7s ease-out infinite}@keyframes breathe{0%,100%{opacity:.30}50%{opacity:.52}}.halo{animation:breathe 6s ease-in-out infinite, f-accent 28s ease-in-out infinite}@keyframes fill68{0%,8%{transform:scaleX(.08)}40%,100%{transform:scaleX(1)}}.grow{transform-box:fill-box;transform-origin:left center;animation:fill68 4s cubic-bezier(.2,.8,.2,1) infinite}@media (prefers-reduced-motion:reduce){*{animation:none!important}.th0{opacity:1}.sweep,.mote{display:none}}</style>
+<rect width="960" height="560" rx="22" fill="url(#card)"/>
+<rect width="960" height="560" rx="22" fill="url(#dots)"/>
+<rect x="1" y="1" width="958" height="558" rx="21" fill="none" stroke="#ffffff" stroke-opacity=".07"/>
+<rect x="36" y="0" width="888" height="3" rx="1.5" fill="url(#edge)" opacity=".9"/>
+<text x="36" y="48" class="sans" font-size="23" font-weight="700" fill="#f2f2f8">Seven themes. One set of tokens.</text>
+<text x="36" y="72" class="mono" font-size="11.5" fill="#8b8ba4">every colour below is a token — the whole window changes together, never piece by piece</text>
+<g transform="translate(812 44)"><rect x="0" y="-15" width="112" height="24" rx="12" fill="#ffffff" fill-opacity=".05" stroke="#ffffff" stroke-opacity=".1"/><circle cx="15" cy="-3" r="4" fill="#3ddc97" class="pulse"/><text x="27" y="1" class="mono" font-size="10.5" fill="#c9c9dc" letter-spacing=".8">LIVE · 7 / 7</text></g>
+<ellipse cx="330" cy="320" rx="270" ry="170" class="f-accent halo" filter="url(#blur)"/>
+<g class="mote" style="animation-delay:0s"><circle cx="70" cy="520" r="2" class="f-accent"/></g>
+<g class="mote" style="animation-delay:2.3s"><circle cx="180" cy="540" r="1.6" class="f-accent"/></g>
+<g class="mote" style="animation-delay:4.1s"><circle cx="300" cy="530" r="2.2" class="f-accent"/></g>
+<g class="mote" style="animation-delay:1.2s"><circle cx="430" cy="545" r="1.5" class="f-accent"/></g>
+<g class="mote" style="animation-delay:5.4s"><circle cx="560" cy="528" r="2" class="f-accent"/></g>
+<g class="mote" style="animation-delay:3.3s"><circle cx="650" cy="520" r="1.4" class="f-accent"/></g>
+<g class="mote" style="animation-delay:6.1s"><circle cx="780" cy="540" r="1.8" class="f-accent"/></g>
+<g class="mote" style="animation-delay:2.8s"><circle cx="900" cy="530" r="1.5" class="f-accent"/></g>
+<rect x="36" y="96" width="584" height="420" rx="14" fill="#000" filter="url(#shadow)"/>
+<rect x="36" y="96" width="584" height="420" rx="14" class="f-ground"/>
+<g clip-path="url(#win)">
+<rect x="36" y="96" width="584" height="38" class="f-raised"/>
+<rect x="36" y="133" width="584" height="1" class="f-line"/>
+<circle cx="58" cy="115" r="5.5" class="f-danger"/>
+<circle cx="75" cy="115" r="5.5" class="f-warn"/>
+<circle cx="92" cy="115" r="5.5" class="f-mint"/>
+<rect x="122" y="102" width="196" height="32" rx="7" class="f-ground"/>
+<rect x="122" y="131" width="196" height="3" class="f-accent"/>
+<text x="136" y="122" class="mono f-text" font-size="11.5">❯ zsh · ~/jky-terminal</text>
+<circle cx="340" cy="118" r="3.5" class="f-mint"/>
+<text x="350" y="122" class="mono f-dim" font-size="11.5">cargo test</text>
+<text x="604" y="122" text-anchor="end" class="mono f-dim" font-size="10.5">supervised</text>
+<rect x="36" y="134" width="46" height="358" class="f-surface"/>
+<rect x="81" y="134" width="1" height="358" class="f-line"/>
+<text x="59" y="162" text-anchor="middle" class="sans f-dim" font-size="13">⌂</text>
+<rect x="44" y="177" width="30" height="26" rx="7" class="f-accent" opacity=".16"/>
+<rect x="36" y="179" width="3" height="22" rx="1.5" class="f-accent"/>
+<text x="59" y="194" text-anchor="middle" class="sans f-accent" font-size="14">❯</text>
+<text x="59" y="226" text-anchor="middle" class="sans f-dim" font-size="13">↺</text>
+<text x="59" y="258" text-anchor="middle" class="sans f-dim" font-size="13">⇄</text>
+<text x="59" y="290" text-anchor="middle" class="sans f-dim" font-size="13">✎</text>
+<text x="59" y="322" text-anchor="middle" class="sans f-dim" font-size="13">▦</text>
+<text x="59" y="354" text-anchor="middle" class="sans f-dim" font-size="13">✦</text>
+<text x="59" y="386" text-anchor="middle" class="sans f-dim" font-size="13">◈</text>
+<text x="59" y="418" text-anchor="middle" class="sans f-dim" font-size="13">⊞</text>
+<text x="59" y="450" text-anchor="middle" class="sans f-dim" font-size="13">⌥</text>
+<g class="th th0">
+<text x="98" y="160" class="mono" font-size="12.5" textLength="307.5" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">jky theme cyberpunk</tspan></text>
+<text x="98" y="181" class="mono" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Cyberpunk</tspan></text>
+</g>
+<g class="th th1">
+<text x="98" y="160" class="mono" font-size="12.5" textLength="292.5" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">jky theme dracula</tspan></text>
+<text x="98" y="181" class="mono" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Dracula</tspan></text>
+</g>
+<g class="th th2">
+<text x="98" y="160" class="mono" font-size="12.5" textLength="270.0" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">jky theme nord</tspan></text>
+<text x="98" y="181" class="mono" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Nord</tspan></text>
+</g>
+<g class="th th3">
+<text x="98" y="160" class="mono" font-size="12.5" textLength="307.5" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">jky theme solarized</tspan></text>
+<text x="98" y="181" class="mono" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Solarized</tspan></text>
+</g>
+<g class="th th4">
+<text x="98" y="160" class="mono" font-size="12.5" textLength="277.5" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">jky theme light</tspan></text>
+<text x="98" y="181" class="mono" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Light</tspan></text>
+</g>
+<g class="th th5">
+<text x="98" y="160" class="mono" font-size="12.5" textLength="270.0" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">jky theme gold</tspan></text>
+<text x="98" y="181" class="mono" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">Gold</tspan></text>
+</g>
+<g class="th th6">
+<text x="98" y="160" class="mono" font-size="12.5" textLength="300.0" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">jky theme contrast</tspan></text>
+<text x="98" y="181" class="mono" font-size="12.5"><tspan class="f-mint">✓ </tspan><tspan class="f-muted">theme set to </tspan><tspan class="f-text" font-weight="700">High Contrast</tspan></text>
+</g>
+<text x="98" y="212" class="mono" font-size="12.5" textLength="262.5" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan><tspan class="f-text">git status -s</tspan></text>
+<text x="98" y="232" class="mono f-text" font-size="12.5"><tspan class="f-warn"> M</tspan> apps/desktop/src/styles/themes.css</text>
+<text x="98" y="251" class="mono f-text" font-size="12.5"><tspan class="f-mint">A </tspan> docs/img/themes-live.svg</text>
+<rect x="98" y="264" width="506" height="96" rx="9" class="f-surface"/>
+<rect x="98" y="264" width="506" height="96" rx="9" fill="none" class="s-line" stroke-width="1"/>
+<rect x="110" y="275" width="86" height="19" rx="5" class="f-accent" opacity=".15"/>
+<text x="153" y="288.5" text-anchor="middle" class="mono f-accent" font-size="10" font-weight="700" letter-spacing=".8">GIT STATUS</text>
+<text x="592" y="288.5" text-anchor="end" class="mono f-dim" font-size="10.5">panel · raw output kept above</text>
+<rect x="110" y="304" width="235.0" height="44" rx="7" class="f-raised"/>
+<rect x="110" y="304" width="235.0" height="44" rx="7" fill="none" class="s-line" stroke-width="1"/>
+<rect x="357.0" y="304" width="235.0" height="44" rx="7" class="f-raised"/>
+<rect x="357.0" y="304" width="235.0" height="44" rx="7" fill="none" class="s-line" stroke-width="1"/>
+<circle cx="124" cy="319" r="4" class="f-mint"/>
+<text x="134" y="323" class="mono f-mint" font-size="10.5" font-weight="700" letter-spacing=".6">STAGED · 1</text>
+<text x="122" y="340" class="mono f-text" font-size="11">themes-live.svg</text>
+<circle cx="371.0" cy="319" r="4" class="f-warn"/>
+<text x="381.0" y="323" class="mono f-warn" font-size="10.5" font-weight="700" letter-spacing=".6">UNSTAGED · 1</text>
+<text x="369.0" y="340" class="mono f-text" font-size="11">themes.css</text>
+<rect x="98" y="372" width="506" height="78" rx="9" class="f-surface"/>
+<rect x="98" y="372" width="506" height="78" rx="9" fill="none" class="s-line" stroke-width="1"/>
+<text x="110" y="393" class="mono f-muted" font-size="10.5"><tspan class="f-accent" font-weight="700">df -h</tspan>  ·  fullest first</text>
+<text x="110" y="413" class="mono f-muted" font-size="10">/</text>
+<rect x="162" y="406" width="384" height="7" rx="3.5" class="f-raised"/>
+<rect x="162" y="406" width="384" height="7" rx="3.5" fill="none" class="s-line" stroke-width="0.6"/>
+<g class="grow" style="animation-delay:0.00s"><rect x="162" y="406" width="261.1" height="7" rx="3.5" class="f-accent"/></g>
+<text x="592" y="413" text-anchor="end" class="mono f-text" font-size="10">68%</text>
+<text x="110" y="428" class="mono f-muted" font-size="10">/home</text>
+<rect x="162" y="421" width="384" height="7" rx="3.5" class="f-raised"/>
+<rect x="162" y="421" width="384" height="7" rx="3.5" fill="none" class="s-line" stroke-width="0.6"/>
+<g class="grow" style="animation-delay:0.12s"><rect x="162" y="421" width="157.4" height="7" rx="3.5" class="f-magenta"/></g>
+<text x="592" y="428" text-anchor="end" class="mono f-text" font-size="10">41%</text>
+<text x="110" y="443" class="mono f-muted" font-size="10">/boot</text>
+<rect x="162" y="436" width="384" height="7" rx="3.5" class="f-raised"/>
+<rect x="162" y="436" width="384" height="7" rx="3.5" fill="none" class="s-line" stroke-width="0.6"/>
+<g class="grow" style="animation-delay:0.24s"><rect x="162" y="436" width="88.3" height="7" rx="3.5" class="f-lime"/></g>
+<text x="592" y="443" text-anchor="end" class="mono f-text" font-size="10">23%</text>
+<clipPath id="type0"><rect x="263.0" y="460" height="20" width="0"><animate attributeName="width" dur="4s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.5;15.0;22.5;30.0;37.5;45.0;52.5;60.0;67.5;75.0;82.5;90.0;97.5;105.0;112.5;120.0;127.5;0.0;0.0" keyTimes="0.0000;0.2700;0.2906;0.3112;0.3318;0.3524;0.3729;0.3935;0.4141;0.4347;0.4553;0.4759;0.4965;0.5171;0.5376;0.5582;0.5788;0.5994;0.6200;0.8500;1.0000"/></rect></clipPath>
+<clipPath id="type1"><rect x="263.0" y="460" height="20" width="0"><animate attributeName="width" dur="4s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.5;15.0;22.5;30.0;37.5;45.0;52.5;60.0;67.5;75.0;82.5;90.0;97.5;105.0;0.0;0.0" keyTimes="0.0000;0.2700;0.2950;0.3200;0.3450;0.3700;0.3950;0.4200;0.4450;0.4700;0.4950;0.5200;0.5450;0.5700;0.5950;0.6200;0.8500;1.0000"/></rect></clipPath>
+<clipPath id="type2"><rect x="263.0" y="460" height="20" width="0"><animate attributeName="width" dur="4s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.5;15.0;22.5;30.0;37.5;45.0;52.5;60.0;67.5;75.0;82.5;90.0;97.5;105.0;112.5;120.0;127.5;135.0;142.5;0.0;0.0" keyTimes="0.0000;0.2700;0.2884;0.3068;0.3253;0.3437;0.3621;0.3805;0.3989;0.4174;0.4358;0.4542;0.4726;0.4911;0.5095;0.5279;0.5463;0.5647;0.5832;0.6016;0.6200;0.8500;1.0000"/></rect></clipPath>
+<clipPath id="type3"><rect x="263.0" y="460" height="20" width="0"><animate attributeName="width" dur="4s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.5;15.0;22.5;30.0;37.5;45.0;52.5;60.0;67.5;75.0;82.5;90.0;97.5;105.0;112.5;0.0;0.0" keyTimes="0.0000;0.2700;0.2933;0.3167;0.3400;0.3633;0.3867;0.4100;0.4333;0.4567;0.4800;0.5033;0.5267;0.5500;0.5733;0.5967;0.6200;0.8500;1.0000"/></rect></clipPath>
+<clipPath id="type4"><rect x="263.0" y="460" height="20" width="0"><animate attributeName="width" dur="4s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.5;15.0;22.5;30.0;37.5;45.0;52.5;60.0;67.5;75.0;82.5;90.0;97.5;105.0;0.0;0.0" keyTimes="0.0000;0.2700;0.2950;0.3200;0.3450;0.3700;0.3950;0.4200;0.4450;0.4700;0.4950;0.5200;0.5450;0.5700;0.5950;0.6200;0.8500;1.0000"/></rect></clipPath>
+<clipPath id="type5"><rect x="263.0" y="460" height="20" width="0"><animate attributeName="width" dur="4s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.5;15.0;22.5;30.0;37.5;45.0;52.5;60.0;67.5;75.0;82.5;90.0;97.5;105.0;112.5;120.0;127.5;135.0;0.0;0.0" keyTimes="0.0000;0.2700;0.2894;0.3089;0.3283;0.3478;0.3672;0.3867;0.4061;0.4256;0.4450;0.4644;0.4839;0.5033;0.5228;0.5422;0.5617;0.5811;0.6006;0.6200;0.8500;1.0000"/></rect></clipPath>
+<clipPath id="type6"><rect x="263.0" y="460" height="20" width="0"><animate attributeName="width" dur="4s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;7.5;15.0;22.5;30.0;37.5;45.0;52.5;60.0;67.5;75.0;82.5;90.0;97.5;105.0;112.5;120.0;127.5;135.0;142.5;0.0;0.0" keyTimes="0.0000;0.2700;0.2884;0.3068;0.3253;0.3437;0.3621;0.3805;0.3989;0.4174;0.4358;0.4542;0.4726;0.4911;0.5095;0.5279;0.5463;0.5647;0.5832;0.6016;0.6200;0.8500;1.0000"/></rect></clipPath>
+<text x="98" y="474" class="mono" font-size="12.5" textLength="165.0" lengthAdjust="spacingAndGlyphs"><tspan class="f-accent">~/jky-terminal</tspan><tspan class="f-violet"> main</tspan><tspan class="f-mint"> ❯&#160;</tspan></text>
+<g class="th th0">
+<text x="263.0" y="474" class="mono f-text" font-size="12.5" textLength="127.5" lengthAdjust="spacingAndGlyphs" clip-path="url(#type0)">jky theme dracula</text>
+<g class="blink">
+<rect y="463" width="7" height="14" rx="1" class="f-accent" x="263.0"><animate attributeName="x" dur="4s" repeatCount="indefinite" calcMode="discrete" values="263.0;263.0;270.5;278.0;285.5;293.0;300.5;308.0;315.5;323.0;330.5;338.0;345.5;353.0;360.5;368.0;375.5;383.0;390.5;263.0;263.0" keyTimes="0.0000;0.2700;0.2906;0.3112;0.3318;0.3524;0.3729;0.3935;0.4141;0.4347;0.4553;0.4759;0.4965;0.5171;0.5376;0.5582;0.5788;0.5994;0.6200;0.8500;1.0000"/></rect>
+</g>
+</g>
+<g class="th th1">
+<text x="263.0" y="474" class="mono f-text" font-size="12.5" textLength="105.0" lengthAdjust="spacingAndGlyphs" clip-path="url(#type1)">jky theme nord</text>
+<g class="blink">
+<rect y="463" width="7" height="14" rx="1" class="f-accent" x="263.0"><animate attributeName="x" dur="4s" repeatCount="indefinite" calcMode="discrete" values="263.0;263.0;270.5;278.0;285.5;293.0;300.5;308.0;315.5;323.0;330.5;338.0;345.5;353.0;360.5;368.0;263.0;263.0" keyTimes="0.0000;0.2700;0.2950;0.3200;0.3450;0.3700;0.3950;0.4200;0.4450;0.4700;0.4950;0.5200;0.5450;0.5700;0.5950;0.6200;0.8500;1.0000"/></rect>
+</g>
+</g>
+<g class="th th2">
+<text x="263.0" y="474" class="mono f-text" font-size="12.5" textLength="142.5" lengthAdjust="spacingAndGlyphs" clip-path="url(#type2)">jky theme solarized</text>
+<g class="blink">
+<rect y="463" width="7" height="14" rx="1" class="f-accent" x="263.0"><animate attributeName="x" dur="4s" repeatCount="indefinite" calcMode="discrete" values="263.0;263.0;270.5;278.0;285.5;293.0;300.5;308.0;315.5;323.0;330.5;338.0;345.5;353.0;360.5;368.0;375.5;383.0;390.5;398.0;405.5;263.0;263.0" keyTimes="0.0000;0.2700;0.2884;0.3068;0.3253;0.3437;0.3621;0.3805;0.3989;0.4174;0.4358;0.4542;0.4726;0.4911;0.5095;0.5279;0.5463;0.5647;0.5832;0.6016;0.6200;0.8500;1.0000"/></rect>
+</g>
+</g>
+<g class="th th3">
+<text x="263.0" y="474" class="mono f-text" font-size="12.5" textLength="112.5" lengthAdjust="spacingAndGlyphs" clip-path="url(#type3)">jky theme light</text>
+<g class="blink">
+<rect y="463" width="7" height="14" rx="1" class="f-accent" x="263.0"><animate attributeName="x" dur="4s" repeatCount="indefinite" calcMode="discrete" values="263.0;263.0;270.5;278.0;285.5;293.0;300.5;308.0;315.5;323.0;330.5;338.0;345.5;353.0;360.5;368.0;375.5;263.0;263.0" keyTimes="0.0000;0.2700;0.2933;0.3167;0.3400;0.3633;0.3867;0.4100;0.4333;0.4567;0.4800;0.5033;0.5267;0.5500;0.5733;0.5967;0.6200;0.8500;1.0000"/></rect>
+</g>
+</g>
+<g class="th th4">
+<text x="263.0" y="474" class="mono f-text" font-size="12.5" textLength="105.0" lengthAdjust="spacingAndGlyphs" clip-path="url(#type4)">jky theme gold</text>
+<g class="blink">
+<rect y="463" width="7" height="14" rx="1" class="f-accent" x="263.0"><animate attributeName="x" dur="4s" repeatCount="indefinite" calcMode="discrete" values="263.0;263.0;270.5;278.0;285.5;293.0;300.5;308.0;315.5;323.0;330.5;338.0;345.5;353.0;360.5;368.0;263.0;263.0" keyTimes="0.0000;0.2700;0.2950;0.3200;0.3450;0.3700;0.3950;0.4200;0.4450;0.4700;0.4950;0.5200;0.5450;0.5700;0.5950;0.6200;0.8500;1.0000"/></rect>
+</g>
+</g>
+<g class="th th5">
+<text x="263.0" y="474" class="mono f-text" font-size="12.5" textLength="135.0" lengthAdjust="spacingAndGlyphs" clip-path="url(#type5)">jky theme contrast</text>
+<g class="blink">
+<rect y="463" width="7" height="14" rx="1" class="f-accent" x="263.0"><animate attributeName="x" dur="4s" repeatCount="indefinite" calcMode="discrete" values="263.0;263.0;270.5;278.0;285.5;293.0;300.5;308.0;315.5;323.0;330.5;338.0;345.5;353.0;360.5;368.0;375.5;383.0;390.5;398.0;263.0;263.0" keyTimes="0.0000;0.2700;0.2894;0.3089;0.3283;0.3478;0.3672;0.3867;0.4061;0.4256;0.4450;0.4644;0.4839;0.5033;0.5228;0.5422;0.5617;0.5811;0.6006;0.6200;0.8500;1.0000"/></rect>
+</g>
+</g>
+<g class="th th6">
+<text x="263.0" y="474" class="mono f-text" font-size="12.5" textLength="142.5" lengthAdjust="spacingAndGlyphs" clip-path="url(#type6)">jky theme cyberpunk</text>
+<g class="blink">
+<rect y="463" width="7" height="14" rx="1" class="f-accent" x="263.0"><animate attributeName="x" dur="4s" repeatCount="indefinite" calcMode="discrete" values="263.0;263.0;270.5;278.0;285.5;293.0;300.5;308.0;315.5;323.0;330.5;338.0;345.5;353.0;360.5;368.0;375.5;383.0;390.5;398.0;405.5;263.0;263.0" keyTimes="0.0000;0.2700;0.2884;0.3068;0.3253;0.3437;0.3621;0.3805;0.3989;0.4174;0.4358;0.4542;0.4726;0.4911;0.5095;0.5279;0.5463;0.5647;0.5832;0.6016;0.6200;0.8500;1.0000"/></rect>
+</g>
+</g>
+<rect x="36" y="492" width="584" height="24" class="f-surface"/>
+<rect x="36" y="492" width="584" height="1" class="f-line"/>
+<text x="50" y="508" class="mono f-accent" font-size="10.5" font-weight="700">◆ JKY</text>
+<g class="th th0"><text x="98" y="508" class="mono f-muted" font-size="10.5">theme <tspan class="f-text">Cyberpunk</tspan>   ·   text on ground <tspan class="f-mint" font-weight="700">16.4:1</tspan></text></g>
+<g class="th th1"><text x="98" y="508" class="mono f-muted" font-size="10.5">theme <tspan class="f-text">Dracula</tspan>   ·   text on ground <tspan class="f-mint" font-weight="700">14.8:1</tspan></text></g>
+<g class="th th2"><text x="98" y="508" class="mono f-muted" font-size="10.5">theme <tspan class="f-text">Nord</tspan>   ·   text on ground <tspan class="f-mint" font-weight="700">10.8:1</tspan></text></g>
+<g class="th th3"><text x="98" y="508" class="mono f-muted" font-size="10.5">theme <tspan class="f-text">Solarized</tspan>   ·   text on ground <tspan class="f-mint" font-weight="700">12.3:1</tspan></text></g>
+<g class="th th4"><text x="98" y="508" class="mono f-muted" font-size="10.5">theme <tspan class="f-text">Light</tspan>   ·   text on ground <tspan class="f-mint" font-weight="700">16.8:1</tspan></text></g>
+<g class="th th5"><text x="98" y="508" class="mono f-muted" font-size="10.5">theme <tspan class="f-text">Gold</tspan>   ·   text on ground <tspan class="f-mint" font-weight="700">14.0:1</tspan></text></g>
+<g class="th th6"><text x="98" y="508" class="mono f-muted" font-size="10.5">theme <tspan class="f-text">High Contrast</tspan>   ·   text on ground <tspan class="f-mint" font-weight="700">21.0:1</tspan></text></g>
+<text x="606" y="508" text-anchor="end" class="mono f-dim" font-size="10.5">WebGL2 · zsh</text>
+<rect x="0" y="96" width="180" height="420" fill="url(#beam)" class="sweep"/>
+</g>
+<rect x="650" y="96" width="274" height="104" rx="14" fill="#ffffff" fill-opacity=".035" stroke="#ffffff" stroke-opacity=".09"/>
+<text x="668" y="122" class="mono" font-size="10" fill="#7c7c96" letter-spacing="1.6">ACTIVE THEME</text>
+<g class="th th0">
+<text x="668" y="158" class="sans" font-size="30" font-weight="800" fill="#00e5ff" letter-spacing="-.5">Cyberpunk</text>
+<text x="668" y="182" class="mono" font-size="10.5" fill="#a3a3bb">default · dark · neon is earned, not ambient</text>
+</g>
+<g class="th th1">
+<text x="668" y="158" class="sans" font-size="30" font-weight="800" fill="#bd93f9" letter-spacing="-.5">Dracula</text>
+<text x="668" y="182" class="mono" font-size="10.5" fill="#a3a3bb">dark · the classic Dracula palette</text>
+</g>
+<g class="th th2">
+<text x="668" y="158" class="sans" font-size="30" font-weight="800" fill="#88c0d0" letter-spacing="-.5">Nord</text>
+<text x="668" y="182" class="mono" font-size="10.5" fill="#a3a3bb">dark · arctic blues, low glare</text>
+</g>
+<g class="th th3">
+<text x="668" y="158" class="sans" font-size="30" font-weight="800" fill="#2aa198" letter-spacing="-.5">Solarized</text>
+<text x="668" y="182" class="mono" font-size="10.5" fill="#a3a3bb">dark · the Solarized palette</text>
+</g>
+<g class="th th4">
+<text x="668" y="158" class="sans" font-size="30" font-weight="800" fill="#5b8dff" letter-spacing="-.5">Light</text>
+<text x="668" y="182" class="mono" font-size="10.5" fill="#a3a3bb">light · crisp daylight, blue accents</text>
+</g>
+<g class="th th5">
+<text x="668" y="158" class="sans" font-size="30" font-weight="800" fill="#e2b356" letter-spacing="-.5">Gold</text>
+<text x="668" y="182" class="mono" font-size="10.5" fill="#a3a3bb">light · warm parchment, amber to bronze</text>
+</g>
+<g class="th th6">
+<text x="668" y="158" class="sans" font-size="26" font-weight="800" fill="#ffffff" letter-spacing="-.5">High Contrast</text>
+<text x="668" y="182" class="mono" font-size="10.5" fill="#a3a3bb">WCAG AAA · loud borders, no shadows</text>
+</g>
+<rect x="650" y="212" width="274" height="92" rx="14" fill="#ffffff" fill-opacity=".035" stroke="#ffffff" stroke-opacity=".09"/>
+<text x="668" y="238" class="mono" font-size="10" fill="#7c7c96" letter-spacing="1.6">TEXT ON GROUND</text>
+<rect x="862" y="226" width="44" height="18" rx="9" fill="#3ddc97" fill-opacity=".14" stroke="#3ddc97" stroke-opacity=".5"/>
+<text x="884" y="239" text-anchor="middle" class="mono" font-size="10" font-weight="700" fill="#3ddc97">AAA</text>
+<text x="668" y="274" class="sans th th0" font-size="28" font-weight="800" fill="#f2f2f8">16.4<tspan font-size="16" fill="#8b8ba4" font-weight="600"> : 1</tspan></text>
+<text x="668" y="274" class="sans th th1" font-size="28" font-weight="800" fill="#f2f2f8">14.8<tspan font-size="16" fill="#8b8ba4" font-weight="600"> : 1</tspan></text>
+<text x="668" y="274" class="sans th th2" font-size="28" font-weight="800" fill="#f2f2f8">10.8<tspan font-size="16" fill="#8b8ba4" font-weight="600"> : 1</tspan></text>
+<text x="668" y="274" class="sans th th3" font-size="28" font-weight="800" fill="#f2f2f8">12.3<tspan font-size="16" fill="#8b8ba4" font-weight="600"> : 1</tspan></text>
+<text x="668" y="274" class="sans th th4" font-size="28" font-weight="800" fill="#f2f2f8">16.8<tspan font-size="16" fill="#8b8ba4" font-weight="600"> : 1</tspan></text>
+<text x="668" y="274" class="sans th th5" font-size="28" font-weight="800" fill="#f2f2f8">14.0<tspan font-size="16" fill="#8b8ba4" font-weight="600"> : 1</tspan></text>
+<text x="668" y="274" class="sans th th6" font-size="28" font-weight="800" fill="#f2f2f8">21.0<tspan font-size="16" fill="#8b8ba4" font-weight="600"> : 1</tspan></text>
+<text x="906" y="274" text-anchor="end" class="mono" font-size="10" fill="#7c7c96">AAA needs 7 : 1</text>
+<rect x="668" y="286" width="238" height="6" rx="3" fill="#ffffff" fill-opacity=".08"/>
+<rect x="747.3" y="283" width="1.5" height="12" fill="#ffffff" fill-opacity=".35"/>
+<rect x="668" y="286" width="238" height="6" rx="3" fill="#3ddc97" class="cbar"/>
+<rect x="650" y="316" width="274" height="106" rx="14" fill="#ffffff" fill-opacity=".035" stroke="#ffffff" stroke-opacity=".09"/>
+<text x="668" y="342" class="mono" font-size="10" fill="#7c7c96" letter-spacing="1.6">TOKENS</text>
+<circle cx="686" cy="366" r="11" class="f-ground" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="686" y="389" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">ground</text>
+<circle cx="736" cy="366" r="11" class="f-surface" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="736" y="389" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">surface</text>
+<circle cx="786" cy="366" r="11" class="f-text" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="786" y="389" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">text</text>
+<circle cx="836" cy="366" r="11" class="f-accent" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="836" y="389" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">accent</text>
+<circle cx="886" cy="366" r="11" class="f-violet" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="886" y="389" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">violet</text>
+<circle cx="686" cy="404" r="11" class="f-magenta" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="686" y="427" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">magenta</text>
+<circle cx="736" cy="404" r="11" class="f-mint" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="736" y="427" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">mint</text>
+<circle cx="786" cy="404" r="11" class="f-warn" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="786" y="427" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">warn</text>
+<circle cx="836" cy="404" r="11" class="f-danger" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="836" y="427" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">danger</text>
+<circle cx="886" cy="404" r="11" class="f-lime" stroke="#ffffff" stroke-opacity=".22"/>
+<text x="886" y="427" text-anchor="middle" class="mono" font-size="8.5" fill="#8b8ba4">lime</text>
+<rect x="650" y="434" width="274" height="82" rx="14" fill="#ffffff" fill-opacity=".035" stroke="#ffffff" stroke-opacity=".09"/>
+<text x="668" y="458" class="mono" font-size="10" fill="#7c7c96" letter-spacing="1.6">SETTINGS · APPEARANCE</text>
+<circle cx="682" cy="483" r="10" fill="#00e5ff" stroke="#ffffff" stroke-opacity=".25"/>
+<circle cx="719" cy="483" r="10" fill="#bd93f9" stroke="#ffffff" stroke-opacity=".25"/>
+<circle cx="756" cy="483" r="10" fill="#88c0d0" stroke="#ffffff" stroke-opacity=".25"/>
+<circle cx="793" cy="483" r="10" fill="#2aa198" stroke="#ffffff" stroke-opacity=".25"/>
+<circle cx="830" cy="483" r="10" fill="#0f62fe" stroke="#ffffff" stroke-opacity=".25"/>
+<circle cx="867" cy="483" r="10" fill="#9a6d0a" stroke="#ffffff" stroke-opacity=".25"/>
+<circle cx="904" cy="483" r="10" fill="#ffffff" stroke="#ffffff" stroke-opacity=".25"/>
+<circle cx="682" cy="483" r="15" fill="none" stroke="#ffffff" stroke-width="2" class="ring"/>
+<text x="787.0" y="511" text-anchor="middle" class="mono" font-size="9" fill="#7c7c96">or type  jky theme &lt;name&gt;  in any terminal</text>
 </svg>

@@ -41,21 +41,24 @@ JKY Terminal introduces a lightweight, background **Session Supervisor** (`jky-d
 
 ## 3. Seven Purpose-Built Design Themes
 
-JKY Terminal ships with **7 precision-crafted themes**, each verified against WCAG AAA/AA contrast standards. All colors are strictly tokenized through CSS design variables; zero literal hex values exist anywhere in UI components.
+JKY Terminal ships with **seven themes**, and every one of them is a set of values for the same design
+tokens. No component contains a literal colour — a lint rule rejects one — and a test checks every
+theme's text contrast against its own ground.
 
 <p align="center">
-  <img src="img/themes-palette.svg" alt="Seven Built-in Themes" width="900">
+  <img src="img/themes-live.svg" alt="One JKY Terminal window cycling live through all seven themes" width="900">
 </p>
 
-| Theme | Personality | Key Accents | WCAG Contrast |
-|---|---|---|---|
-| **Cyberpunk** (Default) | High-energy neon synthwave | `#00e5ff` Cyan · `#ff3cf0` Magenta · `#7c3aed` Violet | AAA (Enhanced) |
-| **Dracula** | Beloved vampire palette | `#bd93f9` Purple · `#ff79c6` Pink · `#8be9fd` Cyan | AAA |
-| **Nord** | Calm, arctic blue minimalism | `#88c0d0` Frost Ice · `#a3be8c` Aurora Green | AAA |
-| **Solarized Dark** | Precision calibrated optical spectrum | `#2aa198` Teal · `#268bd2` Blue · `#859900` Lime | AAA |
-| **Light** | Crisp, professional day-mode | `#0f62fe` Sapphire · `#6929c4` Royal Violet | AAA |
-| **Gold** | Warm, vintage amber cockpit | `#ffb340` Gold · `#d97706` Amber · `#10b981` Emerald | AAA |
-| **High Contrast** | Pure zero-compromise accessibility | `#ffffff` on `#000000` · `#ffff00` · `#00ffff` | AAA (21:1 Max) |
+| Theme | Character | Ground | Accent | Second accent | Text on ground |
+|---|---|:-:|:-:|:-:|:-:|
+| **Cyberpunk** | default · dark · neon kept for what is active | ![#08080c](https://img.shields.io/badge/%2308080c-08080c?style=flat-square) | ![#00e5ff](https://img.shields.io/badge/%2300e5ff-00e5ff?style=flat-square) | ![#ff3cf0](https://img.shields.io/badge/%23ff3cf0-ff3cf0?style=flat-square) | **16.4 : 1** |
+| **Dracula** | dark · the Dracula palette | ![#21222c](https://img.shields.io/badge/%2321222c-21222c?style=flat-square) | ![#8be9fd](https://img.shields.io/badge/%238be9fd-8be9fd?style=flat-square) | ![#bd93f9](https://img.shields.io/badge/%23bd93f9-bd93f9?style=flat-square) | **14.8 : 1** |
+| **Nord** | dark · arctic blues, low glare | ![#2e3440](https://img.shields.io/badge/%232e3440-2e3440?style=flat-square) | ![#88c0d0](https://img.shields.io/badge/%2388c0d0-88c0d0?style=flat-square) | ![#a3be8c](https://img.shields.io/badge/%23a3be8c-a3be8c?style=flat-square) | **10.8 : 1** |
+| **Solarized** | dark · the Solarized palette | ![#002b36](https://img.shields.io/badge/%23002b36-002b36?style=flat-square) | ![#2aa198](https://img.shields.io/badge/%232aa198-2aa198?style=flat-square) | ![#b58900](https://img.shields.io/badge/%23b58900-b58900?style=flat-square) | **12.3 : 1** |
+| **Light** | light · crisp daylight | ![#f7f7fa](https://img.shields.io/badge/%23f7f7fa-f7f7fa?style=flat-square) | ![#0f62fe](https://img.shields.io/badge/%230f62fe-0f62fe?style=flat-square) | ![#6929c4](https://img.shields.io/badge/%236929c4-6929c4?style=flat-square) | **16.8 : 1** |
+| **Gold** | light · warm parchment, amber to bronze | ![#fbf7ef](https://img.shields.io/badge/%23fbf7ef-fbf7ef?style=flat-square) | ![#8a6108](https://img.shields.io/badge/%238a6108-8a6108?style=flat-square) | ![#2f7d55](https://img.shields.io/badge/%232f7d55-2f7d55?style=flat-square) | **14.0 : 1** |
+| **High Contrast** | WCAG AAA · loud borders, no shadows | ![#000000](https://img.shields.io/badge/%23000000-000000?style=flat-square) | ![#00ffff](https://img.shields.io/badge/%2300ffff-00ffff?style=flat-square) | ![#ffd24d](https://img.shields.io/badge/%23ffd24d-ffd24d?style=flat-square) | **21.0 : 1** |
+
 
 ---
 
@@ -117,3 +120,4 @@ Why juggle 6 different applications when your development environment can be uni
 ---
 
 *Authored and engineered by **kartikeyajay2006** under the MIT License.*
+

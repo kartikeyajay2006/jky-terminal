@@ -11,7 +11,7 @@
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff?style=flat-square&logo=linux&logoColor=white)](https://github.com/kartikeyajay2006/jky-terminal/releases)
 [![Tests Suite](https://img.shields.io/badge/tests-2%2C267%20frontend%20%C2%B7%201%2C097%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](https://github.com/kartikeyajay2006/jky-terminal)
 [![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20zero--ambient-bd93f9?style=flat-square&logo=shield&logoColor=white)](docs/SHOWCASE.md#4-zero-ambient-authority-security-model)
-[![WCAG Contrast](https://img.shields.io/badge/contrast-WCAG%20AAA%20tested-ffb340?style=flat-square)](docs/SHOWCASE.md#3-seven-purpose-built-design-themes)
+[![WCAG Contrast](https://img.shields.io/badge/contrast-WCAG%20AAA%20tested-ffb340?style=flat-square)](#-seven-themes-one-set-of-tokens)
 [![License: MIT](https://img.shields.io/badge/license-MIT-ff3cf0?style=flat-square)](LICENSE)
 
 <br>
@@ -28,7 +28,7 @@
   <a href="#-the-ten-sections">▦ 10 Sections</a> &nbsp;•&nbsp;
   <a href="#-any-command-can-become-an-app">⚡ Command to App</a> &nbsp;•&nbsp;
   <a href="#-zero-ambient-authority-security">🛡️ Zero-Trust Security</a> &nbsp;•&nbsp;
-  <a href="#-7-precision-crafted-themes">🎨 Themes</a> &nbsp;•&nbsp;
+  <a href="#-seven-themes-one-set-of-tokens">🎨 Themes</a> &nbsp;•&nbsp;
   <a href="#-installation">📦 Downloads</a> &nbsp;•&nbsp;
   <a href="#%EF%B8%8F-keyboard-shortcuts">⌨️ Shortcuts</a>
 </p>
@@ -214,31 +214,33 @@ Every capability is gated by automated CI assertions that inspect the source cod
 
 ---
 
-## 🎨 7 Precision-Crafted Themes
-
-JKY Terminal ships with **seven production-grade themes**, each mathematically verified against WCAG AAA/AA contrast criteria. Every single color in the user interface is derived from design tokens; hardcoded hexes are rejected at lint time.
+## 🎨 Seven Themes, One Set of Tokens
 
 <p align="center">
-  <a href="docs/SHOWCASE.md#3-seven-purpose-built-design-themes">
-    <img src="docs/img/themes-palette.svg" alt="Seven Built-In Themes — Cyberpunk, Dracula, Nord, Solarized, Light, Gold, High Contrast" width="900">
-  </a>
+  <img src="docs/img/themes-live.svg" alt="One JKY Terminal window cycling live through all seven themes — Cyberpunk, Dracula, Nord, Solarized, Light, Gold and High Contrast — with each theme's measured contrast ratio" width="900">
 </p>
 
-<p align="center">
-  <img src="docs/img/themes-live.svg" alt="Animated preview of all seven colourful JKY Terminal themes" width="900">
-</p>
+Every colour in JKY is a **design token**. A theme is nothing more than a different set of values for the
+same colour tokens, which is why the whole window above changes at once rather than piece by piece. A
+literal hex value in a component is a lint error, and a test computes the WCAG contrast of every theme's
+text against its own ground — all seven clear **AAA (7 : 1)** with room to spare.
 
-<p align="center"><sub>Animated theme preview — designed to feel alive while keeping every terminal state legible.</sub></p>
+| Theme | Character | Ground | Accent | Second accent | Text on ground |
+|---|---|:-:|:-:|:-:|:-:|
+| **Cyberpunk** | default · dark · neon kept for what is active | ![#08080c](https://img.shields.io/badge/%2308080c-08080c?style=flat-square) | ![#00e5ff](https://img.shields.io/badge/%2300e5ff-00e5ff?style=flat-square) | ![#ff3cf0](https://img.shields.io/badge/%23ff3cf0-ff3cf0?style=flat-square) | **16.4 : 1** |
+| **Dracula** | dark · the Dracula palette | ![#21222c](https://img.shields.io/badge/%2321222c-21222c?style=flat-square) | ![#8be9fd](https://img.shields.io/badge/%238be9fd-8be9fd?style=flat-square) | ![#bd93f9](https://img.shields.io/badge/%23bd93f9-bd93f9?style=flat-square) | **14.8 : 1** |
+| **Nord** | dark · arctic blues, low glare | ![#2e3440](https://img.shields.io/badge/%232e3440-2e3440?style=flat-square) | ![#88c0d0](https://img.shields.io/badge/%2388c0d0-88c0d0?style=flat-square) | ![#a3be8c](https://img.shields.io/badge/%23a3be8c-a3be8c?style=flat-square) | **10.8 : 1** |
+| **Solarized** | dark · the Solarized palette | ![#002b36](https://img.shields.io/badge/%23002b36-002b36?style=flat-square) | ![#2aa198](https://img.shields.io/badge/%232aa198-2aa198?style=flat-square) | ![#b58900](https://img.shields.io/badge/%23b58900-b58900?style=flat-square) | **12.3 : 1** |
+| **Light** | light · crisp daylight | ![#f7f7fa](https://img.shields.io/badge/%23f7f7fa-f7f7fa?style=flat-square) | ![#0f62fe](https://img.shields.io/badge/%230f62fe-0f62fe?style=flat-square) | ![#6929c4](https://img.shields.io/badge/%236929c4-6929c4?style=flat-square) | **16.8 : 1** |
+| **Gold** | light · warm parchment, amber to bronze | ![#fbf7ef](https://img.shields.io/badge/%23fbf7ef-fbf7ef?style=flat-square) | ![#8a6108](https://img.shields.io/badge/%238a6108-8a6108?style=flat-square) | ![#2f7d55](https://img.shields.io/badge/%232f7d55-2f7d55?style=flat-square) | **14.0 : 1** |
+| **High Contrast** | WCAG AAA · loud borders, no shadows | ![#000000](https://img.shields.io/badge/%23000000-000000?style=flat-square) | ![#00ffff](https://img.shields.io/badge/%2300ffff-00ffff?style=flat-square) | ![#ffd24d](https://img.shields.io/badge/%23ffd24d-ffd24d?style=flat-square) | **21.0 : 1** |
 
-1. **Cyberpunk (Default):** Synthwave dark ground (`#08080c`) with vibrant neon cyan (`#00e5ff`) and magenta (`#ff3cf0`) accents.
-2. **Dracula:** Official midnight purple palette (`#282a36`) with soft lilac (`#bd93f9`) and pastel green (`#50fa7b`).
-3. **Nord:** Elegant arctic darkness (`#2e3440`) with frost blues (`#88c0d0`, `#81a1c1`) and aurora green (`#a3be8c`).
-4. **Solarized Dark:** Ethically tuned optical spectrum (`#002b36`) with rich teal (`#2aa198`) and warm amber (`#b58900`).
-5. **Light:** Clean daytime aesthetic (`#ffffff`) with deep sapphire blue (`#0f62fe`) and balanced grey shadows.
-6. **Gold:** High-warmth cockpit theme (`#120e06`) with radiant amber gold (`#ffb340`) and emerald highlights.
-7. **High Contrast:** Pure black ground (`#000000`) and pure white glyphs (`#ffffff`) with an incredible **21:1 WCAG AAA** contrast ratio.
+<sub>Ratios are WCAG 2 contrast of <code>--text</code> on <code>--ground</code>, computed from
+<a href="apps/desktop/src/styles/themes.css"><code>themes.css</code></a>. The animation uses those exact values.</sub>
 
-*Toggle themes instantly from **Settings → Themes** or via the command palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>).*
+**Switch themes** from **Settings → Appearance** (the command palette, <kbd>Ctrl</kbd>+<kbd>K</kbd>, jumps
+there), or from any terminal: `jky theme dracula`. Motion follows your system: `prefers-reduced-motion` is honoured by a
+single rule for the whole app, and a test pins it.
 
 ---
 
