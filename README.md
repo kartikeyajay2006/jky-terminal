@@ -9,7 +9,7 @@
 
 [![CI Workflow](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff?style=flat-square&logo=linux&logoColor=white)](https://github.com/kartikeyajay2006/jky-terminal/releases)
-[![Tests Suite](https://img.shields.io/badge/tests-2229%20frontend%20%C2%B7%201089%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](https://github.com/kartikeyajay2006/jky-terminal)
+[![Tests Suite](https://img.shields.io/badge/tests-2%2C267%20frontend%20%C2%B7%201%2C097%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](https://github.com/kartikeyajay2006/jky-terminal)
 [![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20zero--ambient-bd93f9?style=flat-square&logo=shield&logoColor=white)](docs/SHOWCASE.md#4-zero-ambient-authority-security-model)
 [![WCAG Contrast](https://img.shields.io/badge/contrast-WCAG%20AAA%20tested-ffb340?style=flat-square)](docs/SHOWCASE.md#3-seven-purpose-built-design-themes)
 [![License: MIT](https://img.shields.io/badge/license-MIT-ff3cf0?style=flat-square)](LICENSE)
@@ -24,7 +24,7 @@
   <a href="#-quick-start">⚡ Quick Start</a> &nbsp;•&nbsp;
   <a href="#-interactive-showcase">✨ Interactive Showcase</a> &nbsp;•&nbsp;
   <a href="#-documentation">📚 Documentation</a> &nbsp;•&nbsp;
-  <a href="#-why-jky-terminal">⚔️ Why JKY Terminal</a> &nbsp;•&nbsp;
+  <a href="#%EF%B8%8F-how-jky-compares--honestly">⚖️ Honest Comparison</a> &nbsp;•&nbsp;
   <a href="#-the-ten-sections">▦ 10 Sections</a> &nbsp;•&nbsp;
   <a href="#-any-command-can-become-an-app">⚡ Command to App</a> &nbsp;•&nbsp;
   <a href="#-zero-ambient-authority-security">🛡️ Zero-Trust Security</a> &nbsp;•&nbsp;
@@ -87,31 +87,78 @@ JKY Terminal rethinks every assumption of command-line tools:
 - ⚡ **Every Command Can Become An App:** Recognizers parse structured output from `docker`, `git`, `df`, `ps`, and `ls` into interactive visual cards without LLM hallucinations.
 - 🛡️ **Zero Ambient Authority:** Built on the principle that *the window can ask, but only Rust can act*. Frontend CSP strictly enforces `connect-src 'self'`.
 - 🔐 **Zero Secret Exposure:** Your Anthropic/OpenAI API keys live directly in your native OS Keychain with zeroize memory protection. The webview can never read a secret.
-- 🚀 **Blazing Fast Native Core:** 19 modular Rust crates driving WebGL-accelerated xterm.js rendering, instant split panes, and sub-millisecond latency.
+- 🦀 **Rust Does The Real Work:** 19 focused Rust crates own the PTYs, files, keys, history and audit log behind a thin IPC layer; the terminal itself renders through xterm.js with WebGL2.
 - 🪶 **Featherweight Editor:** CodeMirror 6 loaded dynamically by chunk, adding a mere 33 kB to the entry bundle instead of a bloated 15 MB Monaco editor.
 
 ---
 
-## ⚔️ Why JKY Terminal?
+## ⚖️ How JKY Compares — Honestly
 
-JKY is not trying to replace every terminal for every person. Its focus is a
-local-first terminal workflow: persistent shells, deterministic command views,
-and an assistant that asks before it acts. Native-first terminals remain the
-better choice when maximum rendering performance or the broadest terminal
-protocol support is the priority.
+Every terminal below is excellent at something, and most of them are far more mature than JKY.
+This table is here to help you choose, not to win. Facts about other projects were checked against
+their own docs in **October 2026**. If one is wrong or out of date,
+[open an issue](https://github.com/kartikeyajay2006/jky-terminal/issues) and it will be fixed.
 
-| Capability | **JKY Terminal** | Ghostty | Warp | Alacritty | WezTerm | VS Code Terminal |
-|---|:---:|:---:|:---:|:---:|:---:|:---:|
-| **tmux-less Shell Persistence** | ✅ **Built-in Daemon** | ❌ Requires external multiplexer | ⚠️ Product-managed workflows | ❌ Requires external multiplexer | ❌ Requires tmux or mux server | ❌ Session lost |
-| **Command-to-App Parsers** | ✅ **Deterministic Rust** | ❌ Plain text | ⚠️ Cloud AI | ❌ Plain text | ❌ Plain text | ❌ Plain text |
-| **Zero-Ambient-Authority CSP** | ✅ **`connect-src 'self'`** | N/A | ❌ Telemetry | N/A | N/A | ❌ Ambient Node |
-| **Local-first default** | ✅ **MIT Open Source** | ✅ Free | ⚠️ Account and cloud features available | ✅ Free | ✅ Free | ✅ Free |
-| **Integrated Lightweight Editor** | ✅ **CodeMirror 6 (<35kB)** | ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Full IDE |
-| **Native Child Browser Webview** | ✅ **WebKitGTK / WebView2** | ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Simple Browser |
-| **AI Assistant with Keychain Vault** | ✅ **OS Keychain + Tool Approvals** | ❌ None | ⚠️ Cloud Account | ❌ None | ❌ None | ⚠️ Extension Based |
-| **Offline Dev Utilities (11 tools)** | ✅ **Built-in** | ❌ None | ❌ None | ❌ None | ❌ None | ⚠️ Extensions |
-| **Subsequence History Matching** | ✅ **Logarithmic Ranking** | ❌ Basic | ⚠️ Account History | ❌ Basic | ❌ Basic | ❌ Basic |
-| **Automated Test Coverage** | ✅ **3,318 Tests** | Proprietary CI | Closed Core | Unit Tests | Unit Tests | Massive Suite |
+**Legend:** 🟢 built in &nbsp;·&nbsp; 🟡 partly, or with setup / an add-on &nbsp;·&nbsp; ⚪ not offered (often by design)
+
+| | **JKY** | Ghostty | Warp | Wave | WezTerm | Alacritty | VS Code |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Tabs and splits | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | ⚪ | 🟢 |
+| Local shells survive quitting | 🟢 | ⚪ | ⚪ | 🟡 SSH | 🟡 mux | ⚪ | 🟡 reload |
+| Native GPU renderer | 🟡 webview | 🟢 | 🟢 | 🟡 webview | 🟢 | 🟢 | 🟡 webview |
+| Inline images | ⚪ | 🟢 | — | — | 🟢 | ⚪ | 🟡 |
+| Command output as views | 🟢 panels | ⚪ | 🟡 blocks | 🟡 previews | ⚪ | ⚪ | 🟡 marks |
+| AI assistant | 🟢 | ⚪ | 🟢 | 🟢 | ⚪ | ⚪ | 🟢 |
+| Built-in editor | 🟢 | ⚪ | 🟢 | 🟢 | ⚪ | ⚪ | 🟢 |
+| Built-in browser | 🟢 | ⚪ | ⚪ | 🟢 | ⚪ | ⚪ | 🟡 |
+| Scripting / plugins | ⚪ | ⚪ | 🟡 | 🟡 | 🟢 Lua | ⚪ | 🟢 |
+| Signed installers today | ⚪ | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 |
+| Platforms | Lin · Mac · Win | Mac · Lin | Mac · Lin · Win | Mac · Lin · Win | Lin · Mac · Win | Lin · Mac · Win | Lin · Mac · Win |
+| License | MIT | MIT | AGPL-3.0 | Apache-2.0 | MIT | Apache-2.0 | MIT source |
+| Maturity | **v0.1**, one maintainer | 1.x | company | company | mature | mature | Microsoft |
+
+<sub>— means not verified for this table, so left blank rather than guessed. Every cell is explained,
+with sources, in the [full comparison](docs/comparison.md).</sub>
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+#### ✅ Where JKY is different
+
+- **Shells outlive the window** — no tmux to learn. Reopen the app and each pane shows what its
+  shell printed while you were away.
+- **Output becomes panels** — eight deterministic parsers, no model, and the raw text always stays.
+- **The assistant has to ask** — every command it proposes waits for you; destructive ones need
+  typed confirmation. Works with your own key or a **local Ollama** model.
+- **The window has no network** — `connect-src 'self'`; keys live in the OS keychain.
+
+</td>
+<td width="50%" valign="top">
+
+#### ⚠️ Where JKY is behind today
+
+- **No published release yet** — build from source; draft installers are unsigned.
+- **Rendering runs in a webview** — native GPU terminals will win on raw throughput. No benchmarks
+  are published yet.
+- **No inline images, scripting or plugins.**
+- **Three AI back-ends wired** — Anthropic, OpenAI and Ollama. Six more can store a key but have
+  no adapter yet.
+- **Young** — expect rough edges, and please file issues.
+
+</td>
+</tr>
+</table>
+
+**Choose something else if** you want the fastest, most complete native terminal
+([Ghostty](https://ghostty.org), [WezTerm](https://wezterm.org), [Alacritty](https://alacritty.org)),
+deep scripting ([WezTerm](https://wezterm.org)), polished AI agents and team features
+([Warp](https://www.warp.dev)), or JKY's all-in-one idea in a more mature app today
+([Wave Terminal](https://www.waveterm.dev)). **Choose JKY** if you want persistent shells,
+structured command views and an approval-first assistant in a small, local-first Tauri app — and
+you're happy to run v0.1 software.
+
+→ **[Read the full, sourced comparison](docs/comparison.md)**
 
 ---
 
@@ -210,11 +257,11 @@ One cohesive desktop window holds everything you need for daily software enginee
 | **Workspaces** | `▦` | Save and restore exact layouts, folder trees, and terminal tabs under friendly project names. |
 | **Remote** | `⇄` | First-class SSH manager leveraging your native `~/.ssh/config` and system key agent. Never stores raw passwords. |
 | **History** | `↺` | Subsequence fuzzy matching (`dkrps` finds `docker ps`) ranked by recency and logarithmic frequency. One-click forget. |
-| **Assistant** | `✦` | Streaming AI assistant (Anthropic / OpenAI). Tools run in a controlled loop with explicit user approval cards for destructive operations. |
+| **Assistant** | `✦` | Streaming assistant on Anthropic, OpenAI, or a local Ollama model. Read-only tools run freely; every command it proposes waits for your approval, and destructive ones need typed confirmation. |
 | **Dashboard** | `⌂` | Local-first personal workspace with Markdown notes, task boards, calendars, and reminders stored on disk. |
-| **Developer** | `⌥` | 11 instant offline tools: JSON formatter, YAML viewer, Diff, Hash, JWT inspector, Regex tester with worker timeout, HTTP tester, System Monitor, and DNS. |
-| **Apps** | `⊞` | GitHub pull requests, Gmail (read-only PKCE), native child browser webview (WebKitGTK/WebView2), Weather, News, and Map. |
-| **Games** | `◈` | Keyboard-first arcade: Dino Run, Snake, Tic-Tac-Toe, and Flappy Bird, with local records and play statistics. |
+| **Developer** | `⌥` | 12 tools: JSON, YAML, Diff, Hash, JWT (decodes, never verifies), Regex (in a killable worker), HTTP, System Monitor, Processes, Ports, Environment and DNS. HTTP and DNS go through Rust; the rest run locally. |
+| **Apps** | `⊞` | GitHub (device-code sign-in), Gmail (read-only, PKCE), a native browser webview (WebKitGTK / WKWebView / WebView2), Weather, News, Map, Calculator and Timer. |
+| **Games** | `◈` | Keyboard-first arcade: Dino Run, Snake, Tic-Tac-Toe, Flappy Bird and 2048, with local records and play statistics. |
 
 → **[Detailed architectural rationale for each section](docs/FEATURES.md)**
 
@@ -222,15 +269,18 @@ One cohesive desktop window holds everything you need for daily software enginee
 
 ## ⌨️ Keyboard Shortcuts
 
-Every shortcut is fully rebindable in **Settings → Keyboard** by simply pressing the keys you want.
+All sixteen actions are rebindable in **Settings → Keyboard** by pressing the keys you want. Every binding needs a modifier, and <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>D</kbd> can never be taken from the shell.
 
 | Shortcut | Action | Shortcut | Action |
 |---|---|---|---|
-| <kbd>Ctrl</kbd>+<kbd>K</kbd> | Open Command Palette | <kbd>Ctrl</kbd>+<kbd>B</kbd> | Toggle Sidebar Navigation Rail |
-| <kbd>Ctrl</kbd>+<kbd>T</kbd> | New Terminal Tab | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | Split Terminal Pane Right |
-| <kbd>Ctrl</kbd>+<kbd>W</kbd> | Close Current Tab | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> | Split Terminal Pane Down |
-| <kbd>Ctrl</kbd>+<kbd>F</kbd> | Find in Buffer | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd> | Close Current Pane |
-| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←↑↓→</kbd> | Geometric Pane Navigation | <kbd>Ctrl</kbd>+<kbd>Drag</kbd> | Swap Pane Positions Seamlessly |
+| <kbd>Ctrl</kbd>+<kbd>K</kbd> | Command palette | <kbd>Ctrl</kbd>+<kbd>B</kbd> | Show or hide the sidebar |
+| <kbd>Ctrl</kbd>+<kbd>T</kbd> | New terminal tab | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>B</kbd> | Focus mode |
+| <kbd>Ctrl</kbd>+<kbd>W</kbd> | Close tab | <kbd>Ctrl</kbd>+<kbd>Tab</kbd> | Next tab |
+| <kbd>Ctrl</kbd>+<kbd>1</kbd>…<kbd>9</kbd> | Jump to a tab | <kbd>Ctrl</kbd>+<kbd>F</kbd> | Find in terminal |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>T</kbd> | Split right | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copy |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>D</kbd> | Split down | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>V</kbd> | Paste |
+| <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>W</kbd> | Close pane | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>←↑↓→</kbd> | Move between panes |
+| <kbd>Ctrl</kbd>+drag a pane | Swap two panes | Double-click a divider | Even the split |
 
 > *Note: <kbd>Ctrl</kbd> translates to <kbd>Cmd (⌘)</kbd> on macOS. The terminal preserves <kbd>Ctrl</kbd>+<kbd>C</kbd> and <kbd>Ctrl</kbd>+<kbd>D</kbd> unconditionally to guarantee shell control.*
 
@@ -238,15 +288,19 @@ Every shortcut is fully rebindable in **Settings → Keyboard** by simply pressi
 
 ## 📦 Installation
 
-### Pre-Compiled Releases
+### Packaged Releases
 
-Download signed, ready-to-run packages directly from [Releases](https://github.com/kartikeyajay2006/jky-terminal/releases):
+> [!IMPORTANT]
+> **No public release has been published yet.** Today, build from source (below) — it takes a few
+> minutes the first time. The tag-driven release workflow already produces draft installers for every
+> platform; they are **unsigned** until signing certificates are configured, so macOS and Windows will
+> warn on first launch. See [Operations and releases](docs/operations-and-releases.md).
 
-| Operating System | Package Formats | Architecture |
+| Operating System | What the release workflow builds | Architecture |
 |---|---|---|
-| **Linux** | `.deb` · `.rpm` · `.AppImage` | x86_64 / arm64 |
-| **macOS** | `.dmg` (Universal / Apple Silicon &amp; Intel) | Apple Silicon (M1–M4) / Intel |
-| **Windows** | `.msi` (Installer) · `.exe` (Standalone) | x86_64 |
+| **Linux** | `.deb` · `.rpm` · `.AppImage` | x86_64 |
+| **macOS** | `.dmg` and `.app.tar.gz`, built separately for each chip | Apple Silicon · Intel |
+| **Windows** | `.msi` · NSIS `.exe` (per-user, no admin needed) | x86_64 |
 
 ### Building From Source
 
@@ -291,14 +345,14 @@ cargo build --release -p jky-terminal --features tauri/custom-protocol
 
 ## 🧪 Verified Engineering & CI
 
-Every commit runs rigorous validation on **Linux, macOS, and Windows** with `fail-fast: false`:
+Every push runs validation on **Linux, macOS, and Windows** with `fail-fast: false`:
 
 ```
 ┌─────────────────────────┬────────────────────────────────────────────────────────┐
 │ Verification Suite      │ Scope & Assertions                                     │
 ├─────────────────────────┼────────────────────────────────────────────────────────┤
-│ Frontend Test Suite     │ Typecheck, ESLint, 2,229 Vitest tests                  │
-│ Native Rust Engine      │ cargo test --workspace (1,089 tests)                   │
+│ Frontend Test Suite     │ Typecheck, ESLint, 2,267 Vitest tests                  │
+│ Native Rust Engine      │ cargo test --workspace (1,097 tests)                   │
 │ Linter & Style Guard    │ cargo clippy --workspace --all-targets -- -D warnings  │
 │ Security Assertions     │ Pinned IPC commands, CSP compliance, Keychain checks   │
 │ Bundle Footprint Budget │ scan:bundle enforces max size limit on entry chunks    │
