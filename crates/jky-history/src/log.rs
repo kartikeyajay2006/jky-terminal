@@ -1,7 +1,6 @@
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::entry::{Entry, Hit};
 use crate::search::{search, Query};
@@ -50,7 +49,6 @@ pub struct History {
     mutation: Arc<Mutex<()>>,
 }
 
-static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 impl History {
     pub fn new(path: impl AsRef<Path>) -> Self {
@@ -120,7 +118,7 @@ impl History {
         }
         // Through a neighbouring file, so an interrupted rewrite leaves the
         // old history intact rather than half of it.
-        atomic_write(&self.path, out.as_bytes()).map_err(|e| HistoryError::Write(e.to_string()))
+        jky_persist::atomic_write(&self.path, out.as_bytes()).map_err(|e| HistoryError::Write(e.to_string()))
     }
 
     pub fn search(&self, query: &Query, now: i64) -> Result<Vec<Hit>, HistoryError> {
@@ -154,22 +152,6 @@ impl History {
     }
 }
 
-fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let parent = path.parent().ok_or_else(|| std::io::Error::other("history path has no parent"))?;
-    for _ in 0..32 {
-        let temp = parent.join(format!(".history-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
-        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
-            Ok(file) => file,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        };
-        let result = file.write_all(bytes).and_then(|_| file.sync_all());
-        drop(file);
-        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
-        return std::fs::rename(temp, path);
-    }
-    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary history file"))
-}
 
 #[cfg(test)]
 mod tests {

@@ -102,6 +102,7 @@ jky-terminal/
 | 🟢 **jky-complete** | What could come next on a command line — without running anything. |
 | 🟢 **jky-live** | Re-running one of three known commands so a panel can stay current. |
 | 🟢 **jky-keys** | What every key is bound to; the modifier and `Ctrl+C`/`Ctrl+D` rules. |
+| 🔵 **jky-persist** | Atomic, flushed writes and schema-numbered JSON documents with migrations — shared by every store. |
 | 🔵 **jky-files** | Reading and writing inside one directory and nowhere else. |
 | 🔵 **jky-workspace** | Saved workspaces. |
 | 🔵 **jky-settings** | Non-secret preferences. |
@@ -117,6 +118,22 @@ jky-terminal/
 | 🟠 **jky-capture** | What happens to a picture once the window has taken one. |
 
 🟢 terminal core · 🔵 data · 🟣 trust · 🟠 integrations
+
+---
+
+## Data on disk
+
+Every file JKY keeps falls into one of two kinds, and each kind has one rule for change.
+
+| Kind | Files | How it changes safely |
+|---|---|---|
+| **Documents** — read whole, written whole | `settings.json`, `keymap.json`, `workspaces.json`, `hosts.json`, `notes.json`, `todos.json`, `events.json`, `reminders.json` | Each carries a top-level `"schema"` number. `jky-persist` walks an older file forward one migration at a time when it is read, and **refuses** a file from a newer build — for reading and therefore for writing — because an older build would drop the fields it does not know on its next save. Unnumbered files from before schemas are schema 0. |
+| **Logs** — appended line by line | `history.jsonl`, `audit.jsonl` | New fields are always optional, so every old line still parses. A log is never rewritten to change its shape. |
+
+Every whole-file write goes through one function, `jky_persist::atomic_write`: a uniquely named
+temporary file, `sync_all`, a rename over the original, and on Unix a flush of the directory. A crash
+or power cut leaves the previous contents, never a mixture — and two overlapping writers each get
+their own temporary file.
 
 ---
 

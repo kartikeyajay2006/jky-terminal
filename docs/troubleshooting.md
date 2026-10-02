@@ -148,6 +148,16 @@ See [Shells & the jky command](shell-integration.md#is-it-working).
 </details>
 
 <details>
+<summary><b>"… was written by a newer JKY Terminal"</b></summary>
+
+**Cause:** you ran an older build against files a newer build wrote. Each settings file carries a
+schema number, and an older build refuses a newer file rather than overwriting it — overwriting would
+silently drop whatever it does not understand.
+**Fix:** run the newer build again. The file has been left exactly as it was.
+
+</details>
+
+<details>
 <summary><b>The wrong shell starts</b></summary>
 
 **Cause:** JKY starts `$SHELL` on macOS and Linux (or `/bin/sh` if unset), and Windows PowerShell on

@@ -144,6 +144,7 @@ Only **your changes** are written, so an improved default in a later release sti
 
 ```json
 {
+  "schema": 1,
   "bindings": {
     "pane-split-down": "Ctrl+Alt+D",
     "palette-toggle": "Ctrl+P"
@@ -157,7 +158,8 @@ Only **your changes** are written, so an improved default in a later release sti
 | Chord spelling | `Ctrl`, `Alt`, `Shift` plus a key, joined by `+`. `Cmd`, `Command`, `Meta`, `Super` and `Mod` all mean `Ctrl`; `Option`/`Opt` mean `Alt`. Case does not matter: `ctrl+arrowleft` is `Ctrl+ArrowLeft`. |
 | The plus key | `Ctrl++` is <kbd>Ctrl</kbd> and the plus key. |
 | Validation | A bad chord is refused when the file is read, not when you press it later. |
-| Writes | Atomic — written to a temporary file and moved into place — so a crash cannot leave half a keymap. |
+| Writes | Atomic and flushed — written to a temporary file, synced to disk and moved into place — so a crash cannot leave half a keymap. |
+| `schema` | The file's format version. A keymap written by a **newer** JKY is refused rather than overwritten, so an older build can never silently drop what it does not understand. |
 
 The file lives in the app's config folder — see [where your data lives](getting-started.md#6-where-your-data-lives).
 

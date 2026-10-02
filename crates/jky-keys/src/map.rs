@@ -1,13 +1,10 @@
 use std::collections::BTreeMap;
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
 use crate::chord::{Chord, ChordError};
 
-static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 #[derive(Debug, thiserror::Error)]
 pub enum KeymapError {
@@ -23,7 +20,26 @@ pub enum KeymapError {
     Write(String),
     #[error("the keymap file is not valid JSON: {0}")]
     Parse(String),
+    /// Written by a newer build, or impossible to upgrade. The message says which.
+    #[error("{0}")]
+    Document(String),
 }
+
+impl From<jky_persist::PersistError> for KeymapError {
+    fn from(e: jky_persist::PersistError) -> Self {
+        use jky_persist::PersistError as P;
+        match e {
+            P::Read { .. } => KeymapError::Read(e.to_string()),
+            P::Write { .. } => KeymapError::Write(e.to_string()),
+            P::Parse { .. } => KeymapError::Parse(e.to_string()),
+            P::Newer { .. } | P::Migrate { .. } => KeymapError::Document(e.to_string()),
+        }
+    }
+}
+
+/// `keymap.json` over time. Schema 1 numbered the existing shape.
+pub const SCHEMA: jky_persist::Schema = jky_persist::Schema { current: 1, migrations: &[Ok] };
+
 
 /// One thing the app can be asked to do from the keyboard.
 ///
@@ -209,20 +225,17 @@ impl Keymap {
 
     /// Read the overrides, treating a missing file as "no changes".
     pub fn load(&self) -> Result<KeymapFile, KeymapError> {
-        match std::fs::read_to_string(&self.path) {
-            Ok(raw) => serde_json::from_str(&raw).map_err(|e| KeymapError::Parse(e.to_string())),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(KeymapFile::default()),
-            Err(e) => Err(KeymapError::Read(e.to_string())),
+        match jky_persist::read_document(&self.path, &SCHEMA)? {
+            // A chord that does not parse fails here, when the file is read,
+            // rather than when somebody presses it.
+            Some(value) => serde_json::from_value(value).map_err(|e| KeymapError::Parse(e.to_string())),
+            None => Ok(KeymapFile::default()),
         }
     }
 
+    /// Atomic and flushed, through `jky-persist`.
     fn save(&self, file: &KeymapFile) -> Result<(), KeymapError> {
-        if let Some(dir) = self.path.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| KeymapError::Write(e.to_string()))?;
-        }
-        let text =
-            serde_json::to_string_pretty(file).map_err(|e| KeymapError::Write(e.to_string()))?;
-        atomic_write(&self.path, text.as_bytes()).map_err(|e| KeymapError::Write(e.to_string()))
+        Ok(jky_persist::write_document(&self.path, &SCHEMA, file)?)
     }
 
     /// The whole table: every action, with whatever is bound to it now.
@@ -284,22 +297,6 @@ impl Keymap {
     }
 }
 
-fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let parent = path.parent().ok_or_else(|| std::io::Error::other("keymap path has no parent"))?;
-    for _ in 0..32 {
-        let temp = parent.join(format!(".keymap-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
-        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
-            Ok(file) => file,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        };
-        let result = file.write_all(bytes).and_then(|_| file.sync_all());
-        drop(file);
-        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
-        return std::fs::rename(temp, path);
-    }
-    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary keymap file"))
-}
 
 /// Lay the overrides over the defaults.
 fn resolve(file: &KeymapFile) -> Vec<Binding> {
@@ -352,6 +349,24 @@ mod tests {
 
     fn chord_for(bindings: &[Binding], action: Action) -> String {
         bindings.iter().find(|b| b.action == action.id()).unwrap().chord.clone()
+    }
+
+    #[test]
+    fn a_keymap_is_written_with_a_schema_number() {
+        let map = fresh();
+        map.bind("tab-new", "Ctrl+Alt+N").unwrap();
+        let raw: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&map.path).unwrap()).unwrap();
+        assert_eq!(raw["schema"], SCHEMA.current);
+        assert_eq!(raw["bindings"]["tab-new"], "Ctrl+Alt+N");
+    }
+
+    #[test]
+    fn a_keymap_from_a_newer_build_is_never_overwritten() {
+        let map = fresh();
+        let newer = r#"{"schema": 999, "bindings": {}}"#;
+        std::fs::write(&map.path, newer).unwrap();
+        assert!(map.bind("tab-new", "Ctrl+Alt+N").is_err());
+        assert_eq!(std::fs::read_to_string(&map.path).unwrap(), newer);
     }
 
     #[test]

@@ -11,9 +11,7 @@
 //! capability — otherwise a file somebody edited would be a way to read any
 //! directory on the machine.
 
-use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::{Deserialize, Serialize};
 
@@ -31,12 +29,30 @@ pub enum WorkspaceError {
     Write(String),
     #[error("the workspaces file is not valid JSON: {0}")]
     Parse(String),
+    /// Written by a newer build, or impossible to upgrade. The message says which.
+    #[error("{0}")]
+    Document(String),
 }
+
+impl From<jky_persist::PersistError> for WorkspaceError {
+    fn from(e: jky_persist::PersistError) -> Self {
+        use jky_persist::PersistError as P;
+        match e {
+            P::Read { .. } => WorkspaceError::Read(e.to_string()),
+            P::Write { .. } => WorkspaceError::Write(e.to_string()),
+            P::Parse { .. } => WorkspaceError::Parse(e.to_string()),
+            P::Newer { .. } | P::Migrate { .. } => WorkspaceError::Document(e.to_string()),
+        }
+    }
+}
+
+/// `workspaces.json` over time. Schema 1 numbered the existing shape.
+pub const SCHEMA: jky_persist::Schema = jky_persist::Schema { current: 1, migrations: &[Ok] };
+
 
 /// The longest a name may be. Long enough to be descriptive, short enough to
 /// fit a list without being cut off — a name that is cut off is not a name.
 pub const MAX_NAME: usize = 60;
-static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
 /// One saved setup.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -94,14 +110,10 @@ impl WorkspaceStore {
 
     /// Everything saved, most recently used first.
     pub fn load(&self) -> Result<Saved, WorkspaceError> {
-        let raw = match std::fs::read_to_string(&self.path) {
-            Ok(raw) => raw,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Saved::default()),
-            Err(e) => return Err(WorkspaceError::Read(e.to_string())),
+        let mut saved: Saved = match jky_persist::read_document(&self.path, &SCHEMA)? {
+            Some(value) => serde_json::from_value(value).map_err(|e| WorkspaceError::Parse(e.to_string()))?,
+            None => return Ok(Saved::default()),
         };
-
-        let mut saved: Saved =
-            serde_json::from_str(&raw).map_err(|e| WorkspaceError::Parse(e.to_string()))?;
         saved.workspaces.sort_by(|a, b| b.last_used.cmp(&a.last_used).then(a.name.cmp(&b.name)));
         // An active id naming a workspace that has gone is not active.
         if let Some(active) = &saved.active {
@@ -112,13 +124,9 @@ impl WorkspaceStore {
         Ok(saved)
     }
 
+    /// Atomic and flushed, through `jky-persist`.
     fn write(&self, saved: &Saved) -> Result<(), WorkspaceError> {
-        if let Some(dir) = self.path.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| WorkspaceError::Write(e.to_string()))?;
-        }
-        let text = serde_json::to_string_pretty(saved)
-            .map_err(|e| WorkspaceError::Write(e.to_string()))?;
-        atomic_write(&self.path, text.as_bytes()).map_err(|e| WorkspaceError::Write(e.to_string()))
+        Ok(jky_persist::write_document(&self.path, &SCHEMA, saved)?)
     }
 
     /// Add or replace one.
@@ -200,22 +208,6 @@ impl WorkspaceStore {
     }
 }
 
-fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let parent = path.parent().ok_or_else(|| std::io::Error::other("workspace path has no parent"))?;
-    for _ in 0..32 {
-        let temp = parent.join(format!(".workspaces-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
-        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
-            Ok(file) => file,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        };
-        let result = file.write_all(bytes).and_then(|_| file.sync_all());
-        drop(file);
-        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
-        return std::fs::rename(temp, path);
-    }
-    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary workspace file"))
-}
 
 /// Keep the first of each, drop blanks. Order is the person's, so it is kept.
 fn dedupe(values: &[String]) -> Vec<String> {
@@ -251,6 +243,26 @@ mod tests {
             note: String::new(),
             last_used: 0,
         }
+    }
+
+    #[test]
+    fn workspaces_are_written_with_a_schema_number() {
+        let (d, s) = store();
+        s.save(workspace("w1", "api")).unwrap();
+        let raw: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(d.path().join("workspaces.json")).unwrap()).unwrap();
+        assert_eq!(raw["schema"], SCHEMA.current);
+        assert_eq!(raw["workspaces"][0]["name"], "api");
+    }
+
+    #[test]
+    fn workspaces_from_a_newer_build_are_never_overwritten() {
+        let (d, s) = store();
+        let path = d.path().join("workspaces.json");
+        let newer = r#"{"schema": 999, "workspaces": []}"#;
+        std::fs::write(&path, newer).unwrap();
+        assert!(s.save(workspace("w1", "api")).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), newer);
     }
 
     #[test]

@@ -1,13 +1,11 @@
-//! A JSON array on disk, treated as a collection of records.
+//! A JSON document on disk, treated as a collection of records.
 //!
 //! Notes, todos, events and reminders all need the same six operations, so
 //! they share one implementation that is tested once. Four hand-written
 //! copies would be four places for the atomic-write logic to drift.
 
-use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicU64, Ordering};
 
 use serde::de::DeserializeOwned;
 use serde::Serialize;
@@ -38,7 +36,21 @@ pub struct Collection<T> {
     _marker: std::marker::PhantomData<T>,
 }
 
-static WRITE_COUNTER: AtomicU64 = AtomicU64::new(0);
+/// Every collection file over time. Schema 0 was a bare list; schema 1 wraps
+/// it as `{ "items": [...] }` so the file has somewhere to keep its number.
+pub const SCHEMA: jky_persist::Schema =
+    jky_persist::Schema { current: 1, migrations: &[|v| jky_persist::wrap_array("items", v)] };
+
+#[derive(serde::Deserialize)]
+#[serde(bound = "T: DeserializeOwned")]
+struct ReadFile<T> {
+    items: Vec<T>,
+}
+
+#[derive(serde::Serialize)]
+struct WriteFile<'a, T: Serialize> {
+    items: &'a [T],
+}
 
 impl<T> Collection<T>
 where
@@ -60,16 +72,20 @@ where
     ///
     /// A missing file is an empty collection: a first run is not a failure.
     pub fn list(&self) -> Result<Vec<T>, StoreError> {
-        let raw = match std::fs::read_to_string(&self.path) {
-            Ok(raw) => raw,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-            Err(source) => {
+        let corrupt = |message: String| StoreError::Corrupt { path: self.display(), message };
+        let value = match jky_persist::read_document(&self.path, &SCHEMA) {
+            Ok(Some(value)) => value,
+            Ok(None) => return Ok(Vec::new()),
+            Err(jky_persist::PersistError::Read { source, .. }) => {
                 return Err(StoreError::Read { path: self.display(), source });
             }
+            // Unparseable, from a newer build, or not a list: all of them are
+            // reasons to stop rather than to treat the file as empty.
+            Err(other) => return Err(corrupt(other.to_string())),
         };
-
-        serde_json::from_str(&raw)
-            .map_err(|e| StoreError::Corrupt { path: self.display(), message: e.to_string() })
+        serde_json::from_value::<ReadFile<T>>(value)
+            .map(|file| file.items)
+            .map_err(|e| corrupt(e.to_string()))
     }
 
     /// Insert a record, or replace the one that already has its id.
@@ -103,23 +119,13 @@ where
 
     /// Write the whole collection.
     ///
-    /// Through a temporary file in the same directory, renamed into place, so
-    /// a crash or a power cut leaves the previous contents rather than a
-    /// half-written file. Same directory because rename is only atomic within
-    /// a filesystem.
+    /// Atomic and flushed, through `jky-persist`: a crash or a power cut
+    /// leaves the previous contents rather than a half-written file.
     fn write(&self, all: &[T]) -> Result<(), StoreError> {
-        if let Some(dir) = self.path.parent() {
-            std::fs::create_dir_all(dir)
-                .map_err(|source| StoreError::Write { path: self.display(), source })?;
-        }
-
-        let json = serde_json::to_string_pretty(all).map_err(|e| StoreError::Write {
-            path: self.display(),
-            source: std::io::Error::new(std::io::ErrorKind::InvalidData, e),
-        })?;
-
-        atomic_write(&self.path, json.as_bytes())
-            .map_err(|source| StoreError::Write { path: self.display(), source })
+        jky_persist::write_document(&self.path, &SCHEMA, &WriteFile { items: all }).map_err(|e| match e {
+            jky_persist::PersistError::Write { source, .. } => StoreError::Write { path: self.display(), source },
+            other => StoreError::Write { path: self.display(), source: std::io::Error::other(other.to_string()) },
+        })
     }
 
     fn display(&self) -> String {
@@ -127,22 +133,6 @@ where
     }
 }
 
-fn atomic_write(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let parent = path.parent().ok_or_else(|| std::io::Error::other("collection path has no parent"))?;
-    for _ in 0..32 {
-        let temp = parent.join(format!(".collection-{}-{}.tmp", std::process::id(), WRITE_COUNTER.fetch_add(1, Ordering::Relaxed)));
-        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
-            Ok(file) => file,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        };
-        let result = file.write_all(bytes).and_then(|_| file.sync_all());
-        drop(file);
-        if let Err(error) = result { let _ = std::fs::remove_file(&temp); return Err(error); }
-        return std::fs::rename(temp, path);
-    }
-    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve temporary collection file"))
-}
 
 #[cfg(test)]
 mod tests {
@@ -254,6 +244,34 @@ mod tests {
         let c: Collection<Note> = Collection::new(&path);
         assert!(matches!(c.list(), Err(StoreError::Corrupt { .. })));
         assert_eq!(std::fs::read_to_string(&path).unwrap(), "{ this is not an array");
+    }
+
+    #[test]
+    fn a_collection_is_written_with_a_schema_number() {
+        let (_d, c) = temp();
+        c.save(note("n1", "one")).unwrap();
+        let raw: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(c.path()).unwrap()).unwrap();
+        assert_eq!(raw["schema"], SCHEMA.current);
+        assert_eq!(raw["items"][0]["id"], "n1");
+    }
+
+    #[test]
+    fn a_collection_from_a_newer_build_is_never_overwritten() {
+        let (_d, c) = temp();
+        let newer = r#"{"schema": 999, "items": []}"#;
+        std::fs::write(c.path(), newer).unwrap();
+        assert!(c.save(note("n1", "one")).is_err());
+        assert_eq!(std::fs::read_to_string(c.path()).unwrap(), newer);
+    }
+
+    #[test]
+    fn an_unnumbered_object_is_reported_rather_than_read_as_empty() {
+        // Schema 0 was always a list. Reading anything else as empty would
+        // overwrite it on the next save.
+        let (_d, c) = temp();
+        std::fs::write(c.path(), r#"{"notes": "somebody's hand edit"}"#).unwrap();
+        assert!(matches!(c.list(), Err(StoreError::Corrupt { .. })));
+        assert!(c.save(note("n1", "one")).is_err());
     }
 
     #[test]

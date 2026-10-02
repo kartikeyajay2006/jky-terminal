@@ -17,7 +17,30 @@ pub enum SettingsError {
     Write(String),
     #[error("settings file is not valid JSON: {0}")]
     Parse(String),
+    /// Written by a newer build, or impossible to upgrade. The message says which.
+    #[error("{0}")]
+    Document(String),
 }
+
+impl From<jky_persist::PersistError> for SettingsError {
+    fn from(e: jky_persist::PersistError) -> Self {
+        use jky_persist::PersistError as P;
+        match e {
+            P::Read { .. } => SettingsError::Read(e.to_string()),
+            P::Write { .. } => SettingsError::Write(e.to_string()),
+            P::Parse { .. } => SettingsError::Parse(e.to_string()),
+            P::Newer { .. } | P::Migrate { .. } => SettingsError::Document(e.to_string()),
+        }
+    }
+}
+
+/// `settings.json` over time.
+///
+/// Schema 1 is the first numbered one; its migration from the unnumbered
+/// file is the identity, because the shape did not change — the number is
+/// what is new. The `workspace_dir` → `editor_folders` fold predates it and
+/// stays in `load`, where it has always been.
+pub const SCHEMA: jky_persist::Schema = jky_persist::Schema { current: 1, migrations: &[Ok] };
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Settings {
@@ -89,27 +112,18 @@ impl SettingsStore {
     /// Reads settings, treating a missing file as empty defaults. A first run
     /// is not an error.
     pub fn load(&self) -> Result<Settings, SettingsError> {
-        match std::fs::read_to_string(&self.path) {
-            Ok(raw) => serde_json::from_str(&raw).map_err(|e| SettingsError::Parse(e.to_string())),
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Settings::default()),
-            Err(e) => Err(SettingsError::Read(e.to_string())),
+        match jky_persist::read_document(&self.path, &SCHEMA)? {
+            Some(value) => serde_json::from_value(value).map_err(|e| SettingsError::Parse(e.to_string())),
+            None => Ok(Settings::default()),
         }
     }
 
     /// Writes settings, creating the parent directory if needed.
     ///
-    /// Writes to a temporary file and renames it into place, so an interrupted
-    /// write cannot leave a truncated file that fails to parse on next launch.
+    /// Atomic and flushed (see `jky-persist`), so an interrupted write cannot
+    /// leave a truncated file that fails to parse on next launch.
     pub fn save(&self, settings: &Settings) -> Result<(), SettingsError> {
-        if let Some(parent) = self.path.parent() {
-            std::fs::create_dir_all(parent).map_err(|e| SettingsError::Write(e.to_string()))?;
-        }
-        let body = serde_json::to_string_pretty(settings)
-            .map_err(|e| SettingsError::Write(e.to_string()))?;
-
-        let tmp = self.path.with_extension("json.tmp");
-        std::fs::write(&tmp, body).map_err(|e| SettingsError::Write(e.to_string()))?;
-        std::fs::rename(&tmp, &self.path).map_err(|e| SettingsError::Write(e.to_string()))
+        Ok(jky_persist::write_document(&self.path, &SCHEMA, settings)?)
     }
 
     pub fn set_selected_model(&self, provider: &str, model: &str) -> Result<(), SettingsError> {
@@ -575,6 +589,29 @@ mod editor_folder_tests {
         s.open_editor_folder("~/new").unwrap();
         assert_eq!(s.editor_folders().unwrap(), ["~/legacy", "~/new"]);
         assert_eq!(s.load().unwrap().workspace_dir, None);
+    }
+
+    #[test]
+    fn settings_are_written_with_a_schema_number() {
+        let (d, s) = store();
+        s.set_active_provider("anthropic").unwrap();
+        let raw: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(d.path().join("settings.json")).unwrap()).unwrap();
+        assert_eq!(raw["schema"], SCHEMA.current);
+    }
+
+    #[test]
+    fn settings_from_a_newer_build_are_refused_and_never_overwritten() {
+        // An older build that read this would drop the fields it does not
+        // know on its next save. Refusing is the only safe answer.
+        let (d, s) = store();
+        let path = d.path().join("settings.json");
+        let newer = r#"{"schema": 999, "active_provider": "anthropic", "from_the_future": 1}"#;
+        std::fs::write(&path, newer).unwrap();
+
+        let err = s.set_active_provider("openai").unwrap_err();
+        assert!(err.to_string().contains("newer JKY Terminal"), "{err}");
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), newer);
     }
 
     #[test]

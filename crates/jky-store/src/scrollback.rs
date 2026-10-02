@@ -81,12 +81,11 @@ pub fn save(config_dir: &Path, key: &str, text: &str) -> Result<(), ScrollbackEr
 
     let kept = tail(text, MAX_BYTES);
 
-    // Written through a temporary and renamed, matching every other write in
-    // this crate: an interrupted save leaves the previous scrollback intact
-    // rather than a half-written one that would replay as noise.
-    let tmp = path.with_extension("tmp");
-    std::fs::write(&tmp, kept.as_bytes())?;
-    std::fs::rename(&tmp, &path)?;
+    // Atomic and flushed, through `jky-persist`: an interrupted save leaves
+    // the previous scrollback intact rather than a half-written one that
+    // would replay as noise, and two overlapping saves of one pane — the
+    // timer and the close — each get their own temporary file.
+    jky_persist::atomic_write(&path, kept.as_bytes())?;
     Ok(())
 }
 
@@ -171,6 +170,23 @@ mod tests {
 
     fn dir() -> tempfile::TempDir {
         tempfile::tempdir().unwrap()
+    }
+
+    #[test]
+    fn concurrent_saves_of_one_terminal_all_succeed_and_never_mix() {
+        // A pane's scrollback is saved on a timer and again on close; the two
+        // can overlap. A fixed temporary name made them trample each other.
+        let dir = tempfile::tempdir().unwrap();
+        let a = "a".repeat(64 * 1024);
+        let b = "b".repeat(64 * 1024);
+        std::thread::scope(|scope| {
+            for _ in 0..16 {
+                scope.spawn(|| save(dir.path(), "tab-1", &a).unwrap());
+                scope.spawn(|| save(dir.path(), "tab-1", &b).unwrap());
+            }
+        });
+        let got = load(dir.path(), "tab-1").unwrap();
+        assert!(got == a || got == b, "a torn scrollback reached the disk");
     }
 
     #[test]

@@ -15,6 +15,31 @@ pub enum StoreError {
     NoSuchHost,
     #[error("{0}")]
     Host(#[from] HostError),
+    /// Written by a newer build, or impossible to upgrade. The message says which.
+    #[error("{0}")]
+    Document(String),
+}
+
+impl From<jky_persist::PersistError> for StoreError {
+    fn from(e: jky_persist::PersistError) -> Self {
+        use jky_persist::PersistError as P;
+        match e {
+            P::Read { .. } => StoreError::Read(e.to_string()),
+            P::Write { .. } => StoreError::Write(e.to_string()),
+            P::Parse { .. } => StoreError::Parse(e.to_string()),
+            P::Newer { .. } | P::Migrate { .. } => StoreError::Document(e.to_string()),
+        }
+    }
+}
+
+/// `hosts.json` over time. Schema 0 was a bare list, which has nowhere to
+/// keep a number; schema 1 wraps it as `{ "hosts": [...] }`.
+pub const SCHEMA: jky_persist::Schema =
+    jky_persist::Schema { current: 1, migrations: &[|v| jky_persist::wrap_array("hosts", v)] };
+
+#[derive(serde::Serialize, serde::Deserialize)]
+struct HostsFile {
+    hosts: Vec<Host>,
 }
 
 /// The machines you have saved.
@@ -35,25 +60,20 @@ impl HostStore {
 
     /// Every saved host, most recently used first.
     pub fn list(&self) -> Result<Vec<Host>, StoreError> {
-        let raw = match std::fs::read_to_string(&self.path) {
-            Ok(raw) => raw,
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
-            Err(e) => return Err(StoreError::Read(e.to_string())),
+        let mut hosts = match jky_persist::read_document(&self.path, &SCHEMA)? {
+            Some(value) => serde_json::from_value::<HostsFile>(value)
+                .map_err(|e| StoreError::Parse(e.to_string()))?
+                .hosts,
+            None => Vec::new(),
         };
-
-        let mut hosts: Vec<Host> =
-            serde_json::from_str(&raw).map_err(|e| StoreError::Parse(e.to_string()))?;
         hosts.sort_by(|a, b| b.last_used.cmp(&a.last_used).then(a.display().cmp(b.display())));
         Ok(hosts)
     }
 
+    /// Atomic and flushed, through `jky-persist`: a crash mid-save leaves the
+    /// previous list rather than a truncated file that would lose every host.
     fn write(&self, hosts: &[Host]) -> Result<(), StoreError> {
-        if let Some(dir) = self.path.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| StoreError::Write(e.to_string()))?;
-        }
-        let text =
-            serde_json::to_string_pretty(hosts).map_err(|e| StoreError::Write(e.to_string()))?;
-        std::fs::write(&self.path, text).map_err(|e| StoreError::Write(e.to_string()))
+        Ok(jky_persist::write_document(&self.path, &SCHEMA, &HostsFile { hosts: hosts.to_vec() })?)
     }
 
     /// Add or replace one host, and answer with the whole list.
@@ -214,6 +234,43 @@ mod tests {
         named.label = "production".into();
         s.save(named).unwrap();
         assert_eq!(s.get("h1").unwrap().display(), "production");
+    }
+
+    #[test]
+    fn hosts_saved_by_an_earlier_build_as_a_bare_list_still_load() {
+        let (d, s) = store();
+        std::fs::write(
+            d.path().join("hosts.json"),
+            r#"[{"id":"h1","label":"","address":"example.com","user":"","port":null,"identity_file":null,"jump":null,"last_used":0}]"#,
+        )
+        .unwrap();
+        assert_eq!(s.get("h1").unwrap().address, "example.com");
+    }
+
+    #[test]
+    fn hosts_are_written_as_a_versioned_document_without_a_temporary_left_behind() {
+        let (d, s) = store();
+        s.save(host("h1", "example.com")).unwrap();
+        let raw: serde_json::Value =
+            serde_json::from_str(&std::fs::read_to_string(d.path().join("hosts.json")).unwrap()).unwrap();
+        assert_eq!(raw["schema"], SCHEMA.current);
+        assert_eq!(raw["hosts"][0]["address"], "example.com");
+        let leftovers: Vec<_> = std::fs::read_dir(d.path())
+            .unwrap()
+            .filter_map(|e| e.ok())
+            .filter(|e| e.file_name().to_string_lossy().ends_with(".tmp"))
+            .collect();
+        assert!(leftovers.is_empty());
+    }
+
+    #[test]
+    fn a_hosts_file_from_a_newer_build_is_never_overwritten() {
+        let (d, s) = store();
+        let path = d.path().join("hosts.json");
+        let newer = r#"{"schema": 999, "hosts": []}"#;
+        std::fs::write(&path, newer).unwrap();
+        assert!(s.save(host("h1", "example.com")).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), newer);
     }
 
     #[test]
