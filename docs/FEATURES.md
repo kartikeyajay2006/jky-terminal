@@ -166,10 +166,16 @@ closing the window from any section still knows there is something to lose.
 **It can reach the folders you opened and nothing else.** Every path the window
 sends is relative to one of them; it never names an absolute one. The boundary
 has two halves and both are checked on every call: the root must be a folder
-you actually opened, and the path must resolve inside it — checked *after*
-canonicalising, so `../` and a symlink pointing out of the tree are refused by
-the same rule rather than by a list of tricks somebody thought of. There is a
-test for each. Folders are re-resolved per call, so one that was deleted or
+you actually opened, and the path must resolve inside it. The second half is
+not a check followed by an open: the folder is held as an open directory
+handle and every path is resolved *beneath it* by the same system call that
+opens it, so `../`, a symlink pointing out of the tree, and a directory
+swapped for a link between a check and an open are all refused by one rule.
+There is a test for each, including one that swaps the link thousands of
+times a second while files are read and written through it. (The price: a
+symlink with an *absolute* target is refused even when it points inside —
+only a relative link can be followed beneath the handle without a second,
+raceable lookup.) Folders are re-resolved per call, so one that was deleted or
 unplugged stops working rather than answering for a ghost, and it is shown as
 **missing** rather than quietly dropped.
 

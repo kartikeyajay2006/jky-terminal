@@ -90,7 +90,7 @@ Switch from **Settings → Appearance**, or from any terminal with `jky theme <n
 - **113 commands, pinned.** A test lists every IPC command by name; adding one fails the build until it
   is justified.
 - **Folders you open.** The editor and the assistant's file tools reach only folders you chose, checked
-  after canonicalising on every call so `../` and symlinks out are refused.
+  beneath an open handle to the folder, so `../`, links out and mid-operation swaps are refused.
 - **A local audit log** records key reads, provider requests, the assistant's tool calls, approved and
   declined commands, account links and captures. It is append-only, and the window cannot read it.
 

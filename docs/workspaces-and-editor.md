@@ -149,8 +149,8 @@ flowchart TD
     Q([Window asks: read src/app.ts in folder #2]):::ink --> A{Is folder #2 one<br/>you actually opened?}:::amber
     A -- no --> X([Refused]):::red
     A -- yes --> B[Re-resolve the folder now —<br/>it may have been deleted or unplugged]:::cyan
-    B --> C[Join the path, then canonicalise:<br/>resolve .. and every symlink]:::violet
-    C --> D{Still inside the folder?}:::amber
+    B --> C[Open it beneath the folder's handle —<br/>one system call checks and opens]:::violet
+    C --> D{Did it stay inside,<br/>through every link?}:::amber
     D -- no --> X
     D -- yes --> E{Text, and under 2 MB?}:::amber
     E -- no --> P([Preview card instead of a broken edit]):::magenta
@@ -165,10 +165,17 @@ flowchart TD
     classDef red fill:#ff4d6a,stroke:#d91f3d,color:#ffffff
 ```
 
-The check happens **after canonicalising**, so `../` and a symlink pointing out of the tree are refused
-by the same rule rather than by a list of tricks somebody thought of. There is a test for each. A folder
-that has been deleted or unplugged stops working rather than answering for a ghost, and is shown as
+The folder is held as an **open directory handle**, and every path is opened *beneath* it by the same
+system call that decides whether it is inside. `../`, a symlink pointing out of the tree, and a directory
+swapped for a link between a check and an open are all refused by that one rule — there is no gap for
+another process to slip through, and tests try exactly that thousands of times a second. A folder that
+has been deleted or unplugged stops working rather than answering for a ghost, and is shown as
 **missing** rather than quietly dropped.
+
+> [!NOTE]
+> **Symlinks:** relative links that stay inside the folder work normally. A link with an **absolute**
+> target is refused even when it points inside — only a relative link can be followed beneath the
+> handle without a second lookup that could be raced. Git and most tools create relative links.
 
 > [!IMPORTANT]
 > This boundary covers the **editor and the assistant's file tools**. It is not a sandbox for commands

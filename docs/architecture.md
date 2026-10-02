@@ -153,7 +153,7 @@ sequenceDiagram
     C->>P: platform.files.read(root, "src/app.ts")
     P->>I: invoke("files_read", { root, path })
     I->>K: workspace(settings, root)?.read(path)
-    K->>K: canonicalise, check containment, size, UTF-8
+    K->>K: open beneath the folder handle, size, UTF-8
     K-->>I: Ok(text) or FileError
     I-->>P: Result<String, String>
     P-->>C: text — or a thrown, readable error

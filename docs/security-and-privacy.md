@@ -180,8 +180,13 @@ The editor and the assistant's file tools can reach **the folders you open and n
 1. Every path the window sends is **relative** to one of those folders — never absolute.
 2. The folder must be one you actually opened, and it is **re-resolved on every call**, so a deleted or
    unplugged one stops working instead of answering for a ghost.
-3. The path is joined and then **canonicalised** — every `..` and symlink resolved — and refused unless
-   the result is still inside the folder. One rule catches `../` and a symlink pointing out.
+3. The folder is held as an **open directory handle**, and every file is opened *beneath* it by the
+   same system call that decides containment — `openat2` with `RESOLVE_BENEATH` on Linux, an
+   equivalent step-by-step walk on macOS and Windows (via `cap-std`). There is no gap between
+   checking a path and using it, so another process cannot swap a directory for a link pointing out
+   in between; a test attempts exactly that thousands of times a second. A symlink with an absolute
+   target is refused even when it points inside, because only a relative link can be followed safely
+   beneath the handle.
 4. Reads are **text-only and size-capped** (2 MB to edit, 4 MB to preview). A binary is refused rather
    than mangled.
 5. Creating never overwrites, renaming never overwrites, and a non-empty folder is never deleted.

@@ -7,6 +7,9 @@ authors.workspace = true
 
 [dependencies]
 base64 = "0.21"
+# Every file operation is resolved beneath an open directory handle, so a
+# path cannot be checked and then swapped before it is used.
+cap-std = "3"
 serde.workspace = true
 thiserror.workspace = true
 

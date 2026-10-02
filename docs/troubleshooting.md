@@ -269,6 +269,7 @@ processes named `jky-terminal --supervise`.
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| A symlink will not open: "outside the open folder" | Its target is **absolute**. Only relative links are followed beneath the folder's handle. | Recreate it relative: `ln -sf ../shared/config.json config.json` |
 | A folder shows as **missing** | Deleted, moved or unplugged since it was opened. | Reconnect the drive, or close it from the editor. |
 | "Cannot be edited here" | Binary, not UTF-8, or over 2 MB. | Expected; images and PDFs still preview. |
 | A rename or new file was refused | It would overwrite something. | Choose another name. |

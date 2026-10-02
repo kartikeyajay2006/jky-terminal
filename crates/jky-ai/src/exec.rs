@@ -1,6 +1,9 @@
 use std::path::Path;
 
-use crate::sandbox::resolve_within;
+use std::io::Read;
+use std::path::PathBuf;
+
+use crate::sandbox::Project;
 
 /// The most tool output sent back in one result.
 ///
@@ -61,32 +64,50 @@ fn read_file(root: &Path, input: &serde_json::Value) -> ToolOutcome {
     let Some(requested) = arg(input, "path") else {
         return ToolOutcome::err("read_file needs a 'path' argument");
     };
-    let path = match resolve_within(root, requested) {
+    let project = match Project::open(root) {
         Ok(p) => p,
         Err(e) => return ToolOutcome::err(e.to_string()),
     };
-    if path.is_dir() {
+    // One handle from open to read: the file judged to be inside the project
+    // is the file that is read.
+    let file = match project.open_file(requested) {
+        Ok(f) => f,
+        Err(e) => return ToolOutcome::err(e.to_string()),
+    };
+    if file.metadata().map(|m| m.is_dir()).unwrap_or(false) {
         return ToolOutcome::err(format!("'{requested}' is a directory; use list_dir"));
     }
-    match std::fs::read(&path) {
+    // Read only what can be returned, plus room to say it was cut: a model
+    // asking for a multi-gigabyte log must not make the app read all of it.
+    let mut bytes = Vec::new();
+    if let Err(e) = file.take((MAX_TOOL_OUTPUT * 4 + 4) as u64).read_to_end(&mut bytes) {
+        return ToolOutcome::err(format!("could not read '{requested}': {e}"));
+    }
+    match String::from_utf8(bytes) {
+        Ok(text) => ToolOutcome::ok(truncate(text)),
+        // A cut that landed inside a multi-byte character is the read limit,
+        // not a binary file: keep what came before it.
+        Err(e) if e.utf8_error().error_len().is_none() => {
+            let valid = e.utf8_error().valid_up_to();
+            let mut bytes = e.into_bytes();
+            bytes.truncate(valid);
+            ToolOutcome::ok(truncate(String::from_utf8(bytes).unwrap_or_default()))
+        }
         // Reported rather than lossily converted: mojibake looks like content.
-        Ok(bytes) => match String::from_utf8(bytes) {
-            Ok(text) => ToolOutcome::ok(truncate(text)),
-            Err(_) => ToolOutcome::err(format!("'{requested}' is not UTF-8 text")),
-        },
-        Err(e) => ToolOutcome::err(format!("could not read '{requested}': {e}")),
+        Err(_) => ToolOutcome::err(format!("'{requested}' is not UTF-8 text")),
     }
 }
 
 fn list_dir(root: &Path, input: &serde_json::Value) -> ToolOutcome {
     let requested = arg(input, "path").unwrap_or(".");
-    let path = match resolve_within(root, requested) {
+    let project = match Project::open(root) {
         Ok(p) => p,
         Err(e) => return ToolOutcome::err(e.to_string()),
     };
-
-    let Ok(entries) = std::fs::read_dir(&path) else {
-        return ToolOutcome::err(format!("could not list '{requested}'"));
+    let entries = match project.read_dir(requested) {
+        Ok(entries) => entries,
+        Err(e @ crate::sandbox::SandboxError::Escape(_)) => return ToolOutcome::err(e.to_string()),
+        Err(_) => return ToolOutcome::err(format!("could not list '{requested}'")),
     };
 
     let mut names = Vec::new();
@@ -99,7 +120,8 @@ fn list_dir(root: &Path, input: &serde_json::Value) -> ToolOutcome {
         let name = entry.file_name().to_string_lossy().to_string();
             // A trailing slash so the model can tell a directory from a file
             // without a second call.
-            names.push(if entry.path().is_dir() { format!("{name}/") } else { name });
+            let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
+            names.push(if is_dir { format!("{name}/") } else { name });
     }
     names.sort();
 
@@ -143,28 +165,31 @@ fn search_codebase(root: &Path, input: &serde_json::Value) -> ToolOutcome {
     if query.len() > 2_048 {
         return ToolOutcome::err("search query is too long");
     }
-    let Ok(root) = root.canonicalize() else {
-        return ToolOutcome::err("could not resolve the project root");
+    let project = match Project::open(root) {
+        Ok(p) => p,
+        Err(_) => return ToolOutcome::err("could not resolve the project root"),
     };
+
     let mut hits = Vec::new();
     let mut budget = SearchBudget::default();
-    walk(&root, &root, 0, &mut |file| {
+    walk(&project, PathBuf::from("."), 0, &mut |rel, file| {
         if budget.files >= MAX_SEARCH_FILES || budget.bytes >= MAX_SEARCH_BYTES {
             return false;
         }
-        let Ok(meta) = std::fs::metadata(file) else { return true };
+        let Ok(meta) = file.metadata() else { return true };
         if !meta.is_file() || meta.len() > MAX_SEARCH_FILE_BYTES {
             return true;
         }
         budget.files += 1;
         budget.bytes += meta.len();
-        let Ok(text) = std::fs::read_to_string(file) else {
+        let mut text = String::new();
+        if file.take(MAX_SEARCH_FILE_BYTES).read_to_string(&mut text).is_err() {
             return true; // binary or unreadable; not an error, just not a match
-        };
+        }
+        let shown = rel.strip_prefix(".").unwrap_or(rel).to_string_lossy().replace('\\', "/");
         for (i, line) in text.lines().enumerate() {
             if line.contains(query) {
-                let rel = file.strip_prefix(&root).unwrap_or(file);
-                hits.push(format!("{}:{}: {}", rel.display(), i + 1, line.trim()));
+                hits.push(format!("{shown}:{}: {}", i + 1, line.trim()));
             }
         }
         true
@@ -185,34 +210,38 @@ fn search_codebase(root: &Path, input: &serde_json::Value) -> ToolOutcome {
 struct SearchBudget { files: usize, bytes: u64 }
 
 fn walk(
-    root: &Path,
-    dir: &Path,
+    project: &Project,
+    dir: PathBuf,
     depth: usize,
-    visit: &mut impl FnMut(&Path) -> bool,
+    visit: &mut impl FnMut(&Path, cap_std::fs::File) -> bool,
 ) -> bool {
     if depth > MAX_SEARCH_DEPTH {
         return false;
     }
-    let Ok(entries) = std::fs::read_dir(dir) else {
+    let Ok(entries) = project.dir().read_dir(&dir) else {
         return true;
     };
     for entry in entries.filter_map(Result::ok) {
-        let path = entry.path();
         let name = entry.file_name().to_string_lossy().to_string();
-        // file_type does not follow links. Never recurse through a symlink,
-        // and canonicalise actual entries before using them as defence in
-        // depth against a directory being swapped while a search is running.
+        let path = dir.join(&name);
+        // file_type does not follow links, and a link is never searched:
+        // every step of the walk stays beneath the project's handle.
         let Ok(kind) = entry.file_type() else { continue };
-        if kind.is_symlink() { continue; }
-        let Ok(real) = path.canonicalize() else { continue };
-        if !real.starts_with(root) { continue; }
+        if kind.is_symlink() {
+            continue;
+        }
         if kind.is_dir() {
             if SKIP_DIRS.contains(&name.as_str()) || name.starts_with('.') {
                 continue;
             }
-            if !walk(root, &real, depth + 1, visit) { return false; }
-        } else if kind.is_file() && !visit(&real) {
-            return false;
+            if !walk(project, path, depth + 1, visit) {
+                return false;
+            }
+        } else if kind.is_file() {
+            let Ok(file) = project.dir().open(&path) else { continue };
+            if !visit(&path, file) {
+                return false;
+            }
         }
     }
     true
@@ -234,6 +263,59 @@ mod tests {
 
     fn run(dir: &TempDir, name: &str, input: serde_json::Value) -> ToolOutcome {
         execute_read_tool(dir.path(), name, &input)
+    }
+
+    /// After a path is resolved to its canonical form, a directory in it can
+    /// still be swapped for a link pointing outside before the file is
+    /// opened by name. The model's arguments are untrusted, and so is
+    /// anything else running on the machine; every open has to be judged at
+    /// the moment it happens.
+    #[cfg(unix)]
+    #[test]
+    fn a_directory_swapped_for_a_link_mid_read_never_hands_the_model_an_outside_file() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let dir = project();
+        let outside = TempDir::new().unwrap();
+        fs::write(outside.path().join("id_rsa"), "OUTSIDE").unwrap();
+        fs::create_dir(dir.path().join("real")).unwrap();
+        fs::write(dir.path().join("real/id_rsa"), "INSIDE").unwrap();
+        std::os::unix::fs::symlink(outside.path(), dir.path().join("real.link")).unwrap();
+
+        let stop = AtomicBool::new(false);
+        let leaked = std::thread::scope(|scope| {
+            scope.spawn(|| {
+                let p = |n: &str| dir.path().join(n);
+                while !stop.load(Ordering::Relaxed) {
+                    // `real` becomes a link to the outside, then a folder again.
+                    let _ = fs::rename(p("real"), p("real.dir"));
+                    let _ = fs::rename(p("real.link"), p("real"));
+                    let _ = fs::rename(p("real"), p("real.link"));
+                    let _ = fs::rename(p("real.dir"), p("real"));
+                }
+            });
+            let started = std::time::Instant::now();
+            let mut leaked = false;
+            while started.elapsed() < std::time::Duration::from_millis(1500) {
+                let out = run(&dir, "read_file", serde_json::json!({"path": "real/id_rsa"}));
+                if !out.is_error && out.text.contains("OUTSIDE") {
+                    leaked = true;
+                    break;
+                }
+            }
+            stop.store(true, Ordering::Relaxed);
+            leaked
+        });
+        assert!(!leaked, "the assistant read a file outside the project through a swapped directory");
+    }
+
+    #[test]
+    fn an_absolute_path_inside_the_project_still_reads() {
+        // Models often answer with the full path they saw in a listing.
+        let dir = project();
+        let full = dir.path().canonicalize().unwrap().join("README.md");
+        let out = run(&dir, "read_file", serde_json::json!({"path": full.to_string_lossy()}));
+        assert!(!out.is_error, "{}", out.text);
+        assert!(out.text.contains("A terminal."));
     }
 
     #[test]

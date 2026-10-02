@@ -11,10 +11,12 @@
 //! canonicalised, so `../` and a symlink pointing out of the tree are refused
 //! by the same rule rather than by a list of tricks somebody thought of.
 
-use std::io::Write;
+use std::io::{Read, Write};
 use std::path::{Component, Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use cap_std::ambient_authority;
+use cap_std::fs::Dir;
 use serde::Serialize;
 
 #[derive(Debug, thiserror::Error)]
@@ -108,90 +110,97 @@ pub struct Entry {
 }
 
 /// A directory the editor may work inside.
+///
+/// Holds an open handle to the folder, not just its name. Every operation is
+/// resolved **beneath that handle** — `openat2(RESOLVE_BENEATH)` on Linux, an
+/// equivalent component-by-component walk elsewhere, via `cap-std` — so the
+/// question "is this inside the folder?" is answered by the same system call
+/// that opens the file. There is no gap between checking a path and using
+/// it for another process to swap a directory for a link, which is what the
+/// earlier canonicalise-then-open design left open.
 #[derive(Debug)]
 pub struct Workspace {
     root: PathBuf,
+    dir: Dir,
 }
 
 /// Directories never worth listing, and expensive to walk into by accident.
 const SKIP: &[&str] = &["node_modules", ".git", "target", "dist", ".next", ".turbo"];
 
+/// Whether an error is the sandbox refusing a path that led out of it.
+fn escaped(e: &std::io::Error) -> bool {
+    e.kind() == std::io::ErrorKind::PermissionDenied && e.to_string().contains("outside of the filesystem")
+}
+
+fn read_err(relative: &str) -> impl Fn(std::io::Error) -> FileError + '_ {
+    move |e| {
+        if escaped(&e) {
+            FileError::Outside(relative.to_string())
+        } else {
+            FileError::Read { path: relative.to_string(), reason: e.to_string() }
+        }
+    }
+}
+
+fn write_err(relative: &str) -> impl Fn(std::io::Error) -> FileError + '_ {
+    move |e| {
+        if escaped(&e) {
+            FileError::Outside(relative.to_string())
+        } else {
+            FileError::Write { path: relative.to_string(), reason: e.to_string() }
+        }
+    }
+}
+
 impl Workspace {
-    /// Open a root. The path is canonicalised once, here, so every later
-    /// comparison is between two real paths rather than two spellings.
+    /// Open a root. The path is canonicalised once, here, for display and for
+    /// callers that need to name the folder; every file operation after this
+    /// goes through the open handle instead.
     pub fn new(root: impl AsRef<Path>) -> Result<Self, FileError> {
         let root = root.as_ref();
-        let real = root.canonicalize().map_err(|e| FileError::Read {
-            path: root.display().to_string(),
-            reason: e.to_string(),
-        })?;
-        Ok(Self { root: real })
+        let fail = |e: std::io::Error| FileError::Read { path: root.display().to_string(), reason: e.to_string() };
+        let real = root.canonicalize().map_err(fail)?;
+        let dir = Dir::open_ambient_dir(&real, ambient_authority()).map_err(fail)?;
+        Ok(Self { root: real, dir })
     }
 
     pub fn root(&self) -> &Path {
         &self.root
     }
 
-    /// Turn a workspace-relative path into a real one, or refuse it.
+    /// Check a workspace-relative path by its spelling, before any disk access.
     ///
-    /// Two checks, and both are needed. The first refuses `..` and absolute
-    /// paths before touching the disk, because a path that escapes should be
-    /// refused whether or not it happens to exist. The second canonicalises
-    /// and checks containment, which is what catches a symlink pointing out
-    /// of the tree — the case no amount of string inspection can see.
+    /// `..`, a leading `/`, and a Windows drive or UNC prefix are refused
+    /// whether or not the place they name exists. The sandbox would refuse
+    /// them too; refusing them here gives the person the clearer message.
+    /// What the spelling cannot reveal — a link pointing out of the tree — is
+    /// caught by the handle at the moment of use.
     pub fn resolve(&self, relative: &str) -> Result<PathBuf, FileError> {
         let candidate = Path::new(relative);
-        let refused = || FileError::Outside(relative.to_string());
-
         for part in candidate.components() {
             match part {
                 Component::Normal(_) | Component::CurDir => {}
-                // `..`, a leading `/`, and a Windows drive or UNC prefix.
-                _ => return Err(refused()),
+                _ => return Err(FileError::Outside(relative.to_string())),
             }
         }
-
-        let joined = self.root.join(candidate);
-
-        // A path that does not exist yet has no canonical form, so the check
-        // falls to the deepest part of it that does. Walking up rather than
-        // taking the immediate parent is what lets `a/b/c.txt` be created
-        // when neither `a` nor `b` is there — and it gives nothing away,
-        // because every component was already refused above unless it was an
-        // ordinary name.
-        let mut anchor = joined.clone();
-        while !anchor.exists() {
-            anchor = anchor.parent().map(Path::to_path_buf).ok_or_else(refused)?;
-        }
-        let real = anchor.canonicalize().map_err(|_| refused())?;
-        if !real.starts_with(&self.root) {
-            return Err(refused());
-        }
-
-        Ok(joined)
+        Ok(if relative.is_empty() { PathBuf::from(".") } else { candidate.to_path_buf() })
     }
 
     /// What is in one directory. An empty path is the root.
     pub fn list(&self, relative: &str) -> Result<Vec<Entry>, FileError> {
-        let dir = if relative.is_empty() { self.root.clone() } else { self.resolve(relative)? };
-
-        let entries = std::fs::read_dir(&dir).map_err(|e| FileError::Read {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })?;
+        let at = self.resolve(relative)?;
+        let entries = self.dir.read_dir(&at).map_err(read_err(relative))?;
 
         let mut out = Vec::new();
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().to_string();
             let is_dir = entry.file_type().map(|t| t.is_dir()).unwrap_or(false);
-
             // The directories that are somebody's build output rather than
             // their work. Walking into `node_modules` by accident is a tree
             // nobody can scroll and a listing nobody wanted.
             if is_dir && SKIP.contains(&name.as_str()) {
                 continue;
             }
-
             let path = if relative.is_empty() {
                 name.clone()
             } else {
@@ -200,12 +209,23 @@ impl Workspace {
             let size = entry.metadata().map(|m| m.len()).unwrap_or(0);
             out.push(Entry { path, name, is_dir, size });
         }
-
         // Directories first, then by name: the order a tree is read in.
         out.sort_by(|a, b| {
             b.is_dir.cmp(&a.is_dir).then(a.name.to_lowercase().cmp(&b.name.to_lowercase()))
         });
         Ok(out)
+    }
+
+    /// Open a file for reading and measure it — through one handle, so the
+    /// size checked is the size of the file actually read.
+    fn open_read(&self, relative: &str) -> Result<(cap_std::fs::File, u64), FileError> {
+        let at = self.resolve(relative)?;
+        let file = self.dir.open(&at).map_err(read_err(relative))?;
+        let meta = file.metadata().map_err(read_err(relative))?;
+        if meta.is_dir() {
+            return Err(FileError::Read { path: relative.to_string(), reason: "it is a folder".into() });
+        }
+        Ok((file, meta.len()))
     }
 
     /// One file's text.
@@ -215,134 +235,121 @@ impl Workspace {
     /// rewrote the bytes it could not read would corrupt the file the moment
     /// it was saved.
     pub fn read(&self, relative: &str) -> Result<String, FileError> {
-        let path = self.resolve(relative)?;
-
-        let meta = std::fs::metadata(&path).map_err(|e| FileError::Read {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })?;
-        if meta.len() > MAX_BYTES {
+        let (file, size) = self.open_read(relative)?;
+        if size > MAX_BYTES {
             return Err(FileError::TooBig(relative.to_string()));
         }
-
-        let bytes = std::fs::read(&path).map_err(|e| FileError::Read {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })?;
-
+        let mut bytes = Vec::with_capacity(size as usize);
+        // Bounded even if the file grows between the measure and the read.
+        file.take(MAX_BYTES + 1).read_to_end(&mut bytes).map_err(read_err(relative))?;
+        if bytes.len() as u64 > MAX_BYTES {
+            return Err(FileError::TooBig(relative.to_string()));
+        }
         String::from_utf8(bytes).map_err(|_| FileError::NotText(relative.to_string()))
     }
 
     /// Write one file, in place.
     ///
-    /// Through a neighbouring file and a rename, so an interrupted save
-    /// leaves the previous version whole rather than half of the new one.
-    /// Creating a directory is deliberately not offered: this is an editor
-    /// for files that are already there.
+    /// Through a neighbouring file and a rename, both beneath the folder's
+    /// handle, so an interrupted save leaves the previous version whole and
+    /// neither step can be redirected out of the tree. Creating a directory
+    /// is deliberately not offered: this is an editor for files that are
+    /// already there.
     pub fn write(&self, relative: &str, text: &str) -> Result<(), FileError> {
-        let path = self.resolve(relative)?;
-        let fail = |e: std::io::Error| FileError::Write {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        };
+        let at = self.resolve(relative)?;
+        let name = Self::named(relative)?;
+        let parent = at.parent().filter(|p| !p.as_os_str().is_empty()).unwrap_or(Path::new("."));
+        let fail = write_err(relative);
 
-        write_atomic(&path, text.as_bytes()).map_err(fail)
-    }
-}
-
-/// Save through an exclusively-created sibling. The name is unique per save,
-/// and `create_new` refuses a pre-existing link instead of following it.
-fn write_atomic(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
-    let parent = path.parent().ok_or_else(|| std::io::Error::other("file has no parent directory"))?;
-    for _ in 0..32 {
-        let sequence = SAVE_COUNTER.fetch_add(1, Ordering::Relaxed);
-        let temp = parent.join(format!(
-            ".{}.jky-saving-{}-{}",
-            path.file_name().unwrap_or_default().to_string_lossy(),
-            std::process::id(), sequence,
-        ));
-        let mut file = match std::fs::OpenOptions::new().write(true).create_new(true).open(&temp) {
-            Ok(file) => file,
-            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
-            Err(e) => return Err(e),
-        };
-        let result = file.write_all(bytes).and_then(|_| file.sync_all());
-        drop(file);
-        if let Err(error) = result {
-            let _ = std::fs::remove_file(&temp);
-            return Err(error);
+        // A link at the final name would make the rename replace the link
+        // and leave its target alone — fine — but a link pointing out of the
+        // tree is refused outright, the same as reading through it.
+        if let Ok(meta) = self.dir.symlink_metadata(&at) {
+            if meta.file_type().is_symlink() {
+                self.dir.metadata(&at).map_err(write_err(relative))?;
+            }
         }
-        return std::fs::rename(temp, path);
-    }
-    Err(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve a temporary save file"))
-}
 
-impl Workspace {
+        for _ in 0..32 {
+            let sequence = SAVE_COUNTER.fetch_add(1, Ordering::Relaxed);
+            let temp = parent.join(format!(".{name}.jky-saving-{}-{sequence}", std::process::id()));
+            let mut options = cap_std::fs::OpenOptions::new();
+            options.write(true).create_new(true);
+            let mut file = match self.dir.open_with(&temp, &options) {
+                Ok(file) => file,
+                Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
+                Err(e) => return Err(fail(e)),
+            };
+            let written = file.write_all(text.as_bytes()).and_then(|_| file.sync_all());
+            drop(file);
+            if let Err(error) = written.and_then(|_| self.dir.rename(&temp, &self.dir, &at)) {
+                let _ = self.dir.remove_file(&temp);
+                return Err(fail(error));
+            }
+            return Ok(());
+        }
+        Err(fail(std::io::Error::new(std::io::ErrorKind::AlreadyExists, "could not reserve a temporary save file")))
+    }
+
     /// Make a new, empty file.
     ///
-    /// Refuses one that is already there rather than truncating it. "New
-    /// file" and "erase this file" are different requests, and a name typed
-    /// by accident into the first must never perform the second.
+    /// Refuses one that is already there rather than truncating it — with
+    /// `create_new`, so the refusal is the same system call as the creation
+    /// and nothing can appear in between. "New file" and "erase this file"
+    /// are different requests, and a name typed by accident into the first
+    /// must never perform the second.
     pub fn create_file(&self, relative: &str) -> Result<(), FileError> {
-        let path = self.checked(relative)?;
-        if path.exists() {
-            return Err(FileError::Exists(relative.to_string()));
+        let at = self.checked(relative)?;
+        if let Some(parent) = at.parent().filter(|p| !p.as_os_str().is_empty()) {
+            self.dir.create_dir_all(parent).map_err(write_err(relative))?;
         }
-        if let Some(dir) = path.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| FileError::Write {
-                path: relative.to_string(),
-                reason: e.to_string(),
-            })?;
+        let mut options = cap_std::fs::OpenOptions::new();
+        options.write(true).create_new(true);
+        match self.dir.open_with(&at, &options) {
+            Ok(_) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Err(FileError::Exists(relative.to_string())),
+            Err(e) => Err(write_err(relative)(e)),
         }
-        std::fs::write(&path, "").map_err(|e| FileError::Write {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })
     }
 
     /// Make a new directory, and any directory above it that is missing.
     pub fn create_dir(&self, relative: &str) -> Result<(), FileError> {
-        let path = self.checked(relative)?;
-        if path.exists() {
-            return Err(FileError::Exists(relative.to_string()));
+        let at = self.checked(relative)?;
+        if let Some(parent) = at.parent().filter(|p| !p.as_os_str().is_empty()) {
+            self.dir.create_dir_all(parent).map_err(write_err(relative))?;
         }
-        std::fs::create_dir_all(&path).map_err(|e| FileError::Write {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })
+        match self.dir.create_dir(&at) {
+            Ok(()) => Ok(()),
+            Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Err(FileError::Exists(relative.to_string())),
+            Err(e) => Err(write_err(relative)(e)),
+        }
     }
 
     /// Move or rename, inside this workspace.
     ///
-    /// Both ends are resolved and both must land inside, so a rename cannot
+    /// Both ends are resolved beneath the folder's handle, so a rename cannot
     /// be a way out of the tree — which is the obvious thing to try once
-    /// reading and writing are both fenced.
+    /// reading and writing are both fenced. A rename acts on the entry itself:
+    /// a link is moved as the link it is, never followed.
     pub fn rename(&self, from: &str, to: &str) -> Result<(), FileError> {
-        let source = self.checked_entry(from)?;
+        let source = self.checked(from)?;
         let target = self.checked(to)?;
-
-        if !source.exists() {
-            return Err(FileError::Read {
-                path: from.to_string(),
-                reason: "it is not there".to_string(),
-            });
-        }
+        self.dir.symlink_metadata(&source).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::NotFound {
+                FileError::Read { path: from.to_string(), reason: "it is not there".to_string() }
+            } else {
+                read_err(from)(e)
+            }
+        })?;
         // Refused rather than overwriting. A rename that silently replaced
         // another file would destroy it with no way back.
-        if target.exists() && target != source {
+        if source != target && self.dir.symlink_metadata(&target).is_ok() {
             return Err(FileError::Exists(to.to_string()));
         }
-
-        if let Some(dir) = target.parent() {
-            std::fs::create_dir_all(dir).map_err(|e| FileError::Write {
-                path: to.to_string(),
-                reason: e.to_string(),
-            })?;
+        if let Some(parent) = target.parent().filter(|p| !p.as_os_str().is_empty()) {
+            self.dir.create_dir_all(parent).map_err(write_err(to))?;
         }
-        std::fs::rename(&source, &target).map_err(|e| FileError::Write {
-            path: to.to_string(),
-            reason: e.to_string(),
-        })
+        self.dir.rename(&source, &self.dir, &target).map_err(write_err(to))
     }
 
     /// Delete one file, or one directory that has nothing in it.
@@ -352,48 +359,29 @@ impl Workspace {
     /// on one click would be one misclick from taking somebody's project —
     /// and the shell is right there for anyone who really means it.
     pub fn delete(&self, relative: &str) -> Result<(), FileError> {
-        let path = self.checked_entry(relative)?;
-
-        let meta = std::fs::symlink_metadata(&path).map_err(|e| FileError::Read {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })?;
-
+        let at = self.checked(relative)?;
         // A symlink is removed as the link it is, never followed — following
         // one would delete a file outside the workspace through a name inside
-        // it.
+        // it. `symlink_metadata` and `remove_file` both act on the final name
+        // itself.
+        let meta = self.dir.symlink_metadata(&at).map_err(read_err(relative))?;
         if meta.file_type().is_symlink() || meta.is_file() {
-            return std::fs::remove_file(&path).map_err(|e| FileError::Write {
-                path: relative.to_string(),
-                reason: e.to_string(),
-            });
+            return self.dir.remove_file(&at).map_err(write_err(relative));
         }
-
-        let empty = std::fs::read_dir(&path)
-            .map_err(|e| FileError::Read { path: relative.to_string(), reason: e.to_string() })?
-            .next()
-            .is_none();
+        let empty = self.dir.read_dir(&at).map_err(read_err(relative))?.next().is_none();
         if !empty {
             return Err(FileError::NotEmpty(relative.to_string()));
         }
-
-        std::fs::remove_dir(&path).map_err(|e| FileError::Write {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })
+        self.dir.remove_dir(&at).map_err(write_err(relative))
     }
 
     /// What a file is, for something that cannot be edited.
     ///
-    /// Reads the same bytes `read` does and is fenced by the same two checks;
-    /// it differs only in what it does with a file that is not UTF-8. Nothing
-    /// here can write.
+    /// Opens the file through the same handle `read` does and is fenced the
+    /// same way; it differs only in what it does with a file that is not
+    /// UTF-8. Nothing here can write.
     pub fn preview(&self, relative: &str) -> Result<Preview, FileError> {
-        let path = self.resolve(relative)?;
-        let meta = std::fs::metadata(&path).map_err(|e| FileError::Read {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })?;
+        let (file, size) = self.open_read(relative)?;
 
         let name = relative.rsplit('/').next().unwrap_or(relative).to_lowercase();
         let extension = name.rsplit_once('.').map(|(_, e)| e).unwrap_or("");
@@ -409,7 +397,6 @@ impl Workspace {
             _ => (PreviewKind::Binary, "application/octet-stream"),
         };
 
-        let size = meta.len();
         if kind == PreviewKind::Binary {
             return Ok(Preview {
                 kind,
@@ -430,11 +417,8 @@ impl Workspace {
             });
         }
 
-        let bytes = std::fs::read(&path).map_err(|e| FileError::Read {
-            path: relative.to_string(),
-            reason: e.to_string(),
-        })?;
-
+        let mut bytes = Vec::with_capacity(size as usize);
+        file.take(MAX_PREVIEW_BYTES + 1).read_to_end(&mut bytes).map_err(read_err(relative))?;
         Ok(Preview {
             kind,
             mime: mime.into(),
@@ -444,36 +428,14 @@ impl Workspace {
         })
     }
 
-    /// Resolve a path that must also carry a name.
+    /// Check a path that must also carry a name.
     ///
     /// `resolve` accepts the workspace root itself, which is right for
     /// listing and wrong for every call here: creating, renaming or deleting
     /// "" would mean doing it to the whole folder.
     fn checked(&self, relative: &str) -> Result<PathBuf, FileError> {
         Self::named(relative)?;
-        self.resolve(relative)
-    }
-
-    /// Resolve a path whose last part must not be followed.
-    ///
-    /// Deleting or renaming a symlink acts on the link, never on what it
-    /// points at — otherwise removing a link inside the workspace would
-    /// remove a file outside it. So the directory holding the entry is
-    /// resolved and checked in full, and only then is the bare name put back
-    /// on. A link pointing out of the tree can be taken off your project;
-    /// nothing at the other end of it is touched.
-    fn checked_entry(&self, relative: &str) -> Result<PathBuf, FileError> {
-        let name = Self::named(relative)?;
-        let parent = match relative.trim_end_matches('/').rfind('/') {
-            Some(at) => self.resolve(&relative[..at])?,
-            None => self.root.clone(),
-        };
-
-        let real = parent.canonicalize().map_err(|_| FileError::Outside(relative.to_string()))?;
-        if !real.starts_with(&self.root) {
-            return Err(FileError::Outside(relative.to_string()));
-        }
-        Ok(real.join(name))
+        self.resolve(relative.trim_end_matches('/'))
     }
 
     /// The last part of a path, refusing one that has none.
@@ -558,6 +520,91 @@ mod tests {
         }
     }
 
+    /// The time-of-check/time-of-use race the canonicalise-then-open design
+    /// left open: a link inside the folder flips between a target inside and
+    /// one outside while files are read through it. Checking the path and
+    /// then opening it again by name lets the outside file through whenever
+    /// the flip lands between the two. Every open must be judged at the
+    /// moment it happens, against the directory handle itself.
+    #[cfg(unix)]
+    #[test]
+    fn a_link_swapped_mid_read_never_lets_an_outside_file_through() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let d = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        std::fs::write(outside.path().join("secret.txt"), "OUTSIDE").unwrap();
+        std::fs::create_dir(d.path().join("real")).unwrap();
+        std::fs::write(d.path().join("real/secret.txt"), "INSIDE").unwrap();
+        std::os::unix::fs::symlink("real", d.path().join("inner")).unwrap();
+        let w = Workspace::new(d.path()).unwrap();
+
+        let stop = AtomicBool::new(false);
+        let leaked = std::thread::scope(|scope| {
+            scope.spawn(|| {
+                let swap = d.path().join("inner.swap");
+                let mut out = false;
+                while !stop.load(Ordering::Relaxed) {
+                    let target = if out { outside.path().to_path_buf() } else { "real".into() };
+                    let _ = std::fs::remove_file(&swap);
+                    std::os::unix::fs::symlink(&target, &swap).unwrap();
+                    std::fs::rename(&swap, d.path().join("inner")).unwrap();
+                    out = !out;
+                }
+            });
+            let started = std::time::Instant::now();
+            let mut leaked = false;
+            while started.elapsed() < std::time::Duration::from_millis(1500) {
+                if let Ok(text) = w.read("inner/secret.txt") {
+                    if text == "OUTSIDE" {
+                        leaked = true;
+                        break;
+                    }
+                }
+            }
+            stop.store(true, Ordering::Relaxed);
+            leaked
+        });
+        assert!(!leaked, "a file outside the workspace was read through a swapped link");
+    }
+
+    /// The other half of the race: after a path is checked, a real directory
+    /// in it is swapped for a link pointing outside before the file is opened.
+    #[cfg(unix)]
+    #[test]
+    fn a_directory_swapped_for_a_link_mid_write_never_writes_outside() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let d = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        std::fs::create_dir(d.path().join("real")).unwrap();
+        std::fs::write(d.path().join("real/notes.md"), "inside").unwrap();
+        std::fs::write(outside.path().join("notes.md"), "untouched").unwrap();
+        std::os::unix::fs::symlink(outside.path(), d.path().join("real.link")).unwrap();
+        let w = Workspace::new(d.path()).unwrap();
+
+        let stop = AtomicBool::new(false);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                let p = |n: &str| d.path().join(n);
+                while !stop.load(Ordering::Relaxed) {
+                    let _ = std::fs::rename(p("real"), p("real.dir"));
+                    let _ = std::fs::rename(p("real.link"), p("real"));
+                    let _ = std::fs::rename(p("real"), p("real.link"));
+                    let _ = std::fs::rename(p("real.dir"), p("real"));
+                }
+            });
+            let started = std::time::Instant::now();
+            while started.elapsed() < std::time::Duration::from_millis(1500) {
+                let _ = w.write("real/notes.md", "WRITTEN");
+            }
+            stop.store(true, Ordering::Relaxed);
+        });
+        assert_eq!(
+            std::fs::read_to_string(outside.path().join("notes.md")).unwrap(),
+            "untouched",
+            "a save landed outside the workspace through a swapped directory"
+        );
+    }
+
     #[test]
     #[cfg(unix)]
     fn refuses_a_symlink_pointing_out_of_the_workspace() {
@@ -574,11 +621,26 @@ mod tests {
 
     #[test]
     #[cfg(unix)]
-    fn a_symlink_that_stays_inside_is_fine() {
+    fn a_relative_symlink_that_stays_inside_is_fine() {
         // Refusing it would break a perfectly ordinary repository.
         let (d, w) = workspace();
-        std::os::unix::fs::symlink(d.path().join("README.md"), d.path().join("link")).unwrap();
+        std::os::unix::fs::symlink("README.md", d.path().join("link")).unwrap();
+        std::os::unix::fs::symlink("../README.md", d.path().join("src/up")).unwrap();
         assert_eq!(w.read("link").unwrap(), "hello\n");
+        assert_eq!(w.read("src/up").unwrap(), "hello\n");
+    }
+
+    #[test]
+    #[cfg(unix)]
+    fn an_absolute_symlink_is_refused_even_when_it_points_inside() {
+        // The price of resolving every path beneath the folder's handle: an
+        // absolute target names the machine's root, which the handle cannot
+        // vouch for without a second, raceable lookup. Relative links — the
+        // kind Git and most tools create — work; absolute ones are refused
+        // rather than checked in a way that could be swapped mid-check.
+        let (d, w) = workspace();
+        std::os::unix::fs::symlink(d.path().join("README.md"), d.path().join("link")).unwrap();
+        assert!(matches!(w.read("link"), Err(FileError::Outside(_))));
     }
 
     #[test]

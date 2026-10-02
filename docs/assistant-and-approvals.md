@@ -135,9 +135,11 @@ assistant tells you to choose one first.
 | `run_command` | **Always asks** | Proposes a shell command with a reason | Runs in the project folder; stopped after **60 seconds**; no input; output capped |
 
 **Every path a tool receives is untrusted.** It is influenced by whatever the model has already read,
-which can include text written by someone else — a README, a dependency, a branch name. So every path is
-canonicalised and refused if it resolves outside the project; a symlink pointing out is caught because
-only *resolving* it reveals where it goes. Paths containing a NUL byte are refused outright.
+which can include text written by someone else — a README, a dependency, a branch name. So the project
+is held as an open directory handle and every file is opened **beneath it**, by the same system call that
+decides whether it is inside — `../`, a symlink pointing out, and a directory swapped for a link
+mid-read are all refused at the moment of the open, with no gap for another process to exploit. The
+search walk never follows a link. Paths containing a NUL byte are refused outright.
 
 **The approval list fails closed.** Only the four read-only tools are listed as safe. Anything else —
 including any tool added in the future — requires approval by default.
