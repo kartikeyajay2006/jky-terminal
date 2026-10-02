@@ -189,6 +189,11 @@ export function useXterm(
    * becomes a process argument.
    */
   host?: string,
+  /**
+   * Whether this terminal belongs to a private tab, read at the moment of
+   * saving — a tab can be made private after it opened.
+   */
+  isPrivate?: React.RefObject<boolean>,
 ): TerminalControls {
   const term = useRef<Xterm | null>(null);
   const searchAddon = useRef<SearchAddon | null>(null);
@@ -857,7 +862,8 @@ export function useXterm(
       // Serialised before dispose, because dispose takes the buffer with it.
       // Fire-and-forget: the write is bounded and capped in Rust, and holding
       // teardown open for it would stall closing a tab.
-      if (scrollbackKey) {
+      // A private tab keeps nothing, so there is nothing to save.
+      if (scrollbackKey && !isPrivate?.current) {
         try {
           const text = serialize.serialize();
           if (text.trim()) void platform.scrollback.save(scrollbackKey, text);

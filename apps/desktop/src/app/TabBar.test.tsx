@@ -12,6 +12,14 @@ describe("TabBar", () => {
     expect(screen.getByRole("button", { name: /new terminal/i })).toBeInTheDocument();
   });
 
+  it("marks a private tab so it is never mistaken for an ordinary one", () => {
+    useTabs.getState().openPrivateTab("Scratch");
+    render(<TabBar />);
+    const tab = screen.getByRole("tab", { name: /Scratch/ });
+    expect(within(tab).getByText(/private/i)).toBeInTheDocument();
+    expect(tab).toHaveAccessibleName(/private/i);
+  });
+
   it("shows an open tab and marks it selected", () => {
     useTabs.getState().openTab("terminal", "Terminal 1");
     render(<TabBar />);

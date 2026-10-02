@@ -34,6 +34,12 @@ export interface Tab {
   /** Which terminal in the tree has the keyboard. Always a leaf of `layout`. */
   focusedPane: string;
   /**
+   * Nothing this tab runs or prints is kept: no history, no saved
+   * scrollback. Remembered with the tab, so a private tab that comes back
+   * after a restart is still private rather than quietly starting to record.
+   */
+  private?: boolean;
+  /**
    * Panes that are on another machine, by saved host id.
    *
    * A map rather than a flag on the tab: splitting a remote terminal gives
@@ -47,6 +53,13 @@ interface TabState {
   tabs: Tab[];
   activeId: string | null;
   openTab: (kind: TabKind, title: string) => string;
+  /** A terminal tab that keeps nothing. */
+  openPrivateTab: (title: string) => string;
+  /**
+   * Make a tab private, or stop. Making it private also forgets the
+   * scrollback its panes had already saved.
+   */
+  setPrivate: (tabId: string, on: boolean) => void;
   /** A tab whose first terminal is on a saved host. */
   openRemoteTab: (hostId: string, title: string) => string;
   closeTab: (id: string) => void;
@@ -149,6 +162,7 @@ export function readTabs(): Pick<TabState, "tabs" | "activeId"> {
         layout,
         focusedPane: focused,
         remotes: {},
+        ...(t.private === true ? { private: true } : {}),
       });
 
       // Keep the counter ahead of anything restored, or the next new tab
@@ -195,6 +209,35 @@ export const useTabs = create<TabState>((set, get) => ({
       return { tabs, activeId: id };
     });
     return id;
+  },
+
+  openPrivateTab: (title) => {
+    const id = nextId();
+    set((s) => {
+      const tabs = [
+        ...s.tabs,
+        { id, kind: "terminal" as const, title, layout: leaf(id), focusedPane: id, remotes: {}, private: true },
+      ];
+      persist(tabs);
+      return { tabs, activeId: id };
+    });
+    return id;
+  },
+
+  setPrivate: (tabId, on) => {
+    const tab = get().tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+    const next = withTab(get().tabs, tabId, (t) => {
+      const { private: _was, ...rest } = t;
+      return on ? { ...rest, private: true } : rest;
+    });
+    if (next) set({ tabs: next });
+    if (on) {
+      // What these panes saved before they were private is exactly what
+      // somebody making them private does not want kept.
+      const platform = getPlatform();
+      for (const pane of leaves(tab.layout)) void platform.scrollback.forget(pane).catch(() => {});
+    }
   },
 
   openRemoteTab: (hostId, title) => {
@@ -333,3 +376,8 @@ export const useTabs = create<TabState>((set, get) => ({
     if (tabs) set({ tabs });
   },
 }));
+
+/** Whether the pane belongs to a private tab. */
+export function isPanePrivate(tabs: Tab[], paneId: string): boolean {
+  return tabs.some((t) => t.private === true && leaves(t.layout).includes(paneId));
+}

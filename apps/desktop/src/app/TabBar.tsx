@@ -51,6 +51,11 @@ export function TabBar() {
             }}
           >
             <span className="tabbar__title">{tab.title}</span>
+            {tab.private && (
+              <span className="tabbar__private" title="Nothing this tab runs or prints is kept">
+                private
+              </span>
+            )}
             <span className="tabbar__close" data-close="true" aria-hidden="true">
               ×
             </span>

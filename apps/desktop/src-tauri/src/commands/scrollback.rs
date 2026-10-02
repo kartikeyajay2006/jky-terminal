@@ -6,6 +6,9 @@
 //! applied by the store — so the widest thing the window can do is save a
 //! quarter of a megabyte of its own output under a name like `tab-3`.
 
+use std::path::Path;
+
+use jky_settings::Privacy;
 use jky_store::scrollback;
 use tauri::State;
 
@@ -24,7 +27,16 @@ pub fn scrollback_save(
     key: String,
     text: String,
 ) -> Result<(), String> {
-    scrollback::save(&state.config_dir, &key, &text).map_err(|e| e.to_string())
+    let privacy = state.settings.privacy().unwrap_or_default();
+    save_logic(&state.config_dir, &privacy, &key, &text)
+}
+
+/// Save — or, while keeping scrollback is off, make sure nothing is kept.
+pub(crate) fn save_logic(config_dir: &Path, privacy: &Privacy, key: &str, text: &str) -> Result<(), String> {
+    if !privacy.keep_scrollback {
+        return scrollback::forget(config_dir, key).map_err(|e| e.to_string());
+    }
+    scrollback::save(config_dir, key, text).map_err(|e| e.to_string())
 }
 
 /// Forget one terminal. Closing a tab is the user removing it.
@@ -61,5 +73,17 @@ mod tests {
         // Repeating it would let the two drift, and the store is where the
         // reasoning about why it exists lives.
         assert_eq!(jky_store::SCROLLBACK_MAX_BYTES, scrollback::MAX_BYTES);
+    }
+
+    #[test]
+    fn scrollback_is_not_kept_while_keeping_it_is_off_and_the_old_copy_goes() {
+        let d = tempfile::TempDir::new().unwrap();
+        let keep = jky_settings::Privacy::default();
+        super::save_logic(d.path(), &keep, "tab-1", "before").unwrap();
+        assert_eq!(scrollback::load(d.path(), "tab-1").unwrap(), "before");
+
+        let off = jky_settings::Privacy { keep_scrollback: false, ..keep };
+        super::save_logic(d.path(), &off, "tab-1", "after").unwrap();
+        assert_eq!(scrollback::load(d.path(), "tab-1").unwrap(), "", "kept while off, or the old copy survived");
     }
 }

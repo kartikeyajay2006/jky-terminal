@@ -436,7 +436,13 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "scrollback_load".to_string(),
         "scrollback_prune".to_string(),
         "scrollback_save".to_string(),
+        // What the app keeps about what you do: three booleans-and-a-number
+        // and the project folder. Read and set; nothing here is a secret, and
+        // setting it can only *reduce* what is kept — turning scrollback off
+        // deletes it, a retention window prunes history.
+        "settings_privacy".to_string(),
         "settings_set_active_provider".to_string(),
+        "settings_set_privacy".to_string(),
         "settings_set_selected_model".to_string(),
         "settings_set_terminal_start_dir".to_string(),
         // The dashboard's own content. These read and write the user's notes,

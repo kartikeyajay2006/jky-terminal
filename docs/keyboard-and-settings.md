@@ -173,7 +173,7 @@ forgiving kind History uses.
 | You can reach | Examples |
 |---|---|
 | **Sections and panels** | `Dashboard`, `Settings · Keyboard`, `Developer Tools · JWT` |
-| **Terminal actions** | New terminal, Split right, Split down, Close pane, Close tab |
+| **Terminal actions** | New terminal, New private terminal, Make this tab private, Split right, Split down, Close pane, Close tab |
 | **Window** | Show or hide the sidebar, Focus mode |
 | **Workspaces** | Switch to any saved workspace, Manage workspaces |
 | **Machines** | `Connect to <host>`, Manage saved machines |
@@ -190,6 +190,7 @@ forgiving kind History uses.
 | 🎨 **Appearance** | The seven themes, with a swatch of each. Applied instantly, remembered per machine. See the [theme table](../README.md#-seven-themes-one-set-of-tokens). |
 | ❯ **Terminal** | Font size (8–28 pt, default 13) and typeface: *App default*, JetBrains Mono, Fira Code, Source Code Pro, DejaVu Sans Mono, Liberation Mono, Noto Sans Mono, Hack, Inconsolata. Each falls back to a monospace font if missing. Also the **power-user essentials** checklist, which states plainly what is ready and what is not (inline images: planned). |
 | ⌨ **Keyboard** | Every action, rebindable by pressing keys; per-action and global reset; conflict warnings. |
+| 🔒 **Privacy** | **Keep command history** (on/off), **Forget history older than** (never, 7, 30, 90 days, 1 year), **Clear all history** (after a second click), **Restore scrollback after a restart** (off deletes what was saved), and the **Project folder** — where terminals start and the only folder the assistant's tools may read. Enforced in Rust. |
 | 🔑 **Providers** | API keys for AI providers and the model for each. Keys are written to the OS keychain and never shown again — replacing one means disconnecting first. See [Assistant & approvals](assistant-and-approvals.md#providers-and-models). |
 | ⌘ **Commands** | Every `jky` command and every name it answers to, with a longer explanation. See [Shells & the jky command](shell-integration.md#command-reference). |
 

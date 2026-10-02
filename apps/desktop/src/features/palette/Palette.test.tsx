@@ -203,6 +203,17 @@ describe("the palette", () => {
     await waitFor(() => expect(useTabs.getState().tabs).toHaveLength(1));
   });
 
+  it("opens a private terminal tab", async () => {
+    const user = userEvent.setup();
+    render(<Palette onClose={() => {}} />);
+
+    await user.type(screen.getByLabelText(/search commands/i), "new private terminal");
+    await user.keyboard("{Enter}");
+
+    await waitFor(() => expect(useTabs.getState().tabs).toHaveLength(1));
+    expect(useTabs.getState().tabs[0].private).toBe(true);
+  });
+
   it("changes the theme", async () => {
     const user = userEvent.setup();
     render(<Palette onClose={() => {}} />);

@@ -125,6 +125,31 @@ export function createTauriPlatform(): Platform {
     async setActiveProvider(provider) {
       await invoke<void>("settings_set_active_provider", { provider });
     },
+    async privacy() {
+      const view = await invoke<{
+        keep_history: boolean;
+        history_days: number;
+        keep_scrollback: boolean;
+        project_dir: string | null;
+      }>("settings_privacy");
+      return {
+        keepHistory: view.keep_history,
+        historyDays: view.history_days,
+        keepScrollback: view.keep_scrollback,
+        projectDir: view.project_dir,
+      };
+    },
+    async setPrivacy(privacy) {
+      await invoke<void>("settings_set_privacy", {
+        keepHistory: privacy.keepHistory,
+        historyDays: privacy.historyDays,
+        keepScrollback: privacy.keepScrollback,
+        now: Date.now(),
+      });
+    },
+    async setProjectDir(dir) {
+      await invoke<void>("settings_set_terminal_start_dir", { dir });
+    },
   };
 
   const keys: KeysApi = {

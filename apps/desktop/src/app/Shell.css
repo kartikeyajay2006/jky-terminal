@@ -545,6 +545,19 @@
     0 0 3px var(--accent-glow);
 }
 
+/* A private tab keeps nothing. Said in words, in the same place every time,
+   so it is never mistaken for an ordinary terminal at a glance. */
+.tabbar__private {
+  flex-shrink: 0;
+  padding: 0 var(--s1);
+  border: 1px solid var(--violet);
+  border-radius: var(--radius);
+  color: var(--violet);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .tabbar__close {
   padding: 0 var(--s1);
   border-radius: 3px;

@@ -109,18 +109,14 @@ sequenceDiagram
 
 ## The project folder
 
-The assistant's file tools — and any command you approve — work inside **one project folder**. It is
-the **terminal folder of the workspace you switched to**: switch to a workspace whose terminal folder is
-`~/code/api`, and that is the assistant's project.
+The assistant's file tools — and any command you approve — work inside **one project folder**. Set it in
+**Settings → Privacy → Project folder**, or switch to a workspace that has a terminal folder: switch to a
+workspace whose terminal folder is `~/code/api`, and that is the assistant's project. A folder that does
+not exist is refused when you set it, rather than stored and silently ignored.
 
 Falling back to your home folder would make an apparently project-scoped assistant able to read
 unrelated personal files, so **there is no fallback**: with no project folder set, tools refuse and the
 assistant tells you to choose one first.
-
-> [!NOTE]
-> In the current build that message mentions *Settings → Terminal*, which has no folder field yet.
-> Set the folder by giving a workspace a **terminal folder** and switching to it — see
-> [Workspaces & editor](workspaces-and-editor.md#workspaces).
 
 ---
 

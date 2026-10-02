@@ -19,6 +19,7 @@ import { actionsFor, markdownRecord, questionFor, tookOf, tookText, transcript }
 import type { BlockPick } from "./useXterm";
 import { pushTick, type Tick } from "./ticks";
 import { Suggestions } from "./complete/Suggestions";
+import { isPanePrivate, useTabs } from "../../app/tabStore";
 import "@xterm/xterm/css/xterm.css";
 import "./Terminal.css";
 
@@ -97,6 +98,12 @@ export function Terminal({
   /** Shown in the panel's head, so it is anchored to what was typed. */
   const [ranCommand, setRanCommand] = useState("");
 
+  // Read through a ref by the callbacks below, which the terminal's effect
+  // deliberately does not re-create when they change.
+  const isPrivate = useTabs((s) => isPanePrivate(s.tabs, paneId));
+  const privateRef = useRef(isPrivate);
+  privateRef.current = isPrivate;
+
   const term = useXterm(
     container,
     paneId,
@@ -110,7 +117,8 @@ export function Terminal({
       // `host` travels with it. A history that showed `rm -rf` run here and
       // run on production identically would be one you could not re-run
       // anything from.
-      void getPlatform()
+      // Except in a private tab, which keeps nothing.
+      if (!privateRef.current) void getPlatform()
         .history.record({
           command: completion.command,
           cwd: completion.cwd,
@@ -130,6 +138,7 @@ export function Terminal({
     // A gutter mark was clicked: offer what can be done with that command.
     (pick) => setPicked(pick),
     host,
+    privateRef,
   );
 
   /**

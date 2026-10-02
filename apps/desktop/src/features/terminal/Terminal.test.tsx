@@ -160,6 +160,8 @@ vi.mock("@xterm/xterm/css/xterm.css", () => ({}));
 import { useAsk } from "../../app/askStore";
 import { createWebPlatform, __setPlatformForTests } from "../../platform";
 import { Terminal } from "./Terminal";
+import { useTabs } from "../../app/tabStore";
+import { leaf } from "./panes/tree";
 
 describe("Terminal", () => {
   beforeEach(() => {
@@ -475,6 +477,25 @@ describe("scrollback across a restart", () => {
     await waitFor(async () => {
       expect(await platform.scrollback.load("tab-8")).toContain("PREVIOUS-OUTPUT");
     });
+  });
+
+  it("never saves what a private tab had on screen", async () => {
+    const platform = createWebPlatform();
+    __setPlatformForTests(platform);
+    useTabs.setState({
+      tabs: [{ id: "tab-9", kind: "terminal", title: "Private", layout: leaf("tab-9"), focusedPane: "tab-9", remotes: {}, private: true }],
+      activeId: "tab-9",
+    });
+    try {
+      const { unmount } = render(<Terminal paneId="tab-9" />);
+      await waitFor(() => expect(writes.join("")).toContain("Infinite"));
+      unmount();
+      // Give a save every chance to land, then prove none did.
+      await new Promise((r) => setTimeout(r, 50));
+      expect(await platform.scrollback.load("tab-9")).toBe("");
+    } finally {
+      useTabs.setState({ tabs: [], activeId: null });
+    }
   });
 
   it("still opens when the saved history cannot be read", async () => {

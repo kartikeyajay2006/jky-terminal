@@ -176,6 +176,31 @@ export function buildCommands(context: PaletteContext = {}): PaletteCommand[] {
     },
   });
 
+  out.push({
+    id: "term:new-private",
+    label: "New private terminal",
+    group: "Terminal",
+    hint: "keeps no history or scrollback",
+    run: () => {
+      const tabs = useTabs.getState();
+      tabs.openPrivateTab(`Private ${tabs.tabs.length + 1}`);
+      nav.go("terminal");
+    },
+  });
+  {
+    const tabs = useTabs.getState();
+    const active = tabs.tabs.find((t) => t.id === tabs.activeId && t.kind === "terminal");
+    if (active) {
+      out.push({
+        id: "term:private-toggle",
+        label: active.private ? "Stop keeping this tab private" : "Make this tab private",
+        group: "Terminal",
+        hint: active.private ? "history and scrollback resume" : "forgets its saved scrollback",
+        run: () => useTabs.getState().setPrivate(active.id, !active.private),
+      });
+    }
+  }
+
   // The pane commands act on whichever terminal has the keyboard, so the
   // palette can do everything the shortcuts do — which is what makes the
   // shortcuts discoverable rather than folklore.

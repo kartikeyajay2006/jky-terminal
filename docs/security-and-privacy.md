@@ -219,6 +219,11 @@ What it deliberately leaves alone: numbers (`MAX_TOKENS=4096`), variable referen
 (`API_KEY=$API_KEY`), git SHAs, UUIDs and ordinary words. Your live terminal still shows what was
 printed; only what is *kept* is redacted, so a restored pane shows the label instead.
 
+**Controls.** **Settings → Privacy** turns history or saved scrollback off, sets a retention window
+(7, 30 or 90 days, or a year), and clears history. A **private terminal** keeps nothing at all. All of it
+is enforced in the Rust commands that write, not in the window. See
+[Private terminals](terminal-guide.md#private-terminals).
+
 > [!WARNING]
 > Redaction recognises **shapes**, not meaning. A password typed as a bare word — `mysql -p hunter2` —
 > has no shape to recognise and is kept. Use **Forget** in History for anything it missed, and rotate

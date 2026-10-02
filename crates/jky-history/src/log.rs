@@ -143,6 +143,20 @@ impl History {
         Ok(removed)
     }
 
+    /// Forget every entry older than `cutoff` (milliseconds since the epoch),
+    /// and say how many went. Retention, not deletion on demand: the newest
+    /// history is the history worth keeping.
+    pub fn prune_older_than(&self, cutoff: i64) -> Result<usize, HistoryError> {
+        let _guard = self.mutation.lock().map_err(|e| HistoryError::Write(e.to_string()))?;
+        let entries = self.all()?;
+        let kept: Vec<Entry> = entries.iter().filter(|e| e.at >= cutoff).cloned().collect();
+        let removed = entries.len() - kept.len();
+        if removed > 0 {
+            self.rewrite(&kept)?;
+        }
+        Ok(removed)
+    }
+
     /// Forget everything.
     pub fn clear(&self) -> Result<(), HistoryError> {
         let _guard = self.mutation.lock().map_err(|e| HistoryError::Write(e.to_string()))?;
@@ -177,6 +191,20 @@ mod tests {
             session: "pane-1".into(),
             host: None,
         }
+    }
+
+    #[test]
+    fn pruning_forgets_only_what_is_older_than_the_cutoff() {
+        let (_dir, h) = history();
+        for (cmd, at) in [("old one", 1_000), ("old two", 2_000), ("new", 9_000)] {
+            let mut e = entry(cmd);
+            e.at = at;
+            h.record(e).unwrap();
+        }
+        assert_eq!(h.prune_older_than(5_000).unwrap(), 2);
+        let left: Vec<String> = h.all().unwrap().into_iter().map(|e| e.command).collect();
+        assert_eq!(left, ["new"]);
+        assert_eq!(h.prune_older_than(5_000).unwrap(), 0, "a second prune finds nothing");
     }
 
     #[test]

@@ -19,7 +19,7 @@ from you. This guide covers how that loop works in detail.
 [Command panels](#every-command-can-become-a-panel) · [Live panels](#live-panels) ·
 [Command blocks](#command-blocks) · [When a command fails](#when-a-command-fails) ·
 [Completions](#completions) · [History](#history) · [Search, copy and paste](#search-copy-and-paste) ·
-[Remote terminals](#remote-terminals) · [Focus mode](#focus-mode) ·
+[Remote terminals](#remote-terminals) · [Private terminals](#private-terminals) · [Focus mode](#focus-mode) ·
 [Compatibility](#terminal-compatibility) · [Performance](#performance-honestly)
 
 ---
@@ -393,6 +393,26 @@ Two behaviours worth knowing:
   production machine on its own.
 
 From a shell: `jky host` lists saved machines, `jky host <name>` opens one.
+
+---
+
+## Private terminals
+
+Some work should leave no trace on disk — a production investigation, a session with credentials on
+screen. Open **New private terminal** from the palette (<kbd>Ctrl</kbd>+<kbd>K</kbd>), or run
+**Make this tab private** on a tab you already have.
+
+| A private tab | |
+|---|---|
+| Records history | **No** — nothing it runs reaches `history.jsonl` |
+| Saves scrollback | **No** — and making a tab private deletes what its panes had already saved |
+| Looks different | A **private** badge on its tab, every time |
+| Survives a restart | Yes, and it comes back **still private** |
+| Persistent shell | Yes — privacy is about what is *kept*, not about the shell |
+
+For the whole app, **Settings → Privacy** can turn history or saved scrollback off entirely, and set a
+retention window after which history is forgotten. Those settings are enforced in Rust, in the commands
+that write, so they hold whatever the window asks for.
 
 ---
 

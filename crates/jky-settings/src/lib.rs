@@ -98,6 +98,39 @@ pub struct Settings {
     /// stranger's audit log.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub google_client_id: Option<String>,
+
+    /// What the app keeps about what you do. See [`Privacy`].
+    #[serde(default)]
+    pub privacy: Privacy,
+}
+
+/// What the app keeps about what you do.
+///
+/// Enforced in Rust, in the commands that write history and scrollback, so a
+/// setting turned off stays off whatever the window asks for.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Privacy {
+    /// Record each finished command in `history.jsonl`.
+    #[serde(default = "yes")]
+    pub keep_history: bool,
+    /// Forget history older than this many days. 0 keeps it for ever.
+    #[serde(default)]
+    pub history_days: u32,
+    /// Save each pane's scrollback so a restart can restore it.
+    #[serde(default = "yes")]
+    pub keep_scrollback: bool,
+}
+
+fn yes() -> bool {
+    true
+}
+
+/// Unlike most settings, the default is not all-zeroes: a file from before
+/// these existed must mean "as it always was", never "stopped recording".
+impl Default for Privacy {
+    fn default() -> Self {
+        Self { keep_history: true, history_days: 0, keep_scrollback: true }
+    }
 }
 
 pub struct SettingsStore {
@@ -243,6 +276,16 @@ impl SettingsStore {
 
     pub fn terminal_start_dir(&self) -> Result<Option<String>, SettingsError> {
         Ok(self.load()?.terminal_start_dir)
+    }
+
+    pub fn privacy(&self) -> Result<Privacy, SettingsError> {
+        Ok(self.load()?.privacy)
+    }
+
+    pub fn set_privacy(&self, privacy: &Privacy) -> Result<(), SettingsError> {
+        let mut s = self.load()?;
+        s.privacy = *privacy;
+        self.save(&s)
     }
 
     /// Every folder the editor has open, oldest first.
@@ -589,6 +632,26 @@ mod editor_folder_tests {
         s.open_editor_folder("~/new").unwrap();
         assert_eq!(s.editor_folders().unwrap(), ["~/legacy", "~/new"]);
         assert_eq!(s.load().unwrap().workspace_dir, None);
+    }
+
+    #[test]
+    fn privacy_defaults_keep_history_and_scrollback_for_ever() {
+        // A file from before these settings existed — or no file at all —
+        // must mean "as it always was", never "silently stopped recording".
+        let (d, s) = store();
+        assert_eq!(s.privacy().unwrap(), Privacy { keep_history: true, history_days: 0, keep_scrollback: true });
+        std::fs::write(d.path().join("settings.json"), r#"{"active_provider":"anthropic"}"#).unwrap();
+        assert_eq!(s.privacy().unwrap(), Privacy::default());
+    }
+
+    #[test]
+    fn privacy_round_trips_and_leaves_other_settings_alone() {
+        let (_d, s) = store();
+        s.set_active_provider("openai").unwrap();
+        let wanted = Privacy { keep_history: false, history_days: 30, keep_scrollback: false };
+        s.set_privacy(&wanted).unwrap();
+        assert_eq!(s.privacy().unwrap(), wanted);
+        assert_eq!(s.load().unwrap().active_provider.as_deref(), Some("openai"));
     }
 
     #[test]

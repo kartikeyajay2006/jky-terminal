@@ -322,7 +322,7 @@ fn build_ctx(app: &AppHandle, state: &AppState, provider: &str) -> Result<Ctx, S
                 .terminal_start_dir()
                 .map_err(|e| e.to_string())?
                 .filter(|path| !path.trim().is_empty())
-                .ok_or("choose a project folder in Settings → Terminal before using AI tools")?;
+                .ok_or("choose a project folder in Settings → Privacy before using AI tools")?;
             let root = expand_tilde(&configured, home_dir().as_deref());
             if !root.is_dir() {
                 return Err("the configured AI project folder does not exist".into());

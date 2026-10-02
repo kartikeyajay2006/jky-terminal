@@ -424,9 +424,37 @@ export interface LiveApi {
   run(source: string): Promise<LiveRun>;
 }
 
+/**
+ * What the app keeps about what you do.
+ *
+ * Enforced in Rust, in the commands that write history and scrollback, so a
+ * setting turned off stays off whatever the window sends.
+ */
+export interface Privacy {
+  /** Record each finished command in the history. */
+  keepHistory: boolean;
+  /** Forget history older than this many days. 0 keeps it for ever. */
+  historyDays: number;
+  /** Save each pane's scrollback so a restart can restore it. */
+  keepScrollback: boolean;
+}
+
+export interface PrivacyView extends Privacy {
+  /**
+   * Where new terminals start, and the only folder the assistant's file
+   * tools may read. Null when none is set.
+   */
+  projectDir: string | null;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
   setActiveProvider(provider: string): Promise<void>;
+  privacy(): Promise<PrivacyView>;
+  /** Applied at once: scrollback off deletes it, a window prunes history. */
+  setPrivacy(privacy: Privacy): Promise<void>;
+  /** Refused when the folder does not exist. An empty string clears it. */
+  setProjectDir(dir: string): Promise<void>;
 }
 
 /** What starting a terminal produced. */

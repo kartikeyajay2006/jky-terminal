@@ -12,6 +12,8 @@ interface FolderPickerProps {
   error?: string | null;
   /** Cleared after a successful choose, so the field is ready for the next. */
   clearOnChoose?: boolean;
+  /** The field's accessible name, when "Folder" alone would be ambiguous. */
+  label?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ export function FolderPicker({
   onChoose,
   error,
   clearOnChoose = false,
+  label = "Folder",
 }: FolderPickerProps) {
   const [draft, setDraft] = useState("");
   const [folders, setFolders] = useState<string[]>([]);
@@ -90,7 +93,7 @@ export function FolderPicker({
           className="input"
           value={draft}
           placeholder={placeholder}
-          aria-label="Folder"
+          aria-label={label}
           autoComplete="off"
           spellCheck={false}
           role="combobox"

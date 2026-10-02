@@ -93,6 +93,15 @@ symlinks included. With no project folder set, its tools refuse to run at all.
 </details>
 
 <details>
+<summary><b>Can I stop JKY keeping what I type?</b></summary>
+
+Yes. **Settings → Privacy** turns command history or saved scrollback off, or forgets history after 7,
+30 or 90 days or a year. A **private terminal** — from the palette — keeps nothing at all, and says so
+on its tab. Recognisable secrets are redacted from history and scrollback either way.
+
+</details>
+
+<details>
 <summary><b>Has JKY had a security audit?</b></summary>
 
 No independent audit yet. The boundary is enforced by tests you can read in

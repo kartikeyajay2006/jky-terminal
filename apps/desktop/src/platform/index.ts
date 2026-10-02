@@ -39,6 +39,8 @@ export type {
   Conflict,
   Note,
   Platform,
+  Privacy,
+  PrivacyView,
   ProviderStatus,
   PtyApi,
   RemoteApi,

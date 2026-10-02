@@ -1,5 +1,10 @@
+use std::path::Path;
+
+use jky_history::History;
+use jky_pty::{expand_tilde, home_dir};
 use jky_secrets::ProviderId;
-use jky_settings::SettingsStore;
+use jky_settings::{Privacy, SettingsStore};
+use serde::Serialize;
 use tauri::State;
 
 use crate::state::AppState;
@@ -28,11 +33,66 @@ pub(crate) fn set_active_provider_logic(
     store.set_active_provider(id.as_key()).map_err(|e| e.to_string())
 }
 
+/// The project folder: where new terminals start, and the only folder the
+/// assistant's file tools may read.
+///
+/// Refused when it does not exist. Stored anyway, it would do nothing —
+/// terminals would fall back to home and the assistant would refuse its
+/// tools — and both would happen silently.
 pub(crate) fn set_terminal_start_dir_logic(
     store: &SettingsStore,
     dir: &str,
 ) -> Result<(), String> {
-    store.set_terminal_start_dir(dir).map_err(|e| e.to_string())
+    let wanted = dir.trim();
+    if !wanted.is_empty() && !expand_tilde(wanted, home_dir().as_deref()).is_dir() {
+        return Err(format!("{wanted} does not exist, or is not a folder"));
+    }
+    store.set_terminal_start_dir(wanted).map_err(|e| e.to_string())
+}
+
+/// What the Privacy panel shows.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct PrivacyView {
+    pub keep_history: bool,
+    pub history_days: u32,
+    pub keep_scrollback: bool,
+    pub project_dir: Option<String>,
+}
+
+pub(crate) fn privacy_logic(store: &SettingsStore) -> Result<PrivacyView, String> {
+    let privacy = store.privacy().map_err(|e| e.to_string())?;
+    Ok(PrivacyView {
+        keep_history: privacy.keep_history,
+        history_days: privacy.history_days,
+        keep_scrollback: privacy.keep_scrollback,
+        project_dir: store.terminal_start_dir().map_err(|e| e.to_string())?,
+    })
+}
+
+/// The longest retention window worth offering: ten years.
+const MAX_HISTORY_DAYS: u32 = 3_650;
+
+/// Save the privacy settings and apply them at once: turning scrollback off
+/// deletes what was saved, and a retention window prunes history now rather
+/// than at the next search.
+pub(crate) fn set_privacy_logic(
+    store: &SettingsStore,
+    history: &History,
+    config_dir: &Path,
+    privacy: &Privacy,
+    now: i64,
+) -> Result<(), String> {
+    if privacy.history_days > MAX_HISTORY_DAYS {
+        return Err(format!("history can be kept for at most {MAX_HISTORY_DAYS} days"));
+    }
+    store.set_privacy(privacy).map_err(|e| e.to_string())?;
+    if !privacy.keep_scrollback {
+        jky_store::scrollback::prune(config_dir, &[]).map_err(|e| e.to_string())?;
+    }
+    if let Some(cutoff) = super::history::cutoff(privacy, now) {
+        history.prune_older_than(cutoff).map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 // --- IPC surface ------------------------------------------------------------
@@ -52,6 +112,24 @@ pub fn settings_set_active_provider(
     provider: String,
 ) -> Result<(), String> {
     set_active_provider_logic(state.settings.as_ref(), &provider)
+}
+
+/// What is kept about what you do, and the project folder.
+#[tauri::command]
+pub fn settings_privacy(state: State<'_, AppState>) -> Result<PrivacyView, String> {
+    privacy_logic(state.settings.as_ref())
+}
+
+#[tauri::command]
+pub fn settings_set_privacy(
+    state: State<'_, AppState>,
+    keep_history: bool,
+    history_days: u32,
+    keep_scrollback: bool,
+    now: i64,
+) -> Result<(), String> {
+    let privacy = Privacy { keep_history, history_days, keep_scrollback };
+    set_privacy_logic(state.settings.as_ref(), state.history.as_ref(), &state.config_dir, &privacy, now)
 }
 
 #[tauri::command]
@@ -115,18 +193,81 @@ mod tests {
     }
 
     #[test]
-    fn a_terminal_start_directory_persists() {
-        let (_d, s) = store();
-        set_terminal_start_dir_logic(&s, "~/projects").unwrap();
-        assert_eq!(s.terminal_start_dir().unwrap().as_deref(), Some("~/projects"));
+    fn a_project_folder_persists() {
+        let (d, s) = store();
+        let folder = d.path().join("projects");
+        std::fs::create_dir(&folder).unwrap();
+        set_terminal_start_dir_logic(&s, &folder.to_string_lossy()).unwrap();
+        assert_eq!(s.terminal_start_dir().unwrap(), Some(folder.to_string_lossy().into_owned()));
+    }
+
+    #[test]
+    fn a_project_folder_that_does_not_exist_is_refused_rather_than_stored() {
+        // Stored, it would do nothing: new terminals fall back to home, and
+        // the assistant's tools refuse — both silently.
+        let (d, s) = store();
+        let err = set_terminal_start_dir_logic(&s, &d.path().join("nope").to_string_lossy()).unwrap_err();
+        assert!(err.contains("does not exist"), "{err}");
+        assert_eq!(s.terminal_start_dir().unwrap(), None);
     }
 
     #[test]
     fn clearing_the_start_directory_returns_new_terminals_to_home() {
-        let (_d, s) = store();
-        set_terminal_start_dir_logic(&s, "~/projects").unwrap();
+        let (d, s) = store();
+        set_terminal_start_dir_logic(&s, &d.path().to_string_lossy()).unwrap();
         set_terminal_start_dir_logic(&s, "").unwrap();
         assert_eq!(s.terminal_start_dir().unwrap(), None);
+    }
+
+    #[test]
+    fn privacy_is_reported_with_the_project_folder() {
+        let (d, s) = store();
+        set_terminal_start_dir_logic(&s, &d.path().to_string_lossy()).unwrap();
+        let view = privacy_logic(&s).unwrap();
+        assert!(view.keep_history && view.keep_scrollback);
+        assert_eq!(view.project_dir, Some(d.path().to_string_lossy().into_owned()));
+    }
+
+    #[test]
+    fn turning_scrollback_off_deletes_what_was_saved() {
+        let (d, s) = store();
+        let history = jky_history::History::new(d.path().join("history.jsonl"));
+        jky_store::scrollback::save(d.path(), "tab-1", "saved output").unwrap();
+        let off = Privacy { keep_scrollback: false, ..Privacy::default() };
+        set_privacy_logic(&s, &history, d.path(), &off, 0).unwrap();
+        assert_eq!(jky_store::scrollback::load(d.path(), "tab-1").unwrap(), "");
+        assert!(!s.privacy().unwrap().keep_scrollback);
+    }
+
+    #[test]
+    fn setting_a_retention_window_prunes_history_at_once() {
+        let (d, s) = store();
+        let history = jky_history::History::new(d.path().join("history.jsonl"));
+        let now = 1_800_000_000_000_i64;
+        for (cmd, age_days) in [("ancient", 400), ("recent", 2)] {
+            history
+                .record(jky_history::Entry {
+                    command: cmd.into(),
+                    cwd: "/".into(),
+                    code: 0,
+                    at: now - age_days * 86_400_000,
+                    session: "p".into(),
+                    host: None,
+                })
+                .unwrap();
+        }
+        let year = Privacy { history_days: 365, ..Privacy::default() };
+        set_privacy_logic(&s, &history, d.path(), &year, now).unwrap();
+        let left: Vec<String> = history.all().unwrap().into_iter().map(|e| e.command).collect();
+        assert_eq!(left, ["recent"]);
+    }
+
+    #[test]
+    fn an_absurd_retention_window_is_refused() {
+        let (d, s) = store();
+        let history = jky_history::History::new(d.path().join("history.jsonl"));
+        let silly = Privacy { history_days: 100_000, ..Privacy::default() };
+        assert!(set_privacy_logic(&s, &history, d.path(), &silly, 0).is_err());
     }
 
     #[test]

@@ -91,6 +91,8 @@ fn main() {
             settings::settings_set_selected_model,
             settings::settings_set_active_provider,
             settings::settings_set_terminal_start_dir,
+            settings::settings_privacy,
+            settings::settings_set_privacy,
             system::system_status,
             tools::tools_diff,
             tools::tools_end_process,

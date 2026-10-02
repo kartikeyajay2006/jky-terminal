@@ -2,6 +2,7 @@ import { PROVIDERS, findProvider, toStatus, validateKey } from "./catalogue";
 import { DEFAULT_BINDINGS, conflictsIn } from "./keymap";
 import type {
   CompleteApi,
+  Privacy,
   LiveApi,
   FileEntry,
   FilesApi,
@@ -294,6 +295,9 @@ const PREVIEW_BODIES: Record<string, string> = {
 export function createWebPlatform(): Platform {
   const keys = new Map<string, string>();
   const models = new Map<string, string>();
+  // The same defaults as Rust: keep everything, for ever.
+  let privacy: Privacy = { keepHistory: true, historyDays: 0, keepScrollback: true };
+  let projectDir: string | null = null;
 
   const vault: VaultApi = {
     async setSecret(provider, value) {
@@ -323,6 +327,19 @@ export function createWebPlatform(): Platform {
     },
     async setActiveProvider(provider) {
       if (!findProvider(provider)) throw new Error(`unknown provider '${provider}'`);
+    },
+    async privacy() {
+      return { ...privacy, projectDir };
+    },
+    async setPrivacy(next) {
+      if (next.historyDays < 0 || next.historyDays > 3650) {
+        throw new Error("history can be kept for at most 3650 days");
+      }
+      privacy = { ...next };
+      if (!next.keepScrollback) buffers.clear();
+    },
+    async setProjectDir(dir) {
+      projectDir = dir.trim() || null;
     },
   };
 
@@ -404,7 +421,7 @@ export function createWebPlatform(): Platform {
   const history: HistoryApi = {
     async record(entry) {
       const command = entry.command.trim();
-      if (!command) return;
+      if (!command || !privacy.keepHistory) return;
       commands.push({ ...entry, command });
     },
     async search(query) {
@@ -1410,6 +1427,10 @@ const NEWS_SOURCES = [
       return buffers.get(key) ?? "";
     },
     async save(key, text) {
+      if (!privacy.keepScrollback) {
+        buffers.delete(key);
+        return;
+      }
       buffers.set(key, text);
     },
     async forget(key) {

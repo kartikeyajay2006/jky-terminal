@@ -15,7 +15,8 @@ The words these docs use, defined once. Terms are grouped, then alphabetical.
 | **Live panel** | A panel for `df -h`, `ps aux` or `docker ps` that re-runs and refreshes while you watch. |
 | **Pane** | One terminal inside a tab. A tab can be split into several. |
 | **Platform adapter** | `apps/desktop/src/platform/` — the single door from the interface to native code. |
-| **Project folder** | The folder the assistant's tools are confined to: the active workspace's terminal folder. |
+| **Private terminal** | A tab that keeps no history and saves no scrollback, marked with a **private** badge. |
+| **Project folder** | The folder the assistant's tools are confined to, and where new terminals start. Set in Settings → Privacy, or by switching to a workspace with a terminal folder. |
 | **Rail** | The column of section glyphs down the left of the window. |
 | **Recogniser** | A deterministic parser that turns one command's output into a panel, or declines. |
 | **Risk label** | *destructive*, *publish*, *network*, *writes files* or *runs locally* — the clearest reason a proposed command needs attention. |

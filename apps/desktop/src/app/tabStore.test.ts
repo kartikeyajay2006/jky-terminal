@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { allPaneKeys, readTabs, useTabs } from "./tabStore";
+import { allPaneKeys, isPanePrivate, readTabs, useTabs } from "./tabStore";
 import { leaves, type Pane } from "../features/terminal/panes/tree";
 import { createWebPlatform, __setPlatformForTests } from "../platform";
 
@@ -7,6 +7,35 @@ const reset = () => useTabs.setState({ tabs: [], activeId: null });
 
 describe("tabStore", () => {
   beforeEach(reset);
+
+  it("opens a private terminal that says so", () => {
+    const id = useTabs.getState().openPrivateTab("Private 1");
+    const tab = useTabs.getState().tabs.find((t) => t.id === id)!;
+    expect(tab.private).toBe(true);
+    expect(isPanePrivate(useTabs.getState().tabs, id)).toBe(true);
+  });
+
+  it("makes a tab private and forgets what its panes had saved", async () => {
+    const platform = createWebPlatform();
+    __setPlatformForTests(platform);
+    try {
+      const id = useTabs.getState().openTab("terminal", "Terminal 1");
+      await platform.scrollback.save(id, "BEFORE IT WAS PRIVATE");
+      useTabs.getState().setPrivate(id, true);
+      expect(isPanePrivate(useTabs.getState().tabs, id)).toBe(true);
+      await expect.poll(() => platform.scrollback.load(id)).toBe("");
+      useTabs.getState().setPrivate(id, false);
+      expect(isPanePrivate(useTabs.getState().tabs, id)).toBe(false);
+    } finally {
+      __setPlatformForTests(null);
+    }
+  });
+
+  it("keeps a reopened private tab private", () => {
+    const id = useTabs.getState().openPrivateTab("Private 1");
+    const restored = readTabs().tabs;
+    expect(restored.find((t) => t.id === id)?.private).toBe(true);
+  });
 
   it("starts with no tabs", () => {
     expect(useTabs.getState().tabs).toEqual([]);

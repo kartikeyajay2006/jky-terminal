@@ -605,3 +605,29 @@
 .keys__reset-all {
   justify-self: start;
 }
+
+/* Privacy panel */
+.privacy__toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.privacy__confirm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.privacy__folder {
+  margin: 0 0 var(--s2);
+  color: var(--text-muted);
+}
+

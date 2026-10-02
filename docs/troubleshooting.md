@@ -284,9 +284,8 @@ processes named `jky-terminal --supervise`.
 <summary><b>"Choose a project folder … before using AI tools"</b></summary>
 
 **Cause:** the assistant's tools need a project folder and there is no fallback to your home folder.
-**Fix:** give a workspace a **terminal folder** and switch to it — that folder becomes the assistant's
-project. (The message mentions Settings → Terminal; in the current build the workspace route is the one
-that sets it.)
+**Fix:** set one in **Settings → Privacy → Project folder**, or switch to a workspace that has a
+terminal folder — that folder becomes the assistant's project.
 
 </details>
 
