@@ -166,20 +166,20 @@ mod tests {
 
     #[test]
     fn provider_keys_are_removed() {
-        gone("export ANTHROPIC=sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx", "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx", "anthropic-key");
-        gone("key sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345 here", "sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345", "openai-key");
+        gone("export ANTHROPIC=sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx", "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx", "anthropic-key"); // pragma: allowlist secret — a test fixture, not a key
+        gone("key sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345 here", "sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345", "openai-key"); // pragma: allowlist secret — a test fixture, not a key
         gone("legacy sk-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcd", "sk-AbCdEfGhIjKlMnOpQrStUvWxYz0123456789abcd", "openai-key");
-        gone("or sk-or-v1-0123456789abcdef0123456789", "sk-or-v1-0123456789abcdef0123456789", "openrouter-key");
-        gone("gsk_0123456789abcdefABCDEF012345", "gsk_0123456789abcdefABCDEF012345", "groq-key");
-        gone("xai-0123456789abcdefABCDEFghij", "xai-0123456789abcdefABCDEFghij", "xai-key");
-        gone("AIzaSyA-0123456789abcdefghijklmnopqrstu", "AIzaSyA-0123456789abcdefghijklmnopqrstu", "google-key");
+        gone("or sk-or-v1-0123456789abcdef0123456789", "sk-or-v1-0123456789abcdef0123456789", "openrouter-key"); // pragma: allowlist secret — a test fixture, not a key
+        gone("gsk_0123456789abcdefABCDEF012345", "gsk_0123456789abcdefABCDEF012345", "groq-key"); // pragma: allowlist secret — a test fixture, not a key
+        gone("xai-0123456789abcdefABCDEFghij", "xai-0123456789abcdefABCDEFghij", "xai-key"); // pragma: allowlist secret — a test fixture, not a key
+        gone("AIzaSyA-0123456789abcdefghijklmnopqrstu", "AIzaSyA-0123456789abcdefghijklmnopqrstu", "google-key"); // pragma: allowlist secret — a test fixture, not a key
     }
 
     #[test]
     fn platform_tokens_are_removed() {
-        gone("GH ghp_0123456789abcdefghijklmnopqrstuvwxyz", "ghp_0123456789abcdefghijklmnopqrstuvwxyz", "github-token");
+        gone("GH ghp_0123456789abcdefghijklmnopqrstuvwxyz", "ghp_0123456789abcdefghijklmnopqrstuvwxyz", "github-token"); // pragma: allowlist secret — a test fixture, not a key
         gone("github_pat_11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyz0123456789ABCD", "github_pat_11ABCDEFG0123456789_abcdefghijklmnopqrstuvwxyz0123456789ABCD", "github-token");
-        gone("aws AKIAIOSFODNN7EXAMPLE", "AKIAIOSFODNN7EXAMPLE", "aws-access-key");
+        gone("aws AKIAIOSFODNN7EXAMPLE", "AKIAIOSFODNN7EXAMPLE", "aws-access-key"); // pragma: allowlist secret — a test fixture, not a key
         gone("slack xoxb-123456789012-abcdefghijkl", "xoxb-123456789012-abcdefghijkl", "slack-token");
         gone("stripe sk_live_0123456789abcdefABCD", "sk_live_0123456789abcdefABCD", "stripe-key");
     }
@@ -255,22 +255,22 @@ mod tests {
 
     #[test]
     fn findings_name_kinds_and_positions_but_never_carry_the_value() {
-        let text = "a sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx b";
+        let text = "a sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx b"; // pragma: allowlist secret — a test fixture, not a key
         let found = find(text);
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].kind, "anthropic-key");
-        assert_eq!(&text[found[0].start..found[0].end], "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx");
+        assert_eq!(&text[found[0].start..found[0].end], "sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx"); // pragma: allowlist secret — a test fixture, not a key
     }
 
     #[test]
     fn several_secrets_are_all_removed_in_order() {
-        let r = redact("A=ghp_0123456789abcdefghijklmnopqrstuvwxyz B=AKIAIOSFODNN7EXAMPLE");
+        let r = redact("A=ghp_0123456789abcdefghijklmnopqrstuvwxyz B=AKIAIOSFODNN7EXAMPLE"); // pragma: allowlist secret — a test fixture, not a key
         assert_eq!(r.removed, vec!["github-token", "aws-access-key"]);
     }
 
     #[test]
     fn redacting_twice_changes_nothing_more() {
-        let once = redact("export GITHUB_TOKEN=abcdef123456 sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx");
+        let once = redact("export GITHUB_TOKEN=abcdef123456 sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx"); // pragma: allowlist secret — a test fixture, not a key
         let twice = redact(&once.text);
         assert_eq!(twice.text, once.text);
         assert!(twice.removed.is_empty(), "{:?}", twice.removed);
@@ -278,7 +278,7 @@ mod tests {
 
     #[test]
     fn non_ascii_text_around_a_secret_survives() {
-        let r = redact("héllo → sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx ✓ 日本");
+        let r = redact("héllo → sk-ant-api03-AbCdEfGhIjKlMnOpQrStUvWx ✓ 日本"); // pragma: allowlist secret — a test fixture, not a key
         assert_eq!(r.text, "héllo → [redacted anthropic-key] ✓ 日本");
     }
 }

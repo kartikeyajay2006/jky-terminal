@@ -182,7 +182,7 @@ mod tests {
     #[test]
     fn a_secret_typed_in_a_command_never_reaches_the_disk() {
         let (dir, h) = history();
-        h.record(entry("export GITHUB_TOKEN=ghp_0123456789abcdefghijklmnopqrstuvwxyz && gh pr list")).unwrap();
+        h.record(entry("export GITHUB_TOKEN=ghp_0123456789abcdefghijklmnopqrstuvwxyz && gh pr list")).unwrap(); // pragma: allowlist secret — a test fixture, not a key
         let raw = std::fs::read_to_string(dir.path().join("history.jsonl")).unwrap();
         assert!(!raw.contains("ghp_0123456789"), "the token was written: {raw}");
         let kept = &h.all().unwrap()[0].command;

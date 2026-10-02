@@ -179,7 +179,7 @@ mod tests {
     #[test]
     fn a_secret_printed_to_the_screen_is_not_kept_in_saved_scrollback() {
         let d = dir();
-        save(d.path(), "tab-1", "$ cat .env\r\nOPENAI=sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345\r\n$ ").unwrap();
+        save(d.path(), "tab-1", "$ cat .env\r\nOPENAI=sk-proj-AbCdEfGhIjKlMnOpQrStUvWxYz012345\r\n$ ").unwrap(); // pragma: allowlist secret — a test fixture, not a key
         let back = load(d.path(), "tab-1").unwrap();
         assert!(!back.contains("sk-proj-AbCd"), "{back}");
         assert!(back.contains("[redacted openai-key]"), "{back}");
