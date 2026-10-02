@@ -301,7 +301,7 @@ Every capability is gated by automated CI assertions that inspect the source cod
 - 🔒 **Pinned Command Whitelist:** A test asserts the exact list of allowed IPC commands. Any unauthorized command fails the build.
 - 🔒 **No Secret Getters:** No IPC command exists that returns an API key or secret to the window. Keys reside in the native OS Keychain (macOS Keychain, Windows Credential Manager, Linux Secret Service over D-Bus with session encryption).
 - 🔒 **Race-Free Folder Boundary:** The editor and the assistant open files *beneath* a handle to the folder you chose, so `../`, symlinks out, and a directory swapped mid-operation are all refused by the same system call that opens the file.
-- 🔒 **Audit Trail:** Privileged actions and process terminations are recorded in a local-only append audit log.
+- 🔒 **Tamper-Evident Audit Trail:** Privileged actions are recorded in a local append-only log whose every record is chained with a keychain-held HMAC key. `jky audit` reports any record that was altered, removed, reordered or inserted.
 
 ---
 

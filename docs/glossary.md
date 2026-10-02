@@ -7,7 +7,7 @@ The words these docs use, defined once. Terms are grouped, then alphabetical.
 | Term | Meaning |
 |---|---|
 | **Approval card** | What appears when the assistant wants to run a command: the exact command, a risk label, the model's reason, and **Run** / **Don't run**. See [Assistant](assistant-and-approvals.md#how-approval-works). |
-| **Audit log** | `audit.jsonl` — an append-only, local record of key reads, provider requests, tool calls, approvals, sign-ins and captures. The window can cause entries but cannot read it. |
+| **Audit log** | `audit.jsonl` — an append-only, local record of key reads, provider requests, tool calls, approvals, sign-ins and captures. Each record is chained to the one before with a keychain-held key, so `jky audit` can tell whether it was altered. The window can cause entries but cannot read it. |
 | **Command block** | One finished command — prompt, command, output, exit status, duration — as reported by the shell. It has a bar in the gutter. |
 | **Command panel** | The structured view a recogniser draws beneath a command's raw output. |
 | **Failure help** | The offer under a failed command. Nothing is sent until you press a button. |

@@ -6,6 +6,13 @@ license.workspace = true
 authors.workspace = true
 
 [dependencies]
+# Each record is chained to the one before it: HMAC-SHA-256 with a key from
+# the OS keychain, or plain SHA-256 when no keychain is available.
+hmac = "0.12"
+jky-secrets = { path = "../jky-secrets" }
+# Signing keys come from the operating system's random source.
+getrandom = "0.2"
+sha2 = "0.10"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

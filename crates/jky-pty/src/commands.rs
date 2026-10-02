@@ -204,6 +204,15 @@ const COMMANDS: &[CommandSpec] = &[
                  computer already has.",
     },
     CommandSpec {
+        names: &["jky audit"],
+        usage: "jky audit",
+        summary: "Check the audit log has not been tampered with",
+        detail: "Walks every record's link and compares the newest with the \
+                 one remembered in your OS keychain, then says whether \
+                 anything was altered, removed, reordered or inserted. The \
+                 log itself is never shown to the window.",
+    },
+    CommandSpec {
         names: &["jky banner"],
         usage: "jky banner",
         summary: "Print the banner",
@@ -407,6 +416,7 @@ mod tests {
             "jky asks",
             "jky commands",
             "jky command",
+            "jky audit",
         ] {
             assert!(all.contains(&expected), "undocumented command: {expected}");
         }

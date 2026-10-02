@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
-use jky_audit::AuditLog;
+use jky_audit::{AuditLog, KeychainAnchor};
 use jky_history::History;
 use jky_keys::Keymap;
 use jky_remote::HostStore;
@@ -126,7 +126,13 @@ impl AppState {
             ptys: Arc::new(PtyRegistry::new()),
             held: Arc::new(jky_detach::Clients::new()),
             config_dir: config_dir.to_path_buf(),
-            audit: Arc::new(AuditLog::new(config_dir.join("audit.jsonl"))),
+            // Signed with a key from the OS keychain, which also remembers the
+            // newest record — so `jky audit` can tell an edited, shortened or
+            // deleted log from an intact one. See `jky-audit`.
+            audit: Arc::new(AuditLog::with_anchor(
+                config_dir.join("audit.jsonl"),
+                Arc::new(KeychainAnchor::new(Arc::new(KeyringStore::new(KEYCHAIN_SERVICE)))),
+            )),
             turn: Arc::new(Mutex::new(None)),
             ai_active: Arc::new(Mutex::new(false)),
             cancelled: Arc::new(AtomicBool::new(false)),

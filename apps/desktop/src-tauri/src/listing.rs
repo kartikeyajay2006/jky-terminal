@@ -604,7 +604,7 @@ mod tests {
         store.notes().save(note("note-1756280000000-1", "Today's Plan")).unwrap();
 
         let bin = jky_pty::launcher_dir(dir.path());
-        jky_pty::install_launchers(&bin, "BANNER", "COMMANDS").unwrap();
+        jky_pty::install_launchers(&bin, "BANNER", "COMMANDS", None).unwrap();
         write_all(&store, &bin, None).unwrap();
 
         let out = std::process::Command::new("sh")
@@ -639,7 +639,7 @@ mod tests {
         store.notes().save(note("n2", "Remove")).unwrap();
 
         let bin = jky_pty::launcher_dir(dir.path());
-        jky_pty::install_launchers(&bin, "BANNER", "COMMANDS").unwrap();
+        jky_pty::install_launchers(&bin, "BANNER", "COMMANDS", None).unwrap();
         write_all(&store, &bin, None).unwrap();
 
         store.notes().remove("n2").unwrap();

@@ -109,7 +109,7 @@ jky-terminal/
 | 🔵 **jky-store** | Dashboard data and scrollback. |
 | 🟣 **jky-ai** | Providers (Anthropic, OpenAI-compatible incl. Ollama), streaming, tools, the path sandbox, risk labels, approved-command execution. |
 | 🟣 **jky-secrets** | The keychain, the provider and model catalogue, key shape checks, a zeroising secret type. |
-| 🟣 **jky-audit** | The append-only audit log. |
+| 🟣 **jky-audit** | The append-only, hash-chained audit log, its keychain anchor and its verifier. |
 | 🟠 **jky-remote** | Saved hosts and the `ssh` argument validation. |
 | 🟠 **jky-apps** | Apps that fetch: GitHub, Gmail, weather, places, routes, news, the HTTP client, the browser's URL rules. |
 | 🟠 **jky-tools** | Developer tools that need a dependency. |

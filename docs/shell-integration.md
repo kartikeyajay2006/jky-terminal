@@ -188,6 +188,7 @@ the terminal.
 | `jky history [text]` | Searches everything you have run. |
 | `jky workspace [name]` | Lists your workspaces, or switches to one. |
 | `jky host [name]` | Lists saved machines, or opens a terminal on one. |
+| `jky audit` | Checks the audit log's chain and the newest record against the keychain; exits 0 if intact. See [Security & privacy](security-and-privacy.md#tamper-evident-and-checkable). |
 | `jky commands` | Prints this list. |
 | `jky` · `jky banner` · `jky-terminal` | Prints the JKY wordmark. `jkyterminal` and `jkyTerminal` work too. |
 

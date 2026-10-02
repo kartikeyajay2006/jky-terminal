@@ -33,6 +33,12 @@ tokio.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+# The config folder for `--verify-audit` when it is run by hand.
+dirs = "6"
+
+[target.'cfg(windows)'.dependencies]
+# AttachConsole, so `--verify-audit` can print from a GUI-subsystem build.
+windows-sys = { version = "0.59", features = ["Win32_System_Console"] }
 
 [dev-dependencies]
 interprocess = "2.4"

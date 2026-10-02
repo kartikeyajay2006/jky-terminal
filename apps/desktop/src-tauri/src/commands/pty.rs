@@ -96,7 +96,9 @@ pub async fn pty_spawn(
     // The command list is rendered here rather than in the frontend because
     // the catalogue lives in Rust — one definition, rendered for whoever asks.
     let command_list = render_commands(parse_accent(&accent), cols.max(40) as usize);
-    let launchers_ok = install_launchers(&bin_dir, &banner, &command_list).is_ok();
+    // `jky audit` runs this very executable with `--verify-audit`.
+    let exe = std::env::current_exe().ok();
+    let launchers_ok = install_launchers(&bin_dir, &banner, &command_list, exe.as_deref()).is_ok();
 
     // What `jky notes` and friends print. Rendered here too so a terminal
     // opened before anything was saved still shows the current state, and in

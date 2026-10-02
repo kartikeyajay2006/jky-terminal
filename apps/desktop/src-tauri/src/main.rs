@@ -22,6 +22,14 @@ fn main() {
     // webview first and then not using it would cost a browser's worth of
     // memory for every detached session on the machine.
     let args: Vec<String> = std::env::args().collect();
+
+    // `jky audit`, or this binary run by hand: check the audit log's chain
+    // and print the verdict. Never a window, and never an IPC command — the
+    // log is for the machine's owner, not for the renderer.
+    if args.iter().any(|a| a == "--verify-audit") {
+        std::process::exit(verify_audit(&args));
+    }
+
     if let Some(session) = supervisor::requested(&args) {
         // The directory is given, never worked out here. The window knows it
         // already and a second derivation is the same fact twice — which is
@@ -163,4 +171,36 @@ fn main() {
         ])
         .run(tauri::generate_context!())
         .expect("error while running JKY Terminal");
+}
+
+/// The audit check, for a terminal. Exit code 0 intact, 1 altered, 2 unreadable.
+fn verify_audit(args: &[String]) -> i32 {
+    #[cfg(windows)]
+    attach_parent_console();
+    let config_dir = supervisor::argument(args, supervisor::CONFIG_FLAG)
+        .map(std::path::PathBuf::from)
+        .or_else(|| dirs::config_dir().map(|d| d.join("dev.jky.terminal")));
+    let Some(config_dir) = config_dir else {
+        eprintln!("could not find the JKY Terminal config folder; pass {} <dir>", supervisor::CONFIG_FLAG);
+        return 2;
+    };
+    // Read-only: checking a log must never create the key it is checked with.
+    let store = std::sync::Arc::new(jky_secrets::KeyringStore::new(state::KEYCHAIN_SERVICE));
+    let anchor = std::sync::Arc::new(jky_audit::KeychainAnchor::read_only(store));
+    let (text, code) = jky_audit::check(&config_dir.join("audit.jsonl"), anchor);
+    println!("{text}");
+    code
+}
+
+/// A release build on Windows is a GUI program with no console of its own,
+/// so a report printed from it would go nowhere. Borrow the console of the
+/// shell that started it.
+#[cfg(windows)]
+fn attach_parent_console() {
+    use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
+    // SAFETY: AttachConsole takes a process id by value and touches no memory
+    // of ours; failure (no parent console) leaves output where it was.
+    unsafe {
+        AttachConsole(ATTACH_PARENT_PROCESS);
+    }
 }

@@ -224,6 +224,13 @@ const WEB_COMMANDS: CommandSpec[] = [
       "With no name it prints every host you have saved. Give it one and a terminal opens on that machine, over the ssh this computer already has.",
   },
   {
+    names: ["jky audit"],
+    usage: "jky audit",
+    summary: "Check the audit log has not been tampered with",
+    detail:
+      "Walks every record's link and compares the newest with the one remembered in your OS keychain, then says whether anything was altered, removed, reordered or inserted. The log itself is never shown to the window.",
+  },
+  {
     names: ["jky banner"],
     usage: "jky banner",
     summary: "Print the banner",

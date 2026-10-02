@@ -269,6 +269,52 @@ matter:
 Each detail is sanitised so a crafted value cannot forge an extra line. The window can cause entries to
 be written but cannot read the log. It is a record, not a rollback.
 
+### Tamper-evident, and checkable
+
+Anything running as you can edit a file you own, so a plain log is only a record. Every line of
+`audit.jsonl` is therefore **chained**:
+
+```mermaid
+flowchart LR
+    G([genesis]):::ink --> R1["record 1<br/>link₁ = HMAC(key, genesis ‖ record₁)"]:::violet
+    R1 --> R2["record 2<br/>link₂ = HMAC(key, link₁ ‖ record₂)"]:::violet
+    R2 --> R3["record 3<br/>link₃ = HMAC(key, link₂ ‖ record₃)"]:::violet
+    R3 -. newest seq + link .-> K[(OS keychain<br/>also holds the key)]:::mint
+
+    classDef ink fill:#14141f,stroke:#2a2a3c,color:#e8e8f2
+    classDef violet fill:#7c3aed,stroke:#5b21b6,color:#ffffff
+    classDef mint fill:#3ddc97,stroke:#15a36b,color:#04170f
+```
+
+- Each record carries a **sequence number** and a **link**: an HMAC-SHA-256 over the previous link and
+  the record, keyed with a random 256-bit key kept in the OS keychain (`audit-signing-key`). Changing,
+  removing, reordering or inserting any record breaks every link after it.
+- Deleting the **newest** records would leave a valid chain behind, so the newest sequence number and
+  link are kept in the keychain too (`audit-head`).
+- Without a keychain the chain falls back to plain SHA-256 — edits are still caught, but a forger who
+  rewrites the whole file is not — and the report says so rather than implying more.
+
+Run **`jky audit`** in any JKY terminal (or `jky-terminal --verify-audit` from any shell):
+
+```text
+Audit log: ~/.config/dev.jky.terminal/audit.jsonl
+✓ The audit log is intact: 214 records.
+  The newest record matches the one remembered in the keychain.
+  214 records are signed with the key in your OS keychain.
+```
+
+It exits `0` when intact, `1` when anything was altered, removed, reordered or inserted — naming the
+record — and `2` when the log cannot be read. Records written before chaining existed are counted and
+labelled, not condemned. The checker opens the keychain **read-only**, so checking can never change
+what it is checked against.
+
+> [!NOTE]
+> **What this does and does not prove.** On macOS the keychain item is readable only by JKY without
+> your approval, so a forger who can edit the file still cannot sign. On Linux's Secret Service and
+> Windows Credential Manager, other programs running as you can read keychain items once it is
+> unlocked — there the chain proves the log has not been edited *by something that did not also read
+> your keychain*.
+
 ---
 
 ## What is stored where
