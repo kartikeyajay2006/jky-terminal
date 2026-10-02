@@ -68,7 +68,7 @@ tools and a themed shell. The near-term job is to make it dependable under real 
 | Publish benchmarks — first prompt, sustained output, split and reconnect time, memory | "Fast" should be a number anyone can reproduce | Planned |
 | Native end-to-end tests — interactive shells, resize, paste, Unicode, persistence, approvals | Unit tests cannot prove a terminal *feels* right | Planned |
 | Inline images — Kitty graphics, iTerm2, Sixel | Listed in **Settings → Terminal** as the one missing essential | Planned |
-| Known gaps — `jky games 5`, Windows `jky split/history/workspace/host`, a project-folder field for the assistant | Small, visible rough edges, documented where they apply | Known |
+| A project-folder field for the assistant | The only way to set it today is a workspace's terminal folder | Known |
 | Quieter test output | A green run should be trustworthy at a glance | Ongoing |
 
 ## Next — release trust

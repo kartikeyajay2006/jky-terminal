@@ -1,6 +1,20 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
 import { decodeGamePayload, GAME_PREFIX, SHELL_ORDER, useOpenGame } from "./openStore";
 import { GAMES } from "./registry";
+
+describe("the shell and the window agree on the games", () => {
+  it("lets the launchers open exactly the games the window can", () => {
+    // The launchers are generated from SHELL_GAMES in Rust. When 2048 arrived
+    // as the fifth game, both launchers still stopped at four, and nothing
+    // noticed because each side was only ever tested against itself.
+    const source = readFileSync(join(process.cwd(), "../../crates/jky-pty/src/launcher.rs"), "utf8");
+    const declared = /pub const SHELL_GAMES: u8 = (\d+);/.exec(source)?.[1];
+    expect(declared, "SHELL_GAMES not found in launcher.rs").toBeDefined();
+    expect(Number(declared)).toBe(SHELL_ORDER.length);
+  });
+});
 
 describe("decoding a game from the shell", () => {
   it("maps each number onto the game the command promises", () => {

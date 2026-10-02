@@ -218,12 +218,7 @@ spellings people reach for: `add`/`new`, `rm`/`delete`/`del`, `done`/`tick`, `un
 | Command | Does |
 |---|---|
 | `jky games` | Lists the games with your records. (Open the Games section once so the listing is written.) |
-| `jky games <n>` | Opens game *n*: 1 Dino Run, 2 Snake, 3 Tic-Tac-Toe, 4 Flappy Bird. |
-
-> [!NOTE]
-> **Known gaps in the current build.** The shell launchers accept game numbers 1–4, so **2048** opens
-> from the Games section rather than `jky games 5`. On **Windows**, `jky split`, `jky history`,
-> `jky workspace` and `jky host` are not wired into `jky.cmd` yet; use the palette or the rail there.
+| `jky games <n>` | Opens game *n*: 1 Dino Run, 2 Snake, 3 Tic-Tac-Toe, 4 Flappy Bird, 5 2048. |
 
 ---
 

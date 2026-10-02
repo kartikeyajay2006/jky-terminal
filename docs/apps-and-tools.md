@@ -227,7 +227,7 @@ keyboard-first and keep local records and play statistics.
 | 4 | **Flappy Bird** | <kbd>Space</kbd> | Mind the gap. The gap gets smaller. |
 | 5 | **2048** | <kbd>↑</kbd><kbd>↓</kbd><kbd>←</kbd><kbd>→</kbd> · <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> | Slide, merge, and build the 2048 tile. |
 
-`jky games <n>` opens games 1–4 from a terminal in the current build; open 2048 from the Games section.
+`jky games <n>` opens any of them from a terminal, by the number in the first column.
 
 ---
 

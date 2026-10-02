@@ -11,7 +11,7 @@ pub use integration::{
     DONE_PREFIX, NUSHELL_FILE, POWERSHELL_FILE, fish_hook, install_shell_integration,
     integration_args, integration_dir, integration_env, nushell_hook, powershell_hook,
 };
-pub use launcher::{ASK_OSC, LAUNCHER_NAMES, install_launchers, launcher_dir, path_with};
+pub use launcher::{ASK_OSC, LAUNCHER_NAMES, SHELL_GAMES, install_launchers, launcher_dir, path_with};
 pub use registry::PtyRegistry;
 pub use session::{PtyError, PtySession, SpawnConfig};
 pub use shell::{ShellSpec, default_shell, pty_env, resolve_shell, shell_name};

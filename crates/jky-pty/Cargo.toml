@@ -12,3 +12,5 @@ serde.workspace = true
 
 [dev-dependencies]
 tempfile = "3"
+base64 = "0.21"
+serde_json.workspace = true

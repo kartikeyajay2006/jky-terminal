@@ -9,6 +9,20 @@ use std::path::{Path, PathBuf};
 /// still works.
 pub const LAUNCHER_NAMES: &[&str] = &["jky-terminal", "jkyterminal", "jkyTerminal"];
 
+/// How many games `jky games <n>` can open, numbered from 1.
+///
+/// The window's order is `SHELL_ORDER` in the games feature; a test there
+/// reads this constant so the shell and the window can never disagree about
+/// which numbers exist — they did, when 2048 arrived as the fifth game and
+/// both launchers still stopped at four.
+pub const SHELL_GAMES: u8 = 5;
+
+/// `1|2|…|n` for a POSIX `case` pattern.
+#[cfg(not(windows))]
+fn game_pattern() -> String {
+    (1..=SHELL_GAMES).map(|n| n.to_string()).collect::<Vec<_>>().join("|")
+}
+
 /// Filename holding the pre-rendered banner the launchers print.
 const BANNER_FILE: &str = "banner.ansi";
 
@@ -164,11 +178,11 @@ case "$1" in
       fi
     else
       case "$1" in
-        1|2|3|4)
+        {games})
           printf '\033]{osc};JKYGame=%s\007' "$1"
           ;;
         *)
-          echo "jky: no game $1. Choose 1, 2, 3 or 4." >&2
+          echo "jky: no game $1. Choose 1 to {game_count}." >&2
           [ -f "{data}/games.ansi" ] && cat "{data}/games.ansi" >&2
           exit 1
           ;;
@@ -263,6 +277,8 @@ esac
 "#,
         osc = ASK_OSC,
         audit = audit,
+        games = game_pattern(),
+        game_count = SHELL_GAMES,
         banner = banner_path.display(),
         commands = commands_path.display(),
         data = data_dir.display()
@@ -298,6 +314,13 @@ fn write_ask_launcher(
          if /i \"%1\"==\"theme\" goto send\r\n\
          if /i \"%1\"==\"open\" goto send\r\n\
          if /i \"%1\"==\"go\" goto send\r\n\
+         if /i \"%1\"==\"split\" goto send\r\n\
+         if /i \"%1\"==\"history\" goto send\r\n\
+         if /i \"%1\"==\"hist\" goto send\r\n\
+         if /i \"%1\"==\"workspace\" goto send\r\n\
+         if /i \"%1\"==\"ws\" goto send\r\n\
+         if /i \"%1\"==\"host\" goto send\r\n\
+         if /i \"%1\"==\"hosts\" goto send\r\n\
          if /i \"%1\"==\"note\" if not \"%2\"==\"\" goto send\r\n\
          if /i \"%1\"==\"todo\" if not \"%2\"==\"\" goto send\r\n\
          if /i \"%1\"==\"reminder\" if not \"%2\"==\"\" goto send\r\n\
@@ -323,11 +346,11 @@ fn write_ask_launcher(
          if \"%2\"==\"\" (\r\n\
          if exist \"{data}\\games.ansi\" (type \"{data}\\games.ansi\") else (echo jky: open the Games section once so the listing is written. 1>&2)\r\n\
          ) else (\r\n\
-         powershell -NoProfile -Command \"if ('%2' -match '^[1-4]$') {{ [Console]::Write([char]27 + ']{osc};JKYGame=%2' + [char]7) }} else {{ [Console]::Error.WriteLine('jky: no game %2. Choose 1, 2, 3 or 4.'); exit 1 }}\"\r\n\
+         powershell -NoProfile -Command \"if ('%2' -match '^[1-{game_count}]$') {{ [Console]::Write([char]27 + ']{osc};JKYGame=%2' + [char]7) }} else {{ [Console]::Error.WriteLine('jky: no game %2. Choose 1 to {game_count}.'); exit 1 }}\"\r\n\
          )\r\n\
          goto :eof\r\n\
          :send\r\n\
-         powershell -NoProfile -Command \"$a = $args; $noun = $a[0].ToLower();          $verb = if ($a.Count -gt 1) {{ $a[1].ToLower() }} else {{ '' }};          $rest = if ($a.Count -gt 2) {{ @($a[2..($a.Count-1)]) }} else {{ @() }};          $map = @{{ 'new'='new'; 'add'='new'; 'write'='write'; 'append'='write';          'rename'='rename'; 'rm'='rm'; 'delete'='rm'; 'del'='rm';          'done'='done'; 'tick'='done'; 'undone'='undone'; 'untick'='undone' }};          if ('theme','open','go','split','history','hist','workspace','ws','host','hosts' -contains $noun) {{          $full = $(switch ($noun) {{ 'go' {{ 'open' }} 'hist' {{ 'history' }} 'ws' {{ 'workspace' }} 'hosts' {{ 'host' }} default {{ $noun }} }});          $rest = @($a[1..($a.Count-1)]) }}          else {{ $tail = $map[$verb];          if (-not $tail) {{ [Console]::Error.WriteLine('jky: unknown command'); exit 1 }};          if ($noun -eq 'todo' -and $tail -eq 'new') {{ $tail = 'add' }};          if ($noun -eq 'reminder' -and $tail -eq 'new') {{ $tail = 'add' }};          $full = \"$noun.$tail\" }};          $json = (@{{ verb = $full; args = @($rest) }} | ConvertTo-Json -Compress);          $b = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json));          [Console]::Write([char]27 + ']{osc};JKYCmd=' + $b + [char]7)\" %*\r\n\
+         powershell -NoProfile -Command \"$a = $args; $noun = $a[0].ToLower();          $verb = if ($a.Count -gt 1) {{ $a[1].ToLower() }} else {{ '' }};          $rest = if ($a.Count -gt 2) {{ @($a[2..($a.Count-1)]) }} else {{ @() }};          $map = @{{ 'new'='new'; 'add'='new'; 'write'='write'; 'append'='write';          'rename'='rename'; 'rm'='rm'; 'delete'='rm'; 'del'='rm';          'done'='done'; 'tick'='done'; 'undone'='undone'; 'untick'='undone' }};          if ('theme','open','go','split','history','hist','workspace','ws','host','hosts' -contains $noun) {{          $full = $(switch ($noun) {{ 'go' {{ 'open' }} 'hist' {{ 'history' }} 'ws' {{ 'workspace' }} 'hosts' {{ 'host' }} default {{ $noun }} }});          $rest = if ($a.Count -gt 1) {{ @($a[1..($a.Count-1)]) }} else {{ @() }} }}          else {{ $tail = $map[$verb];          if (-not $tail) {{ [Console]::Error.WriteLine('jky: unknown command'); exit 1 }};          if ($noun -eq 'todo' -and $tail -eq 'new') {{ $tail = 'add' }};          if ($noun -eq 'reminder' -and $tail -eq 'new') {{ $tail = 'add' }};          $full = \"$noun.$tail\" }};          $json = (@{{ verb = $full; args = @($rest) }} | ConvertTo-Json -Compress);          $b = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($json));          [Console]::Write([char]27 + ']{osc};JKYCmd=' + $b + [char]7)\" %*\r\n\
          goto :eof\r\n\
          :audit\r\n\
          {audit}\r\n\
@@ -339,6 +362,7 @@ fn write_ask_launcher(
          [Console]::Write([char]27 + ']{osc};JKYAsk=' + $b + [char]7)\" %*\r\n",
         osc = ASK_OSC,
         audit = audit,
+        game_count = SHELL_GAMES,
         banner = banner_path.display(),
         commands = commands_path.display(),
         data = data_dir.display()
@@ -526,7 +550,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
 
-        for n in ["1", "2", "3", "4"] {
+        for n in ["1", "2", "3", "4", "5"] {
             let (stdout, stderr, ok) = run_jky(dir.path(), &["games", n]);
             assert!(ok, "`jky games {n}` failed: {stderr}");
             assert!(stdout.contains(&format!("JKYGame={n}")), "{stdout:?}");
@@ -536,12 +560,12 @@ mod tests {
     #[test]
     #[cfg(not(windows))]
     fn jky_games_refuses_a_number_that_is_not_a_game() {
-        // Four games, so anything else is a typo rather than a request. It
-        // says so instead of emitting a sequence the window would ignore.
+        // SHELL_GAMES games, so anything else is a typo rather than a request.
+        // It says so instead of emitting a sequence the window would ignore.
         let dir = TempDir::new().unwrap();
         install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
 
-        for bad in ["0", "5", "9", "x"] {
+        for bad in ["0", "6", "9", "x", "12"] {
             let (stdout, stderr, ok) = run_jky(dir.path(), &["games", bad]);
             assert!(!ok, "`jky games {bad}` should fail");
             assert!(!stdout.contains("JKYGame="), "emitted a sequence for {bad}");
@@ -1003,5 +1027,83 @@ mod tests {
             launcher_dir(Path::new("/cfg/jky")),
             PathBuf::from("/cfg/jky/bin")
         );
+    }
+}
+
+/// The Windows launcher, run for real by cmd.exe on the Windows CI runner.
+/// It is a separate script from the POSIX one, and it is the one that had
+/// drifted: `split`, `history`, `workspace` and `host` fell through to the
+/// banner, and 2048 could not be opened.
+#[cfg(all(test, windows))]
+mod windows_launcher_tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    fn run(dir: &Path, args: &[&str]) -> (String, String, bool) {
+        let out = std::process::Command::new("cmd")
+            .arg("/C")
+            .arg(dir.join("jky.cmd"))
+            .args(args)
+            .output()
+            .expect("cmd.exe runs");
+        (
+            String::from_utf8_lossy(&out.stdout).into_owned(),
+            String::from_utf8_lossy(&out.stderr).into_owned(),
+            out.status.success(),
+        )
+    }
+
+    fn decoded_command(stdout: &str) -> serde_json::Value {
+        let start = stdout.find("JKYCmd=").expect("a JKYCmd sequence") + "JKYCmd=".len();
+        let end = stdout[start..].find('\u{7}').map(|e| start + e).unwrap_or(stdout.len());
+        let bytes = base64::Engine::decode(&base64::engine::general_purpose::STANDARD, stdout[start..end].trim())
+            .expect("base64");
+        serde_json::from_slice(&bytes).expect("json")
+    }
+
+    #[test]
+    fn every_game_opens_from_the_windows_shell() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        for n in 1..=SHELL_GAMES {
+            let (stdout, stderr, ok) = run(dir.path(), &["games", &n.to_string()]);
+            assert!(ok, "`jky games {n}` failed: {stderr}");
+            assert!(stdout.contains(&format!("JKYGame={n}")), "{stdout:?}");
+        }
+        let (_, _, ok) = run(dir.path(), &["games", &(SHELL_GAMES + 1).to_string()]);
+        assert!(!ok, "a game that does not exist was accepted");
+    }
+
+    #[test]
+    fn the_pass_through_verbs_reach_the_app_on_windows() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        for (typed, verb) in [
+            (vec!["split", "down"], "split"),
+            (vec!["history", "docker"], "history"),
+            (vec!["hist", "docker"], "history"),
+            (vec!["workspace", "api"], "workspace"),
+            (vec!["ws", "api"], "workspace"),
+            (vec!["host", "prod"], "host"),
+            (vec!["hosts"], "host"),
+        ] {
+            let (stdout, stderr, ok) = run(dir.path(), &typed);
+            assert!(ok, "`jky {}` failed: {stderr}", typed.join(" "));
+            let sent = decoded_command(&stdout);
+            assert_eq!(sent["verb"], verb, "`jky {}` sent {sent}", typed.join(" "));
+            // Everything after the noun, and nothing else. PowerShell's
+            // `1..0` counts down, so a bare noun once sent `[null, noun]`.
+            let expected: Vec<&str> = typed[1..].to_vec();
+            assert_eq!(sent["args"], serde_json::json!(expected), "`jky {}` sent {sent}", typed.join(" "));
+        }
+    }
+
+    #[test]
+    fn audit_without_a_binary_fails_with_a_reason_on_windows() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        let (_, stderr, ok) = run(dir.path(), &["audit"]);
+        assert!(!ok);
+        assert!(stderr.contains("audit"), "{stderr}");
     }
 }

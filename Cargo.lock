@@ -2357,8 +2357,10 @@ dependencies = [
 name = "jky-pty"
 version = "0.1.0"
 dependencies = [
+ "base64 0.21.7",
  "portable-pty",
  "serde",
+ "serde_json",
  "tempfile",
  "thiserror 2.0.20",
 ]
