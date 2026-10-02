@@ -38,13 +38,13 @@ quadrantChart
     quadrant-2 Focused, ready-made
     quadrant-3 Focused, build-your-own
     quadrant-4 Integrated, build-your-own
-    JKY Terminal: [0.72, 0.70]
-    Wave Terminal: [0.80, 0.66]
-    Warp: [0.66, 0.84]
+    JKY Terminal: [0.66, 0.70]
+    Wave Terminal: [0.80, 0.56]
+    Warp: [0.60, 0.88]
     Ghostty: [0.22, 0.78]
     WezTerm: [0.42, 0.24]
     Alacritty: [0.08, 0.32]
-    VS Code terminal: [0.90, 0.80]
+    VS Code terminal: [0.80, 0.84]
 ```
 
 <sub>The chart is an editorial judgement, not a measurement. Its job is to show the shape of the

@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="t d">
+<title id="t">Workspaces &amp; editor</title><desc id="d">Put me back where I was — folders, terminals, and the machine.</desc>
+<defs>
+<linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0c0c15"/><stop offset="1" stop-color="#06060a"/></linearGradient>
+<linearGradient id="ttl" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="900" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#7c3aed"/><stop offset=".55" stop-color="#ffffff"/><stop offset=".8" stop-color="#00e5ff"/><stop offset="1" stop-color="#ffffff"/><animateTransform attributeName="gradientTransform" type="translate" values="-500 0;400 0;-500 0" dur="12s" repeatCount="indefinite"/></linearGradient>
+<linearGradient id="edge" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#7c3aed"/><stop offset=".5" stop-color="#00e5ff"/><stop offset="1" stop-color="#3ddc97"/></linearGradient>
+<filter id="blur" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="46"/></filter>
+<pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#fff" fill-opacity=".06"/></pattern>
+<clipPath id="card"><rect width="1200" height="300" rx="24"/></clipPath>
+<clipPath id="typed"><rect x="828" y="96" height="24" width="0"><animate attributeName="width" dur="7s" repeatCount="indefinite" calcMode="discrete" values="0.0;0.0;8.4;16.8;25.2;33.6;42.0;50.4;58.8;67.2;75.6;84.0;92.4;100.8;109.2;109.2" keyTimes="0.0000;0.0800;0.1046;0.1292;0.1538;0.1785;0.2031;0.2277;0.2523;0.2769;0.3015;0.3262;0.3508;0.3754;0.4000;1.0000"/></rect></clipPath>
+</defs>
+<style>.m{font-family:'JetBrains Mono','SF Mono',SFMono-Regular,Menlo,Consolas,'Liberation Mono',monospace}.s{font-family:Inter,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif}@keyframes a{0%{transform:translate(0,0) scale(1)}50%{transform:translate(70px,26px) scale(1.15)}100%{transform:translate(0,0) scale(1)}}@keyframes b{0%{transform:translate(0,0) scale(1.1)}50%{transform:translate(-90px,-18px) scale(.92)}100%{transform:translate(0,0) scale(1.1)}}@keyframes c{0%{transform:translate(0,0)}50%{transform:translate(40px,-30px)}100%{transform:translate(0,0)}}.a{animation:a 16s ease-in-out infinite}.b{animation:b 19s ease-in-out infinite}.c{animation:c 13s ease-in-out infinite}@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}.blink{animation:blink 1.05s steps(1) infinite}@keyframes out{0%,44%{opacity:0;transform:translateY(5px)}50%,92%{opacity:1;transform:translateY(0)}100%{opacity:0}}.o{opacity:0;animation:out 7s ease-out infinite}@keyframes run{0%{stroke-dashoffset:1200}100%{stroke-dashoffset:0}}.run{stroke-dasharray:140 1060;animation:run 6s linear infinite}@keyframes pop{0%,100%{opacity:.55}50%{opacity:1}}.pop{animation:pop 3.2s ease-in-out infinite}@media (prefers-reduced-motion:reduce){*{animation:none!important}.o{opacity:1}}</style>
+<g clip-path="url(#card)">
+<rect width="1200" height="300" fill="url(#bg)"/>
+<g filter="url(#blur)" opacity=".55"><ellipse class="a" cx="250" cy="250" rx="260" ry="120" fill="#7c3aed"/><ellipse class="b" cx="760" cy="40" rx="280" ry="110" fill="#00e5ff"/><ellipse class="c" cx="1080" cy="260" rx="200" ry="100" fill="#3ddc97"/></g>
+<rect width="1200" height="300" fill="url(#dots)"/>
+<rect width="1200" height="300" fill="#06060a" opacity=".35"/>
+</g>
+<rect x=".75" y=".75" width="1198.5" height="298.5" rx="23.5" fill="none" stroke="#fff" stroke-opacity=".1" stroke-width="1.5"/>
+<rect x="56" y="293" width="1088" height="2.5" rx="1.25" fill="url(#edge)" opacity=".9"/>
+<text x="56" y="70" class="m" font-size="13" letter-spacing="3.2" fill="#a9a9c2">JKY TERMINAL  <tspan fill="#7c3aed">/</tspan>  WORKSPACES</text>
+<text x="54" y="142" class="s" font-size="54" font-weight="800" letter-spacing="-1.2" fill="url(#ttl)">Workspaces &amp; editor</text>
+<text x="56" y="182" class="s" font-size="18.5" fill="#cfcfe0">Put me back where I was — folders, terminals, and the machine.</text>
+<g class="pop" style="animation-delay:0.0s"><rect x="56" y="212" width="125" height="30" rx="15" fill="#7c3aed" fill-opacity=".12" stroke="#7c3aed" stroke-opacity=".55"/><circle cx="71" cy="227" r="3.5" fill="#7c3aed"/><text x="81" y="232" class="m" font-size="12.5" fill="#ececf6">CodeMirror 6</text></g>
+<g class="pop" style="animation-delay:0.5s"><rect x="191.2" y="212" width="125" height="30" rx="15" fill="#00e5ff" fill-opacity=".12" stroke="#00e5ff" stroke-opacity=".55"/><circle cx="206.2" cy="227" r="3.5" fill="#00e5ff"/><text x="216.2" y="232" class="m" font-size="12.5" fill="#ececf6">PDF &amp; images</text></g>
+<g class="pop" style="animation-delay:1.0s"><rect x="326.4" y="212" width="133" height="30" rx="15" fill="#3ddc97" fill-opacity=".12" stroke="#3ddc97" stroke-opacity=".55"/><circle cx="341.4" cy="227" r="3.5" fill="#3ddc97"/><text x="351.4" y="232" class="m" font-size="12.5" fill="#ececf6">saved by name</text></g>
+<rect x="800" y="46" width="352" height="196" rx="14" fill="#09090f" fill-opacity=".86" stroke="#fff" stroke-opacity=".12"/>
+<rect x="800" y="46" width="352" height="196" rx="14" fill="none" stroke="url(#edge)" stroke-width="1.6" class="run"/>
+<circle cx="820" cy="65" r="4.6" fill="#ff4d6a"/>
+<circle cx="835" cy="65" r="4.6" fill="#ffb340"/>
+<circle cx="850" cy="65" r="4.6" fill="#3ddc97"/>
+<text x="1136" y="69" text-anchor="end" class="m" font-size="11" fill="#6e6e85">zsh · jky</text>
+<line x1="800" y1="82" x2="1152" y2="82" stroke="#fff" stroke-opacity=".08"/>
+<text x="816" y="112" class="m" font-size="14" fill="#7c3aed">❯</text>
+<text x="828" y="112" class="m" font-size="14" fill="#f2f2f8" textLength="109.2" lengthAdjust="spacingAndGlyphs" clip-path="url(#typed)">jky workspace</text>
+<g class="blink"><rect x="828" y="100" width="8" height="16" rx="1" fill="#7c3aed"><animate attributeName="x" dur="7s" repeatCount="indefinite" calcMode="discrete" values="828.0;828.0;836.4;844.8;853.2;861.6;870.0;878.4;886.8;895.2;903.6;912.0;920.4;928.8;937.2;937.2" keyTimes="0.0000;0.0800;0.1046;0.1292;0.1538;0.1785;0.2031;0.2277;0.2523;0.2769;0.3015;0.3262;0.3508;0.3754;0.4000;1.0000"/></rect></g>
+<text x="816" y="144" class="m o" font-size="12.5" fill="#8b8ba4" style="animation-delay:0.00s"># lists your saved workspaces</text>
+<text x="816" y="170" class="m o" font-size="12.5" fill="#8b8ba4" style="animation-delay:0.25s"># jky workspace &lt;name&gt; switches</text>
+<text x="816" y="196" class="m o" font-size="12.5" fill="#8b8ba4" style="animation-delay:0.50s"># folders, terminals and host at once</text>
+</svg>

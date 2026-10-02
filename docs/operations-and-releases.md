@@ -1,89 +1,188 @@
-# Operations and releases
+# Operations & releases
 
-This guide is for maintainers, contributors, and evaluators who need to validate the application rather than only run it. JKY is a cross-platform desktop product; a successful frontend build alone is not enough evidence that a release works.
+<p align="center">
+  <img src="img/banner-operations-and-releases.svg" alt="Operations and releases — CI on three platforms, draft installers, and what signing still needs" width="100%">
+</p>
 
-## Validation ladder
+<p align="center">
+  <a href="https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml"><img src="https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg" alt="CI status"></a>
+  <img src="https://img.shields.io/badge/fail--fast-false-ffb340?style=flat-square" alt="fail-fast false">
+  <img src="https://img.shields.io/badge/releases-draft%20%C2%B7%20unsigned-ff4d6a?style=flat-square" alt="Releases are drafts and unsigned">
+  <img src="https://img.shields.io/badge/updater-deliberately%20off-bd93f9?style=flat-square" alt="Updater deliberately off">
+</p>
 
-Run the narrowest useful check while developing, then use the full ladder before a release:
+For maintainers, contributors and evaluators who need to *validate* JKY rather than just run it. A green
+frontend build alone is not evidence that a desktop release works; this page explains what is checked,
+where, and what is still missing before a public release.
 
-```sh
-# Fast local feedback
-pnpm -w typecheck
-pnpm -w lint
-pnpm -w test
+**On this page:** [The verification ladder](#the-verification-ladder) · [What CI proves](#what-ci-proves) ·
+[Cutting a release](#cutting-a-release) · [Distribution status](#distribution-status) ·
+[Release smoke test](#release-smoke-test) · [Maintainer checklist](#maintainer-checklist)
 
-# Native workspace confidence
-cargo test --workspace
-cargo clippy --workspace --all-targets -- -D warnings
+---
 
-# Full repository validation
-pnpm verify
+## The verification ladder
+
+Run the narrowest check that answers your question while you work, and the whole ladder before you push.
+
+```mermaid
+flowchart LR
+    A[pnpm -w typecheck]:::violet --> B[pnpm -w lint]:::violet --> C[pnpm -w test]:::violet
+    C --> D[cargo test --workspace]:::cyan --> E["cargo clippy --workspace<br/>--all-targets -- -D warnings"]:::cyan
+    E --> F[pnpm run verify]:::magenta --> G([push]):::mint
+
+    classDef cyan fill:#00e5ff,stroke:#00a3b5,color:#06141a
+    classDef violet fill:#7c3aed,stroke:#5b21b6,color:#ffffff
+    classDef magenta fill:#ff3cf0,stroke:#c026d3,color:#1a0618
+    classDef mint fill:#3ddc97,stroke:#15a36b,color:#04170f
 ```
 
-The exact scripts are defined in the root `package.json`. `pnpm verify` is intentionally broad: it cleans build output, typechecks, lints, tests, builds, and scans production bundle output. Run it from a clean working tree when you need release confidence.
+| Command | Covers |
+|---|---|
+| `pnpm -w typecheck` | TypeScript across the workspace |
+| `pnpm -w lint` | ESLint — including *no direct `invoke()`* and *no literal colours* |
+| `pnpm -w test` | Vitest: 2,267 interface tests |
+| `cargo test --workspace` | 1,097 Rust tests across every crate and the app, including `security.rs` |
+| `cargo clippy … -D warnings` | Every warning is an error |
+| `pnpm run verify` | Cleans `dist`, then typecheck → lint → test → build → `scan:bundle` (credential scan and entry-bundle budget) |
+
+---
 
 ## What CI proves
 
-The checked-in CI workflow runs frontend checks on Linux and native Rust tests, Clippy, and desktop builds on Linux, macOS, and Windows. It also runs dependency audit jobs and security assertions such as production-bundle scanning and source-level boundary checks.
+Every push to `main` and every pull request runs [`ci.yml`](../.github/workflows/ci.yml). Jobs run with
+`fail-fast: false`, so one platform failing never hides the others.
 
-CI is evidence, not a substitute for release testing. It does not automatically prove that a package installs cleanly on every user machine, that an update migrates safely, or that every interactive terminal workflow feels correct under real load.
+```mermaid
+flowchart TB
+    P([push · pull request]):::ink --> FE & NM & NW & LT & AU
+    FE["Frontend · ubuntu<br/>typecheck · lint · test"]:::violet
+    NM["Native · macOS<br/>cargo test · clippy · build binary"]:::cyan
+    NW["Native · Windows<br/>cargo test · clippy · build binary"]:::cyan
+    LT["Native libraries · ubuntu<br/>cargo test · clippy (libraries)"]:::cyan
+    LT --> LD["Native desktop build · ubuntu<br/>WebKitGTK · real Linux binary"]:::cyan
+    AU["Dependency audit<br/>pnpm audit · cargo audit"]:::amber
 
-## Tag-driven packages
+    classDef ink fill:#14141f,stroke:#2a2a3c,color:#e8e8f2
+    classDef cyan fill:#00e5ff,stroke:#00a3b5,color:#06141a
+    classDef amber fill:#ffb340,stroke:#d18a12,color:#1f1300
+    classDef violet fill:#7c3aed,stroke:#5b21b6,color:#ffffff
+```
 
-The release workflow is triggered by version-like tags and can also be run manually. It builds draft release assets for Linux, Apple Silicon macOS, Intel macOS, and Windows. Draft status is intentional: a human must inspect the result before publishing it.
+| Job | Runs on | Proves |
+|---|---|---|
+| **Frontend** | Ubuntu | The interface typechecks, lints and passes its tests. Platform-independent, so once is enough. |
+| **Native** | macOS, Windows | Every Rust test and clippy pass, and **the shippable binary links** — where a keychain backend or webview binding actually fails. |
+| **Native libraries** | Ubuntu | Rust tests and clippy for the crates on Linux. |
+| **Native desktop build** | Ubuntu | The real Linux desktop binary compiles against WebKitGTK. |
+| **Dependency audit** | Ubuntu | `pnpm audit --audit-level high` and `cargo audit` fail on high or critical advisories; lower levels are reported. |
 
-Before tagging, verify:
+> [!NOTE]
+> **CI is evidence, not a release test.** It does not prove a package installs cleanly on every machine,
+> that an upgrade preserves local data, or that an interactive program feels right under load. That is
+> what the [smoke test](#release-smoke-test) is for.
 
-1. The branch is the intended commit and has no uncommitted release changes.
-2. CI is green for that commit.
-3. Version, release notes, and supported platforms are accurate.
-4. Native desktop launch has been smoke-tested on each available target.
-5. You understand the signing state of the packages.
+---
 
-## Current distribution status
+## Cutting a release
 
-The release workflow is prepared for signing secrets, but the checked-in release notes explicitly state that packages are currently unsigned until certificates are configured. This means macOS and Windows can show platform warnings on first launch. Do not describe an unsigned build as fully production-trusted.
+The version lives in three places, and they must agree:
 
-Before a public stable release, complete and verify:
+| File | Field |
+|---|---|
+| `apps/desktop/package.json` | `version` |
+| `apps/desktop/src-tauri/tauri.conf.json` | `version` |
+| `Cargo.toml` | `workspace.package.version` |
 
-- Windows code-signing certificate integration and SmartScreen reputation planning;
-- macOS Developer ID signing, notarisation, and stapling;
-- Linux package installation tests for supported distributions;
-- a signed updater strategy with rollback and release-channel policy;
-- a published support matrix and minimum operating-system versions;
-- release artefacts with checksums, SBOMs, and provenance where feasible.
+```mermaid
+sequenceDiagram
+    autonumber
+    actor M as Maintainer
+    participant G as GitHub
+    participant W as release.yml
+    M->>G: git tag v0.1.0 && git push origin v0.1.0
+    G->>W: tag push starts the workflow
+    par four builds, fail-fast off
+        W->>W: Linux — .deb · .rpm · .AppImage
+        W->>W: macOS Apple Silicon — .dmg · .app.tar.gz
+        W->>W: macOS Intel — .dmg · .app.tar.gz
+        W->>W: Windows — .msi · NSIS .exe (per-user)
+    end
+    W->>G: attach to a DRAFT release
+    M->>M: download, install, smoke-test
+    M->>G: publish by hand
+```
+
+The **draft** is deliberate: it is the last chance to notice that something built cleanly and is still
+wrong. To exercise the pipeline without spending a version, run the workflow by hand from the Actions
+tab (`workflow_dispatch`).
+
+The Windows installer is **per-user**, so installing needs no administrator rights; the app only writes
+to the user's own config folder.
+
+Full step-by-step details, including every secret name, are in [RELEASING.md](RELEASING.md).
+
+---
+
+## Distribution status
+
+| Capability | Status | What it takes |
+|---|---|---|
+| Draft installers for Linux, macOS ×2, Windows | 🟢 Working | — |
+| **macOS signing and notarisation** | 🔴 Not configured | A paid Apple Developer account; six repository secrets. The workflow already passes them through. |
+| **Windows code signing** | 🔴 Not configured | A code-signing certificate from a CA; two secrets. |
+| **Signed auto-updater** | ⚪ Deliberately off | A keypair that someone actually holds. Shipping a build that trusts a key nobody holds would be worse than no updates. |
+| Linux ARM64 packages | ⚪ Not built | Linux builds are x86_64 today. |
+| Checksums, SBOM, provenance | ⚪ Planned | |
+| A published public release | ⚪ Not yet | |
+
+**What unsigned means for users today:**
+
+- **macOS** refuses to open the app from Finder. Right-click → **Open**, or
+  `xattr -d com.apple.quarantine "/Applications/JKY Terminal.app"`.
+- **Windows** SmartScreen warns. **More info** → **Run anyway**.
+- **Linux** does not check signatures.
+
+Do not describe an unsigned build as production-trusted.
+
+---
 
 ## Release smoke test
 
-Test a built package outside the development checkout when possible. A high-value smoke test covers:
+Test the built package outside the development checkout. Record the platform, package hash, result and
+any exceptions.
 
 | Area | Verify |
 |---|---|
-| Install and launch | The package installs, starts, and can be removed cleanly. |
-| Terminal | A local shell opens; typing, output, resizing, search, and Ctrl+C work. |
-| Persistence | A controlled long-running process behaves correctly across a window reconnect. |
-| Files | Opening, saving, and cancelling an edit behaves as expected in an explicit folder. |
-| Settings | Theme, font, and preference changes survive a restart where intended. |
-| Assistant | No provider key is exposed in the UI; approvals are visible and cancellable. |
-| Remote | Connection setup honours normal SSH identity and host verification. |
-| Upgrade | A prior version can be upgraded without losing expected local state. |
+| **Install and launch** | Installs, starts, and can be removed cleanly. |
+| **Terminal** | A shell opens; typing, output, resize, <kbd>Ctrl</kbd>+<kbd>F</kbd> and <kbd>Ctrl</kbd>+<kbd>C</kbd> work; `vim` or `htop` redraws cleanly. |
+| **Integration** | `ls /nope` shows a red gutter bar and failure help; `git status -s` shows a panel. |
+| **Persistence** | `sleep 300` in a pane, quit, reopen: the pane rejoins the same shell. |
+| **Files** | Open, edit, save, and cancel-on-close in an explicit folder; a symlink out of the folder is refused. |
+| **Settings** | Theme, font and a rebound shortcut survive a restart. |
+| **Assistant** | No key is visible anywhere after saving; an approval card appears for every command; *destructive* needs typing. |
+| **Remote** | A saved host connects with normal SSH identity and host-key checks. |
+| **Upgrade** | A previous version upgrades without losing settings, history or workspaces. |
 
-Record the platform, package hash, test account, result, and any exceptions. Never perform production smoke testing with live secrets or irreversible infrastructure changes.
+Never smoke-test with live production secrets or irreversible infrastructure.
 
-## Observability and support
+---
 
-JKY should keep product diagnostics local and opt-in. A world-class terminal needs performance evidence—startup, first prompt, output throughput, renderer frame time, memory, and reconnect time—but users should know exactly what is collected and be able to decline it.
+## Maintainer checklist
 
-When reporting a bug, include version or commit, platform, shell, reproduction steps, expected behaviour, actual behaviour, and a redacted log. “It broke” is difficult to fix; a one-command reproduction is excellent.
+- [ ] Versions agree in all three files.
+- [ ] Docs describe what ships, and known limits are current.
+- [ ] `pnpm run verify`, `cargo test --workspace` and `cargo clippy` pass locally.
+- [ ] CI is green on all jobs for the commit being tagged.
+- [ ] The draft's assets install and pass the smoke test on each platform available.
+- [ ] Signing status is stated plainly in the release notes.
+- [ ] A human publishes the draft.
+- [ ] Issues are watched after release, with a rollback plan.
 
-## Maintainer release checklist
+---
 
-- [ ] Update current capability and known-limit documentation.
-- [ ] Run the full verification ladder.
-- [ ] Confirm the generated assets and docs links render from the repository.
-- [ ] Validate package installation on the intended operating systems.
-- [ ] Check signing/notarisation outcome, package hashes, and draft release notes.
-- [ ] Publish only after a human verifies the draft assets.
-- [ ] Monitor issue reports and provide a documented rollback plan.
-
-The detailed release setup is maintained in [RELEASING.md](RELEASING.md). Read it alongside this guide; it contains the repository-specific commands and credential configuration.
+<p align="center">
+  <a href="glossary.md">← Glossary</a> &nbsp;·&nbsp;
+  <a href="README.md">Documentation home</a> &nbsp;·&nbsp;
+  <a href="product-roadmap.md">Next: Product roadmap →</a>
+</p>
