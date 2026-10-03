@@ -385,6 +385,10 @@ what it is checked against.
 | Audit log | `audit.jsonl` | No |
 | Theme, font, recent chats | Webview local storage | Chats: only what you send to a provider |
 
+On macOS and Linux the config folder is made **owner-only** (`0700`) every time JKY starts, so a home
+directory that other accounts can read does not expose your commands, their output, scrollback or
+notes through it. On Windows, `%APPDATA%` is already your account's own.
+
 Folder locations are in [Getting started](getting-started.md#6-where-your-data-lives).
 
 ---

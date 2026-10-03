@@ -115,6 +115,12 @@ impl AppState {
     /// resolved by Tauri at startup. Taking it as an argument rather than
     /// discovering it here keeps this constructible in tests.
     pub fn new(config_dir: &Path) -> Self {
+        // Before anything is written into it. A failure here is reported and
+        // not fatal: a terminal that will not open over a permission bit
+        // would be worse than one that says so.
+        if let Err(e) = private_config_dir(config_dir) {
+            eprintln!("jky: could not make {} private: {e}", config_dir.display());
+        }
         Self {
             secrets: Arc::new(KeyringStore::new(KEYCHAIN_SERVICE)),
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
@@ -143,6 +149,24 @@ impl AppState {
     }
 }
 
+/// Make the config folder reachable by its owner only.
+///
+/// It holds every command run and the tail of its output, saved scrollback,
+/// notes, the audit log and more. A home directory that others can read —
+/// the default on some Linux systems — must not make any of that readable
+/// through here, so the folder itself is tightened on every start rather than
+/// trusting how it was first made. On Windows `%APPDATA%` is already the
+/// user's own.
+pub(crate) fn private_config_dir(dir: &Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dir)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(())
+}
+
 /// Open Work Memory, bringing an older `history.jsonl` across the first time.
 ///
 /// A database that cannot be opened — one written by a newer JKY, or a
@@ -167,6 +191,27 @@ fn open_memory(config_dir: &Path) -> Memory {
 #[cfg(test)]
 mod memory_tests {
     use super::*;
+
+    #[test]
+    #[cfg(unix)]
+    fn the_config_folder_is_made_owner_only() {
+        // It holds every command run and its output, scrollback, notes and
+        // the audit log. A home directory readable by others must not make
+        // any of that readable through this folder.
+        use std::os::unix::fs::PermissionsExt;
+        let home = tempfile::TempDir::new().unwrap();
+        let config = home.path().join("dev.jky.terminal");
+        std::fs::create_dir_all(&config).unwrap();
+        std::fs::set_permissions(&config, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        private_config_dir(&config).unwrap();
+        assert_eq!(std::fs::metadata(&config).unwrap().permissions().mode() & 0o777, 0o700);
+
+        // And one that does not exist yet is created that way.
+        let fresh = home.path().join("new");
+        private_config_dir(&fresh).unwrap();
+        assert_eq!(std::fs::metadata(&fresh).unwrap().permissions().mode() & 0o777, 0o700);
+    }
 
     #[test]
     fn the_old_history_comes_across_on_first_start_and_its_file_goes() {
