@@ -135,14 +135,18 @@ fn a_resize_reaches_the_program_in_the_foreground() {
 #[cfg(not(windows))]
 fn ctrl_c_interrupts_what_is_running_and_the_shell_carries_on() {
     let shell = Driven::start(interactive(), 80, 24);
-    shell.type_line("sleep 30; echo SLEPT_$((1+1))");
+    // `sleep` on its own. Whether a shell runs the rest of a `;` list after
+    // an interrupted command is the shell's choice — macOS's /bin/sh does,
+    // Linux's does not — and not something a terminal decides. What the
+    // terminal owns is delivering Ctrl+C, and the time it takes to come back
+    // proves that.
+    shell.type_line("sleep 30");
     std::thread::sleep(Duration::from_millis(400));
     let asked = Instant::now();
     shell.session.write(b"\x03").expect("Ctrl+C");
     shell.type_line("echo AFTER_$((2+3))");
     assert!(shell.wait_for("AFTER_5"), "the shell did not come back: {}", shell.report());
     assert!(asked.elapsed() < Duration::from_secs(10), "it waited for the sleep instead");
-    assert!(!shell.text().contains("SLEPT_2"), "the interrupted command ran on");
 }
 
 #[test]
