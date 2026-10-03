@@ -27,6 +27,13 @@ check() {
     fi
 }
 
+echo "portable to every sh"
+# macOS's sh is bash 3.2, which in some locales reads `$MINT│` as one
+# variable named `MINT│`. Every expansion followed by a non-ASCII character
+# needs braces: `${MINT}│`.
+check "no \$NAME runs into a non-ASCII character" \
+    "$(LC_ALL=C grep -n "\\\$[A-Za-z_][A-Za-z0-9_]*$(printf '[\200-\377]')" "$SCRIPT")" ""
+
 echo "shortcut rules"
 while IFS= read -r line; do
     case "$line" in "#"*) continue ;; esac
@@ -177,6 +184,7 @@ echo "installing again, from a saved copy"
 run_installer --shortcut none </dev/null >"$WORK/second.out" 2>&1
 check "a second install succeeds" "$?" "0"
 check "PATH is added once, not twice" "$(grep -c 'Added by the JKY Terminal installer' "$RC" 2>/dev/null)" "1"
+check "no stray shell errors" "$(grep -c -E '/dev/tty|unbound variable|not found|No such' "$WORK/first.out" "$WORK/second.out" 2>/dev/null | awk -F: '{n += $NF} END {print n}')" "0"
 if [ "$OS" = Linux ]; then
     check "choosing none removes the GNOME binding" "$(cat "$WORK/home/gsettings-list")" "@as []"
 fi

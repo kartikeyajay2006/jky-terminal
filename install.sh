@@ -72,7 +72,7 @@ jky_setup_output() {
 }
 
 jky_columns() {
-    c=$(stty size </dev/tty 2>/dev/null | awk '{print $2}')
+    c=$(stty size 2>/dev/null </dev/tty | awk '{print $2}')
     if [ -z "$c" ]; then c=$(tput cols 2>/dev/null || echo 80); fi
     case "$c" in '' | *[!0-9]*) c=80 ;; esac
     echo "$c"
@@ -789,7 +789,7 @@ jky_finale() {
         s1=" " s2=" " s3=" "
         case $((f % 4)) in 0) s1=$STAR ;; 1) s2=$STAR ;; 2) s3=$STAR ;; *) s1=$STAR s3=$STAR ;; esac
         if [ $((f + 1)) = $frames ]; then s1=$STAR s2=$STAR s3=$STAR; fi
-        B="$MINT│$RST"
+        B="${MINT}│${RST}"
         printf '     %s╭────────────────────────────────────────────────────────────────╮%s\n' "$MINT" "$RST"
         printf '     %s%64s%s\n' "$B" "" "$B"
         printf '     %s   %s%s  Installation complete!%s  %s%s%s             %s%-20s%s%s\n' \
@@ -843,7 +843,7 @@ jky_uninstall() {
 # Whatever happens — finished, failed or Ctrl+C — the terminal is given back
 # as it was found, and the working folder goes.
 jky_cleanup() {
-    if [ -n "${JKY_OLD_TTY:-}" ]; then stty "$JKY_OLD_TTY" </dev/tty 2>/dev/null; fi
+    if [ -n "${JKY_OLD_TTY:-}" ]; then stty "$JKY_OLD_TTY" 2>/dev/null </dev/tty; fi
     rm -rf "${JKY_WORK:-/nonexistent-jky}"
     jky_show_cursor
 }
