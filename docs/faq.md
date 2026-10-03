@@ -182,8 +182,11 @@ Not yet. Kitty graphics, iTerm2 images and Sixel are planned.
 <details>
 <summary><b>Is it fast?</b></summary>
 
-Fast enough for everyday work, rendering through xterm.js with WebGL2. Native GPU terminals such as
-Ghostty or Alacritty will be faster under very heavy output, and JKY has not published benchmarks yet.
+Below the window, measurably: a shell's first output in about 5 ms, a keystroke round trip through
+the pty in about 0.05 ms, and output at the kernel's own pty ceiling — see [Benchmarks](benchmarks.md),
+reproducible with one command. The window renders through xterm.js with WebGL2, and its frame timing is
+not measured yet; native GPU terminals such as Ghostty or Alacritty will be faster under very heavy
+output.
 
 </details>
 

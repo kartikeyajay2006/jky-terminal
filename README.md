@@ -487,7 +487,7 @@ We believe documentation should make the product easier to trust, not merely eas
 
 | Area | Honest status | What must happen next |
 |---|---|---|
-| Terminal reliability | Current core product | End-to-end tests already drive real shells and supervisors — typing, resize, Ctrl+C, paste, Unicode, persistence, high output. Still to do: publish performance budgets, and drive approval flows through the real window. |
+| Terminal reliability | Current core product | End-to-end tests already drive real shells and supervisors — typing, resize, Ctrl+C, paste, Unicode, persistence, high output — and [benchmarks](docs/benchmarks.md) below the window are published and reproducible. Still to do: window start-up and frame timing, and approval flows through the real window. |
 | Gmail and account integrations | Deliberately limited | Gmail remains read-only; every future provider needs least-privilege scopes and a documented data boundary. |
 | Database cockpit | Planned | PostgreSQL, SQLite, Redis, and other data explorers need a purpose-built, safe design before being advertised as part of the terminal. |
 | Plugin SDK | Planned | A public extension system needs sandboxing, visible permissions, compatibility guarantees, and supply-chain governance. |

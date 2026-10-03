@@ -519,8 +519,10 @@ start.
 
 The terminal renders through xterm.js inside the operating system's webview. That is fast enough for
 everyday work, and it is not a native GPU renderer: under very heavy output — megabytes of logs at once
-— Ghostty, Alacritty, WezTerm or Warp will be faster. JKY has **not** published benchmarks yet, and the
-roadmap lists doing so as near-term work.
+— Ghostty, Alacritty, WezTerm or Warp will be faster. [Benchmarks](benchmarks.md) cover everything below
+the window — a shell's first output in about 5 ms, a keystroke round trip through the pty in about
+0.05 ms, output at the kernel's own pty ceiling — and say plainly that the window's frame timing is not
+measured yet.
 
 If something feels slow, it helps to know which layer is responsible:
 

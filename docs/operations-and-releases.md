@@ -61,6 +61,8 @@ pty, a real supervisor in a second process — on every CI platform that has the
 | `apps/desktop/src-tauri/tests/detached.rs` | The real binary as a supervisor: a shell outlives the process that asked for it, rejoins with what it missed, ends on hangup with its record, takes a resize from the window, and is listed by `--sessions` with its own pid |
 
 Still to come: approval flows driven through the real window, and a pass on every supported shell.
+Timings live apart from these, in [Benchmarks](benchmarks.md): an ignored test, run by hand, because a
+number about a machine is not a pass/fail fact about the code.
 
 ## What CI proves
 

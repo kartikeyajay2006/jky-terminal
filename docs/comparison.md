@@ -97,7 +97,8 @@ trade-off: the further right a terminal sits, the more it does besides being a t
 6. VS Code reconnects to running processes when a *window reloads*; after a full restart it restores
    the content and starts a new process. ([VS Code docs](https://code.visualstudio.com/docs/terminal/advanced))
 7. xterm.js with its WebGL2 renderer, inside a webview. Fast in practice, but a native GPU terminal
-   will win on raw throughput and input latency. JKY has not published benchmarks yet.
+   will win on raw throughput and input latency. JKY's [benchmarks](benchmarks.md) stop at the window:
+   below it the pty layer runs at the kernel's ceiling; frame timing is not measured yet.
 8. Not verified for this page, so it is left blank rather than guessed.
 9. Eight deterministic parsers: `git status`, `git log`, `docker ps`, `df`, `ps`, `ls`, `mkdir`, and
    JSON. No model involved, and the raw text always stays in the scrollback.
@@ -123,7 +124,7 @@ These are real limits, written down so nobody discovers them the hard way.
 | Limit | What it means for you | Where it is going |
 |---|---|---|
 | **No published release yet** | Build from source. Installers from the release workflow are unsigned, so macOS Gatekeeper and Windows SmartScreen will warn. | Signing, notarisation and a signed updater are on the [roadmap](product-roadmap.md). |
-| **Webview renderer** | Heavy output — megabytes of logs at once — will feel slower than in a native GPU terminal. | Publishing benchmarks is a stated near-term goal. |
+| **Webview renderer** | Heavy output — megabytes of logs at once — will feel slower than in a native GPU terminal. | [Benchmarks](benchmarks.md) below the window are published; frame timing is next. |
 | **No inline images** | No Kitty graphics, iTerm2 images or Sixel. | Not scheduled. |
 | **No scripting or plugins** | Settings are a panel plus `settings.json` and `keymap.json`. There is no Lua, JavaScript or plugin API. | A sandboxed SDK is planned, not promised. |
 | **Three AI back-ends wired** | Anthropic, OpenAI and Ollama work. Keys for Google, Mistral, Groq, DeepSeek, xAI and OpenRouter can be stored, but the assistant tells you plainly that they have no adapter yet. | Adapters are straightforward; they will come as they are tested. |

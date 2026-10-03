@@ -51,8 +51,9 @@ it says so. Where JKY is behind another terminal, it says that too.
 
 1. [Architecture](architecture.md) — layers, crates, rules
 2. [Operations & releases](operations-and-releases.md) — CI, packaging, signing
-3. [Releasing](RELEASING.md) — the exact release steps
-4. [Contributing](../CONTRIBUTING.md)
+3. [Benchmarks](benchmarks.md) — measured, reproducible, and what is not measured
+4. [Releasing](RELEASING.md) — the exact release steps
+5. [Contributing](../CONTRIBUTING.md)
 
 </td>
 </tr>
@@ -116,6 +117,7 @@ flowchart LR
 | 📖 | **[Glossary](glossary.md)** | Every term these docs use, defined once. |
 | ⚖️ | **[How JKY compares](comparison.md)** | Seven terminals, thirteen capabilities, sources linked — and where JKY is behind. |
 | 📦 | **[Operations & releases](operations-and-releases.md)** | The verification ladder, what CI proves, cutting a release, signing status, the smoke test. |
+| ⏱️ | **[Benchmarks](benchmarks.md)** | First output, keystroke round trip, throughput, held-shell cost — reproducible with one command, and what is not measured yet. |
 | 🗺️ | **[Product roadmap](product-roadmap.md)** | Now, next, later — and what is explicitly not promised. |
 | 🔬 | **[Features in full](FEATURES.md)** | The reasoning behind each feature's awkward decisions. |
 | ✨ | **[Showcase](SHOWCASE.md)** | The visual tour. |
