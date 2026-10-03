@@ -682,6 +682,9 @@ describe("letting the app's shortcuts through", () => {
     await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
     oscHandlers.get(1337)!(encodeDone(127, "/repo", "gti status"));
     await screen.findByRole("group", { name: /command failed/i });
+    // The keys are claimed once the offer has buttons to give them to, a
+    // tick after the panel itself: the provider list is fetched first.
+    await screen.findByRole("button", { name: /explain/i });
 
     const claimed = new KeyboardEvent("keydown", { key: "4", cancelable: true });
     expect(handle(claimed)).toBe(false);
@@ -695,6 +698,9 @@ describe("letting the app's shortcuts through", () => {
     await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
     oscHandlers.get(1337)!(encodeDone(127, "/repo", "gti status"));
     await screen.findByRole("group", { name: /command failed/i });
+    // The keys are claimed once the offer has buttons to give them to, a
+    // tick after the panel itself: the provider list is fetched first.
+    await screen.findByRole("button", { name: /explain/i });
 
     // Unclaimed keys go to the shell, and preventing their default here
     // would be this handler deciding things that are not its business.
@@ -711,6 +717,9 @@ describe("letting the app's shortcuts through", () => {
     await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
     oscHandlers.get(1337)!(encodeDone(127, "/repo", "gti status"));
     await screen.findByRole("group", { name: /command failed/i });
+    // The keys are claimed once the offer has buttons to give them to, a
+    // tick after the panel itself: the provider list is fetched first.
+    await screen.findByRole("button", { name: /explain/i });
     expect(handle(new KeyboardEvent("keydown", { key: "4" }))).toBe(false);
 
     await waitFor(() =>
