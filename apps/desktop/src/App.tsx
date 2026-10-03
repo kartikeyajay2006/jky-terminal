@@ -7,6 +7,7 @@ import { usePaneDirs } from "./features/terminal/paneDirs";
 import { quitBody, quitTitle } from "./features/terminal/quitting";
 import { EmptyWorkspace } from "./app/EmptyWorkspace";
 import { useChat } from "./app/chatStore";
+import { ranLine, redactedLine } from "./features/assistant/transcript";
 import { allPaneKeys, useTabs } from "./app/tabStore";
 import { useShortcuts } from "./app/useShortcuts";
 import { actionFor, useKeymap } from "./app/keymapStore";
@@ -198,13 +199,8 @@ export function App() {
       const subs = await Promise.all([
         platform.ai.onDelta((text) => useChat.getState().appendToLastAssistant(text)),
         platform.ai.onToolRequest((req) => useChat.getState().addTool(req)),
-        platform.ai.onToolRan((ran) =>
-          useChat
-            .getState()
-            .appendToLastAssistant(
-              `\n▸ ${ran.name} — ${ran.summary}${ran.is_error ? " (failed)" : ""}\n`,
-            ),
-        ),
+        platform.ai.onToolRan((ran) => useChat.getState().appendToLastAssistant(ranLine(ran))),
+        platform.ai.onRedacted((count) => useChat.getState().appendToLastAssistant(redactedLine(count))),
         platform.ai.onDone(() => useChat.getState().setBusy(false)),
         platform.ai.onError((message) => {
           useChat.getState().setError(message);

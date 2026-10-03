@@ -20,7 +20,7 @@
 
 use jky_ai::{
     AIProvider, AnthropicProvider, ChatRequest, ContentBlock, Message, OLLAMA_CHAT_URL,
-    OpenAiProvider, Role, StreamEvent,
+    OpenAiProvider, Role, StreamEvent, redact_outgoing,
 };
 use jky_audit::{AuditEvent, AuditKind};
 use jky_secrets::{ProviderId, Secret};
@@ -66,6 +66,13 @@ pub async fn ai_ask_once(
         .flatten()
         .ok_or("choose a model for this provider in Settings first")?;
 
+    // The tail of a failed command's output is where a printed token lands.
+    let mut messages = vec![Message {
+        role: Role::User,
+        content: vec![ContentBlock::Text { text: prompt }],
+    }];
+    redact_outgoing(&mut messages);
+
     let request = ChatRequest {
         model,
         // Short and fixed. A long system prompt is a cost paid on every
@@ -73,10 +80,7 @@ pub async fn ai_ask_once(
         system: "You help a developer read a failed shell command. Be brief \
                  and concrete. No pleasantries, no restating the question."
             .to_string(),
-        messages: vec![Message {
-            role: Role::User,
-            content: vec![ContentBlock::Text { text: prompt }],
-        }],
+        messages,
         // None. This answers a question; it does not do anything.
         tools: Vec::new(),
         max_tokens: 700,

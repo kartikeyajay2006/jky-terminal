@@ -336,7 +336,7 @@ Open **History** (`↺`), or run `jky history <text>` from any terminal.
 - **Choosing one types it** at the prompt. It never runs it.
 - **Secrets are redacted before they are written.** A token typed into a command — `ghp_…`,
   `sk-ant-…`, an `Authorization:` header, a `*_TOKEN=` assignment — is kept as
-  `[redacted github-token]` and so on. See [what is recognised](security-and-privacy.md#secrets-in-history-and-scrollback).
+  `[redacted github-token]` and so on. See [what is recognised](security-and-privacy.md#secrets-in-history-scrollback-and-ai-requests).
 - **Forget** removes *every* run of that command — someone deleting a line with a credential in it
   means all of them.
 

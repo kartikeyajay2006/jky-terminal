@@ -2224,6 +2224,7 @@ version = "0.1.0"
 dependencies = [
  "cap-std",
  "futures-util",
+ "jky-redact",
  "jky-secrets",
  "libc",
  "reqwest 0.12.28",
@@ -2443,6 +2444,7 @@ dependencies = [
  "jky-live",
  "jky-ports",
  "jky-pty",
+ "jky-redact",
  "jky-remote",
  "jky-secrets",
  "jky-settings",

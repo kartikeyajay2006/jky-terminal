@@ -1,6 +1,7 @@
 mod anthropic;
 mod openai;
 mod exec;
+mod outgoing;
 mod provider;
 mod shell_exec;
 mod sandbox;
@@ -11,6 +12,7 @@ mod types;
 pub use anthropic::{ANTHROPIC_VERSION, AnthropicProvider, MESSAGES_URL, build_body};
 pub use openai::{CHAT_COMPLETIONS_URL, OpenAiProvider, OpenAiSseDecoder, build_openai_body, OLLAMA_CHAT_URL};
 pub use exec::{MAX_TOOL_OUTPUT, ToolOutcome, execute_read_tool};
+pub use outgoing::redact_outgoing;
 pub use sandbox::{Project, SandboxError};
 pub use shell_exec::{COMMAND_TIMEOUT, run_approved_command};
 pub use provider::{AIProvider, AiError};

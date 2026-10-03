@@ -537,6 +537,8 @@ export interface ToolRan {
   name: string;
   summary: string;
   is_error: boolean;
+  /** Secrets Rust removed from the result before it was shown or sent. */
+  redacted?: number;
 }
 
 export interface AiApi {
@@ -551,6 +553,8 @@ export interface AiApi {
   onToolRan(handler: (ran: ToolRan) => void): Promise<() => void>;
   onDone(handler: (stopReason: string) => void): Promise<() => void>;
   onError(handler: (message: string) => void): Promise<() => void>;
+  /** How many secrets were removed from your message before it was sent. */
+  onRedacted(handler: (count: number) => void): Promise<() => void>;
   /**
    * One question, one answer.
    *

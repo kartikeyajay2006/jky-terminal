@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 use jky_ai::{
     AIProvider, AnthropicProvider, ChatRequest, ContentBlock, Message, OpenAiProvider,
     StreamEvent, OLLAMA_CHAT_URL, assistant_tools, command_risk, execute_read_tool, is_destructive, requires_approval,
-    run_approved_command, COMMAND_TIMEOUT,
+    redact_outgoing, run_approved_command, COMMAND_TIMEOUT,
 };
 use jky_audit::{AuditEvent, AuditKind, AuditLog};
 use jky_pty::{expand_tilde, home_dir};
@@ -41,6 +41,8 @@ struct ToolRan {
     name: String,
     summary: String,
     is_error: bool,
+    /// Secrets removed from the result before it was shown or sent.
+    redacted: usize,
 }
 
 /// Everything the loop needs that does not change between rounds.
@@ -76,7 +78,10 @@ pub(crate) fn resolve_key(
 ///
 /// Text is emitted as it arrives; tool blocks are collected because their
 /// arguments only become parseable when the block stops.
-async fn stream_round(ctx: &Ctx, messages: Vec<Message>) -> Result<Vec<ContentBlock>, String> {
+async fn stream_round(ctx: &Ctx, mut messages: Vec<Message>) -> Result<Vec<ContentBlock>, String> {
+    // The last word before the network. Everything that reaches here should
+    // already be clean; this is the line that makes "should" into "is".
+    redact_outgoing(&mut messages);
     let request = ChatRequest {
         model: ctx.model.clone(),
         system: SYSTEM_PROMPT.to_string(),
@@ -232,7 +237,7 @@ async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
                 continue;
             }
 
-            let outcome = execute_read_tool(&ctx.root, name, input);
+            let (outcome, redacted) = execute_read_tool(&ctx.root, name, input).redacted();
             let _ = ctx.audit.append(AuditEvent::new(
                 AuditKind::ToolCall,
                 &audit_detail::tool_ran(name, input, outcome.is_error),
@@ -244,6 +249,7 @@ async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
                     name: name.clone(),
                     summary: summarise(&outcome.text),
                     is_error: outcome.is_error,
+                    redacted,
                 },
             );
             turn.results.push(ContentBlock::ToolResult {
@@ -337,7 +343,7 @@ pub async fn ai_send(
     app: AppHandle,
     state: State<'_, AppState>,
     provider: String,
-    conversation: Vec<Message>,
+    mut conversation: Vec<Message>,
 ) -> Result<(), String> {
     // Everything is pulled out of state before the first await: a borrow held
     // across one would make the future non-Send.
@@ -358,6 +364,13 @@ pub async fn ai_send(
         AuditKind::ProviderRequest,
         &audit_detail::provider_request(&provider, &ctx.model, conversation.len()),
     ));
+
+    // Said before anything is sent, so the transcript shows it at the point
+    // the message left rather than after the answer.
+    let removed = redact_outgoing(&mut conversation);
+    if removed > 0 {
+        let _ = app.emit("ai:redacted", removed);
+    }
 
     state.cancelled.store(false, Ordering::Relaxed);
 
@@ -415,7 +428,8 @@ async fn decide(
     };
 
     let block = if approve {
-        let outcome = run_approved_command(&ctx.root, &pending.command, COMMAND_TIMEOUT);
+        let (outcome, redacted) =
+            run_approved_command(&ctx.root, &pending.command, COMMAND_TIMEOUT).redacted();
         let _ = ctx.audit.append(AuditEvent::new(
             AuditKind::CommandRun,
             &audit_detail::command(&pending.command),
@@ -427,6 +441,7 @@ async fn decide(
                 name: pending.name.clone(),
                 summary: summarise(&outcome.text),
                 is_error: outcome.is_error,
+                redacted,
             },
         );
         ContentBlock::ToolResult {

@@ -909,6 +909,7 @@ export function createWebPlatform(): Platform {
     ran: [] as Array<(r: ToolRan) => void>,
     done: [] as Array<(s: string) => void>,
     error: [] as Array<(m: string) => void>,
+    redacted: [] as Array<(n: number) => void>,
   };
 
   const ai: AiApi = {
@@ -959,6 +960,13 @@ export function createWebPlatform(): Platform {
       aiHandlers.error.push(h);
       return () => {
         aiHandlers.error.splice(aiHandlers.error.indexOf(h), 1);
+      };
+    },
+    // The preview never sends anything anywhere, so it has nothing to redact.
+    async onRedacted(h) {
+      aiHandlers.redacted.push(h);
+      return () => {
+        aiHandlers.redacted.splice(aiHandlers.redacted.indexOf(h), 1);
       };
     },
   };

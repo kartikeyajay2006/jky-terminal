@@ -121,6 +121,7 @@
 
 .chat__compose {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--s2);
   padding: var(--s3);
   border-top: 1px solid var(--line);
@@ -141,6 +142,34 @@
 
 .chat__compose {
   grid-area: compose;
+}
+
+.chat__compose > .input {
+  flex: 1 1 12rem;
+}
+
+/* What a message takes with it, above the box it is typed in. */
+.sends {
+  display: flex;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+  gap: var(--s1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.sends__chip {
+  padding: 1px var(--s2);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.sends__chip[data-local] {
+  border-color: var(--accent);
+  color: var(--text);
 }
 
 .sessions {

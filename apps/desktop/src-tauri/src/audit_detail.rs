@@ -6,8 +6,16 @@
 //! the kind does not. These are read as a stream — in the app, or by anyone
 //! who cats the JSONL beside it — and a stream is only scannable if each line
 //! carries the part that differs.
+//!
+//! A command or a search can carry a token — the model may well propose
+//! `curl -H "Authorization: …"` — so anything taken from one is redacted
+//! before it is written. The log records what happened, never a secret.
 
 use serde_json::Value;
+
+fn clean(text: &str) -> String {
+    jky_redact::redact(text).text
+}
 
 /// The provider whose key was read.
 pub fn secret_read(provider: &str) -> String {
@@ -36,12 +44,12 @@ pub fn tool_ran(name: &str, input: &Value, is_error: bool) -> String {
 
 /// A tool call put to the user rather than run.
 pub fn tool_proposed(name: &str, command: &str) -> String {
-    format!("{name} {command}")
+    format!("{name} {}", clean(command))
 }
 
 /// The command itself. The kind already says whether it ran or was declined.
 pub fn command(command: &str) -> String {
-    command.to_string()
+    clean(command)
 }
 
 /// The one argument worth showing for a tool call.
@@ -53,7 +61,7 @@ pub fn command(command: &str) -> String {
 fn tool_arg(input: &Value) -> String {
     for key in ["path", "query", "command"] {
         if let Some(v) = input.get(key).and_then(Value::as_str) {
-            return v.to_string();
+            return clean(v);
         }
     }
     String::new()
@@ -124,5 +132,26 @@ mod tests {
     fn a_run_or_declined_entry_is_just_the_command() {
         // The kind carries "ran" or "declined"; repeating it wastes the line.
         assert_eq!(command("rm -rf build"), "rm -rf build");
+    }
+
+    // Assembled at run time so the repository scan does not mistake a
+    // fixture for a leaked key.
+    fn token() -> String {
+        format!("ghp_{}", "0123456789abcdefghijklmnopqrstuvwxyz")
+    }
+
+    #[test]
+    fn a_secret_in_a_command_never_reaches_the_audit_log() {
+        let line = format!("curl -H 'Authorization: token {}' api.github.com", token());
+        for detail in [command(&line), tool_proposed("run_command", &line)] {
+            assert!(!detail.contains(&token()), "{detail}");
+            assert!(detail.contains("api.github.com"), "the rest stays readable: {detail}");
+        }
+    }
+
+    #[test]
+    fn a_secret_in_a_search_query_never_reaches_the_audit_log() {
+        let detail = tool_ran("search_codebase", &json!({"query": token()}), false);
+        assert!(!detail.contains(&token()), "{detail}");
     }
 }

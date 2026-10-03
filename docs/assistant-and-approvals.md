@@ -205,6 +205,7 @@ sequenceDiagram
     participant M as Model
     You->>UI: "Why does the auth test fail?"
     UI->>R: conversation + optional project context
+    R->>R: redact secrets from what leaves
     R->>M: request (audit: ProviderRequest)
     M-->>R: tool: search_codebase("authenticate")
     R->>R: runs freely, inside the project
@@ -231,6 +232,14 @@ loop forever. **Stop** ends the turn at any point.
 | Your local project context note, if you wrote one — only when you send | Anything before you press send |
 | Results of tools the model asked for: file contents, listings, search matches, `git status`, command output you approved | Files outside the project folder |
 | | Your terminal scrollback, history or other conversations |
+| | Any key or token Rust recognises — in your message, the context note or a tool result |
+
+**You can see it before you send.** A row of chips above the message box names where the message is
+going (`to Anthropic`, or `Ollama · stays on this machine`), how many earlier turns travel with it,
+whether your project context note is attached, and that secrets are redacted. When your message did
+carry one, the answer opens with a line saying how many were replaced; a tool whose result lost one says
+so on its own line. What is recognised is listed in
+[Security & privacy](security-and-privacy.md#secrets-in-history-scrollback-and-ai-requests).
 
 With **Ollama**, "the provider" is a process on your own machine. With Anthropic or OpenAI, read their
 data-use policies, use a dedicated key, and set a spending limit or alert in their console.
@@ -259,7 +268,8 @@ press a button.** Then JKY makes a single, separate request:
 | The tail of its output | Up to 700 characters |
 | An instruction | "Answer briefly" |
 
-It has **no tools, no history and no turn state**. A suggestion under a failed command cannot run
+Recognisable secrets in the output are redacted before it leaves. It has **no tools, no history and no
+turn state**. A suggestion under a failed command cannot run
 anything, and it cannot collide with a conversation in the Assistant panel. A terminal is not a chat
 window: three useful sentences under a failed `git push` beat an essay.
 

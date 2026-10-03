@@ -369,6 +369,7 @@ export function createTauriPlatform(): Platform {
     onToolRan: (h) => listen<ToolRan>("ai:tool_ran", (e) => h(e.payload)),
     onDone: (h) => listen<string>("ai:done", (e) => h(e.payload)),
     onError: (h) => listen<string>("ai:error", (e) => h(e.payload)),
+    onRedacted: (h) => listen<number>("ai:redacted", (e) => h(e.payload)),
   };
 
   /**

@@ -196,12 +196,12 @@ paths containing a NUL byte.
 
 ---
 
-## Secrets in history and scrollback
+## Secrets in history, scrollback and AI requests
 
 Commands and their output are exactly where tokens end up — `export GITHUB_TOKEN=…`, a
-`curl -H "Authorization: Bearer …"`, `cat .env`. So before a command reaches `history.jsonl`, and
-before a pane's scrollback is saved for the next launch, the `jky-redact` crate replaces every secret
-it recognises with a label:
+`curl -H "Authorization: Bearer …"`, `cat .env`. So before a command reaches `history.jsonl`, before
+a pane's scrollback is saved for the next launch, and before anything is sent to an AI provider, the
+`jky-redact` crate replaces every secret it recognises with a label:
 
 ```text
 export GITHUB_TOKEN=ghp_0123…wxyz && gh pr list          ← what you typed
@@ -217,7 +217,20 @@ export GITHUB_TOKEN=[redacted github-token] && gh pr list ← what is kept
 
 What it deliberately leaves alone: numbers (`MAX_TOKENS=4096`), variable references
 (`API_KEY=$API_KEY`), git SHAs, UUIDs and ordinary words. Your live terminal still shows what was
-printed; only what is *kept* is redacted, so a restored pane shows the label instead.
+printed; only what is *kept* or *sent* is redacted, so a restored pane shows the label instead.
+
+**What goes to an AI provider** is redacted in Rust on the way out, whatever the window asked for:
+
+| Outgoing | Redacted |
+|---|---|
+| Your messages, and the local project context note | Yes — and the transcript says how many secrets your message lost |
+| Tool results: file contents, search matches, `git status`, approved command output | Yes — the tool's line says `· 1 secret redacted before sending` |
+| A failure-help request (the command and the tail of its output) | Yes |
+| The assistant's own earlier replies | No — they came from the provider |
+
+The approval card still shows a proposed command exactly as the model wrote it — you are approving
+what will run — but the audit log records it with secrets replaced, as it does every command, path and
+search it names.
 
 **Controls.** **Settings → Privacy** turns history or saved scrollback off, sets a retention window
 (7, 30 or 90 days, or a year), and clears history. A **private terminal** keeps nothing at all. All of it
@@ -301,7 +314,8 @@ matter:
 | `Captured` | A picture of the window was taken — and where it went |
 | Process signals | The Processes tool asked a process to stop |
 
-Each detail is sanitised so a crafted value cannot forge an extra line. The window can cause entries to
+Each detail is sanitised so a crafted value cannot forge an extra line, and has recognisable secrets
+replaced, so a command the model proposed with a token in it does not put the token in the log. The window can cause entries to
 be written but cannot read the log. It is a record, not a rollback.
 
 ### Tamper-evident, and checkable

@@ -97,7 +97,8 @@ symlinks included. With no project folder set, its tools refuse to run at all.
 
 Yes. **Settings → Privacy** turns command history or saved scrollback off, or forgets history after 7,
 30 or 90 days or a year. A **private terminal** — from the palette — keeps nothing at all, and says so
-on its tab. Recognisable secrets are redacted from history and scrollback either way.
+on its tab. Recognisable secrets are redacted from history, scrollback and anything sent to an AI
+provider either way.
 
 </details>
 
@@ -218,7 +219,7 @@ Yes, with Ollama. Choose it in **Settings → Providers**; nothing you ask leave
 <summary><b>Is anything sent when a command fails?</b></summary>
 
 Nothing until you press a button under the failed command. Then a single short request carries the
-command and the tail of its output — no tools, no history.
+command and the tail of its output — with recognisable secrets redacted, and no tools or history.
 
 </details>
 

@@ -4,6 +4,7 @@ import { useChat } from "../../app/chatStore";
 import { getPlatform, type AiMessage } from "../../platform";
 import { describeError } from "./errors";
 import { ConversationHeader } from "./ConversationHeader";
+import { SendsTo } from "./SendsTo";
 import { SessionList } from "./SessionList";
 import { ToolCard } from "./ToolCard";
 import { Welcome } from "./Welcome";
@@ -27,6 +28,7 @@ export function Assistant() {
   const error = useChat((s) => s.error);
   const project = useChat((s) => s.project);
   const memory = sessions.find((s) => s.id === activeId)?.memory ?? "";
+  const provider = useChat((s) => s.provider);
 
   // Workspace selection is the project boundary. The note stays in local
   // storage; it only joins an outgoing request after the user sends.
@@ -146,6 +148,7 @@ export function Assistant() {
           void submit(draft);
         }}
       >
+        <SendsTo provider={provider} turns={turns.length} memory={memory} />
         <input
           className="input"
           aria-label="Message"
