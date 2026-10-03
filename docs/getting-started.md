@@ -19,6 +19,26 @@ because **no public release has been published yet** — see
 > Short on time? The whole thing is four commands once the prerequisites are installed:
 > `git clone` → `corepack enable` → `pnpm install` → `pnpm dev:desktop`.
 
+### Once a release is published: one line
+
+The installer fetches the latest release for your machine, checks its SHA-256 against the release's
+`SHA256SUMS`, installs it for your user only — no administrator, no `sudo` — adds a `jky` command, and
+asks once for a shortcut that summons JKY from anywhere.
+
+```sh
+# macOS and Linux
+curl -fsSL https://raw.githubusercontent.com/kartikeyajay2006/jky-terminal/main/install.sh | sh
+```
+
+```powershell
+# Windows, in PowerShell
+irm https://raw.githubusercontent.com/kartikeyajay2006/jky-terminal/main/install.ps1 | iex
+```
+
+Then `jky` opens JKY Terminal from any terminal. `jky shortcut <keys>` changes the summon shortcut,
+`jky version` says which release is installed, and `jky uninstall` removes it and keeps your data. Until
+the first release is published, the installer says so and stops without changing anything.
+
 **On this page:** [The path](#the-path) · [Prerequisites](#1-prerequisites) ·
 [Install and launch](#2-install-and-launch) · [The first window](#3-the-first-window) ·
 [A safe first session](#4-a-safe-first-session) · [Your first ten minutes](#5-your-first-ten-minutes) ·
@@ -301,6 +321,9 @@ git pull
 pnpm install
 pnpm dev:desktop
 ```
+
+**If you used the one-line installer**, run it again to update, and `jky uninstall` to remove the app,
+the `jky` command and the summon shortcut's desktop binding; your data stays until you delete it.
 
 **To remove** JKY completely: delete the checkout, delete the data folder above, and remove any API
 keys you stored — the **Disconnect** button in **Settings → Providers** does it from inside the app, or delete the

@@ -173,6 +173,23 @@ updater is deliberately not configured; see [Operations](operations-and-releases
 | **Remote** | The host you connect to, via your `ssh` | When you connect |
 | **Links in output** | Opened by your OS browser, not by JKY | When you click one |
 
+### The one-line installer
+
+Piping a script into a shell is worth knowing the details of before you do it. `install.sh` and
+`install.ps1` are short enough to read first, and this is what they do:
+
+- They contact **only GitHub**: the release's `SHA256SUMS`, the one installer for your machine from it,
+  and — when you piped the script rather than saved it — the script itself again, kept for
+  `jky shortcut` and `jky uninstall`.
+- The download is checked against `SHA256SUMS` **before** anything is installed. A mismatch deletes it
+  and stops. Each release's files are also attested to the workflow that built them; see
+  [checking a download](RELEASING.md#checking-a-download) to verify one yourself.
+- Nothing runs as administrator and nothing asks for `sudo`. Everything is installed into your own
+  user's folders, and the only settings changed outside them are your `PATH` line, GNOME's custom
+  keybinding list (GNOME only) and the Start-menu entry's hotkey (Windows only) — each removed again by
+  `jky uninstall`.
+- All logic sits in functions called on the last line, so a download cut off half way runs nothing.
+
 ---
 
 ## Files and folders

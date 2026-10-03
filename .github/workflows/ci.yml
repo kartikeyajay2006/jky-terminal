@@ -118,6 +118,37 @@ jobs:
   # Spec §7: the build fails on a high or critical advisory. Kept as its own
   # job so an advisory published overnight is reported as exactly that, rather
   # than looking like the frontend tests broke.
+  # The one-line installers, run end to end against a release served on
+  # localhost — the same `curl | sh` and `irm | iex` a person pastes — on the
+  # shells people actually have: dash (Ubuntu's sh) and bash on Linux, macOS's
+  # /bin/sh with a real .dmg mounted by hdiutil, and on Windows both Windows
+  # PowerShell 5.1 and PowerShell 7.
+  installers:
+    name: Installers (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v5
+      - name: ShellCheck the installer (POSIX sh)
+        if: runner.os == 'Linux'
+        run: shellcheck -s sh install.sh scripts/install/test-install.sh
+      - name: Install with dash, Ubuntu's sh
+        if: runner.os == 'Linux'
+        run: dash scripts/install/test-install.sh
+      - name: Install with bash
+        if: runner.os == 'Linux'
+        run: bash scripts/install/test-install.sh
+      - name: Install with macOS's sh
+        if: runner.os == 'macOS'
+        run: sh scripts/install/test-install.sh
+      - name: Install with Windows PowerShell and PowerShell 7
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./scripts/install/test-install.ps1
+
   audit:
     name: Dependency audit
     runs-on: ubuntu-latest

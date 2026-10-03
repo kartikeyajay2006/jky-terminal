@@ -134,6 +134,13 @@ defining `precmd()` directly.
 
 ## The `jky` command
 
+There are two `jky` commands, and which one you get depends on where you type it:
+
+| Typed in | `jky` is | What it does |
+|---|---|---|
+| **A JKY pane** | JKY's own, put first on that shell's `PATH` | the verbs below — `jky ask`, `jky notes`, `jky theme`… — talking to the window it is in |
+| **Any other terminal** | the one the [installer](../README.md#-install-in-one-line) adds | `jky` opens JKY Terminal or brings it forward; `jky shortcut`, `jky version`, `jky uninstall` |
+
 Every shell JKY starts has a small `jky` command on its `PATH`. It talks to the app by printing an
 escape sequence — the same channel shell integration uses — so it needs no socket, no address and no
 running server. Run outside JKY, it prints nothing and does no harm.

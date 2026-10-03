@@ -21,7 +21,7 @@
 </a>
 
 <p align="center">
-  <a href="#-quick-start">⚡ Quick Start</a> &nbsp;•&nbsp;
+  <a href="#-install-in-one-line">⚡ Install</a> &nbsp;•&nbsp;
   <a href="#-why-jky">✨ Why JKY</a> &nbsp;•&nbsp;
   <a href="#-documentation">📚 Docs</a> &nbsp;•&nbsp;
   <a href="#%EF%B8%8F-how-jky-compares--honestly">⚖️ Honest Comparison</a> &nbsp;•&nbsp;
@@ -37,7 +37,55 @@
 
 ---
 
-## ⚡ Quick Start
+## ⚡ Install in One Line
+
+<p align="center">
+  <img src="docs/img/installer.svg" alt="The JKY Terminal installer running in a terminal: the JKY logo, a system check, the download with a gradient progress bar and checksum, the summon-shortcut picker answered with the arrow keys, and Installation complete — launch with jky" width="900">
+</p>
+
+**macOS and Linux** — paste into any terminal:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/kartikeyajay2006/jky-terminal/main/install.sh | sh
+```
+
+**Windows** — paste into PowerShell:
+
+```powershell
+irm https://raw.githubusercontent.com/kartikeyajay2006/jky-terminal/main/install.ps1 | iex
+```
+
+Then type **`jky`** in any terminal, and JKY Terminal opens.
+
+| The installer | |
+|---|---|
+| **Downloads** | the latest release for your OS and chip — Linux x86_64, macOS Apple Silicon or Intel, Windows x64 |
+| **Verifies** | its SHA-256 against the release's own `SHA256SUMS` **before** installing anything; a mismatch installs nothing |
+| **Installs for you only** | no administrator, no `sudo`: Linux `~/.local/share/jky-terminal` (and your apps menu), macOS `~/Applications`, Windows `%LOCALAPPDATA%\JKY Terminal` |
+| **Adds `jky`** | to your `PATH`, for every terminal you open from now on |
+| **Asks once for a summon shortcut** | arrow keys, `1`–`3`, `c` to type your own, `Esc` to skip — saved in JKY's own settings, so it is never asked again |
+
+Where the shortcut works, honestly: on **GNOME** it is registered with the desktop, so it opens JKY
+even when JKY is closed — Wayland included. On **Windows**, a Ctrl+Alt or Ctrl+Shift shortcut is set on
+the Start-menu entry and does the same. On **macOS** and other Linux desktops it brings JKY forward
+whenever JKY is open. Change it any time in **Settings → Keyboard** or with `jky shortcut`.
+
+| Command | |
+|---|---|
+| `jky` | open JKY Terminal — or bring it forward if it is open |
+| `jky shortcut Ctrl+Alt+J` | change the summon shortcut (`none` turns it off; nothing after it asks again) |
+| `jky version` | the installed version |
+| `jky uninstall` | remove JKY Terminal — your settings, history and notes are kept |
+
+Options: a specific release with `sh -s -- --version v0.1.0` (Windows: `$env:JKY_VERSION="v0.1.0"`),
+a shortcut without being asked with `--shortcut "Super+J"` (`$env:JKY_SHORTCUT`), and plain output with
+`--no-animation` or `NO_COLOR=1`.
+
+> [!NOTE]
+> The installer downloads the latest **published** release. Until the first one is published it says
+> so and stops without changing anything — build from source in the meantime.
+
+### Or build from source
 
 Four commands, once [the prerequisites](docs/getting-started.md#1-prerequisites) are installed:
 
@@ -385,7 +433,8 @@ All sixteen actions are rebindable in **Settings → Keyboard** by pressing the 
 ### Packaged Releases
 
 > [!IMPORTANT]
-> **No public release has been published yet.** Today, build from source (below) — it takes a few
+> **No public release has been published yet.** Once one is, the [one-line installer](#-install-in-one-line)
+> fetches it, verifies it and sets everything up. Today, build from source (below) — it takes a few
 > minutes the first time. The tag-driven release workflow already produces draft installers for every
 > platform; they are **unsigned** until signing certificates are configured, so macOS and Windows will
 > warn on first launch. See [Operations and releases](docs/operations-and-releases.md).

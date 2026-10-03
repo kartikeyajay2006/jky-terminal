@@ -190,6 +190,47 @@ instead: `PATH="$HOME/bin:$PATH"`.
 
 ---
 
+## The one-line installer
+
+<details open>
+<summary><b><code>jky: command not found</code> right after installing</b></summary>
+
+**Cause:** the installer added its folder to your `PATH` for **new** terminals; the one you ran it in
+was started before that.
+**Fix:** open a new terminal. Or, in this one: `export PATH="$HOME/.local/bin:$PATH"` (macOS, Linux).
+On Windows, a new PowerShell or Command Prompt window picks it up.
+
+</details>
+
+<details>
+<summary><b>"Could not reach the release"</b></summary>
+
+**Cause:** no release has been published yet, or GitHub could not be reached.
+**Fix:** build from source — see [Getting started](getting-started.md). Nothing was changed.
+
+</details>
+
+<details>
+<summary><b>"The download does not match the release's checksum"</b></summary>
+
+**Cause:** what arrived is not what the release published — a broken connection, a proxy rewriting
+it, or tampering.
+**Fix:** run the installer again. It deleted the download and installed nothing.
+
+</details>
+
+<details>
+<summary><b>The summon shortcut does nothing</b></summary>
+
+**Cause:** another app already holds that combination, or your desktop does not let apps hold global
+shortcuts — Wayland outside GNOME, for instance. **Settings → Keyboard** says which.
+**Fix:** choose another with `jky shortcut` or in Settings. On a Wayland desktop other than GNOME, add
+a shortcut in your desktop's keyboard settings that runs `~/.local/bin/jky`.
+
+</details>
+
+---
+
 ## Persistent shells
 
 <details open>
