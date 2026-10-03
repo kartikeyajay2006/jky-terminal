@@ -5,7 +5,8 @@ use std::sync::{Arc, Mutex};
 
 use jky_ai::{
     AIProvider, AnthropicProvider, ChatRequest, ContentBlock, Message, OpenAiProvider,
-    StreamEvent, OLLAMA_CHAT_URL, assistant_tools, command_risk, execute_read_tool, is_destructive, requires_approval,
+    StreamEvent, OLLAMA_CHAT_URL, assistant_tools, command_risk, execute_read_tool, explain, is_destructive, requires_approval,
+    Explanation,
     redact_outgoing, run_approved_command, COMMAND_TIMEOUT,
 };
 use jky_audit::{AuditEvent, AuditKind, AuditLog};
@@ -33,6 +34,8 @@ struct ToolRequest {
     reason: String,
     destructive: bool,
     risk: String,
+    /// What the command would do, read in Rust before anyone decides.
+    explanation: Explanation,
 }
 
 #[derive(Clone, Serialize)]
@@ -230,6 +233,7 @@ async fn drive(ctx: Ctx, mut turn: TurnState) -> Result<(), String> {
                         name: name.clone(),
                         destructive: is_destructive(&command),
                         risk: command_risk(&command).to_string(),
+                        explanation: explain(&command),
                         command,
                         reason,
                     },

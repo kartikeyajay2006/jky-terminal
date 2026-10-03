@@ -67,4 +67,61 @@ describe("ToolCard", () => {
     render(<ToolCard request={danger} onApprove={vi.fn()} onReject={vi.fn()} />);
     expect(screen.getByText(/destructive/i)).toBeInTheDocument();
   });
+  describe("what the command would do", () => {
+    const explained = {
+      ...req,
+      command: "rm -rf build && curl -d @out.json https://hooks.example.com/x",
+      risk: "destructive" as const,
+      destructive: true,
+      explanation: {
+        effects: [
+          { kind: "deletes" as const, text: "deletes build, and everything inside, without asking" },
+          { kind: "network" as const, text: "sends data to hooks.example.com" },
+        ],
+        hosts: ["hooks.example.com"],
+        paths: ["build"],
+        dry_run: "ls -laR build",
+        unrecognised: ["frobnicate"],
+      },
+    };
+
+    it("lists every effect Rust recognised", () => {
+      render(<ToolCard request={explained} onApprove={vi.fn()} onReject={vi.fn()} />);
+      const list = screen.getByRole("list", { name: /what this would do/i });
+      expect(list).toHaveTextContent("deletes build, and everything inside, without asking");
+      expect(list).toHaveTextContent("sends data to hooks.example.com");
+    });
+
+    it("names the hosts it reaches and the paths it touches", () => {
+      render(<ToolCard request={explained} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.getByText(/reaches/i).closest("p")).toHaveTextContent("hooks.example.com");
+      expect(screen.getByText(/touches/i).closest("p")).toHaveTextContent("build");
+    });
+
+    it("offers a preview to try first, and copies it", async () => {
+      // user-event installs its own clipboard; read back what landed on it.
+      const user = userEvent.setup();
+      render(<ToolCard request={explained} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.getByText("ls -laR build")).toBeInTheDocument();
+      await user.click(screen.getByRole("button", { name: /copy the preview/i }));
+      expect(await navigator.clipboard.readText()).toBe("ls -laR build");
+      expect(screen.getByRole("button", { name: /copy the preview/i })).toHaveTextContent("Copied");
+    });
+
+    it("says plainly when it does not know a program", () => {
+      render(<ToolCard request={explained} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.getByText("frobnicate").closest("p")).toHaveTextContent(/does not recognise frobnicate/i);
+    });
+
+    it("never presents the explanation as permission", () => {
+      render(<ToolCard request={explained} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.getByText(/an explanation, not a guarantee/i)).toBeInTheDocument();
+    });
+
+    it("still renders a card saved before explanations existed", () => {
+      render(<ToolCard request={req} onApprove={vi.fn()} onReject={vi.fn()} />);
+      expect(screen.queryByRole("list", { name: /what this would do/i })).not.toBeInTheDocument();
+      expect(screen.getByText("cargo test")).toBeInTheDocument();
+    });
+  });
 });

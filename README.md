@@ -82,8 +82,8 @@ reopen JKY and the pane rejoins it, showing what it printed while you were away.
 
 ### ✦ The assistant has to ask
 
-Reading the project is free; **every command waits for your approval**, and destructive ones must be
-typed back. Your own Anthropic or OpenAI key — or a local Ollama model, fully offline.
+Reading the project is free; **every command waits for your approval** — with what it deletes, writes
+and reaches spelled out, and a dry run to try first — and destructive ones must be typed back. Your own Anthropic or OpenAI key — or a local Ollama model, fully offline.
 
 <sub>→ [Assistant & approvals](docs/assistant-and-approvals.md)</sub>
 

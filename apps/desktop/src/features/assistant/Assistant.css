@@ -119,6 +119,84 @@
   gap: var(--s2);
 }
 
+/* What the command would do: one line per effect, coloured by its kind. */
+.tool__explain {
+  display: grid;
+  gap: var(--s2);
+}
+
+.tool__effects {
+  display: grid;
+  gap: var(--s1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  color: var(--text);
+}
+
+.tool__effects li {
+  display: flex;
+  gap: var(--s2);
+  align-items: baseline;
+}
+
+.tool__kind {
+  flex: none;
+  min-width: 5.5em;
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+
+.tool__effects li[data-kind="deletes"] .tool__kind,
+.tool__effects li[data-kind="admin"] .tool__kind,
+.tool__effects li[data-kind="system"] .tool__kind {
+  color: var(--danger);
+}
+
+.tool__effects li[data-kind="network"] .tool__kind,
+.tool__effects li[data-kind="publish"] .tool__kind,
+.tool__effects li[data-kind="installs"] .tool__kind,
+.tool__effects li[data-kind="writes"] .tool__kind {
+  color: var(--warn);
+}
+
+.tool__note {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.tool__note b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.tool__note--unknown {
+  color: var(--warn);
+}
+
+.tool__preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: center;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.tool__preview code {
+  flex: 1 1 12rem;
+  padding: var(--s1) var(--s2);
+  border-radius: var(--radius);
+  background: var(--ground);
+  color: var(--text);
+  overflow-x: auto;
+}
+
 .chat__compose {
   display: flex;
   flex-wrap: wrap;

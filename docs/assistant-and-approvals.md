@@ -155,6 +155,12 @@ When the model asks to run a command, the conversation pauses and an **approval 
 │                                                                 │
 │ Why: the integration tests time out on CI at 30 seconds.        │
 │                                                                 │
+│ writes   edits config/test.yml in place                         │
+│ Touches  config/test.yml                                        │
+│ Preview first  sed 's/timeout: 30/…' config/test.yml | diff …   │
+│                                                    [ Copy ]     │
+│ An explanation, not a guarantee: read the command itself.       │
+│                                                                 │
 │  [ Run ]   [ Don't run ]                                        │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -168,6 +174,39 @@ When the model asks to run a command, the conversation pauses and an **approval 
   character, into a confirmation field.
 
 Every decision is written to the audit log: `CommandRun` or `CommandRejected`.
+
+### What the card reads out of the command
+
+Before the card appears, Rust reads the command the way a careful reviewer would and lists what it
+found — across every part of it, so `ls && rm -rf ~/x` is explained by its second half, not its first:
+
+| The card says | When the command… |
+|---|---|
+| **deletes** `build, and everything inside, without asking` | runs `rm -rf`, `git clean`, `git reset --hard`, a force push, `find -delete`, `rsync --delete`, `terraform destroy`, `dd of=`, `mkfs` … |
+| **writes** `overwrites out.txt` / `appends to log.txt` / `edits src/a.rs in place` | redirects with `>` or `>>`, runs `tee`, `sed -i`, `mv`, `cp`, `chmod`, `cargo fmt`, `git commit` … |
+| **network** `sends data to hooks.example.com` | runs `curl` or `wget` (sending is told apart from downloading), `ssh`, `scp`, `rsync` to a host, `git pull`, `kubectl apply` … |
+| **publish** `publishes commits to origin` | runs `git push`, `npm publish`, `cargo publish` (and says a crate version is permanent), `docker push`, `gh pr create` … |
+| **installs** `… running their install scripts` | installs packages with npm, pnpm, yarn, pip, cargo, brew, apt and the rest |
+| **runs** `runs whatever curl outputs as a script` | pipes a download into a shell, uses `sh -c` or `eval`, or runs project code (`cargo test`, `make`, `pytest`) |
+| **admin** `runs as administrator (root)` | starts with `sudo` or `doas` — and the command behind it is explained too |
+
+Under the list, the card names the **hosts it reaches** and the **files and folders it touches**, as
+written in the command. Where a safer first step exists it offers one under **Preview first**, with a
+**Copy** button:
+
+| Proposed | Preview first |
+|---|---|
+| `rm -rf build dist` | `ls -laR build dist` |
+| `git push origin main` | `git push --dry-run origin main` |
+| `git clean -fdx` | `git clean -ndx` |
+| `rsync -av --delete dist/ host:/srv` | `rsync --dry-run -av --delete dist/ host:/srv` |
+| `sed -i 's/a/b/' f.txt` | `sed s/a/b/ f.txt \| diff f.txt -` |
+| `terraform apply` / `kubectl apply -f x.yaml` | `terraform plan` / `kubectl apply -f x.yaml --dry-run=server` |
+| `npm publish` / `cargo publish` | the same with `--dry-run` |
+
+Two things it will not do. It will not call an unfamiliar program harmless: a program it does not know
+is named — *"JKY does not recognise `frobnicate` — it could do anything you can"*. And it will not
+pretend to see inside `$(…)`, backticks or `eval`: those are called out as parts it cannot read.
 
 > [!CAUTION]
 > An approval card is a decision aid, not a safety guarantee. The model can misunderstand a repository
@@ -191,6 +230,11 @@ command regardless of its label** — the label is for the person deciding, not 
 Matching runs over the **whole** command, lower-cased and with spaces squeezed — so `ls && rm -rf /` is
 caught even though it starts with `ls`. A command with no keyword is never treated as *safe*; it is
 simply labelled *runs locally* and still needs your click.
+
+> [!IMPORTANT]
+> The label and the explanation are for **you**, not a security control. Neither can approve, skip or
+> soften anything: the gate is that every command waits for your click, and that is enforced in Rust
+> whatever either of them says.
 
 ---
 

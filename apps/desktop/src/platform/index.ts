@@ -54,6 +54,8 @@ export type {
   Todo,
   ToolRan,
   ToolRequest,
+  CommandEffect,
+  CommandExplanation,
   VaultApi,
 } from "./types";
 export { createWebPlatform } from "./web";

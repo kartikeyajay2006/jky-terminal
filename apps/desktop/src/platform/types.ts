@@ -522,6 +522,26 @@ export interface AiMessage {
   >;
 }
 
+/** One thing a proposed command would do, as Rust read it. */
+export interface CommandEffect {
+  kind: "deletes" | "writes" | "network" | "publish" | "installs" | "runs" | "admin" | "processes" | "system";
+  text: string;
+}
+
+/**
+ * What a proposed command would do. An explanation for the person deciding —
+ * never a policy: every command needs approval whatever this says.
+ */
+export interface CommandExplanation {
+  effects: CommandEffect[];
+  hosts: string[];
+  paths: string[];
+  /** A command that shows what this one would do, without doing it. */
+  dry_run: string | null;
+  /** Programs it runs that Rust does not recognise. */
+  unrecognised: string[];
+}
+
 export interface ToolRequest {
   id: string;
   name: string;
@@ -530,6 +550,8 @@ export interface ToolRequest {
   destructive: boolean;
   /** The strongest side effect recognised before the command is approved. */
   risk?: "runs locally" | "writes files" | "network" | "publish" | "destructive";
+  /** Absent on a card saved by an older version. */
+  explanation?: CommandExplanation;
 }
 
 export interface ToolRan {
