@@ -8,6 +8,7 @@ import { SerializeAddon } from "@xterm/addon-serialize";
 import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
 import { getPlatform, type Spawned } from "../../platform";
+import { loadImages } from "./images";
 import { WORDMARK_MARK, WORDMARK_OSC, buildBanner, wordmarkLayout } from "./banner";
 import { WORDMARK } from "./wordmark";
 import { buildEmblem } from "../../components/emblemSvg";
@@ -430,6 +431,10 @@ export function useXterm(
     } catch {
       /* DOM renderer remains in use */
     }
+
+    // Sixel and iTerm2 images, from a chunk of its own once the terminal is
+    // up — the decoder stays out of the start-up bundle. See images.ts.
+    void loadImages(xterm);
 
     try {
       fit.fit();

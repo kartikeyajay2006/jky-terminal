@@ -270,7 +270,11 @@ describe("terminal font settings", () => {
     expect(within(checklist).getByText(/image protocols/i)).toBeInTheDocument();
     expect(within(checklist).getByText(/OSC 52 clipboard policy/i)).toBeInTheDocument();
     expect(within(checklist).getByText(/SSH and worktrees/i)).toBeInTheDocument();
-    expect(within(checklist).getByText(/not rendered yet/i)).toBeInTheDocument();
+    // Sixel and iTerm2 images render; Kitty's protocol does not — both said.
+    const images = within(checklist).getByText(/image protocols/i).closest("li")!;
+    expect(images).toHaveTextContent(/sixel/i);
+    expect(images).toHaveTextContent(/iterm2/i);
+    expect(images).toHaveTextContent(/kitty graphics is not supported yet/i);
   });
 });
 

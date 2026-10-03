@@ -73,7 +73,7 @@ web pages, model responses. So it is given nothing it could misuse:
 - **No network.** Its Content Security Policy is the complete list of where it may connect:
 
   ```text
-  default-src 'self'; script-src 'self'; worker-src 'self' blob:;
+  default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; worker-src 'self' blob:;
   style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:;
   frame-src https://www.openstreetmap.org;
   connect-src 'self' ipc: http://ipc.localhost
@@ -81,7 +81,9 @@ web pages, model responses. So it is given nothing it could misuse:
 
   `connect-src` names only the app itself and Tauri's IPC channel. Even if a malicious payload ran in
   the window, it would have nowhere to send anything. The one framed origin is the OpenStreetMap embed
-  used by the Map app.
+  used by the Map app. `'wasm-unsafe-eval'` lets the inline-image decoder compile the WebAssembly
+  bundled with the app — and nothing more: not `eval`, not `new Function`, not an inline script. A
+  test pins `script-src` to exactly `'self' 'wasm-unsafe-eval'`.
 - **No capabilities.** The window is granted Tauri's `core:default` set plus `core:window:allow-destroy`
   — the latter only so "quit anyway" can actually quit. No filesystem, shell or HTTP plugin permission.
 - **No secrets.** No command exists that returns a key.
@@ -256,6 +258,7 @@ accordingly:
 | A command line injected into the shell-integration stream | The command text is base64-encoded before it goes near an escape sequence. |
 | A panel action running something | Actions only **type** a command. Nothing runs until you press <kbd>Enter</kbd>. |
 | A misleading parse | Recognisers decline on anything unexpected; raw output always stays. |
+| An image built to exhaust memory | Each inline image is held to 4096 × 4096 pixels and 25 MB (Sixel) or 20 MB (iTerm2) encoded; all of them together to 64 MB, oldest dropped first. A larger one is discarded. |
 
 You still need judgment. Be suspicious of output that asks for a token, edits shell startup files, pipes
 `curl` into `sh`, asks for `sudo`, disables host-key checks, or claims a safety control must be turned

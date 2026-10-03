@@ -175,7 +175,9 @@ modifier, and <kbd>Ctrl</kbd>+<kbd>C</kbd> / <kbd>Ctrl</kbd>+<kbd>D</kbd> always
 <details>
 <summary><b>Does it show images in the terminal?</b></summary>
 
-Not yet. Kitty graphics, iTerm2 images and Sixel are planned.
+Yes — **Sixel** and **iTerm2** inline images, so `chafa -f sixel`, `img2sixel` and `imgcat` work.
+Kitty's graphics protocol is not supported yet. Images are output, and output is untrusted, so each is
+held to stated limits on size and memory.
 
 </details>
 

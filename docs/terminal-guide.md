@@ -509,7 +509,7 @@ start.
 | Hyperlinks in output | Clickable, opened by the OS browser, `http`/`https` only |
 | OSC 52 clipboard | Blocked by design |
 | Kitty keyboard protocol | Not yet — it is in an xterm.js beta. <kbd>Shift</kbd>+<kbd>Enter</kbd> is handled specially instead. |
-| Inline images (Kitty, iTerm2, Sixel) | **Not rendered yet** — listed as planned in **Settings → Terminal** |
+| Inline images | **Sixel** and the **iTerm2** protocol render; **Kitty graphics does not yet**. Each image is held to 4096 × 4096 pixels and 25 MB (Sixel) or 20 MB (iTerm2) encoded, and all of them together to 64 MB — the oldest go first, leaving a placeholder. The decoder loads after the terminal opens, so it costs nothing at start-up. |
 | Font ligatures | Off, to keep every glyph exactly one cell wide |
 | Font size | 8–28 points, nine font choices, each ending in a monospace fallback |
 

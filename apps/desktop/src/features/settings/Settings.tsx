@@ -301,12 +301,15 @@ if (x >= 1 && y !== 2) { /* -> */ }`}
         </div>
         <ul className="essentials__list" aria-label="Power-user essentials checklist">
           <li>
-            <span className="essentials__mark" data-state="planned" aria-hidden="true">○</span>
+            <span className="essentials__mark" data-state="ready" aria-hidden="true">✓</span>
             <div>
               <strong>Image protocols</strong>
-              <p>Kitty graphics, Sixel, and iTerm inline images are not rendered yet.</p>
+              <p>
+                Sixel and iTerm2 inline images render, within stated limits on size and memory. Kitty
+                graphics is not supported yet.
+              </p>
             </div>
-            <span className="essentials__state" data-state="planned">Planned</span>
+            <span className="essentials__state" data-state="ready">Partial</span>
           </li>
           <li>
             <span className="essentials__mark" data-state="ready" aria-hidden="true">✓</span>

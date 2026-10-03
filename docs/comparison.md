@@ -74,7 +74,7 @@ trade-off: the further right a terminal sits, the more it does besides being a t
 | Tabs and split panes | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | ⚪ <sup>1</sup> | 🟢 |
 | Local shells survive quitting the app | 🟢 | ⚪ <sup>2</sup> | ⚪ <sup>3</sup> | 🟡 <sup>4</sup> | 🟡 <sup>5</sup> | ⚪ <sup>2</sup> | 🟡 <sup>6</sup> |
 | Native GPU renderer | 🟡 <sup>7</sup> | 🟢 | 🟢 | 🟡 <sup>7</sup> | 🟢 | 🟢 | 🟡 <sup>7</sup> |
-| Inline images (Kitty, iTerm2 or Sixel) | ⚪ | 🟢 | — <sup>8</sup> | — <sup>8</sup> | 🟢 | ⚪ | 🟡 |
+| Inline images (Kitty, iTerm2 or Sixel) | 🟡 <sup>19</sup> | 🟢 | — <sup>8</sup> | — <sup>8</sup> | 🟢 | ⚪ | 🟡 |
 | Command output shown as structured views | 🟢 <sup>9</sup> | ⚪ | 🟡 <sup>10</sup> | 🟡 <sup>11</sup> | ⚪ | ⚪ | 🟡 <sup>12</sup> |
 | AI assistant | 🟢 <sup>13</sup> | ⚪ | 🟢 | 🟢 | ⚪ | ⚪ | 🟢 <sup>14</sup> |
 | Local models (Ollama) | 🟢 | — | — <sup>8</sup> | 🟢 | — | — | 🟡 |
@@ -113,6 +113,7 @@ trade-off: the further right a terminal sits, the more it does besides being a t
 16. Warp dropped its login requirement in late 2024; some cloud and AI features use a Warp account.
 17. Signing in is needed for Copilot, not for the terminal.
 18. You can build from source today. The release workflow produces **unsigned** draft installers,
+19. Sixel and the iTerm2 image protocol, decoded within stated size and memory limits. Kitty's graphics protocol is not supported yet.
     and no public release has been published yet. See [Operations and releases](operations-and-releases.md).
 
 ---
@@ -125,7 +126,7 @@ These are real limits, written down so nobody discovers them the hard way.
 |---|---|---|
 | **No published release yet** | Build from source. Installers from the release workflow are unsigned, so macOS Gatekeeper and Windows SmartScreen will warn. | Signing, notarisation and a signed updater are on the [roadmap](product-roadmap.md). |
 | **Webview renderer** | Heavy output — megabytes of logs at once — will feel slower than in a native GPU terminal. | [Benchmarks](benchmarks.md) below the window are published; frame timing is next. |
-| **No inline images** | No Kitty graphics, iTerm2 images or Sixel. | Not scheduled. |
+| **No Kitty graphics** | Sixel and iTerm2 images render; Kitty's graphics protocol does not, so `kitty +kitten icat` shows nothing. | Planned. |
 | **No scripting or plugins** | Settings are a panel plus `settings.json` and `keymap.json`. There is no Lua, JavaScript or plugin API. | A sandboxed SDK is planned, not promised. |
 | **Three AI back-ends wired** | Anthropic, OpenAI and Ollama work. Keys for Google, Mistral, Groq, DeepSeek, xAI and OpenRouter can be stored, but the assistant tells you plainly that they have no adapter yet. | Adapters are straightforward; they will come as they are tested. |
 | **Young and small** | v0.1, one maintainer. Expect rough edges and file issues. | Every issue is read. |

@@ -119,10 +119,13 @@ can make box-drawing ragged on some displays.
 </details>
 
 <details>
-<summary><b>Images from <code>imgcat</code>, <code>kitty +kitten icat</code> or Sixel tools do not show</b></summary>
+<summary><b>An image from <code>kitty +kitten icat</code> does not show</b></summary>
 
-**Cause:** inline image protocols are not supported yet.
-**Fix:** none today. **Settings → Terminal** lists it as planned.
+**Cause:** JKY renders **Sixel** (`img2sixel`, `chafa -f sixel`, `timg -ps`) and **iTerm2** images
+(`imgcat`, `wezterm imgcat`), not Kitty's graphics protocol.
+**Fix:** use a Sixel or iTerm2 tool — `chafa -f sixel photo.png`, `imgcat photo.png`. An image over
+4096 × 4096 pixels, or over 25 MB (Sixel) / 20 MB (iTerm2) encoded, is dropped by design; see
+[Terminal compatibility](terminal-guide.md#terminal-compatibility).
 
 </details>
 

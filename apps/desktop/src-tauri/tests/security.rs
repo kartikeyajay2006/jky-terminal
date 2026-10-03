@@ -709,6 +709,40 @@ fn a_worker_may_only_come_from_this_app() {
     }
 }
 
+/*
+ * Script comes from this app, and may compile WebAssembly — nothing more.
+ *
+ * `'wasm-unsafe-eval'` is there for the inline-image decoder, whose Sixel
+ * parser is WebAssembly shipped inside this app's own bundle. It permits
+ * compiling WebAssembly and nothing else: not `eval`, not `new Function`,
+ * not an inline `<script>`. Anything wider — `'unsafe-eval'`,
+ * `'unsafe-inline'`, a host — is refused here.
+ */
+#[test]
+fn script_may_come_only_from_this_app() {
+    let conf: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(crate_root().join("tauri.conf.json")).unwrap())
+            .expect("tauri.conf.json is valid JSON");
+    let csp = conf["app"]["security"]["csp"]
+        .as_str()
+        .expect("SECURITY: no CSP is configured");
+
+    let directive = csp
+        .split(';')
+        .map(str::trim)
+        .find(|d| d.starts_with("script-src"))
+        .expect("SECURITY: CSP defines no script-src");
+
+    let tokens: Vec<&str> = directive.split_whitespace().skip(1).collect();
+    assert_eq!(
+        tokens,
+        ["'self'", "'wasm-unsafe-eval'"],
+        "SECURITY: CSP script-src must be exactly 'self' 'wasm-unsafe-eval'. \
+         'unsafe-eval' runs strings as code, 'unsafe-inline' runs injected script, \
+         and a host is somebody else's code running as this app."
+    );
+}
+
 /// Returns the forbidden prefix a capability matches, if any.
 ///
 /// Split out from the manifest check so the rule itself is directly testable.

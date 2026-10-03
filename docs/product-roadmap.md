@@ -65,7 +65,7 @@ tools and a themed shell. The near-term job is to make it dependable under real 
 |---|---|---|
 | Publish benchmarks — first prompt, sustained output, split and reconnect time, memory | "Fast" should be a number anyone can reproduce | **Done below the window** — [benchmarks](benchmarks.md); window cold start and frame timing remain |
 | Native end-to-end tests — interactive shells, resize, paste, Unicode, persistence, approvals | Unit tests cannot prove a terminal *feels* right | **Mostly done** — real shells and supervisors on every CI platform ([what is covered](operations-and-releases.md#end-to-end-against-real-processes)); approval flows through the real window remain |
-| Inline images — Kitty graphics, iTerm2, Sixel | Listed in **Settings → Terminal** as the one missing essential | Planned |
+| Inline images — Kitty graphics, iTerm2, Sixel | Listed in **Settings → Terminal** as the one missing essential | **Sixel and iTerm2 done**; Kitty graphics remains |
 | Quieter test output | A green run should be trustworthy at a glance | Ongoing |
 
 ## Next — release trust

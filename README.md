@@ -193,7 +193,7 @@ their own docs in **October 2026**. If one is wrong or out of date,
 | Tabs and splits | 🟢 | 🟢 | 🟢 | 🟢 | 🟢 | ⚪ | 🟢 |
 | Local shells survive quitting | 🟢 | ⚪ | ⚪ | 🟡 SSH | 🟡 mux | ⚪ | 🟡 reload |
 | Native GPU renderer | 🟡 webview | 🟢 | 🟢 | 🟡 webview | 🟢 | 🟢 | 🟡 webview |
-| Inline images | ⚪ | 🟢 | — | — | 🟢 | ⚪ | 🟡 |
+| Inline images | 🟡 Sixel, iTerm2 | 🟢 | — | — | 🟢 | ⚪ | 🟡 |
 | Command output as views | 🟢 panels | ⚪ | 🟡 blocks | 🟡 previews | ⚪ | ⚪ | 🟡 marks |
 | AI assistant | 🟢 | ⚪ | 🟢 | 🟢 | ⚪ | ⚪ | 🟢 |
 | Built-in editor | 🟢 | ⚪ | 🟢 | 🟢 | ⚪ | ⚪ | 🟢 |
@@ -226,9 +226,9 @@ with sources, in the [full comparison](docs/comparison.md).</sub>
 #### ⚠️ Where JKY is behind today
 
 - **No published release yet** — build from source; draft installers are unsigned.
-- **Rendering runs in a webview** — native GPU terminals will win on raw throughput. No benchmarks
-  are published yet.
-- **No inline images, scripting or plugins.**
+- **Rendering runs in a webview** — native GPU terminals will win on raw throughput. The
+  [benchmarks](docs/benchmarks.md) stop at the window; frame timing is not measured yet.
+- **No Kitty graphics protocol, scripting or plugins.** Sixel and iTerm2 images do render.
 - **Three AI back-ends wired** — Anthropic, OpenAI and Ollama. Six more can store a key but have
   no adapter yet.
 - **Young** — expect rough edges, and please file issues.
