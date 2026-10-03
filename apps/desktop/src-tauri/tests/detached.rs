@@ -258,6 +258,29 @@ fn a_resize_from_the_window_reaches_a_program_in_a_held_shell() {
 }
 
 #[test]
+fn the_installers_store_a_shortcut_through_the_binary() {
+    // How install.sh and install.ps1 save the person's choice.
+    let config = scratch("shortcut");
+    let run = |args: &[&str]| {
+        let out = Command::new(binary()).args(args).arg("--config-dir").arg(&config).output().expect("runs");
+        (out.status.code(), String::from_utf8_lossy(&out.stdout).trim().to_string())
+    };
+    assert_eq!(run(&["--set-shortcut", "cmd+j"]), (Some(0), "Super+J".to_string()));
+    let saved = std::fs::read_to_string(config.join("settings.json")).unwrap();
+    assert!(saved.contains("\"summon_shortcut\": \"Super+J\""), "{saved}");
+
+    // Refused with a reason, and nothing changed.
+    assert_eq!(run(&["--set-shortcut", "ctrl+j"]).0, Some(2));
+    assert!(std::fs::read_to_string(config.join("settings.json")).unwrap().contains("Super+J"));
+
+    // A flag with no value is an error, never a window opening instead.
+    assert_eq!(run(&["--set-shortcut"]).0, Some(2));
+
+    assert_eq!(run(&["--set-shortcut", "none"]), (Some(0), "none".to_string()));
+    let _ = std::fs::remove_dir_all(&config);
+}
+
+#[test]
 fn an_ordinary_launch_is_not_a_supervisor() {
     // The flag is the only thing that turns this binary into one. Without it
     // nothing is recorded, because a window was asked for instead.

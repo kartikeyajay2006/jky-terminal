@@ -67,6 +67,8 @@ pub struct AppState {
     /// History panel all read it. Retention and the on/off switch are the
     /// privacy settings', applied in the commands that write.
     pub memory: Arc<Memory>,
+    /// The summon shortcut as this running JKY holds it — or why it cannot.
+    pub summon: Arc<std::sync::Mutex<crate::summon::SummonView>>,
     /// The machines you have saved. Not the keychain: a hostname and an
     /// account name are not secrets, and the things that are never come near
     /// this app — connecting runs the `ssh` this machine already has.
@@ -126,6 +128,11 @@ impl AppState {
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
             keys: Arc::new(Keymap::new(config_dir.join("keymap.json"))),
             memory: Arc::new(open_memory(config_dir)),
+            summon: Arc::new(std::sync::Mutex::new(crate::summon::SummonView {
+                shortcut: None,
+                active: false,
+                note: None,
+            })),
             hosts: Arc::new(HostStore::new(config_dir.join("hosts.json"))),
             workspaces: Arc::new(WorkspaceStore::new(config_dir.join("workspaces.json"))),
             store: Arc::new(Store::new(config_dir)),

@@ -467,7 +467,13 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         "settings_set_active_provider".to_string(),
         "settings_set_privacy".to_string(),
         "settings_set_selected_model".to_string(),
+        // The summon shortcut: read it, or choose it. A key combination, never
+        // a path or a command — checked by jky_keys::summon before it is
+        // stored or registered, and what it does when pressed is fixed in
+        // Rust: bring this app's own window forward. Nothing else.
+        "settings_set_summon".to_string(),
         "settings_set_terminal_start_dir".to_string(),
+        "settings_summon".to_string(),
         // The dashboard's own content. These read and write the user's notes,
         // todos, events and reminders — never a secret, and never a path the
         // renderer chooses: the store owns its directory.

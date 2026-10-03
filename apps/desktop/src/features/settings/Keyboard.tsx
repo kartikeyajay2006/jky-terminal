@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useKeymap } from "../../app/keymapStore";
 import { chordOf } from "../../platform/keymap";
 import { PanelHead } from "./PanelHead";
+import { Summon } from "./Summon";
 
 /**
  * Every shortcut, and what it is bound to.
@@ -43,6 +44,8 @@ export function Keyboard() {
           )
         }
       />
+
+      <Summon />
 
       <p className="hint">
         Choose a shortcut and press the keys you want. Every binding needs

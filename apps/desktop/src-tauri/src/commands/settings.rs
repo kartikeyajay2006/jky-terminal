@@ -97,6 +97,35 @@ pub(crate) fn set_privacy_logic(
 
 // --- IPC surface ------------------------------------------------------------
 
+/// The summon shortcut, and whether this running JKY holds it.
+#[tauri::command]
+pub fn settings_summon(state: State<'_, AppState>) -> crate::summon::SummonView {
+    state.summon.lock().unwrap_or_else(|p| p.into_inner()).clone()
+}
+
+/// Choose the summon shortcut — or `none` — and hold it at once.
+///
+/// Checked by the same rules the installers apply, stored in settings, and
+/// registered in place of the old one. Stored even when this desktop will
+/// not let JKY hold it, because the installer's OS-level binding, or the next
+/// session, may; the reply says which.
+#[tauri::command]
+pub fn settings_set_summon(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+    shortcut: String,
+) -> Result<crate::summon::SummonView, String> {
+    let wanted = crate::summon::parse_request(&shortcut)?;
+    let mut current = state.summon.lock().unwrap_or_else(|p| p.into_inner());
+    let held = current.shortcut.clone().filter(|_| current.active);
+    let view = crate::summon::register(&app, held.as_deref(), wanted.as_deref());
+    state.settings.set_summon_shortcut(wanted.as_deref()).map_err(|e| e.to_string())?;
+    // The desktop's own binding, where the installer made one, follows.
+    crate::summon::sync_desktop(wanted.as_deref());
+    *current = view.clone();
+    Ok(view)
+}
+
 #[tauri::command]
 pub fn settings_set_selected_model(
     state: State<'_, AppState>,

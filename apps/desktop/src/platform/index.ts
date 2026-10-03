@@ -48,6 +48,7 @@ export type {
   PtyApi,
   RemoteApi,
   RemoteHost,
+  SummonView,
   Spawned,
   SshConfigHost,
   HostKeyStatus,

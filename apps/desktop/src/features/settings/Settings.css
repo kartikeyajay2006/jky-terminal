@@ -631,3 +631,81 @@
   color: var(--text-muted);
 }
 
+
+/* The summon shortcut: what it is, whether it is held, and how to change it. */
+.summon {
+  display: grid;
+  gap: var(--s2);
+  margin-bottom: var(--s4);
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-left: 2px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.summon__title {
+  margin: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.summon__now {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  margin: 0;
+  font-size: 12px;
+}
+
+.summon kbd {
+  padding: 1px var(--s2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--ground);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+
+.summon__none {
+  color: var(--text-dim);
+}
+
+.summon__note {
+  color: var(--text-muted);
+}
+
+.summon__note--warn {
+  color: var(--warn);
+}
+
+.summon__form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.summon__form .input {
+  flex: 1 1 12rem;
+}
+
+.summon__presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+  margin: 0;
+}
+
+.summon__preset {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.summon__preset:hover kbd {
+  border-color: var(--accent);
+}

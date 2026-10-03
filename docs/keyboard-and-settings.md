@@ -107,6 +107,30 @@ ask the same question of the same keymap, so they cannot disagree.
 
 ---
 
+## The summon shortcut
+
+One shortcut works outside JKY: it brings JKY forward from whatever app you are in. The installer
+asks for it once; **Settings → Keyboard → Summon JKY from anywhere** changes it, offers this platform's
+recommended combinations in one click, or turns it off. It is **typed** rather than pressed, unlike the
+bindings below, because the keys most worth using — Super, Cmd — are taken by the desktop before a
+window ever sees them.
+
+| Rule | Why |
+|---|---|
+| At least one modifier, and never Ctrl or Shift alone | `Ctrl+J` is a newline in every terminal and `Shift+J` a capital letter; taking either from the whole system would break something used all day |
+| One key: a letter, a digit, F1–F24 or Space | the keys every desktop can register |
+| Any spelling: `cmd+j`, `ctrl alt space`, `Ctrl-Option-J` | stored as one canonical form — `Super+J`, `Ctrl+Alt+Space`, `Ctrl+Alt+J` |
+
+| Desktop | What the shortcut does |
+|---|---|
+| **GNOME** (X11 or Wayland) | registered with GNOME by the installer, so it **opens JKY even when JKY is closed** |
+| **Windows** | while JKY runs it brings it forward; a Ctrl+Alt or Ctrl+Shift shortcut is also set on the Start-menu entry, which **opens JKY even when it is closed** |
+| **macOS**, **KDE** and other Linux desktops | brings JKY forward **while JKY is open**; Settings says so when a desktop will not let an app hold it |
+
+Changing it in Settings moves the GNOME or Start-menu binding with it; it is saved in `settings.json`
+as `summon_shortcut`, and the same rules are applied by the app, by both installers and by
+`jky shortcut`, all tested against one list of cases.
+
 ## Rebinding a shortcut
 
 ```mermaid
@@ -189,7 +213,7 @@ forgiving kind History uses.
 |---|---|
 | 🎨 **Appearance** | The seven themes, with a swatch of each. Applied instantly, remembered per machine. See the [theme table](../README.md#-seven-themes-one-set-of-tokens). |
 | ❯ **Terminal** | Font size (8–28 pt, default 13) and typeface: *App default*, JetBrains Mono, Fira Code, Source Code Pro, DejaVu Sans Mono, Liberation Mono, Noto Sans Mono, Hack, Inconsolata. Each falls back to a monospace font if missing. Also the **power-user essentials** checklist, which states plainly what is ready and what is not (inline images: Sixel and iTerm2 render; Kitty graphics does not yet). |
-| ⌨ **Keyboard** | Every action, rebindable by pressing keys; per-action and global reset; conflict warnings. |
+| ⌨ **Keyboard** | The **summon shortcut** that brings JKY forward from any app — typed, with one-click presets, or turned off — and every action, rebindable by pressing keys; per-action and global reset; conflict warnings. |
 | 🔒 **Privacy** | **Keep command history** (on/off), **Forget history older than** (never, 7, 30, 90 days, 1 year), **Clear all history** (after a second click), **Restore scrollback after a restart** (off deletes what was saved), and the **Project folder** — where terminals start and the only folder the assistant's tools may read. Enforced in Rust. |
 | 🔑 **Providers** | API keys for AI providers and the model for each. Keys are written to the OS keychain and never shown again — replacing one means disconnecting first. See [Assistant & approvals](assistant-and-approvals.md#providers-and-models). |
 | ⌘ **Commands** | Every `jky` command and every name it answers to, with a longer explanation. See [Shells & the jky command](shell-integration.md#command-reference). |

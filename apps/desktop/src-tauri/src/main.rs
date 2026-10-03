@@ -5,6 +5,7 @@ mod audit_detail;
 mod listing;
 mod turn;
 mod state;
+mod summon;
 mod supervisor;
 
 use commands::{
@@ -36,6 +37,21 @@ fn main() {
         std::process::exit(list_sessions(&args));
     }
 
+    // The installers' last step: store the summon shortcut the person chose,
+    // in this app's own settings, so it is never asked again.
+    // Matched on the flag alone, never on whether a value followed: a flag
+    // this binary does not act on would open a whole window instead.
+    if args.iter().any(|a| a == "--set-shortcut") {
+        #[cfg(windows)]
+        attach_parent_console();
+        let Some(shortcut) = supervisor::argument(&args, "--set-shortcut") else {
+            eprintln!("jky: --set-shortcut needs a shortcut, such as Super+J, or none");
+            std::process::exit(2);
+        };
+        let Some(config_dir) = config_dir_from(&args) else { std::process::exit(2) };
+        std::process::exit(summon::set_from_cli(&config_dir, &shortcut));
+    }
+
     if let Some(session) = supervisor::requested(&args) {
         // The directory is given, never worked out here. The window knows it
         // already and a second derivation is the same fact twice — which is
@@ -52,12 +68,23 @@ fn main() {
     }
 
     tauri::Builder::default()
+        // First, so a second launch is caught before anything else starts:
+        // it brings this window forward and exits. See summon.rs.
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| summon::summon(app)))
+        .plugin(summon::plugin())
         .setup(|app| {
             // Resolved by Tauri per platform: ~/.config/dev.jky.terminal on Linux,
             // ~/Library/Application Support/dev.jky.terminal on macOS,
             // %APPDATA%\dev.jky.terminal on Windows.
             let config_dir = app.path().app_config_dir()?;
-            app.manage(AppState::new(&config_dir));
+            let state = AppState::new(&config_dir);
+            // The summon shortcut chosen at install or in Settings. Holding it
+            // can fail — a Wayland session, a combination another app owns —
+            // and that is reported in Settings, never fatal.
+            let chosen = state.settings.summon_shortcut().ok().flatten();
+            let view = summon::register(app.handle(), None, chosen.as_deref());
+            *state.summon.lock().unwrap_or_else(|p| p.into_inner()) = view;
+            app.manage(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -103,6 +130,8 @@ fn main() {
             settings::settings_set_terminal_start_dir,
             settings::settings_privacy,
             settings::settings_set_privacy,
+            settings::settings_summon,
+            settings::settings_set_summon,
             system::system_status,
             tools::tools_diff,
             tools::tools_end_process,

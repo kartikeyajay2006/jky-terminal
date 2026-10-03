@@ -306,6 +306,7 @@ export function createWebPlatform(): Platform {
   const models = new Map<string, string>();
   // The same defaults as Rust: keep everything, for ever.
   let privacy: Privacy = { keepHistory: true, historyDays: 0, keepScrollback: true };
+  let summonShortcut: string | null = null;
   let projectDir: string | null = null;
 
   const vault: VaultApi = {
@@ -346,6 +347,16 @@ export function createWebPlatform(): Platform {
       }
       privacy = { ...next };
       if (!next.keepScrollback) buffers.clear();
+    },
+    // A browser cannot hold a global shortcut; the preview only remembers
+    // the choice so the panel can be developed.
+    async summon() {
+      return { shortcut: summonShortcut, active: false, note: "A browser cannot hold a global shortcut." };
+    },
+    async setSummon(shortcut) {
+      const off = ["", "none", "off", "skip"].includes(shortcut.trim().toLowerCase());
+      summonShortcut = off ? null : shortcut.trim();
+      return { shortcut: summonShortcut, active: false, note: "A browser cannot hold a global shortcut." };
     },
     async setProjectDir(dir) {
       projectDir = dir.trim() || null;

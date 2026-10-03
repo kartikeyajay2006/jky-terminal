@@ -37,6 +37,12 @@ serde.workspace = true
 serde_json.workspace = true
 # The config folder for `--verify-audit` when it is run by hand.
 dirs = "6"
+# The summon shortcut, registered from Rust only — no capability gives the
+# window either plugin. See src/summon.rs.
+tauri-plugin-global-shortcut = "2.4"
+# Launching JKY while it is open brings the open window forward, so `jky`,
+# an OS-level shortcut and a second click all land on the same window.
+tauri-plugin-single-instance = "2.5"
 
 [target.'cfg(windows)'.dependencies]
 # AttachConsole, so `--verify-audit` can print from a GUI-subsystem build.

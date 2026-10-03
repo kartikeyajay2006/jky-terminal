@@ -11,6 +11,7 @@
 
 mod chord;
 mod map;
+pub mod summon;
 
 pub use chord::{Chord, ChordError, Key};
 pub use map::{Action, Binding, Conflict, Keymap, KeymapError, KeymapFile, ACTIONS};

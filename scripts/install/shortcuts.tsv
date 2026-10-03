@@ -1,0 +1,34 @@
+# What a summon shortcut typed by a person becomes, or ERROR.
+# Read by crates/jky-keys (summon.rs), install.sh's tests and install.ps1's
+# tests, so the app and both installers can never disagree about a shortcut.
+# Columns are separated by one tab. Canonical order: Ctrl, Alt, Shift, Super.
+Super+J	Super+J
+super+j	Super+J
+win+j	Super+J
+cmd+j	Super+J
+command+j	Super+J
+meta+j	Super+J
+Ctrl+Shift+J	Ctrl+Shift+J
+control+shift+j	Ctrl+Shift+J
+shift+ctrl+j	Ctrl+Shift+J
+Ctrl+Alt+Space	Ctrl+Alt+Space
+ctrl + alt + space	Ctrl+Alt+Space
+ctrl-alt-j	Ctrl+Alt+J
+ctrl alt k	Ctrl+Alt+K
+option+space	Alt+Space
+opt+j	Alt+J
+alt+f12	Alt+F12
+ctrl+alt+5	Ctrl+Alt+5
+super+shift+t	Shift+Super+T
+Ctrl+Option+J	Ctrl+Alt+J
+j	ERROR
+shift+j	ERROR
+ctrl+j	ERROR
+ctrl+	ERROR
+ctrl+alt	ERROR
+ctrl+j+k	ERROR
+ctrl+ctrl+j	ERROR
+hyper+j	ERROR
+ctrl+alt+tab	ERROR
+ctrl+alt+f25	ERROR
+	ERROR

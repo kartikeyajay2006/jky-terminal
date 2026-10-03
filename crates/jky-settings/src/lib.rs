@@ -102,6 +102,13 @@ pub struct Settings {
     /// What the app keeps about what you do. See [`Privacy`].
     #[serde(default)]
     pub privacy: Privacy,
+
+    /// The shortcut that summons JKY from anywhere, in canonical form —
+    /// `Super+J`, `Ctrl+Alt+Space`. Chosen once, by the installer or in
+    /// Settings → Keyboard; `None` means no global shortcut at all. Checked
+    /// by `jky_keys::summon` before it is ever stored.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub summon_shortcut: Option<String>,
 }
 
 /// What the app keeps about what you do.
@@ -288,6 +295,17 @@ impl SettingsStore {
         self.save(&s)
     }
 
+    pub fn summon_shortcut(&self) -> Result<Option<String>, SettingsError> {
+        Ok(self.load()?.summon_shortcut)
+    }
+
+    /// Store the summon shortcut — already in canonical form — or clear it.
+    pub fn set_summon_shortcut(&self, shortcut: Option<&str>) -> Result<(), SettingsError> {
+        let mut s = self.load()?;
+        s.summon_shortcut = shortcut.map(str::to_string);
+        self.save(&s)
+    }
+
     /// Every folder the editor has open, oldest first.
     pub fn editor_folders(&self) -> Result<Vec<String>, SettingsError> {
         Ok(folders_of(&self.load()?))
@@ -308,6 +326,21 @@ fn folders_of(s: &Settings) -> Vec<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_summon_shortcut_is_kept_and_cleared_without_touching_anything_else() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let store = SettingsStore::new(dir.path().join("settings.json"));
+        store.set_active_provider("openai").unwrap();
+        assert_eq!(store.summon_shortcut().unwrap(), None);
+        store.set_summon_shortcut(Some("Super+J")).unwrap();
+        assert_eq!(store.summon_shortcut().unwrap().as_deref(), Some("Super+J"));
+        assert_eq!(store.load().unwrap().active_provider.as_deref(), Some("openai"));
+        store.set_summon_shortcut(None).unwrap();
+        assert_eq!(store.summon_shortcut().unwrap(), None);
+        // Absent rather than `null`, so an older build reads the file as it always did.
+        assert!(!std::fs::read_to_string(dir.path().join("settings.json")).unwrap().contains("summon"));
+    }
     use tempfile::TempDir;
 
     fn store() -> (TempDir, SettingsStore) {

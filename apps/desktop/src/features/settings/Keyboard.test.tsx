@@ -90,7 +90,8 @@ describe("the keyboard panel", () => {
   it("falls back to the defaults, and says so, when the keymap cannot be read", () => {
     useKeymap.setState({ error: "disk on fire" });
     render(<Keyboard />);
-    expect(screen.getByRole("status")).toHaveTextContent("disk on fire");
+    // The summon shortcut has a status of its own in this panel too.
+    expect(screen.getByText(/disk on fire/)).toHaveAttribute("role", "status");
     expect(chordButton("Split terminal right")).toHaveTextContent("Ctrl+Shift+T");
   });
 });

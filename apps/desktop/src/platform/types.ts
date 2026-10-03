@@ -528,8 +528,24 @@ export interface PrivacyView extends Privacy {
   projectDir: string | null;
 }
 
+/** The shortcut that summons JKY from anywhere, as this running JKY holds it. */
+export interface SummonView {
+  /** Canonical — `Super+J`, `Ctrl+Alt+Space` — or null when there is none. */
+  shortcut: string | null;
+  /** Whether JKY holds it right now. */
+  active: boolean;
+  /** Why it is not held, or what is worth knowing on this desktop. */
+  note: string | null;
+}
+
 export interface SettingsApi {
   setSelectedModel(provider: string, model: string): Promise<void>;
+  summon(): Promise<SummonView>;
+  /**
+   * Choose the summon shortcut — any spelling, `none` to turn it off.
+   * Rejects with Rust's reason when the shortcut is refused.
+   */
+  setSummon(shortcut: string): Promise<SummonView>;
   setActiveProvider(provider: string): Promise<void>;
   privacy(): Promise<PrivacyView>;
   /** Applied at once: scrollback off deletes it, a window prunes history. */

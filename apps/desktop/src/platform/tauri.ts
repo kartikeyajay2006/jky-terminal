@@ -64,6 +64,7 @@ import type {
   Workspaces,
   RemoteApi,
   RemoteHost,
+  SummonView,
   SshConfigHost,
   HostKeyStatus,
   HistoryApi,
@@ -150,6 +151,12 @@ export function createTauriPlatform(): Platform {
         keepScrollback: privacy.keepScrollback,
         now: Date.now(),
       });
+    },
+    async summon() {
+      return invoke<SummonView>("settings_summon");
+    },
+    async setSummon(shortcut) {
+      return invoke<SummonView>("settings_set_summon", { shortcut });
     },
     async setProjectDir(dir) {
       await invoke<void>("settings_set_terminal_start_dir", { dir });
