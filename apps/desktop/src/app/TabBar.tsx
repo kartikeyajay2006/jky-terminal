@@ -51,6 +51,11 @@ export function TabBar() {
             }}
           >
             <span className="tabbar__title">{tab.title}</span>
+            {Object.keys(tab.remotes ?? {}).length > 0 && (
+              <span className="tabbar__remote" title="A terminal in this tab is on another machine">
+                remote
+              </span>
+            )}
             {tab.private && (
               <span className="tabbar__private" title="Nothing this tab runs or prints is kept">
                 private

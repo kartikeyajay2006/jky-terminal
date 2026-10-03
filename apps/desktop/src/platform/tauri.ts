@@ -64,6 +64,8 @@ import type {
   Workspaces,
   RemoteApi,
   RemoteHost,
+  SshConfigHost,
+  HostKeyStatus,
   HistoryApi,
   HistoryHit,
   Keyboard,
@@ -208,6 +210,12 @@ export function createTauriPlatform(): Platform {
   const remote: RemoteApi = {
     async list() {
       return invoke<RemoteHost[]>("remote_list");
+    },
+    async configHosts() {
+      return invoke<SshConfigHost[]>("remote_config_hosts");
+    },
+    async hostKey(id) {
+      return invoke<HostKeyStatus>("remote_host_key", { id });
     },
     async save(host) {
       return invoke<RemoteHost[]>("remote_save", { host });

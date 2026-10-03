@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { getPlatform, type RemoteHost } from "../../platform";
+import { getPlatform, type HostKeyStatus, type RemoteHost, type SshConfigHost } from "../../platform";
 import { useTabs } from "../../app/tabStore";
 import { useNav } from "../../app/navStore";
 import "./Remote.css";
@@ -32,6 +32,8 @@ export function Remote() {
   const [editing, setEditing] = useState<RemoteHost | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(true);
+  const [importing, setImporting] = useState(false);
+  const [status, setStatus] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     try {
@@ -66,6 +68,27 @@ export function Remote() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  /**
+   * Save each chosen config host under its alias.
+   *
+   * The alias is the address, and nothing else is copied: ssh reads
+   * `~/.ssh/config` itself on every connection, so HostName, User, Port and
+   * ProxyJump come from the one place they are kept and cannot go stale here.
+   */
+  async function importHosts(aliases: string[]) {
+    let saved = 0;
+    for (const alias of aliases) {
+      try {
+        setHosts(await getPlatform().remote.save({ ...blank(), label: alias, address: alias }));
+        saved++;
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    }
+    setImporting(false);
+    setStatus(`Imported ${saved} ${saved === 1 ? "host" : "hosts"}.`);
   }
 
   function connect(host: RemoteHost) {
@@ -103,6 +126,11 @@ export function Remote() {
           {error}
         </p>
       )}
+      {status && (
+        <p className="remote__status" role="status">
+          {status}
+        </p>
+      )}
 
       {!busy && hosts.length === 0 && !editing && (
         <p className="remote__empty">
@@ -127,6 +155,7 @@ export function Remote() {
                 {host.jump ? ` via ${host.jump}` : ""}
               </span>
             </button>
+            <HostKey host={host} />
             <button type="button" className="remote__edit" onClick={() => setEditing(host)}>
               Edit
             </button>
@@ -142,10 +171,30 @@ export function Remote() {
         ))}
       </ul>
 
-      {!editing && (
-        <button type="button" className="btn remote__add" onClick={() => setEditing(blank())}>
-          + Add host
-        </button>
+      {!editing && !importing && (
+        <div className="remote__actions">
+          <button type="button" className="btn remote__add" onClick={() => setEditing(blank())}>
+            + Add host
+          </button>
+          <button
+            type="button"
+            className="btn"
+            onClick={() => {
+              setStatus(null);
+              setImporting(true);
+            }}
+          >
+            Import from ~/.ssh/config
+          </button>
+        </div>
+      )}
+
+      {importing && (
+        <ImportConfig
+          saved={hosts.map((h) => h.address)}
+          onImport={(aliases) => void importHosts(aliases)}
+          onCancel={() => setImporting(false)}
+        />
       )}
 
       {editing && (
@@ -158,6 +207,147 @@ export function Remote() {
           onSave={(host) => void save(host)}
         />
       )}
+    </div>
+  );
+}
+
+/** The hosts in ~/.ssh/config not yet saved, each ticked to import. */
+function ImportConfig({
+  saved,
+  onImport,
+  onCancel,
+}: {
+  saved: string[];
+  onImport: (aliases: string[]) => void;
+  onCancel: () => void;
+}) {
+  const [offered, setOffered] = useState<SshConfigHost[] | null>(null);
+  const [chosen, setChosen] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    void getPlatform()
+      .remote.configHosts()
+      .then((found) => {
+        const fresh = found.filter((h) => !saved.includes(h.alias));
+        setOffered(fresh);
+        setChosen(new Set(fresh.map((h) => h.alias)));
+      })
+      .catch(() => setOffered([]));
+    // Read once, when the panel opens: what is already saved is fixed then.
+  }, []);
+
+  if (offered === null) return <p className="remote__empty">Reading ~/.ssh/config…</p>;
+
+  const toggle = (alias: string) =>
+    setChosen((now) => {
+      const next = new Set(now);
+      if (next.has(alias)) next.delete(alias);
+      else next.add(alias);
+      return next;
+    });
+
+  return (
+    <fieldset className="remote__import">
+      <legend>Hosts in ~/.ssh/config</legend>
+      {offered.length === 0 ? (
+        <p className="remote__empty">
+          No hosts to import — the file names none that are not saved already. Patterns such as{" "}
+          <code>Host *</code> name no single machine and are not offered.
+        </p>
+      ) : (
+        <>
+          <p className="remote__note">
+            Each is saved under its alias. ssh reads the rest from the file on every connection, so
+            nothing here is a copy that can go stale.
+          </p>
+          <ul className="remote__offers">
+            {offered.map((h) => (
+              <li key={h.alias}>
+                <label>
+                  <input type="checkbox" checked={chosen.has(h.alias)} onChange={() => toggle(h.alias)} />
+                  <span className="remote__name">{h.alias}</span>
+                  <span className="remote__where">{whereTo(h)}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+      <div className="remote__actions">
+        {offered.length > 0 && (
+          <button
+            type="button"
+            className="btn btn--primary"
+            disabled={chosen.size === 0}
+            onClick={() => onImport(offered.filter((h) => chosen.has(h.alias)).map((h) => h.alias))}
+          >
+            Import {chosen.size} {chosen.size === 1 ? "host" : "hosts"}
+          </button>
+        )}
+        <button type="button" className="btn" onClick={onCancel}>
+          {offered.length > 0 ? "Cancel" : "Close"}
+        </button>
+      </div>
+    </fieldset>
+  );
+}
+
+/** `user@hostname:port via jump`, from what the config file says. */
+function whereTo(h: SshConfigHost): string {
+  const at = `${h.user ? `${h.user}@` : ""}${h.hostname ?? h.alias}${h.port ? `:${h.port}` : ""}`;
+  return h.jump ? `${at} via ${h.jump}` : at;
+}
+
+/**
+ * Whether this machine already trusts a host's key, asked on demand.
+ *
+ * On demand because it runs `ssh -G` and `ssh-keygen`; a list that started
+ * two processes per host every time it was drawn would be slow for no reason.
+ */
+function HostKey({ host }: { host: RemoteHost }) {
+  const [state, setState] = useState<HostKeyStatus | string | null>(null);
+  const name = host.label || host.address;
+
+  if (state === null) {
+    return (
+      <button
+        type="button"
+        className="remote__edit"
+        aria-label={`Check the host key of ${name}`}
+        onClick={() =>
+          void getPlatform()
+            .remote.hostKey(host.id)
+            .then(setState)
+            .catch((e: unknown) => setState(e instanceof Error ? e.message : String(e)))
+        }
+      >
+        Host key
+      </button>
+    );
+  }
+
+  if (typeof state === "string") {
+    return <p className="remote__key remote__key--warn">{state}</p>;
+  }
+
+  if (state.keys.length === 0) {
+    return (
+      <p className="remote__key remote__key--warn">
+        <b>Not in known_hosts</b> as <code>{state.lookup}</code>. On the first connection ssh shows
+        the server&rsquo;s fingerprint and asks whether to trust it — compare it with one the
+        server&rsquo;s owner gives you before typing <code>yes</code>.
+      </p>
+    );
+  }
+
+  return (
+    <div className="remote__key">
+      {state.keys.map((key) => (
+        <p key={key.fingerprint} className={key.revoked ? "remote__key--warn" : undefined}>
+          <b>{key.kind}</b> <code>{key.fingerprint}</code>
+          {key.revoked ? " — revoked: ssh will refuse this key" : " — already trusted on this machine"}
+        </p>
+      ))}
     </div>
   );
 }

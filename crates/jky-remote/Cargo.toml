@@ -10,6 +10,9 @@ jky-persist = { path = "../jky-persist" }
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
+# The SHA256 fingerprint of a known_hosts key, as ssh prints it. See known.rs.
+sha2 = "0.10"
+base64 = "0.21"
 
 [dev-dependencies]
 tempfile = "3"

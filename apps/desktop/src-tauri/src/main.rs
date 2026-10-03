@@ -124,6 +124,8 @@ fn main() {
             remote::remote_save,
             remote::remote_forget,
             remote::remote_spawn,
+            remote::remote_config_hosts,
+            remote::remote_host_key,
             capture::capture_save,
             capture::capture_copy,
             ai::ai_send,

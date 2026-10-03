@@ -8,7 +8,7 @@ import { recognise, type Recognised } from "./recognise";
 import type { CommandDone } from "./commandFailure";
 import type { Direction } from "./panes/tree";
 import { actionFor, chordFor } from "../../app/keymapStore";
-import { getPlatform } from "../../platform";
+import { getPlatform, type RemoteHost } from "../../platform";
 import { TYPE_EVENT } from "./typeEvent";
 import { useCompletion } from "./complete/useCompletion";
 import { useLivePanel } from "./useLivePanel";
@@ -340,6 +340,7 @@ export function Terminal({
 
   return (
     <div className="term__wrap" data-ring={showFocusRing ? "true" : undefined}>
+      {host && <RemoteStrip hostId={host} />}
       {/* A row inside the column, so the strip stands beside the scrollback
           and stops where it stops — the failure offer and the panel below are
           not part of the session's shape and should not be striped. */}
@@ -512,5 +513,49 @@ export function Terminal({
         />
       )}
     </div>
+  );
+}
+
+/**
+ * Which machine a remote terminal is on, above its output, for as long as it
+ * is open.
+ *
+ * A terminal on a server and one on this laptop look identical, and the
+ * difference is the whole of what matters before `rm` or `systemctl stop`.
+ * So the strip names the machine — by the label you gave it and where it
+ * goes — rather than trusting a prompt that may not say.
+ */
+function RemoteStrip({ hostId }: { hostId: string }) {
+  const [host, setHost] = useState<RemoteHost | null>(null);
+  useEffect(() => {
+    let live = true;
+    void getPlatform()
+      .remote.list()
+      .then((hosts) => {
+        if (live) setHost(hosts.find((h) => h.id === hostId) ?? null);
+      })
+      .catch(() => {});
+    return () => {
+      live = false;
+    };
+  }, [hostId]);
+
+  const where = host ? `${host.user ? `${host.user}@` : ""}${host.address}${host.port ? `:${host.port}` : ""}` : "";
+  return (
+    <p className="term__remote" role="note">
+      <b>Remote</b>
+      <span>
+        {host ? (
+          <>
+            <b>{host.label || host.address}</b>
+            {host.label && <code>{where}</code>}
+            {host.jump && <> via {host.jump}</>}
+          </>
+        ) : (
+          "another machine"
+        )}{" "}
+        — commands here run on that machine, not this one.
+      </span>
+    </p>
   );
 }

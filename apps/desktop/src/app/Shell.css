@@ -547,6 +547,19 @@
 
 /* A private tab keeps nothing. Said in words, in the same place every time,
    so it is never mistaken for an ordinary terminal at a glance. */
+/* A pane in this tab runs on another machine. Its own colour, never the
+   private one: the two say different things and can both be true. */
+.tabbar__remote {
+  flex-shrink: 0;
+  padding: 0 var(--s1);
+  border: 1px solid var(--mint);
+  border-radius: var(--radius);
+  color: var(--mint);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
 .tabbar__private {
   flex-shrink: 0;
   padding: 0 var(--s1);

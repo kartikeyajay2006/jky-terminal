@@ -456,6 +456,59 @@ describe("Terminal", () => {
   });
 });
 
+describe("a terminal on another machine", () => {
+  beforeEach(() => {
+    writes.length = 0;
+    __setPlatformForTests(createWebPlatform());
+  });
+  afterEach(() => __setPlatformForTests(null));
+
+  it("says, above the output, which machine it is on", async () => {
+    const platform = createWebPlatform();
+    await platform.remote.save({
+      id: "h-prod",
+      label: "prod",
+      address: "203.0.113.10",
+      user: "deploy",
+      port: null,
+      identity_file: null,
+      jump: null,
+      last_used: 0,
+    });
+    __setPlatformForTests(platform);
+
+    render(<Terminal paneId="tab-r" host="h-prod" />);
+    const strip = await screen.findByRole("note");
+    expect(strip).toHaveTextContent(/prod/);
+    expect(strip).toHaveTextContent("deploy@203.0.113.10");
+    expect(strip).toHaveTextContent(/not this one/i);
+  });
+
+  it("says why, in the pane, when the connection cannot even start", async () => {
+    // The browser stand-in has no ssh, so spawning refuses — as the desktop
+    // app does when ssh is not installed. A blank pane would hide that.
+    render(<Terminal paneId="tab-r2" host="h-missing" />);
+    await waitFor(() => expect(writes.join("")).toContain("needs the desktop app"));
+    expect(writes.join("")).toContain("could not start this terminal");
+  });
+
+  it("says why when a local shell cannot start either", async () => {
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      pty: { ...platform.pty, spawn: async () => Promise.reject(new Error("no shell at /bin/zsh")) },
+    });
+    render(<Terminal paneId="tab-x" />);
+    await waitFor(() => expect(writes.join("")).toContain("no shell at /bin/zsh"));
+  });
+
+  it("says nothing of the kind on a local terminal", async () => {
+    render(<Terminal paneId="tab-l" />);
+    await waitFor(() => expect(writes.join("")).not.toBe(""));
+    expect(screen.queryByRole("note")).toBeNull();
+  });
+});
+
 describe("scrollback across a restart", () => {
   beforeEach(() => {
     __setPlatformForTests(createWebPlatform());

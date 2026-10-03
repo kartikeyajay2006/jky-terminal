@@ -143,3 +143,102 @@ describe("the remote section", () => {
     expect(screen.getByLabelText("Port")).toHaveValue(null);
   });
 });
+
+describe("importing from ~/.ssh/config", () => {
+  beforeEach(async () => {
+    await clean();
+    vi.restoreAllMocks();
+  });
+
+  const configured = [
+    { alias: "prod", hostname: "203.0.113.10", user: "deploy", port: 2222, jump: "bastion" },
+    { alias: "web1", hostname: null, user: "www", port: null, jump: null },
+  ];
+
+  it("offers the hosts the file names, with where each goes", async () => {
+    vi.spyOn(getPlatform().remote, "configHosts").mockResolvedValue(configured);
+    const user = userEvent.setup();
+    render(<Remote />);
+    await user.click(await screen.findByRole("button", { name: /import from ~\/\.ssh\/config/i }));
+    const offer = await screen.findByRole("group", { name: /hosts in ~\/\.ssh\/config/i });
+    expect(offer).toHaveTextContent("deploy@203.0.113.10:2222 via bastion");
+    expect(screen.getByRole("checkbox", { name: /prod/ })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /web1/ })).toBeChecked();
+  });
+
+  it("saves only what is ticked, under its alias, so ssh applies the rest", async () => {
+    vi.spyOn(getPlatform().remote, "configHosts").mockResolvedValue(configured);
+    const save = vi.spyOn(getPlatform().remote, "save");
+    const user = userEvent.setup();
+    render(<Remote />);
+    await user.click(await screen.findByRole("button", { name: /import from ~\/\.ssh\/config/i }));
+    await user.click(await screen.findByRole("checkbox", { name: /web1/ }));
+    await user.click(screen.getByRole("button", { name: /import 1 host/i }));
+
+    await waitFor(() => expect(save).toHaveBeenCalledTimes(1));
+    expect(save.mock.calls[0][0]).toMatchObject({ address: "prod", label: "prod", user: "", port: null, jump: null });
+    expect(await screen.findByRole("status")).toHaveTextContent(/imported 1 host/i);
+    expect(await screen.findByRole("button", { name: /open a terminal on prod/i })).toBeInTheDocument();
+  });
+
+  it("does not offer a host that is already saved", async () => {
+    await addHost("prod");
+    vi.spyOn(getPlatform().remote, "configHosts").mockResolvedValue(configured);
+    const user = userEvent.setup();
+    render(<Remote />);
+    await user.click(await screen.findByRole("button", { name: /import from ~\/\.ssh\/config/i }));
+    await screen.findByRole("group", { name: /hosts in ~\/\.ssh\/config/i });
+    expect(screen.queryByRole("checkbox", { name: /prod/ })).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: /web1/ })).toBeInTheDocument();
+  });
+
+  it("says so when the file names nothing to import", async () => {
+    vi.spyOn(getPlatform().remote, "configHosts").mockResolvedValue([]);
+    const user = userEvent.setup();
+    render(<Remote />);
+    await user.click(await screen.findByRole("button", { name: /import from ~\/\.ssh\/config/i }));
+    expect(await screen.findByText(/no hosts to import/i)).toBeInTheDocument();
+  });
+});
+
+describe("a host's key", () => {
+  beforeEach(async () => {
+    await clean();
+    vi.restoreAllMocks();
+  });
+
+  it("shows the fingerprint this machine already trusts", async () => {
+    await addHost("prod.example.com", "prod");
+    vi.spyOn(getPlatform().remote, "hostKey").mockResolvedValue({
+      lookup: "prod.example.com",
+      keys: [{ kind: "ED25519", fingerprint: "SHA256:sjivcpnN4sgWw3J3ceIKnEQl6N4y8WeSnpbpf1qAeBY", revoked: false }],
+    });
+    const user = userEvent.setup();
+    render(<Remote />);
+    await user.click(await screen.findByRole("button", { name: /check the host key of prod/i }));
+    const said = await screen.findByText(/SHA256:sjivcpnN4sgWw3J3ceIKnEQl6N4y8WeSnpbpf1qAeBY/);
+    expect(said.closest("p")).toHaveTextContent(/ED25519/);
+  });
+
+  it("explains what to do when the key is not known yet", async () => {
+    await addHost("new.example.com", "new");
+    vi.spyOn(getPlatform().remote, "hostKey").mockResolvedValue({ lookup: "new.example.com", keys: [] });
+    const user = userEvent.setup();
+    render(<Remote />);
+    await user.click(await screen.findByRole("button", { name: /check the host key of new/i }));
+    const said = await screen.findByText(/not in known_hosts/i);
+    expect(said.closest("p")).toHaveTextContent(/compare/i);
+  });
+
+  it("warns about a revoked key", async () => {
+    await addHost("old.example.com", "old");
+    vi.spyOn(getPlatform().remote, "hostKey").mockResolvedValue({
+      lookup: "old.example.com",
+      keys: [{ kind: "RSA", fingerprint: "SHA256:xyz", revoked: true }],
+    });
+    const user = userEvent.setup();
+    render(<Remote />);
+    await user.click(await screen.findByRole("button", { name: /check the host key of old/i }));
+    expect(await screen.findByText(/revoked/i)).toBeInTheDocument();
+  });
+});

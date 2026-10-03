@@ -25,7 +25,7 @@
 
 .remote__row {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto auto auto;
   align-items: center;
   gap: var(--s3);
   padding-right: var(--s2);
@@ -119,4 +119,83 @@
   display: flex;
   gap: var(--s3);
   justify-content: flex-end;
+}
+
+/* What known_hosts holds for a host: under its row, across the full width. */
+.remote__key {
+  grid-column: 1 / -1;
+  order: 1;
+  margin: 0;
+  padding: 0 var(--s3) var(--s3);
+  font-size: 12px;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.remote__key p {
+  margin: 0;
+}
+
+.remote__key b {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.remote__key--warn {
+  color: var(--warn);
+}
+
+.remote__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.remote__status {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.remote__import {
+  display: grid;
+  gap: var(--s3);
+  margin: 0;
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.remote__import legend {
+  padding: 0 var(--s1);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.remote__note {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.remote__offers {
+  display: grid;
+  gap: var(--s1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.remote__offers label {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  cursor: pointer;
+}
+
+.remote__offers input {
+  accent-color: var(--accent);
 }

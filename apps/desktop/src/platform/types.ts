@@ -216,8 +216,36 @@ export interface RemoteHost {
  * address that could be read as an ssh option is refused there — on save as
  * well as on connect, so the two can never disagree.
  */
+/** A concrete host named in `~/.ssh/config`, and what the file says about it. */
+export interface SshConfigHost {
+  alias: string;
+  hostname: string | null;
+  user: string | null;
+  port: number | null;
+  jump: string | null;
+}
+
+/** One key `known_hosts` holds for a host. */
+export interface KnownKey {
+  kind: string;
+  /** `SHA256:…`, as ssh prints it. */
+  fingerprint: string;
+  revoked: boolean;
+}
+
+/** What this machine knows about a saved host's key. Nothing is connected to. */
+export interface HostKeyStatus {
+  /** The name known_hosts is searched for: `host`, `[host]:port`, or an alias. */
+  lookup: string;
+  keys: KnownKey[];
+}
+
 export interface RemoteApi {
   list(): Promise<RemoteHost[]>;
+  /** The concrete hosts in `~/.ssh/config`, for import. Empty without one. */
+  configHosts(): Promise<SshConfigHost[]>;
+  /** What known_hosts holds for a saved host, through `ssh -G` and `ssh-keygen -F`. */
+  hostKey(id: string): Promise<HostKeyStatus>;
   /** Add or replace one. Rejects a host that could never connect. */
   save(host: RemoteHost): Promise<RemoteHost[]>;
   forget(id: string): Promise<RemoteHost[]>;

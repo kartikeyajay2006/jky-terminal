@@ -273,7 +273,11 @@ into *run this on my laptop*. So:
 - validation runs **when you save and again when you connect**, so the two cannot disagree;
 - the destination goes after `--`;
 - the IPC command takes a host **id**, never a command line;
-- remote panes are **never reopened automatically** on launch.
+- remote panes are **never reopened automatically** on launch;
+- importing from `~/.ssh/config` saves an **alias** through the same checks, never a copy of the config;
+- **Host key** runs `ssh -G` and `ssh-keygen -F` — configuration and `known_hosts` only, no connection —
+  and returns fingerprints, which are public;
+- a remote terminal names its machine above its output, so it is never mistaken for a local one.
 
 ---
 

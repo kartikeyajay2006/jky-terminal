@@ -12,9 +12,13 @@
 //! but an option.
 
 mod argv;
+mod config;
 mod host;
+mod known;
 mod store;
 
 pub use argv::{ssh_args, validate, HostError};
+pub use config::{ConfigHost, importable};
 pub use host::Host;
+pub use known::{KeyStatus, KnownKey, key_status};
 pub use store::{HostStore, StoreError};

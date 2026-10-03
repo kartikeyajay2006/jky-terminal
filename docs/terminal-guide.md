@@ -424,6 +424,37 @@ The sharp edge is the argument list. `ssh` takes options as arguments, so an add
 validated — refused rather than escaped — when you save and again when you connect, the destination goes
 after `--`, and the IPC command takes a host **id**, never a command line.
 
+### Importing from `~/.ssh/config`
+
+**Import from ~/.ssh/config** lists every concrete host the file names — with where each goes, as
+`deploy@203.0.113.10:2222 via bastion` — ticked, minus any already saved. Each is saved under its
+**alias** and nothing else: `ssh` reads the file itself on every connection, so `HostName`, `User`,
+`Port` and `ProxyJump` come from the one place they are kept and never go stale in JKY.
+
+Not offered: wildcard and negated patterns (`Host *`, `Host *.internal`, `!secret`), which name no single
+machine; anything inside a `Match` block, which only ssh can evaluate; and hosts named only in an
+`Include`d file — add those by hand under their alias. An alias that could not be saved by hand (one
+starting with `-`, say) is not offered either.
+
+### Host keys
+
+**Host key** on a saved host asks this machine what it already knows, without connecting. `ssh -G`
+works out where the host really goes — `HostName`, `Port`, `HostKeyAlias`, and which `known_hosts`
+files apply — and `ssh-keygen -F` looks it up, hashed entries included. The answer is one of:
+
+| Shown | Meaning |
+|---|---|
+| `ED25519 SHA256:sjivcp…` — already trusted on this machine | `known_hosts` holds this key; ssh will connect without asking. The fingerprint is the one ssh prints. |
+| **Not in known_hosts** | The first connection will show a fingerprint and ask. Compare it with one the server's owner gives you before typing `yes`. |
+| … — revoked | The key is marked `@revoked`; ssh will refuse it. |
+
+### Always clear which machine you are on
+
+A remote terminal says so above its output for as long as it is open — **Remote · prod
+`deploy@203.0.113.10` — commands here run on that machine, not this one** — and its tab carries a
+**remote** badge. Local and remote terminals otherwise look identical, and the difference is the whole of
+what matters before `rm` or `systemctl stop`.
+
 Two behaviours worth knowing:
 
 - **Splitting a remote terminal gives you a local one.** Usually what you want when you are looking at a

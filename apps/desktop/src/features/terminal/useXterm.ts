@@ -7,7 +7,7 @@ import { WebLinksAddon } from "@xterm/addon-web-links";
 import { SerializeAddon } from "@xterm/addon-serialize";
 import { decodeGamePayload, useOpenGame } from "../games/openStore";
 import { decodeAskPayload, useAsk } from "../../app/askStore";
-import { getPlatform } from "../../platform";
+import { getPlatform, type Spawned } from "../../platform";
 import { WORDMARK_MARK, WORDMARK_OSC, buildBanner, wordmarkLayout } from "./banner";
 import { WORDMARK } from "./wordmark";
 import { buildEmblem } from "../../components/emblemSvg";
@@ -734,25 +734,36 @@ export function useXterm(
       // this machine's shell integration, and none of that exists at the
       // other end. It is a terminal on somebody else's computer, and it is
       // never held — it cannot outlive the window.
-      const spawned = host
-        ? {
-            id: await platform.remote.spawn(host, xterm.cols, xterm.rows),
-            reattached: false,
-            survives: false,
-          }
-        : await platform.pty.spawn(
-            xterm.cols,
-            xterm.rows,
-            banner,
-            tokens.getPropertyValue("--accent"),
-            // Where this pane was when it was last open. Rust checks the
-            // directory still exists before honouring it — a project folder
-            // moved or deleted since must not stop a terminal from opening.
-            dirOf(scrollbackKey),
-            // Which pane this is, so a shell that outlived the window can be
-            // found again. Absent, the shell is the window's own.
-            scrollbackKey ?? null,
-          );
+      let spawned: Spawned;
+      try {
+        spawned = host
+          ? {
+              id: await platform.remote.spawn(host, xterm.cols, xterm.rows),
+              reattached: false,
+              survives: false,
+            }
+          : await platform.pty.spawn(
+              xterm.cols,
+              xterm.rows,
+              banner,
+              tokens.getPropertyValue("--accent"),
+              // Where this pane was when it was last open. Rust checks the
+              // directory still exists before honouring it — a project folder
+              // moved or deleted since must not stop a terminal from opening.
+              dirOf(scrollbackKey),
+              // Which pane this is, so a shell that outlived the window can be
+              // found again. Absent, the shell is the window's own.
+              scrollbackKey ?? null,
+            );
+      } catch (e) {
+        // Said in the pane, in the words it failed with: a blank terminal
+        // that never answers hides the one thing worth knowing — that ssh is
+        // not installed, or the shell is not where it was.
+        if (cancelled) return;
+        const why = e instanceof Error ? e.message : String(e);
+        xterm.write(`\x1b[31mjky: could not start this terminal — ${why}\x1b[0m\r\n`);
+        return;
+      }
       const id = spawned.id;
       if (cancelled) {
         // Unmounted mid-spawn — StrictMode does this on purpose. Let go rather

@@ -1,5 +1,5 @@
 use jky_pty::{home_dir, resolve_start_dir, PtySession, ShellSpec, SpawnConfig};
-use jky_remote::{ssh_args, Host, HostStore};
+use jky_remote::{importable, key_status, ssh_args, ConfigHost, Host, HostStore, KeyStatus};
 use tauri::State;
 
 use crate::state::AppState;
@@ -28,7 +28,39 @@ pub(crate) fn spec_for(store: &HostStore, id: &str) -> Result<(Host, ShellSpec),
     Ok((host, ShellSpec { program: "ssh".to_string(), args }))
 }
 
+/// The concrete hosts in an ssh config file, or none when there is no file.
+pub(crate) fn config_hosts_logic(home: Option<&std::path::Path>) -> Vec<ConfigHost> {
+    let Some(home) = home else { return Vec::new() };
+    match std::fs::read_to_string(home.join(".ssh").join("config")) {
+        Ok(text) => importable(&text),
+        // No config is the ordinary case, not an error worth showing.
+        Err(_) => Vec::new(),
+    }
+}
+
 // --- IPC surface ------------------------------------------------------------
+
+/// The hosts named in `~/.ssh/config`, offered for import.
+///
+/// Only the file's summary of each — alias, HostName, User, Port, ProxyJump.
+/// Importing saves the alias, and ssh applies the rest from the file itself
+/// on every connection, so nothing copied here can go stale.
+#[tauri::command]
+pub fn remote_config_hosts() -> Vec<ConfigHost> {
+    config_hosts_logic(home_dir().as_deref())
+}
+
+/// Whether this machine already knows a saved host's key, and its fingerprint.
+///
+/// Reads configuration and `known_hosts` through OpenSSH's own tools and
+/// never connects. Off the main thread, because it starts two processes.
+#[tauri::command]
+pub async fn remote_host_key(state: State<'_, AppState>, id: String) -> Result<KeyStatus, String> {
+    let host = state.hosts.get(&id).map_err(|e| e.to_string())?;
+    tokio::task::spawn_blocking(move || key_status(&host, home_dir().as_deref()))
+        .await
+        .map_err(|_| "looking the key up was interrupted".to_string())?
+}
 
 #[tauri::command]
 pub fn remote_list(state: State<'_, AppState>) -> Result<Vec<Host>, String> {
@@ -110,6 +142,23 @@ mod tests {
             jump: None,
             last_used: 0,
         }
+    }
+
+    #[test]
+    fn hosts_from_ssh_config_are_offered_and_a_missing_file_offers_none() {
+        let home = TempDir::new().unwrap();
+        assert!(config_hosts_logic(Some(home.path())).is_empty());
+
+        std::fs::create_dir_all(home.path().join(".ssh")).unwrap();
+        std::fs::write(
+            home.path().join(".ssh/config"),
+            "Host prod\n  HostName 203.0.113.10\n  User deploy\nHost *\n  User x\n",
+        )
+        .unwrap();
+        let hosts = config_hosts_logic(Some(home.path()));
+        assert_eq!(hosts.len(), 1);
+        assert_eq!(hosts[0].alias, "prod");
+        assert_eq!(hosts[0].user.as_deref(), Some("deploy"));
     }
 
     #[test]

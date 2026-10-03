@@ -428,7 +428,20 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // No credential passes through any of these. This app stores no SSH
         // password and no key: connecting runs the ssh already on the
         // machine, which uses the agent and config that already work.
+        //
+        // `remote_config_hosts` reads ~/.ssh/config and returns the concrete
+        // host names in it with their HostName, User, Port and ProxyJump — the
+        // file's own summary, no key and no IdentityFile path. It takes no
+        // argument, so it cannot be pointed at another file. Saving one is
+        // `remote_save`, through the same checks as a host typed by hand.
+        //
+        // `remote_host_key` takes a saved host's id, like `remote_spawn`, and
+        // runs `ssh -G` (reads configuration, never connects) and
+        // `ssh-keygen -F` (searches known_hosts). It returns fingerprints —
+        // public by definition — and opens no connection.
+        "remote_config_hosts".to_string(),
         "remote_forget".to_string(),
+        "remote_host_key".to_string(),
         "remote_list".to_string(),
         "remote_save".to_string(),
         "remote_spawn".to_string(),

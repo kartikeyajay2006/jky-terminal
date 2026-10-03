@@ -129,6 +129,36 @@
   min-height: 0;
 }
 
+/* A terminal on another machine says so above its output, all the time. */
+.term__remote {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  align-items: baseline;
+  margin: 0;
+  padding: var(--s1) var(--s3);
+  border-bottom: 1px solid var(--mint);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.term__remote > b {
+  color: var(--mint);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.term__remote span b {
+  color: var(--text);
+}
+
+.term__remote code {
+  margin-left: var(--s1);
+  color: var(--text-dim);
+}
+
 /*
  * The find bar floats over the top right of the scrollback rather than taking
  * a row from it: what you are searching is the output underneath, so pushing

@@ -540,6 +540,16 @@ export function createWebPlatform(): Platform {
     async list() {
       return byRecent(hosts);
     },
+    // A browser has no ~/.ssh and no ssh to ask, so there is nothing to
+    // import and no key it could know.
+    async configHosts() {
+      return [];
+    },
+    async hostKey(id) {
+      const host = hosts.find((h) => h.id === id);
+      if (!host) throw new Error("no host with that id");
+      return { lookup: host.address, keys: [] };
+    },
     async save(host) {
       const wrong = refuse(host);
       if (wrong) throw new Error(wrong);

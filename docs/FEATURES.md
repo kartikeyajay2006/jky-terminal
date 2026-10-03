@@ -268,6 +268,13 @@ disagree. The destination goes after `--`.
 The IPC command takes a host **id**, never a command line: nothing you type in
 the window becomes a process argument.
 
+**Import from `~/.ssh/config`** offers every concrete host the file names and
+saves each under its alias, so ssh keeps applying the file itself. **Host key**
+shows, without connecting, whether `known_hosts` already trusts a host and its
+`SHA256:` fingerprint — or that the first connection will ask, and what to
+compare. A remote terminal names its machine above its output, and its tab
+says **remote**.
+
 Splitting a remote terminal gives you a local one — which is what you want
 when you are looking at a server and need to check something here — and a
 remote pane is not restored on the next launch, because bringing the app back

@@ -20,6 +20,20 @@ describe("TabBar", () => {
     expect(tab).toHaveAccessibleName(/private/i);
   });
 
+  it("marks a tab with a pane on another machine", () => {
+    useTabs.getState().openRemoteTab("host-1", "prod");
+    render(<TabBar />);
+    const tab = screen.getByRole("tab", { name: /prod/ });
+    expect(within(tab).getByText(/remote/i)).toBeInTheDocument();
+    expect(tab).toHaveAccessibleName(/remote/i);
+  });
+
+  it("does not mark an ordinary tab as remote", () => {
+    useTabs.getState().openTab("terminal", "Terminal 1");
+    render(<TabBar />);
+    expect(within(screen.getByRole("tab", { name: /Terminal 1/ })).queryByText(/remote/i)).toBeNull();
+  });
+
   it("shows an open tab and marks it selected", () => {
     useTabs.getState().openTab("terminal", "Terminal 1");
     render(<TabBar />);
