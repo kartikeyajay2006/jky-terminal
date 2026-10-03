@@ -347,10 +347,10 @@ exit /b %ERRORLEVEL%
 :version
 type "%JKY_HOME%\VERSION"
 exit /b 0
-rem One line: uninstalling deletes this file, and cmd reads a batch file as it
-rem goes - a line already parsed is the only kind that can still run after.
+rem Uninstalling deletes this file, and cmd reads a batch file as it goes:
+rem (goto) leaves the batch first, so nothing is read from it afterwards.
 :uninstall
-powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%JKY_HOME%\install.ps1" -Uninstall & exit /b
+(goto) 2>nul & powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -File "%JKY_HOME%\install.ps1" -Uninstall
 :help
 echo jky                     open JKY Terminal (or bring it forward)
 echo jky shortcut ^<keys^>     change the summon shortcut, e.g. jky shortcut Ctrl+Alt+J - or none

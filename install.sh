@@ -821,9 +821,11 @@ jky_uninstall() {
         rm -rf "$JKY_APP" "$JKY_HOME"
     fi
     rm -f "$JKY_BIN_DIR/jky"
-    for rc in "$HOME/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
+    for rc in "${ZDOTDIR:-$HOME}/.zshrc" "$HOME/.bashrc" "$HOME/.bash_profile" "$HOME/.profile"; do
         if [ -f "$rc" ] && grep -q "Added by the JKY Terminal installer" "$rc"; then
-            grep -v "Added by the JKY Terminal installer" "$rc" >"$rc.jky-tmp" && mv "$rc.jky-tmp" "$rc"
+            # Written back in place, so a symlinked dotfile stays a symlink.
+            grep -v "Added by the JKY Terminal installer" "$rc" >"$rc.jky-tmp"
+            cat "$rc.jky-tmp" >"$rc" && rm -f "$rc.jky-tmp"
         fi
     done
     rm -f "$HOME/.config/fish/conf.d/jky.fish"

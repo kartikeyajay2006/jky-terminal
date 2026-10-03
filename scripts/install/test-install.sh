@@ -137,15 +137,23 @@ jky() {
     in_scratch "$WORK/home" "$WORK/home/.local/bin/jky" "$@"
 }
 
-echo "a whole install, piped from curl as a person pastes it"
-output=$(run_piped --shortcut "cmd+j" 2>&1)
 if [ "$OS" = Linux ]; then
     INSTALLED_HOME="$WORK/home/.local/share/jky-terminal"
+    RC="$WORK/home/.bashrc"
 else
     INSTALLED_HOME="$WORK/home/Library/Application Support/JKY Terminal Installer"
+    # A login shell on a Mac reads .bash_profile, not .bashrc.
+    RC="$WORK/home/.bash_profile"
 fi
-status=$?
-check "the installer succeeds" "$status" "0"
+# Dotfiles are often symlinks into a repository; they must stay that way.
+mkdir -p "$WORK/dotfiles"
+echo "# mine" >"$WORK/dotfiles/rc"
+ln -s "$WORK/dotfiles/rc" "$RC"
+
+echo "a whole install, piped from curl as a person pastes it"
+run_piped --shortcut "cmd+j" >"$WORK/first.out" 2>&1
+check "the installer succeeds" "$?" "0"
+output=$(cat "$WORK/first.out")
 if [ "$OS" = Linux ]; then
     check "the app is extracted" "$(test -x "$WORK/home/.local/share/jky-terminal/app/AppRun" && echo yes)" "yes"
     check "an apps-menu entry is written" \
@@ -160,15 +168,15 @@ fi
 check "the shortcut is stored through the app" "$(grep -c -- '--set-shortcut Super+J' "$WORK/home/app-calls")" "1"
 check "jky is installed" "$(test -x "$WORK/home/.local/bin/jky" && echo yes)" "yes"
 check "jky knows its version" "$(jky version)" "9.9.9"
-check "jky is put on PATH for new terminals" "$(grep -c 'Added by the JKY Terminal installer' "$WORK/home/.bashrc")" "1"
+check "jky is put on PATH for new terminals" "$(grep -c 'Added by the JKY Terminal installer' "$RC" 2>/dev/null)" "1"
 check "the output says it is complete" "$(printf '%s' "$output" | grep -c 'Installation complete')" "1"
 check "a copy is kept for jky shortcut and uninstall" "$(grep -q JKY_INSTALLER_MARKER "$INSTALLED_HOME/install.sh" 2>/dev/null && echo kept)" "kept"
 check "plain output when not a terminal" "$(printf '%s' "$output" | grep -c "$(printf '\033')")" "0"
 
 echo "installing again, from a saved copy"
-run_installer --shortcut none </dev/null >/dev/null 2>&1
+run_installer --shortcut none </dev/null >"$WORK/second.out" 2>&1
 check "a second install succeeds" "$?" "0"
-check "PATH is added once, not twice" "$(grep -c 'Added by the JKY Terminal installer' "$WORK/home/.bashrc")" "1"
+check "PATH is added once, not twice" "$(grep -c 'Added by the JKY Terminal installer' "$RC" 2>/dev/null)" "1"
 if [ "$OS" = Linux ]; then
     check "choosing none removes the GNOME binding" "$(cat "$WORK/home/gsettings-list")" "@as []"
 fi
@@ -200,7 +208,8 @@ echo "uninstall"
 mkdir -p "$WORK/home/.config/dev.jky.terminal" "$WORK/home/Library/Application Support/dev.jky.terminal"
 jky uninstall >/dev/null 2>&1
 check "jky is removed" "$(test -e "$WORK/home/.local/bin/jky" && echo still || echo gone)" "gone"
-check "the PATH line is removed" "$(grep -c 'Added by the JKY Terminal installer' "$WORK/home/.bashrc")" "0"
+check "the PATH line is removed" "$(grep -c 'Added by the JKY Terminal installer' "$RC" 2>/dev/null)" "0"
+check "the shell's own file is still a symlink" "$(test -L "$RC" && cat "$RC")" "# mine"
 if [ "$OS" = Linux ]; then
     check "the app is removed" "$(test -e "$WORK/home/.local/share/jky-terminal" && echo still || echo gone)" "gone"
     check "your data is kept" "$(test -d "$WORK/home/.config/dev.jky.terminal" && echo kept)" "kept"
@@ -210,6 +219,9 @@ fi
 
 echo
 if [ "$failures" -gt 0 ]; then
+    for f in first second; do
+        if [ -f "$WORK/$f.out" ]; then printf '\n--- the %s install said:\n' "$f"; cat "$WORK/$f.out"; fi
+    done
     echo "$failures check(s) failed"
     exit 1
 fi

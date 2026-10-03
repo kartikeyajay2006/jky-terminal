@@ -144,7 +144,8 @@ try {
 
         Write-Host "uninstall, in $shell"
         New-Item -ItemType Directory -Force -Path (Join-Path $env:APPDATA "dev.jky.terminal") | Out-Null
-        & cmd /c "`"$bin\jky.cmd`" uninstall" | Out-Null
+        $said = & cmd /c "`"$bin\jky.cmd`" uninstall" 2>&1 | Out-String
+        Check "it finishes cleanly, though it deletes itself" ($said -match "cannot find|cannot be found") $false
         Check "the app is removed" (Test-Path (Join-Path $env:LOCALAPPDATA "JKY Terminal\jky-terminal.exe")) $false
         Check "jky is removed" (Test-Path $bin) $false
         Check "the PATH entry is removed" (([Environment]::GetEnvironmentVariable("Path", "User")).Split(";") -contains $bin) $false
@@ -169,3 +170,5 @@ try {
 Write-Host ""
 if ($failures -gt 0) { Write-Host "$failures check(s) failed"; exit 1 }
 Write-Host "all checks passed"
+# The tampered install left $LASTEXITCODE at 1, and a CI runner reports that.
+exit 0
