@@ -456,10 +456,29 @@ jky_install_linux() {
 # fonts — that this one lacks. A desktop always has them; a server or a
 # minimal install may not, and then the app cannot start.
 jky_missing_libs() {
-    command -v ldd >/dev/null 2>&1 || return 0
-    for f in "$JKY_APP"/usr/bin/* "$JKY_APP"/usr/libexec/webkit2gtk-*/WebKit*Process; do
-        if [ -f "$f" ]; then ldd "$f" 2>/dev/null; fi
-    done | awk '$2 == "=>" && $3 == "not" {print $1}' | sort -u
+    {
+        if command -v ldd >/dev/null 2>&1; then
+            for f in "$JKY_APP"/usr/bin/* "$JKY_APP"/usr/libexec/webkit2gtk-*/WebKit*Process; do
+                if [ -f "$f" ]; then ldd "$f" 2>/dev/null; fi
+            done | awk '$2 == "=>" && $3 == "not" {print $1}'
+        fi
+        jky_missing_loaded_libs
+    } | LC_ALL=C sort -u
+}
+
+# WebKit loads these while it runs rather than linking them, so ldd cannot
+# see them — and without them it aborts as it starts.
+jky_missing_loaded_libs() {
+    ldconfig=$(command -v ldconfig 2>/dev/null)
+    for d in /sbin /usr/sbin; do
+        if [ -z "$ldconfig" ] && [ -x "$d/ldconfig" ]; then ldconfig="$d/ldconfig"; fi
+    done
+    if [ -z "$ldconfig" ]; then return 0; fi
+    known=$("$ldconfig" -p 2>/dev/null)
+    if [ -z "$known" ]; then return 0; fi
+    for lib in libGLESv2.so.2 libGL.so.1; do
+        case "$known" in *"$lib (libc6,x86-64)"*) ;; *) echo "$lib" ;; esac
+    done
 }
 
 jky_check_libs() {
@@ -467,10 +486,10 @@ jky_check_libs() {
     if [ -z "$missing" ]; then return 0; fi
     # Nothing is left half-installed: the app could not have started.
     rm -rf "$JKY_APP"
-    if command -v apt-get >/dev/null 2>&1; then how="sudo apt install libegl1 libgl1 libgbm1"
-    elif command -v dnf >/dev/null 2>&1; then how="sudo dnf install mesa-libEGL mesa-libGL mesa-libgbm"
+    if command -v apt-get >/dev/null 2>&1; then how="sudo apt install libegl1 libgl1 libgles2 libgbm1"
+    elif command -v dnf >/dev/null 2>&1; then how="sudo dnf install mesa-libEGL mesa-libGL libglvnd-gles mesa-libgbm"
     elif command -v pacman >/dev/null 2>&1; then how="sudo pacman -S mesa libglvnd"
-    elif command -v zypper >/dev/null 2>&1; then how="sudo zypper install Mesa-libEGL1 Mesa-libGL1 libgbm1"
+    elif command -v zypper >/dev/null 2>&1; then how="sudo zypper install Mesa-libEGL1 Mesa-libGL1 Mesa-libGLESv2-2 libgbm1"
     else how="your package manager"
     fi
     jky_fail "JKY Terminal needs libraries this system does not have." \

@@ -225,10 +225,11 @@ PowerShell uses the system proxy. Nothing was changed.
 <details>
 <summary><b>"JKY Terminal needs libraries this system does not have" (Linux)</b></summary>
 
-**Cause:** the app draws with the system's graphics libraries (EGL, OpenGL, GBM), as every AppImage
-does. A desktop always has them; a server, a container or a minimal install may not.
+**Cause:** the app draws with the system's graphics libraries (EGL, OpenGL, OpenGL ES, GBM), as
+every AppImage does. A desktop almost always has them; a server, a container or a minimal install may
+not.
 **Fix:** run the command the message gives for your distribution — on Debian or Ubuntu
-`sudo apt install libegl1 libgl1 libgbm1` — then the installer again. It removed what it had
+`sudo apt install libegl1 libgl1 libgles2 libgbm1` — then the installer again. It removed what it had
 extracted.
 
 </details>

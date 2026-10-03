@@ -131,6 +131,16 @@ cat >"$WORK/fakebin/ldd" <<'EOF'
 if [ -f "$HOME/missing-libs" ]; then printf '\tlibEGL.so.1 => not found\n\tlibc.so.6 => /lib/libc.so.6 (0x1)\n'; fi
 EOF
 chmod +x "$WORK/fakebin/ldd"
+# ldconfig's view of the graphics libraries WebKit loads at run time, which
+# ldd cannot see — present, unless asked to be missing.
+cat >"$WORK/fakebin/ldconfig" <<'EOF'
+#!/bin/sh
+printf '\tlibc.so.6 (libc6,x86-64) => /usr/lib/libc.so.6\n'
+if [ ! -f "$HOME/missing-gles" ]; then
+    printf '\tlibGLESv2.so.2 (libc6,x86-64) => /usr/lib/libGLESv2.so.2\n\tlibGL.so.1 (libc6,x86-64) => /usr/lib/libGL.so.1\n'
+fi
+EOF
+chmod +x "$WORK/fakebin/ldconfig"
 
 # Every run starts from an empty environment: only a scratch HOME, a PATH
 # with the stand-ins first, and nothing of the real user's — no XDG folders,
@@ -236,6 +246,10 @@ if [ "$OS" = Linux ]; then
     check "it says libraries are missing" "$(grep -c 'needs libraries this system does not have' "$WORK/nolibs")" "1"
     check "it names them" "$(grep -c 'Missing: libEGL.so.1$' "$WORK/nolibs")" "1"
     check "it never claims to be complete" "$(grep -c 'Installation complete' "$WORK/nolibs")" "0"
+    rm -f "$WORK/home4/missing-libs"
+    touch "$WORK/home4/missing-gles"
+    in_scratch "$WORK/home4" JKY_RELEASE_BASE="http://127.0.0.1:$PORT" sh "$SCRIPT" --shortcut none </dev/null >"$WORK/nogles" 2>&1
+    check "a library loaded at run time counts too" "$?:$(grep -c 'Missing: libGL.so.1 libGLESv2.so.2$' "$WORK/nogles")" "1:1"
     check "it leaves nothing half-installed" \
         "$(test -e "$WORK/home4/.local/share/jky-terminal/app" || test -e "$WORK/home4/.local/bin/jky" && echo left || echo nothing)" "nothing"
 fi

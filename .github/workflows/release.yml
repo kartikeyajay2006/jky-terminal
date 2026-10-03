@@ -262,7 +262,7 @@ jobs:
             # A runner is a server, with no graphics stack. Give it what every
             # desktop has, so this checks the app rather than the machine.
             sudo apt-get update -qq
-            sudo apt-get install -y -qq libegl1 libgl1 libgbm1 xvfb >/dev/null
+            sudo apt-get install -y -qq libegl1 libgl1 libgles2 libgbm1 xvfb >/dev/null
           fi
 
           echo "::group::install, exactly as pasted"
