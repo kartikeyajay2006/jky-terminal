@@ -276,3 +276,21 @@ fn the_rust_and_npm_halves_of_tauri_are_the_same_minor_version() {
     let minor = |v: &str| v.split('.').take(2).collect::<Vec<_>>().join(".");
     assert_eq!(minor(&rust), minor(&npm), "tauri {rust} but @tauri-apps/api {npm}");
 }
+
+#[test]
+fn every_platform_has_the_icon_format_its_installer_needs() {
+    // Windows will not bundle without a .ico, and macOS wants a .icns; a PNG
+    // alone builds everywhere except, at the last step, the Windows release.
+    let config = config();
+    let icons: Vec<&str> = config["bundle"]["icon"]
+        .as_array()
+        .expect("bundle.icon is a list")
+        .iter()
+        .filter_map(|i| i.as_str())
+        .collect();
+    for ext in [".ico", ".icns", ".png"] {
+        let found = icons.iter().find(|i| i.ends_with(ext));
+        let found = found.unwrap_or_else(|| panic!("no {ext} icon in bundle.icon"));
+        assert!(crate_root().join(found).is_file(), "{found} is listed but missing");
+    }
+}
