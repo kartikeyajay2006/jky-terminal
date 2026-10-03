@@ -87,7 +87,7 @@ Switch from **Settings → Appearance**, or from any terminal with `jky theme <n
   else. Even code injected into the window would have nowhere to send anything.
 - **No secret getters.** No IPC command returns a key. Keys live in the OS keychain and are read only by
   Rust, only to make a request, in a type that is zeroed when dropped.
-- **113 commands, pinned.** A test lists every IPC command by name; adding one fails the build until it
+- **121 commands, pinned.** A test lists every IPC command by name; adding one fails the build until it
   is justified.
 - **Folders you open.** The editor and the assistant's file tools reach only folders you chose, checked
   beneath an open handle to the folder, so `../`, links out and mid-operation swaps are refused.

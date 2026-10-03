@@ -60,7 +60,7 @@ Rust toolchain for everything else.
 |---|---|---|---|
 | **Node.js** | 22 or newer | Builds the interface with Vite. The repository refuses older versions. | `node --version` |
 | **Corepack + pnpm** | pnpm 9.15 (pinned) | The repository pins its package manager in `package.json`; Corepack fetches the right one. | `corepack --version` |
-| **Rust** | stable | Compiles the nineteen crates and the desktop binary. | `rustc --version` |
+| **Rust** | stable | Compiles the twenty-two crates and the desktop binary. | `rustc --version` |
 | **Git** | any recent | Cloning, plus the Workspaces section uses your Git for worktrees. | `git --version` |
 | **A webview + build tools** | per OS, below | Tauri draws through the system webview and links native libraries. | — |
 

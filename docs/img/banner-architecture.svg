@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 300" width="1200" height="300" role="img" aria-labelledby="t d">
-<title id="t">Architecture</title><desc id="d">Nineteen Rust crates, one thin IPC layer, and a webview that only asks.</desc>
+<title id="t">Architecture</title><desc id="d">22 Rust crates, one thin IPC layer, and a webview that only asks.</desc>
 <defs>
 <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#0c0c15"/><stop offset="1" stop-color="#06060a"/></linearGradient>
 <linearGradient id="ttl" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="900" y2="0"><stop offset="0" stop-color="#ffffff"/><stop offset=".35" stop-color="#00e5ff"/><stop offset=".55" stop-color="#ffffff"/><stop offset=".8" stop-color="#7c3aed"/><stop offset="1" stop-color="#ffffff"/><animateTransform attributeName="gradientTransform" type="translate" values="-500 0;400 0;-500 0" dur="12s" repeatCount="indefinite"/></linearGradient>
@@ -20,9 +20,9 @@
 <rect x="56" y="293" width="1088" height="2.5" rx="1.25" fill="url(#edge)" opacity=".9"/>
 <text x="56" y="70" class="m" font-size="13" letter-spacing="3.2" fill="#a9a9c2">JKY TERMINAL  <tspan fill="#00e5ff">/</tspan>  ARCHITECTURE</text>
 <text x="54" y="142" class="s" font-size="54" font-weight="800" letter-spacing="-1.2" fill="url(#ttl)">Architecture</text>
-<text x="56" y="182" class="s" font-size="18.5" fill="#cfcfe0">Nineteen Rust crates, one thin IPC layer, and a webview that only asks.</text>
+<text x="56" y="182" class="s" font-size="18.5" fill="#cfcfe0">22 Rust crates, one thin IPC layer, and a webview that only asks.</text>
 <g class="pop" style="animation-delay:0.0s"><rect x="56" y="212" width="87" height="30" rx="15" fill="#00e5ff" fill-opacity=".12" stroke="#00e5ff" stroke-opacity=".55"/><circle cx="71" cy="227" r="3.5" fill="#00e5ff"/><text x="81" y="232" class="m" font-size="12.5" fill="#ececf6">Tauri 2</text></g>
-<g class="pop" style="animation-delay:0.5s"><rect x="153.2" y="212" width="102" height="30" rx="15" fill="#7c3aed" fill-opacity=".12" stroke="#7c3aed" stroke-opacity=".55"/><circle cx="168.2" cy="227" r="3.5" fill="#7c3aed"/><text x="178.2" y="232" class="m" font-size="12.5" fill="#ececf6">19 crates</text></g>
+<g class="pop" style="animation-delay:0.5s"><rect x="153.2" y="212" width="102" height="30" rx="15" fill="#7c3aed" fill-opacity=".12" stroke="#7c3aed" stroke-opacity=".55"/><circle cx="168.2" cy="227" r="3.5" fill="#7c3aed"/><text x="178.2" y="232" class="m" font-size="12.5" fill="#ececf6">22 crates</text></g>
 <g class="pop" style="animation-delay:1.0s"><rect x="265.59999999999997" y="212" width="156" height="30" rx="15" fill="#ffb340" fill-opacity=".12" stroke="#ffb340" stroke-opacity=".55"/><circle cx="280.59999999999997" cy="227" r="3.5" fill="#ffb340"/><text x="290.59999999999997" y="232" class="m" font-size="12.5" fill="#ececf6">React + xterm.js</text></g>
 <rect x="800" y="46" width="352" height="196" rx="14" fill="#09090f" fill-opacity=".86" stroke="#fff" stroke-opacity=".12"/>
 <rect x="800" y="46" width="352" height="196" rx="14" fill="none" stroke="url(#edge)" stroke-width="1.6" class="run"/>

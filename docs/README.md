@@ -111,7 +111,7 @@ flowchart LR
 | ✦ | **[Assistant & approvals](assistant-and-approvals.md)** | Providers and models, the project folder, tools, approval cards, risk labels, what leaves your machine, limits. |
 | ⊞ | **[Apps, tools & games](apps-and-tools.md)** | Twelve developer tools, eight apps, the dashboard, capture, and five games. |
 | 🛡️ | **[Security & privacy](security-and-privacy.md)** | The boundary and the tests that enforce it, secrets, every network contact, files, untrusted output, the audit log, the limits. |
-| 🏗️ | **[Architecture](architecture.md)** | Three layers, nineteen crates, the IPC layer, the platform adapter, processes at runtime. |
+| 🏗️ | **[Architecture](architecture.md)** | Three layers, twenty-two crates, the IPC layer, the platform adapter, processes at runtime. |
 | 🩺 | **[Troubleshooting](troubleshooting.md)** | Symptoms, causes and fixes — build, display, shells, persistence, keyboard, assistant, remote, apps. |
 | 💬 | **[Questions & answers](faq.md)** | Short, direct answers to the questions people ask first. |
 | 📖 | **[Glossary](glossary.md)** | Every term these docs use, defined once. |
@@ -155,9 +155,9 @@ flowchart TB
         A["✦ Assistant<br/>asks before every command"]:::amber
         X["⊞ Apps · ⌥ Tools · ⌂ Dashboard · ◈ Games"]:::mint
     end
-    R[["🦀 Rust core — 19 crates<br/>the only part that can act"]]:::ink
+    R[["🦀 Rust core — 22 crates<br/>the only part that can act"]]:::ink
     YOU --> APP
-    APP -- "asks via 113 pinned commands" --> R
+    APP -- "asks via 121 pinned commands" --> R
     R --> OS[(Your shells · files · keychain)]:::ink
     R -. "only when you use a feature" .-> NET((Internet)):::ink
 

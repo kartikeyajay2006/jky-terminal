@@ -83,7 +83,7 @@
 <rect x="72" y="408" width="36" height="36" rx="10" fill="#00e5ff" fill-opacity=".16" stroke="#00e5ff" stroke-opacity=".6"/>
 <text x="90" y="431" text-anchor="middle" class="m" font-size="13" font-weight="800" fill="#00e5ff">09</text>
 <text x="120" y="432" class="s" font-size="16.5" font-weight="700" fill="#f2f2f8">Architecture</text>
-<text x="72" y="468" class="m" font-size="11.5" fill="#a3a3bb">Three layers, nineteen crates</text>
+<text x="72" y="468" class="m" font-size="11.5" fill="#a3a3bb">Three layers, 22 crates</text>
 <g class="lit" style="animation-delay:6.75s"><rect x="332" y="390" width="261" height="96" rx="14" fill="#ff4d6a" opacity=".35" filter="url(#glow)"/></g>
 <rect x="332" y="390" width="261" height="96" rx="14" fill="#0e0e18" fill-opacity=".92" stroke="#ffffff" stroke-opacity=".1"/>
 <g class="lit" style="animation-delay:6.75s"><rect x="332" y="390" width="261" height="96" rx="14" fill="none" stroke="#ff4d6a" stroke-width="1.8"/></g>

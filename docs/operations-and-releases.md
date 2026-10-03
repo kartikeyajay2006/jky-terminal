@@ -41,8 +41,8 @@ flowchart LR
 |---|---|
 | `pnpm -w typecheck` | TypeScript across the workspace |
 | `pnpm -w lint` | ESLint — including *no direct `invoke()`* and *no literal colours* |
-| `pnpm -w test` | Vitest: 2,311 interface tests |
-| `cargo test --workspace` | 1,276 Rust tests across every crate and the app, including `security.rs` and the end-to-end suites below |
+| `pnpm -w test` | Vitest: 2,324 interface tests |
+| `cargo test --workspace` | 1,315 Rust tests across every crate and the app, including `security.rs` and the end-to-end suites below |
 | `cargo clippy … -D warnings` | Every warning is an error |
 | `pnpm run verify` | Cleans `dist`, then typecheck → lint → test → build → `scan:bundle` (credential scan and entry-bundle budget) |
 

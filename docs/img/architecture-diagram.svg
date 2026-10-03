@@ -117,7 +117,7 @@
     <!-- Layer 3: Rust Core Crates -->
     <g transform="translate(0, 130)">
       <rect width="535" height="52" rx="7" fill="url(#layerRust)" stroke="#1a5563" stroke-width="1.2"/>
-      <text x="18" y="24" class="layer-title">Rust Core Engine (19 Crates)</text>
+      <text x="18" y="24" class="layer-title">Rust Core Engine (22 Crates)</text>
       <text x="18" y="40" class="layer-sub">jky-pty · jky-ai · jky-files · jky-live · jky-history · jky-tools · jky-audit</text>
       <rect x="415" y="14" width="105" height="22" rx="4" fill="#00353d"/>
       <text x="467" y="28" text-anchor="middle" class="tag" fill="#00e5ff">100% MEM-SAFE</text>

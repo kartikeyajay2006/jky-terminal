@@ -1,12 +1,12 @@
 # Architecture
 
 <p align="center">
-  <img src="img/banner-architecture.svg" alt="Architecture — nineteen Rust crates, one thin IPC layer, and a webview that only asks" width="100%">
+  <img src="img/banner-architecture.svg" alt="Architecture — twenty-two Rust crates, one thin IPC layer, and a webview that only asks" width="100%">
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/Tauri-2-ffc131?style=flat-square&logo=tauri&logoColor=white" alt="Tauri 2">
-  <img src="https://img.shields.io/badge/Rust-19%20crates-dea584?style=flat-square&logo=rust&logoColor=white" alt="19 Rust crates">
+  <img src="https://img.shields.io/badge/Rust-22%20crates-dea584?style=flat-square&logo=rust&logoColor=white" alt="22 Rust crates">
   <img src="https://img.shields.io/badge/React-18-61dafb?style=flat-square&logo=react&logoColor=black" alt="React 18">
   <img src="https://img.shields.io/badge/xterm.js-6-00e5ff?style=flat-square" alt="xterm.js 6">
   <img src="https://img.shields.io/badge/pnpm%20%2B%20Turbo-monorepo-bd93f9?style=flat-square&logo=pnpm&logoColor=white" alt="pnpm and Turbo monorepo">
@@ -17,7 +17,7 @@ each responsibility lives, and the handful of rules that the tests enforce so th
 erode.
 
 **On this page:** [Three layers](#three-layers) · [Repository layout](#repository-layout) ·
-[The crates](#the-nineteen-crates) · [The IPC layer](#the-ipc-layer) · [The platform adapter](#the-platform-adapter) ·
+[The crates](#the-twenty-two-crates) · [The IPC layer](#the-ipc-layer) · [The platform adapter](#the-platform-adapter) ·
 [A command's journey](#a-commands-journey) · [Processes](#processes-at-runtime) ·
 [Rules the tests enforce](#rules-the-tests-enforce) · [Build and test](#build-and-test)
 
@@ -36,7 +36,7 @@ flowchart TB
         S --> P
     end
     subgraph IPC["🚪 Commands · apps/desktop/src-tauri/src/commands"]
-        C[113 thin #91;tauri::command#93; wrappers]:::amber
+        C[121 thin #91;tauri::command#93; wrappers]:::amber
     end
     subgraph CORE["🦀 Logic · crates/"]
         direction LR
@@ -78,13 +78,13 @@ jky-terminal/
 │   │   ├── components/          shared UI pieces
 │   │   └── styles/              tokens.css · themes.css — every colour lives here
 │   └── src-tauri/
-│       ├── src/commands/        the 113 IPC commands, thin
+│       ├── src/commands/        the 121 IPC commands, thin
 │       ├── src/supervisor.rs    the --supervise entry point
 │       ├── src/turn.rs          the assistant's tool loop
 │       ├── tests/security.rs    the boundary, as tests
 │       ├── capabilities/        the window's (minimal) Tauri permissions
 │       └── tauri.conf.json      CSP, bundle settings
-├── crates/                      19 Rust libraries — all real logic
+├── crates/                      22 Rust libraries — all real logic
 ├── docs/                        you are here
 ├── scripts/                     clean-dist · scan-bundle
 └── .github/workflows/           ci.yml · release.yml
@@ -92,7 +92,7 @@ jky-terminal/
 
 ---
 
-## The nineteen crates
+## The twenty-two crates
 
 | Crate | Responsibility |
 |---|---|
@@ -273,10 +273,10 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph JS["pnpm + Turbo"]
-        T1[typecheck]:::violet --> T2[lint]:::violet --> T3[vitest<br/>2,311 tests]:::violet --> T4[vite build]:::violet --> T5[scan:bundle]:::red
+        T1[typecheck]:::violet --> T2[lint]:::violet --> T3[vitest<br/>2,324 tests]:::violet --> T4[vite build]:::violet --> T5[scan:bundle]:::red
     end
     subgraph RS["cargo"]
-        R1[cargo test --workspace<br/>1,276 tests]:::cyan --> R2[clippy -D warnings]:::cyan --> R3[cargo build -p jky-terminal]:::cyan
+        R1[cargo test --workspace<br/>1,315 tests]:::cyan --> R2[clippy -D warnings]:::cyan --> R3[cargo build -p jky-terminal]:::cyan
     end
     JS --> OK([✓ ready to push]):::mint
     RS --> OK

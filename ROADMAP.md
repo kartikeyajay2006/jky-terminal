@@ -1,8 +1,10 @@
 > [!WARNING]
 > **Historical document — not the current plan.** This is the original planning roadmap from August
 > 2026, kept for the record. The product changed course in several places it describes: for example,
-> persistence is versioned JSON documents through `jky-persist` rather than SQLite via `sqlx`, the
-> interface uses plain CSS design tokens rather than Tailwind and Radix, and there is no paid plan.
+> settings and other documents are versioned JSON through `jky-persist`, and only Work Memory — every
+> run and its output — lives in SQLite (`rusqlite`, bundled, with FTS5) rather than everything through
+> `sqlx`; the interface uses plain CSS design tokens rather than Tailwind and Radix; and there is no
+> paid plan.
 >
 > **The current direction is [docs/product-roadmap.md](docs/product-roadmap.md).** For what the app
 > does today, see the [documentation](docs/README.md).

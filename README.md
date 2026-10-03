@@ -9,8 +9,8 @@
 
 [![CI Workflow](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff?style=flat-square&logo=linux&logoColor=white)](docs/getting-started.md)
-[![Tests Suite](https://img.shields.io/badge/tests-2%2C311%20frontend%20%C2%B7%201%2C276%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](docs/operations-and-releases.md#the-verification-ladder)
-[![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20113%20pinned%20commands-bd93f9?style=flat-square)](docs/security-and-privacy.md)
+[![Tests Suite](https://img.shields.io/badge/tests-2%2C324%20frontend%20%C2%B7%201%2C315%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](docs/operations-and-releases.md#the-verification-ladder)
+[![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20121%20pinned%20commands-bd93f9?style=flat-square)](docs/security-and-privacy.md)
 [![WCAG Contrast](https://img.shields.io/badge/contrast-WCAG%20AAA%20tested-ffb340?style=flat-square)](#-seven-themes-one-set-of-tokens)
 [![License: MIT](https://img.shields.io/badge/license-MIT-ff3cf0?style=flat-square)](LICENSE)
 
@@ -94,7 +94,7 @@ and reaches spelled out, and a dry run to try first — and destructive ones mus
 
 ### 🛡️ The window has no network
 
-`connect-src 'self'`. Keys live in the OS keychain; no command can return one. All 113 IPC commands
+`connect-src 'self'`. Keys live in the OS keychain; no command can return one. All 121 IPC commands
 are pinned by name in a test that CI runs on every push.
 
 <sub>→ [Security & privacy](docs/security-and-privacy.md)</sub>
@@ -114,7 +114,7 @@ dashboard — each loaded only when opened.
 
 ### 🦀 Rust does the real work
 
-Nineteen focused crates own PTYs, files, keys, history and the audit log. The interface asks through a
+Twenty-two focused crates own PTYs, files, keys, history and the audit log. The interface asks through a
 thin IPC layer and renders with xterm.js and WebGL2.
 
 <sub>→ [Architecture](docs/architecture.md)</sub>
@@ -456,7 +456,7 @@ failing never hides another:
 ```mermaid
 flowchart LR
     P([push · pull request]):::ink --> FE & MAC & WIN & LIN & SEC & AUD
-    FE["🧪 Frontend<br/>typecheck · lint<br/>2,311 tests"]:::violet
+    FE["🧪 Frontend<br/>typecheck · lint<br/>2,324 tests"]:::violet
     MAC["🍎 macOS<br/>every Rust test · clippy<br/>desktop binary links"]:::cyan
     WIN["🪟 Windows<br/>every Rust test · clippy<br/>desktop binary links"]:::cyan
     LIN["🐧 Linux<br/>crate tests · clippy"]:::cyan --> LDB["🐧 Linux desktop binary<br/>against WebKitGTK"]:::cyan
