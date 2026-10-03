@@ -1,0 +1,17 @@
+[package]
+name = "jky-memory"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+
+[dependencies]
+jky-redact = { path = "../jky-redact" }
+serde.workspace = true
+thiserror.workspace = true
+# SQLite compiled into the binary, FTS5 included: the same database engine on
+# every platform, with nothing to install. See src/lib.rs for why SQLite.
+rusqlite = { version = "0.40", features = ["bundled"] }
+
+[dev-dependencies]
+tempfile = "3"

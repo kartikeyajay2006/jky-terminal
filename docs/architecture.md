@@ -99,6 +99,7 @@ jky-terminal/
 | 🟢 **jky-pty** | Spawning shells in a PTY, resolving which shell, shell-integration hooks for bash, zsh, fish, Nushell and PowerShell, and the `jky` launchers. |
 | 🟢 **jky-detach** | Shells that outlive the window: the supervisor, its socket or named pipe, join/open/end/prune. |
 | 🟢 **jky-history** | Every command you have run, the subsequence search and ranking. |
+| 🟢 **jky-memory** | Work Memory: every run with its output tail, duration, git branch and revision, pin and note, in SQLite with a trigram full-text index; redacted and bounded before it is stored, schema-versioned with migrations. |
 | 🟢 **jky-complete** | What could come next on a command line — without running anything. |
 | 🟢 **jky-live** | Re-running one of three known commands so a panel can stay current. |
 | 🟢 **jky-keys** | What every key is bound to; the modifier and `Ctrl+C`/`Ctrl+D` rules. |
