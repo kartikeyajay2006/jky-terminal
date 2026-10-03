@@ -65,6 +65,25 @@ pub fn socket_dir(runtime_dir: &Path) -> PathBuf {
     runtime_dir.join("sessions")
 }
 
+/// The longest Unix socket path every platform accepts.
+///
+/// 104 bytes on macOS and the BSDs, 108 on Linux — each counting the
+/// terminating NUL. The smaller one, less that byte.
+#[cfg(not(windows))]
+pub const MAX_SOCKET_PATH: usize = 103;
+
+/// Where sockets go when the app's own folder is too deep to hold one.
+///
+/// `/tmp/jky-<uid>`, the shape tmux uses: short enough for any name, and one
+/// per user. `/tmp` is shared, so the socket layer creates this owner-only
+/// and refuses it if it is a link, or anybody else's. See `socket.rs`.
+#[cfg(not(windows))]
+pub fn short_socket_dir() -> PathBuf {
+    // SAFETY: getuid takes nothing, touches no memory and cannot fail.
+    let uid = unsafe { libc::getuid() };
+    PathBuf::from("/tmp").join(format!("jky-{uid}"))
+}
+
 /// Where one session listens.
 ///
 /// On Unix this is a path; on Windows it is a pipe name, which is not a path
@@ -86,20 +105,30 @@ pub fn address(runtime_dir: &Path, name: &str) -> Result<String, NameError> {
 
     #[cfg(not(windows))]
     {
-        Ok(socket_dir(runtime_dir).join(format!("{name}.sock")).display().to_string())
+        let beside = socket_dir(runtime_dir).join(format!("{name}.sock"));
+        if beside.as_os_str().len() <= MAX_SOCKET_PATH {
+            return Ok(beside.display().to_string());
+        }
+        // Too deep: on macOS a long user name and Application Support are
+        // enough. Binding would fail outright, and the shell would end with
+        // the window. The digest keeps two app folders apart, as on Windows.
+        Ok(short_socket_dir()
+            .join(format!("{}-{name}.sock", digest(runtime_dir)))
+            .display()
+            .to_string())
     }
 }
 
 /// A short, stable digest of a path.
 ///
-/// Windows only, because only there is the namespace flat: a Unix socket path
-/// already contains the runtime directory and needs nothing folded in.
+/// Folded into an address wherever the runtime directory itself is not part
+/// of it: a Windows pipe name, whose namespace is flat, and a Unix socket
+/// moved to the short directory because the long one would not fit.
 ///
 /// FNV-1a, written out rather than taken from the standard library, because
 /// `DefaultHasher` makes no promise about being the same from one release of
 /// Rust to the next — and a supervisor started by yesterday's build has to be
 /// findable by today's.
-#[cfg(windows)]
 fn digest(path: &Path) -> String {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     for byte in path.display().to_string().as_bytes() {
@@ -212,6 +241,29 @@ mod tests {
         let at = address(Path::new("/run/jky"), "pty-1").unwrap();
         assert_eq!(at, "/run/jky/sessions/pty-1.sock");
         assert!(is_file_backed(), "a unix socket has to be swept");
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn a_folder_too_deep_for_a_socket_path_gets_a_short_private_one() {
+        // macOS refuses a socket path over 104 bytes. A long home directory
+        // and Application Support already spend most of that.
+        let deep = PathBuf::from("/Users").join("a-rather-long-user-name").join("x".repeat(80));
+        let at = address(&deep, "pane-listed").unwrap();
+        assert!(at.len() <= MAX_SOCKET_PATH, "{} bytes: {at}", at.len());
+        assert!(at.starts_with(&short_socket_dir().display().to_string()), "{at}");
+        assert!(at.ends_with("-pane-listed.sock"), "the session is still named in it: {at}");
+        // Even the longest name a session may have fits.
+        let longest = "n".repeat(MAX_NAME);
+        assert!(address(&deep, &longest).unwrap().len() <= MAX_SOCKET_PATH);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn two_deep_folders_do_not_share_a_short_address() {
+        let a = address(&PathBuf::from("/").join("a".repeat(120)), "s").unwrap();
+        let b = address(&PathBuf::from("/").join("b".repeat(120)), "s").unwrap();
+        assert_ne!(a, b);
     }
 
     #[cfg(windows)]

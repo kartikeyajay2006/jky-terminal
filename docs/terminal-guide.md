@@ -149,6 +149,12 @@ A supervisor answers a connection by sending what the shell printed, so *who may
 read the shell*. On macOS and Linux the sockets live in a directory only your user can enter; on Windows
 each named pipe admits its owner and no one else.
 
+A Unix socket path may be at most 104 bytes on macOS, and a long user name plus
+`~/Library/Application Support/…` can use that up. When the usual path would not fit, the socket goes
+in `/tmp/jky-<your uid>/` instead — the shape tmux uses. Because `/tmp` is shared, JKY creates that
+folder owner-only and will not use one that is a link, belongs to anyone else, or that it cannot make
+private; the pane then says its shell will end with the window rather than risk it.
+
 ### Upgrading with shells running
 
 A supervisor outlives the app that started it, so it also outlives an **upgrade**: install a new JKY

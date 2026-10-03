@@ -353,6 +353,36 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    #[cfg(not(windows))]
+    #[test]
+    fn a_folder_too_deep_for_a_socket_path_still_holds_a_shell() {
+        // What failed on macOS, where a long home directory and Application
+        // Support leave no room for a socket name under 104 bytes.
+        let dir = scratch("deep").join("d".repeat(120));
+        std::fs::create_dir_all(&dir).unwrap();
+        let Rig { shell, mut writer, .. } = fake();
+
+        let run = {
+            let dir = dir.clone();
+            std::thread::spawn(move || supervise(&dir, "deep-one", shell))
+        };
+        assert!(wait_for(|| crate::sessions(&dir) == vec!["deep-one".to_string()]));
+
+        let at = crate::address(&dir, "deep-one").unwrap();
+        assert!(at.starts_with(&crate::name::short_socket_dir().display().to_string()), "{at}");
+
+        let mut window = attach(&dir, "deep-one").expect("a window reaches it");
+        assert_eq!(Frame::read_from(&mut window).expect("handshake"), Frame::Replay(Vec::new()));
+        writer.write_all(b"deep\n").unwrap();
+        assert_eq!(Frame::read_from(&mut window).unwrap(), Frame::Data(b"deep\n".to_vec()));
+
+        drop(window);
+        drop(writer);
+        let _ = run.join();
+        assert!(!Path::new(&at).exists(), "the socket in the shared folder was left behind");
+        let _ = std::fs::remove_dir_all(dir.parent().unwrap());
+    }
+
     #[test]
     fn a_window_coming_back_to_more_than_was_kept_is_told_so() {
         let dir = scratch("replay-trimmed");

@@ -78,6 +78,43 @@ fn private_dir(dir: &Path) -> io::Result<()> {
     std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))
 }
 
+/// Create, or accept, a socket directory in a place other users share.
+///
+/// `private_dir` may tighten what it finds, because it lives inside the
+/// app's own folder. `/tmp` is not that: anybody can make `/tmp/jky-<uid>`
+/// first — as a link to a directory of theirs, or a directory they own — and
+/// collect every socket put in it, and with them the shells. So it is created
+/// owner-only, and one that already exists is used only if it is a real
+/// directory owned by this user; loose permissions on one of ours are
+/// tightened, anything else is refused. tmux settles its `/tmp/tmux-<uid>`
+/// the same way.
+#[cfg(not(windows))]
+fn owned_private_dir(dir: &Path) -> io::Result<()> {
+    use std::os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt};
+    match std::fs::DirBuilder::new().mode(0o700).create(dir) {
+        Ok(()) => {}
+        Err(e) if e.kind() == io::ErrorKind::AlreadyExists => {}
+        Err(e) => return Err(e),
+    }
+    // Not `metadata`: that would follow a planted link and judge its target.
+    let found = std::fs::symlink_metadata(dir)?;
+    // SAFETY: getuid takes nothing, touches no memory and cannot fail.
+    let me = unsafe { libc::getuid() };
+    if !found.file_type().is_dir() || found.uid() != me {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            format!(
+                "{} is not a folder of this user's, so no shell's socket will be put in it",
+                dir.display()
+            ),
+        ));
+    }
+    if found.mode() & 0o077 != 0 {
+        std::fs::set_permissions(dir, std::fs::Permissions::from_mode(0o700))?;
+    }
+    Ok(())
+}
+
 /// On Windows the directory holds only markers, which name a session and grant
 /// nothing. What admits a window is the pipe itself.
 #[cfg(windows)]
@@ -122,6 +159,12 @@ fn listen_recording(runtime_dir: &Path, session: &str, record: &Record) -> io::R
     let at = address(runtime_dir, session).map_err(to_io)?;
 
     private_dir(&socket_dir(runtime_dir))?;
+    // A socket moved to the short shared directory, because the app's own
+    // folder is too deep for a socket path. See `name::short_socket_dir`.
+    #[cfg(not(windows))]
+    if let Some(parent) = Path::new(&at).parent().filter(|p| *p != socket_dir(runtime_dir)) {
+        owned_private_dir(parent)?;
+    }
 
     // A Unix socket file outlives its supervisor, so binding fails until the
     // corpse is cleared. Windows needs none of this: a second pipe of the
@@ -224,6 +267,38 @@ fn to_io(e: NameError) -> io::Error {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(not(windows))]
+    #[test]
+    fn a_shared_socket_directory_that_is_a_link_is_refused() {
+        // /tmp is shared: anybody could plant /tmp/jky-<uid> as a link to a
+        // directory of theirs and collect the sockets made in it.
+        let dir = crate::testing::scratch("short-link");
+        let elsewhere = dir.join("elsewhere");
+        std::fs::create_dir(&elsewhere).unwrap();
+        let planted = dir.join("planted");
+        std::os::unix::fs::symlink(&elsewhere, &planted).unwrap();
+
+        let err = owned_private_dir(&planted).expect_err("a link was trusted");
+        assert_eq!(err.kind(), io::ErrorKind::PermissionDenied);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn a_shared_socket_directory_is_made_owner_only() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = crate::testing::scratch("short-made");
+        let short = dir.join("jky-short");
+        owned_private_dir(&short).unwrap();
+        assert_eq!(std::fs::metadata(&short).unwrap().permissions().mode() & 0o777, 0o700);
+
+        // One of ours left loose — by hand, or an older build — is tightened.
+        std::fs::set_permissions(&short, std::fs::Permissions::from_mode(0o755)).unwrap();
+        owned_private_dir(&short).unwrap();
+        assert_eq!(std::fs::metadata(&short).unwrap().permissions().mode() & 0o777, 0o700);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
     use interprocess::local_socket::traits::ListenerExt;
     use crate::Frame;
     use std::io::Write;

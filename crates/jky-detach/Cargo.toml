@@ -15,6 +15,11 @@ thiserror.workspace = true
 # than a file whose permissions already say who may open it.
 interprocess = "2.4"
 
+[target.'cfg(unix)'.dependencies]
+# getuid, for the per-user directory sockets fall back to when the app's own
+# folder is too deep for a socket path. See `name::short_socket_dir`.
+libc = "0.2"
+
 [target.'cfg(windows)'.dependencies]
 # The pipe's security descriptor is written as SDDL, which Windows reads as
 # UTF-16. The same crate `interprocess` already uses for it, so the types meet.
