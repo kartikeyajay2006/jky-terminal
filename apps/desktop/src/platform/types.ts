@@ -944,10 +944,16 @@ export interface GitHubSummary {
  * Note what is absent: nothing here returns a token, and nothing takes a
  * device code. Both stay in Rust for the whole flow.
  */
+/**
+ * How much of a GitHub account to ask for. `private` requests GitHub's `repo`
+ * scope, which has no read-only form; `public` requests no repository scope.
+ */
+export type GitHubAccess = "public" | "private";
+
 export interface GitHubApi {
   status(): Promise<GitHubStatus>;
   setClientId(id: string): Promise<void>;
-  connectStart(): Promise<GitHubDeviceStart>;
+  connectStart(access: GitHubAccess): Promise<GitHubDeviceStart>;
   connectPoll(): Promise<GitHubConnectState>;
   disconnect(): Promise<void>;
   summary(): Promise<GitHubSummary>;

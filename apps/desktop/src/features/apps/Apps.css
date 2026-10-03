@@ -2361,6 +2361,57 @@
   max-width: 56rem;
 }
 
+/* How much of the account to ask for: two cards, the chosen one lit. */
+.gh__access {
+  display: grid;
+  gap: var(--s2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  max-width: 60ch;
+}
+
+.gh__access legend {
+  margin-bottom: var(--s2);
+  padding: 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.gh__choice {
+  display: flex;
+  gap: var(--s3);
+  align-items: flex-start;
+  padding: var(--s3);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+.gh__choice:has(input:checked) {
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.gh__choice input {
+  margin-top: 3px;
+  accent-color: var(--accent);
+}
+
+.gh__choice span {
+  display: grid;
+  gap: var(--s1);
+  color: var(--text);
+  font-size: 13px;
+}
+
+.gh__choice small {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .gh__promises {
   display: flex;
   flex-direction: column;

@@ -440,7 +440,7 @@ describe("apps adapter parity", () => {
     // this whole split exists to prevent.
     it("never puts a device code in what the window receives", async () => {
       await web.apps.github.setClientId("Iv23liPREVIEW");
-      const start = await web.apps.github.connectStart();
+      const start = await web.apps.github.connectStart("public");
       expect(Object.keys(start)).not.toContain("device_code");
       expect(JSON.stringify(start)).not.toMatch(/device_code/i);
       expect(fieldsOf("DeviceStart")).not.toContain("device_code");
@@ -448,7 +448,7 @@ describe("apps adapter parity", () => {
 
     it("the mock returns a summary shaped like the real one", async () => {
       await web.apps.github.setClientId("Iv23liPREVIEW");
-      await web.apps.github.connectStart();
+      await web.apps.github.connectStart("public");
       await web.apps.github.connectPoll();
       await web.apps.github.connectPoll();
 

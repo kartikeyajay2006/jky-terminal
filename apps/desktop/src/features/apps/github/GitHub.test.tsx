@@ -1,8 +1,8 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { GitHub, relativeDay } from "./GitHub";
-import { createWebPlatform, __setPlatformForTests } from "../../../platform";
+import { createWebPlatform, getPlatform, __setPlatformForTests } from "../../../platform";
 import type { Platform } from "../../../platform/types";
 
 function platformWith(overrides: Partial<Platform["apps"]["github"]>, opened?: string[]): Platform {
@@ -63,6 +63,29 @@ describe("GitHub", () => {
       expect(welcome).toHaveTextContent(/read.only|never writes/i);
       expect(welcome).toHaveTextContent(/keychain|this machine|stays on/i);
       expect(welcome).toHaveTextContent(/never sees your password/i);
+    });
+
+    it("asks for public repositories only, unless you choose more", async () => {
+      const start = vi.spyOn(getPlatform().apps.github, "connectStart");
+      const user = typist();
+      render(<GitHub />);
+      expect(await screen.findByRole("radio", { name: /public repositories only/i })).toBeChecked();
+      await user.click(screen.getByRole("button", { name: /sign in to github/i }));
+      await waitFor(() => expect(start).toHaveBeenCalledWith("public"));
+    });
+
+    // GitHub has no read-only scope for private repositories. Choosing them
+    // has to say what the token could do, not only what this app does.
+    it("says plainly that private access is a token that could write", async () => {
+      const start = vi.spyOn(getPlatform().apps.github, "connectStart");
+      const user = typist();
+      render(<GitHub />);
+      await user.click(await screen.findByRole("radio", { name: /private repositories too/i }));
+      const welcome = screen.getByRole("region", { name: /sign in to github/i });
+      expect(welcome).toHaveTextContent(/no read-only/i);
+      expect(welcome).toHaveTextContent(/could (change|write)/i);
+      await user.click(screen.getByRole("button", { name: /sign in to github/i }));
+      await waitFor(() => expect(start).toHaveBeenCalledWith("private"));
     });
 
     it("says the approval happens on your own account, not here", async () => {
@@ -210,7 +233,7 @@ describe("GitHub", () => {
   describe("once connected", () => {
     async function connected() {
       const base = createWebPlatform();
-      await base.apps.github.connectStart();
+      await base.apps.github.connectStart("public");
       await base.apps.github.connectPoll();
       await base.apps.github.connectPoll();
       __setPlatformForTests(base);
@@ -261,7 +284,7 @@ describe("GitHub", () => {
     // someone clicks one. Leaving for the browser is a deliberate second step.
     it("opens the repository in the panel rather than the browser", async () => {
       const base = createWebPlatform();
-      await base.apps.github.connectStart();
+      await base.apps.github.connectStart("public");
       await base.apps.github.connectPoll();
       await base.apps.github.connectPoll();
       const opened: string[] = [];
@@ -283,7 +306,7 @@ describe("GitHub", () => {
 
     it("leaves for GitHub only when asked to", async () => {
       const base = createWebPlatform();
-      await base.apps.github.connectStart();
+      await base.apps.github.connectStart("public");
       await base.apps.github.connectPoll();
       await base.apps.github.connectPoll();
       const opened: string[] = [];
@@ -350,7 +373,7 @@ describe("GitHub", () => {
       // broken. Saying so is better than showing an empty year.
       it("says so when the heatmap could not be loaded", async () => {
         const base = createWebPlatform();
-        await base.apps.github.connectStart();
+        await base.apps.github.connectStart("public");
         await base.apps.github.connectPoll();
         await base.apps.github.connectPoll();
         const full = await base.apps.github.summary();
@@ -522,7 +545,7 @@ describe("GitHub", () => {
     it("says so and offers a retry when the account cannot be loaded", async () => {
       let attempts = 0;
       const base = createWebPlatform();
-      await base.apps.github.connectStart();
+      await base.apps.github.connectStart("public");
       await base.apps.github.connectPoll();
       await base.apps.github.connectPoll();
       __setPlatformForTests({

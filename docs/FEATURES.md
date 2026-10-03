@@ -418,7 +418,7 @@ Two apps sign in, both through **your own browser**, never an embedded one.
 
 | | How | What it can do |
 |---|---|---|
-| **GitHub** | device code, approved on github.com under your own 2FA | read repos, issues, PRs, notifications |
+| **GitHub** | device code, approved on github.com under your own 2FA | read repos, issues, PRs, notifications — public only by default; private repositories when you choose them |
 | **Gmail** | authorization code + PKCE, loopback redirect | read your inbox |
 
 No token, code or verifier ever reaches the window. Gmail is `gmail.readonly`

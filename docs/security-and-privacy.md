@@ -281,7 +281,7 @@ into *run this on my laptop*. So:
 
 | Account | Sign-in | Scopes | Notes |
 |---|---|---|---|
-| **GitHub** | Device code, approved on github.com under your own 2FA | `repo`, `read:org`, `notifications` | JKY only reads. Be aware that GitHub has no read-only scope for private repositories: `repo` is the narrowest that can read them, and GitHub grants write access with it. |
+| **GitHub** | Device code, approved on github.com under your own 2FA | Your choice at sign-in: **public only** (`read:org`, `notifications` — no repository scope), or **private too** (adds `repo`) | JKY only reads. GitHub has no read-only scope for private repositories: `repo` is the narrowest that can read them and it permits writes, so it is not the default and the sign-in screen says so. |
 | **Gmail** | Authorization code + PKCE, loopback redirect, in your own browser | `gmail.readonly`, `userinfo.email` | A test keeps `gmail.send` out. The list never fetches message bodies; an opened message arrives as text, so nothing in it can load a tracking image. Needs your own Google client id — none ships. |
 
 Both sign-ins happen in **your browser**, never an embedded one. Linking and unlinking an account, and

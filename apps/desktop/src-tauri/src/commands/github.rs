@@ -102,10 +102,16 @@ pub fn apps_github_status(state: State<'_, AppState>) -> GitHubStatus {
 #[tauri::command]
 pub async fn apps_github_connect_start(
     state: State<'_, AppState>,
+    // "public" or "private". Required, and refused if it is anything else:
+    // how much of an account to ask for is the person's choice, never a
+    // default the window falls back on.
+    access: String,
 ) -> Result<DeviceStart, String> {
+    let access = github::Access::parse(&access)
+        .ok_or_else(|| format!("'{access}' is not an access level; choose public or private"))?;
     let client_id = client_id(&state);
 
-    let (start, device_code) = github::start_device(&state.http, &client_id)
+    let (start, device_code) = github::start_device(&state.http, &client_id, access)
         .await
         .map_err(|e| e.to_string())?;
 

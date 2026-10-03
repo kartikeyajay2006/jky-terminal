@@ -24,14 +24,42 @@ pub const DEVICE_CODE_URL: &str = "https://github.com/login/device/code";
 pub const ACCESS_TOKEN_URL: &str = "https://github.com/login/oauth/access_token";
 const API: &str = "https://api.github.com";
 
-/// The reach this app asks for, pinned by a test.
+/// How much of an account this app asks to see, chosen at sign-in.
 ///
-/// `repo` to see private repositories the person owns, `read:org` so
-/// organisation repositories appear at all, and `notifications` for the
-/// unread list. Nothing that writes, nothing administrative, and no
-/// `delete_repo` — a terminal that can read your work does not need to be
-/// able to destroy it.
-pub const SCOPES: &str = "repo read:org notifications";
+/// GitHub's OAuth scopes have no read-only way into private repositories:
+/// `repo` is full control of every repository the person can reach, and the
+/// token GitHub issues for it could write, whatever this app chooses to do
+/// with it. So it is not the default. Public repositories, issues and pull
+/// requests need no repository scope at all.
+///
+/// Both levels add `read:org`, so organisation repositories appear, and
+/// `notifications`, for the unread list. Neither asks for anything
+/// administrative, for `delete_repo`, or for `workflow`. Pinned by tests.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Access {
+    /// Public repositories only. No repository scope is requested.
+    Public,
+    /// Private repositories too, through `repo`.
+    Private,
+}
+
+impl Access {
+    pub fn scopes(self) -> &'static str {
+        match self {
+            Access::Public => "read:org notifications",
+            Access::Private => "repo read:org notifications",
+        }
+    }
+
+    /// The level the window named, or nothing for a name it does not have.
+    pub fn parse(name: &str) -> Option<Self> {
+        match name {
+            "public" => Some(Access::Public),
+            "private" => Some(Access::Private),
+            _ => None,
+        }
+    }
+}
 
 /// The key the token is stored under in the OS keychain.
 pub const TOKEN_KEY: &str = "github-token";
@@ -1001,12 +1029,13 @@ async fn api_get(client: &reqwest::Client, url: &str, token: &str) -> Result<Str
 pub async fn start_device(
     client: &reqwest::Client,
     client_id: &str,
+    access: Access,
 ) -> Result<(DeviceStart, String), GitHubError> {
     let body = crate::net::retrying(crate::net::ATTEMPTS, GitHubError::is_transient, || async {
         let response = client
             .post(DEVICE_CODE_URL)
             .header("Accept", "application/json")
-            .form(&[("client_id", client_id), ("scope", SCOPES)])
+            .form(&[("client_id", client_id), ("scope", access.scopes())])
             .send()
             .await
             .map_err(|e| GitHubError::Network(e.to_string()))?;
@@ -1433,10 +1462,31 @@ mod tests {
     // a decision, so the set is pinned rather than assembled at a call site.
     #[test]
     fn asks_for_the_narrowest_useful_scopes() {
-        assert_eq!(SCOPES, "repo read:org notifications");
-        assert!(!SCOPES.contains("admin"));
-        assert!(!SCOPES.contains("delete"));
-        assert!(!SCOPES.contains("write:org"));
+        assert_eq!(Access::Public.scopes(), "read:org notifications");
+        assert_eq!(Access::Private.scopes(), "repo read:org notifications");
+        for access in [Access::Public, Access::Private] {
+            let scopes = access.scopes();
+            assert!(!scopes.contains("admin"), "{scopes}");
+            assert!(!scopes.contains("delete"), "{scopes}");
+            assert!(!scopes.contains("write:"), "{scopes}");
+            assert!(!scopes.contains("workflow"), "{scopes}");
+        }
+    }
+
+    #[test]
+    fn public_access_asks_for_no_repository_scope_at_all() {
+        // `repo` is full control of every repository — GitHub has no
+        // read-only version — so it is asked for only when private
+        // repositories are wanted.
+        assert!(!Access::Public.scopes().split(' ').any(|s| s == "repo" || s == "public_repo"));
+    }
+
+    #[test]
+    fn an_access_level_is_read_from_its_name_and_nothing_else() {
+        assert_eq!(Access::parse("public"), Some(Access::Public));
+        assert_eq!(Access::parse("private"), Some(Access::Private));
+        assert_eq!(Access::parse("admin"), None);
+        assert_eq!(Access::parse(""), None);
     }
 }
 

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getPlatform } from "../../../platform";
 import type {
+  GitHubAccess,
   GitHubDeviceStart,
   GitHubItem,
   GitHubNotification,
@@ -71,6 +72,10 @@ export function GitHub() {
   const [repo, setRepo] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  // How much of the account to ask for. Public is the default: GitHub has no
+  // read-only scope for private repositories, so reaching them means a token
+  // that could write — a choice the person makes, not one made for them.
+  const [access, setAccess] = useState<GitHubAccess>("public");
   const now = Date.now();
 
   /**
@@ -129,7 +134,7 @@ export function GitHub() {
   async function signIn() {
     setError(null);
     try {
-      const start = await getPlatform().apps.github.connectStart();
+      const start = await getPlatform().apps.github.connectStart(access);
       setPhase({ at: "waiting", start });
       polling.current = true;
       void pollUntilDone(start.interval_s);
@@ -219,8 +224,7 @@ export function GitHub() {
         <section className="gh__setup" aria-label="Set up GitHub">
           <h2 className="gh__setup-title">Use your own OAuth app</h2>
           <p className="gh__setup-body">
-            This needs an <b>OAuth App</b> of your own. On GitHub, go to Settings → Developer
-            JKY Terminal already has one, so you do not need this. If you would rather sign in
+            JKY Terminal already has an <b>OAuth App</b>, so you do not need this. If you would rather sign in
             against an OAuth app of your own: on GitHub, go to Settings → Developer settings →
             OAuth Apps → New OAuth App, tick <b>Enable Device Flow</b>, and paste the Client ID
             here. There is no client secret to copy: the device flow does not use one.
@@ -270,9 +274,8 @@ export function GitHub() {
 
           <ul className="gh__promises">
             <li>
-              <b>Read-only.</b> It asks for permission to read your repositories, organisations
-              and notifications. Nothing it can do writes to your account, and it cannot delete
-              anything.
+              <b>JKY is read-only.</b> Nothing in it writes to your account. What GitHub grants
+              depends on the choice below.
             </li>
             <li>
               <b>You approve it on GitHub.</b> A short code appears here, you enter it on
@@ -285,6 +288,41 @@ export function GitHub() {
               It is never sent anywhere but GitHub, and nothing in this window can read it back.
             </li>
           </ul>
+
+          <fieldset className="gh__access">
+            <legend>What should JKY be able to see?</legend>
+            <label className="gh__choice">
+              <input
+                type="radio"
+                name="gh-access"
+                checked={access === "public"}
+                onChange={() => setAccess("public")}
+              />
+              <span>
+                <b>Public repositories only</b>
+                <small>
+                  Asks for no repository permission at all — public repositories, organisations
+                  and notifications.
+                </small>
+              </span>
+            </label>
+            <label className="gh__choice">
+              <input
+                type="radio"
+                name="gh-access"
+                checked={access === "private"}
+                onChange={() => setAccess("private")}
+              />
+              <span>
+                <b>Private repositories too</b>
+                <small>
+                  Asks for GitHub&rsquo;s <code>repo</code> permission. GitHub has no read-only
+                  version of it, so the token it issues could change your repositories — even
+                  though JKY only ever reads them.
+                </small>
+              </span>
+            </label>
+          </fieldset>
 
           <button type="button" className="gh__primary" onClick={() => void signIn()}>
             Sign in to GitHub

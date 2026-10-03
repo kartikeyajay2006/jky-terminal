@@ -424,7 +424,7 @@ export function createTauriPlatform(): Platform {
     github: {
       status: () => invoke<GitHubStatus>("apps_github_status"),
       setClientId: (id) => invoke<void>("apps_github_set_client_id", { id }),
-      connectStart: () => invoke<GitHubDeviceStart>("apps_github_connect_start"),
+      connectStart: (access) => invoke<GitHubDeviceStart>("apps_github_connect_start", { access }),
       connectPoll: () => invoke<GitHubConnectState>("apps_github_connect_poll"),
       disconnect: () => invoke<void>("apps_github_disconnect"),
       summary: () => invoke<GitHubSummary>("apps_github_summary"),

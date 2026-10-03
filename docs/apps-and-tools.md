@@ -151,8 +151,11 @@ sequenceDiagram
 - Tokens, codes and verifiers go to the **OS keychain** and never reach the window.
 - **Gmail** asks for `gmail.readonly` — a test keeps `gmail.send` out. The list never fetches message
   bodies, and an opened message arrives as text, so nothing in it can load a tracking image.
-- **GitHub** asks for `repo read:org notifications`. JKY only reads, but note that GitHub's `repo` scope —
-  the narrowest that can read private repositories — also permits writes.
+- **GitHub** lets you choose at sign-in. **Public repositories only** — the default — asks for
+  `read:org notifications` and no repository scope at all. **Private repositories too** adds `repo`,
+  and the screen says what that means: GitHub has no read-only scope for private repositories, so the
+  token could write, even though JKY only reads. Neither ever asks for admin, `delete_repo` or
+  `workflow`; tests pin both sets.
 - Disconnecting deletes the token and writes `AccountDisconnected` to the audit log.
 
 ### Why the Browser is a native webview
