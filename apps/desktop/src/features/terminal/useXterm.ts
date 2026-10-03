@@ -671,14 +671,13 @@ export function useXterm(
         // here is what lets a block be copied, re-run or asked about.
         marks.current.describe(done.command);
         if (block) markBlock(block);
+        const took =
+          block?.startedAt != null ? Math.max(0, (block.finishedAt ?? Date.now()) - block.startedAt) : null;
         blockHandler.current?.({
           id: `${from}-${Date.now()}`,
           command: done.command,
           code: done.code,
-          took:
-            block?.startedAt != null
-              ? Math.max(0, (block.finishedAt ?? Date.now()) - block.startedAt)
-              : null,
+          took,
           line: from,
           at: Date.now(),
         });
@@ -688,6 +687,7 @@ export function useXterm(
           code: done.code,
           cwd: done.cwd,
           output: exact ? exact.join("\n").replace(/^\n+|\s+$/g, "") : outputOf(region, done.command),
+          took,
         });
         return true;
       }

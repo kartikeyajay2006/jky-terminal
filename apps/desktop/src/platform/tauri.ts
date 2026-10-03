@@ -178,6 +178,8 @@ export function createTauriPlatform(): Platform {
         at: entry.at,
         session: entry.session,
         host: entry.host ?? null,
+        durationMs: entry.durationMs ?? null,
+        output: entry.output ?? null,
       });
     },
     async search(query) {

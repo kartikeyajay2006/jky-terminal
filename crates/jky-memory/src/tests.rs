@@ -238,14 +238,18 @@ fn a_database_from_a_newer_jky_is_refused_rather_than_changed() {
     let dir = tempfile::TempDir::new().unwrap();
     let path = dir.path().join("memory.sqlite3");
     {
+        // Rollback-journal mode, as a newer build might leave it: switching to
+        // WAL would itself be a write.
         let conn = Connection::open(&path).unwrap();
-        conn.pragma_update(None, "user_version", 99).unwrap();
+        conn.execute_batch("CREATE TABLE future(x); PRAGMA user_version = 99;").unwrap();
     }
+    let before = std::fs::read(&path).unwrap();
     match Memory::open(&path) {
         Err(MemoryError::Newer { found: 99, .. }) => {}
         Err(other) => panic!("wrong error: {other}"),
         Ok(_) => panic!("a newer database was opened"),
     }
+    assert_eq!(std::fs::read(&path).unwrap(), before, "refusing it still changed it");
 }
 
 #[test]
@@ -254,4 +258,72 @@ fn escape_sequences_of_every_kind_are_removed() {
     assert_eq!(strip_escapes("a\x1b]0;title\x07b"), "ab");
     assert_eq!(strip_escapes("a\x1bPq#0;2;0;0;0~\x1b\\b"), "ab", "a Sixel image is not text");
     assert_eq!(strip_escapes("50%\r100%\r\n"), "50%\n100%\n");
+}
+
+#[test]
+fn shell_history_search_is_what_it_always_was() {
+    // Subsequence, grouped by command, counted: `dkrps` finds `docker ps`.
+    let memory = Memory::in_memory().unwrap();
+    memory.record(Run { at: 1, ..run("docker ps") }).unwrap();
+    memory.record(Run { at: 2, ..run("docker ps") }).unwrap();
+    memory.record(Run { at: 3, ..run("git status") }).unwrap();
+    let hits = memory
+        .hits(&jky_history::Query { text: "dkrps".into(), ..Default::default() }, 10)
+        .unwrap();
+    assert_eq!(hits.len(), 1);
+    assert_eq!(hits[0].entry.command, "docker ps");
+    assert_eq!(hits[0].count, 2);
+}
+
+#[test]
+fn completion_gets_the_newest_commands_first() {
+    let memory = Memory::in_memory().unwrap();
+    for (at, c) in [(1, "a"), (2, "b"), (3, "c")] {
+        memory.record(Run { at, ..run(c) }).unwrap();
+    }
+    assert_eq!(memory.recent_commands(2).unwrap(), ["c", "b"]);
+}
+
+#[test]
+fn an_old_history_file_is_imported_once_and_then_removed() {
+    let dir = tempfile::TempDir::new().unwrap();
+    let file = dir.path().join("history.jsonl");
+    let old = jky_history::History::new(&file);
+    for command in ["make", "make test"] {
+        old.record(jky_history::Entry {
+            command: command.into(),
+            cwd: "/w".into(),
+            code: 0,
+            at: 5,
+            session: "p".into(),
+            host: None,
+        })
+        .unwrap();
+    }
+    let memory = Memory::in_memory().unwrap();
+    assert_eq!(memory.import_history(&file).unwrap(), 2);
+    assert!(!file.exists(), "a second copy of every command was left behind");
+    assert_eq!(memory.import_history(&file).unwrap(), 0, "nothing to import twice");
+    assert_eq!(memory.count().unwrap(), 2);
+}
+
+#[test]
+fn a_huge_command_is_cut_rather_than_kept_whole() {
+    let memory = Memory::in_memory().unwrap();
+    let id = memory.record(run(&"x".repeat(COMMAND_LIMIT * 3))).unwrap().unwrap();
+    assert_eq!(memory.get(id).unwrap().command.len(), COMMAND_LIMIT);
+}
+
+#[test]
+fn past_the_cap_the_oldest_unpinned_runs_go_first() {
+    let mut memory = Memory::in_memory().unwrap();
+    memory.cap = 3;
+    let first = memory.record(Run { at: 1, ..run("first") }).unwrap().unwrap();
+    memory.pin(first, true).unwrap();
+    for (at, c) in [(2, "second"), (3, "third"), (4, "fourth"), (5, "fifth")] {
+        memory.record(Run { at, ..run(c) }).unwrap();
+    }
+    let mut left = texts(&find(&memory, ""));
+    left.sort();
+    assert_eq!(left, ["fifth", "first", "fourth", "third"], "three unpinned, and the pinned one");
 }

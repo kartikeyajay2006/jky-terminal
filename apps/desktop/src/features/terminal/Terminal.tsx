@@ -61,6 +61,9 @@ interface TerminalProps {
   host?: string;
 }
 
+/** The most of a command's output sent to Work Memory, in characters. */
+const OUTPUT_SENT = 16_384;
+
 export function Terminal({
   paneId,
   focused = true,
@@ -126,6 +129,10 @@ export function Terminal({
           at: Date.now(),
           session: paneId,
           host: host ?? null,
+          durationMs: completion.took ?? null,
+          // The tail, which is where an error is. Rust keeps less still and
+          // redacts it; this only keeps a long build log off the IPC channel.
+          output: completion.output.slice(-OUTPUT_SENT),
         })
         .catch(() => {});
 

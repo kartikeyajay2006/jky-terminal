@@ -21,6 +21,10 @@
 //! that calls this; this crate does what it is told and adds no policy of its
 //! own beyond refusing secrets and bounding size.
 
+mod git;
+
+pub use git::git_state;
+
 use std::path::Path;
 use std::sync::Mutex;
 
@@ -32,6 +36,10 @@ use thiserror::Error;
 pub const OUTPUT_LIMIT: usize = 8 * 1024;
 /// The longest note a run may carry.
 pub const NOTE_LIMIT: usize = 2_000;
+/// The longest command kept, as shell history always has.
+pub const COMMAND_LIMIT: usize = jky_history::MAX_COMMAND;
+/// The most runs kept. Past it, the oldest that are not pinned go first.
+pub const MAX_RUNS: usize = jky_history::MAX_ENTRIES;
 
 #[derive(Debug, Error)]
 pub enum MemoryError {
@@ -161,6 +169,8 @@ const MIGRATIONS: &[&str] = &[
 /// The database, behind a lock: one connection, used from any thread.
 pub struct Memory {
     conn: Mutex<Connection>,
+    /// How many runs are kept; `MAX_RUNS` outside tests.
+    cap: usize,
 }
 
 impl Memory {
@@ -178,18 +188,20 @@ impl Memory {
     }
 
     fn prepare(mut conn: Connection) -> Result<Self, MemoryError> {
-        // WAL: a reader is never blocked by a writer, so a search while a
-        // command is being recorded does not wait. The timeout covers a second
-        // process — a `jky` command, a test — holding the lock for a moment.
-        conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.busy_timeout(std::time::Duration::from_secs(2))?;
-        conn.pragma_update(None, "foreign_keys", "ON")?;
-
+        // Before anything that writes: a database from a newer build is
+        // refused untouched, and switching its journal mode would already be
+        // a write to its header.
         let found: i64 = conn.query_row("PRAGMA user_version", [], |r| r.get(0))?;
         let known = MIGRATIONS.len() as i64;
         if found > known {
             return Err(MemoryError::Newer { found, known });
         }
+        // WAL: a reader is never blocked by a writer, so a search while a
+        // command is being recorded does not wait. The timeout above covers a
+        // second process — a `jky` command, a test — holding the lock a moment.
+        conn.pragma_update(None, "journal_mode", "WAL")?;
+        conn.pragma_update(None, "foreign_keys", "ON")?;
         for (step, sql) in MIGRATIONS.iter().enumerate().skip(found as usize) {
             // One transaction per step: a crash mid-migration leaves the last
             // complete version, never half of the next.
@@ -198,7 +210,7 @@ impl Memory {
             tx.pragma_update(None, "user_version", (step + 1) as i64)?;
             tx.commit()?;
         }
-        Ok(Self { conn: Mutex::new(conn) })
+        Ok(Self { conn: Mutex::new(conn), cap: MAX_RUNS })
     }
 
     fn conn(&self) -> std::sync::MutexGuard<'_, Connection> {
@@ -218,7 +230,76 @@ impl Memory {
         }
         let conn = self.conn();
         insert(&conn, &run)?;
-        Ok(Some(conn.last_insert_rowid()))
+        let id = conn.last_insert_rowid();
+        // Bounded, like the history it replaces: the oldest unpinned runs go
+        // once there are more than MAX_RUNS.
+        conn.execute(
+            "DELETE FROM runs WHERE pinned = 0 AND id IN (
+                SELECT id FROM runs WHERE pinned = 0 ORDER BY at DESC, id DESC LIMIT -1 OFFSET ?1)",
+            params![self.cap as i64],
+        )?;
+        Ok(Some(id))
+    }
+
+    /// Every run as a shell-history entry — no output, no note — oldest first.
+    ///
+    /// What the fuzzy history search and `jky history` work on. Light on
+    /// purpose: a search over commands should not read every run's output.
+    pub fn entries(&self) -> Result<Vec<jky_history::Entry>, MemoryError> {
+        let conn = self.conn();
+        let mut statement =
+            conn.prepare("SELECT command, cwd, code, at, session, host FROM runs ORDER BY at, id")?;
+        let rows = statement.query_map([], |r| {
+            Ok(jky_history::Entry {
+                command: r.get(0)?,
+                cwd: r.get(1)?,
+                code: r.get(2)?,
+                at: r.get(3)?,
+                session: r.get(4)?,
+                host: r.get(5)?,
+            })
+        })?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// Shell-history search — subsequence, ranked by tightness, frequency and
+    /// recency, grouped by command — exactly as it was before Work Memory.
+    pub fn hits(&self, query: &jky_history::Query, now: i64) -> Result<Vec<jky_history::Hit>, MemoryError> {
+        Ok(jky_history::search(&self.entries()?, query, now))
+    }
+
+    /// The newest `n` command lines, newest first, for completion.
+    pub fn recent_commands(&self, n: usize) -> Result<Vec<String>, MemoryError> {
+        let conn = self.conn();
+        let mut statement = conn.prepare("SELECT command FROM runs ORDER BY at DESC, id DESC LIMIT ?1")?;
+        let rows = statement.query_map(params![n as i64], |r| r.get(0))?;
+        Ok(rows.collect::<Result<_, _>>()?)
+    }
+
+    /// Bring a shell-history file from before Work Memory across, once.
+    ///
+    /// Every entry is imported in one transaction, and only then is the file
+    /// removed — so a failure leaves it in place to try again, and success
+    /// leaves no second copy of every command behind for "clear history" to
+    /// miss. Returns how many were imported; 0 when there was no file.
+    pub fn import_history(&self, path: &Path) -> Result<usize, MemoryError> {
+        if !path.exists() {
+            return Ok(0);
+        }
+        let entries = jky_history::History::new(path)
+            .all()
+            .map_err(|e| MemoryError::Db(e.to_string()))?;
+        let kept = self.import(entries.into_iter().map(|e| Run {
+            command: e.command,
+            cwd: e.cwd,
+            code: e.code,
+            at: e.at,
+            session: e.session,
+            host: e.host,
+            ..Default::default()
+        }))?;
+        std::fs::remove_file(path).map_err(|e| MemoryError::Db(e.to_string()))?;
+        Ok(kept)
     }
 
     /// Keep many runs at once, in one transaction — an import.
@@ -430,7 +511,7 @@ fn insert(conn: &Connection, run: &Run) -> Result<(), MemoryError> {
 
 /// Redact and bound everything a run carries before it is stored.
 fn clean(mut run: Run) -> Run {
-    run.command = jky_redact::redact(run.command.trim()).text;
+    run.command = bounded(&jky_redact::redact(run.command.trim()).text, COMMAND_LIMIT, false);
     run.note = bounded(&jky_redact::redact(run.note.trim()).text, NOTE_LIMIT, false);
     run.output = run
         .output

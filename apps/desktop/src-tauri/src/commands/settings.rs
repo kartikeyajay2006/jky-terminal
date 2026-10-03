@@ -1,6 +1,6 @@
 use std::path::Path;
 
-use jky_history::History;
+use jky_memory::Memory;
 use jky_pty::{expand_tilde, home_dir};
 use jky_secrets::ProviderId;
 use jky_settings::{Privacy, SettingsStore};
@@ -77,7 +77,7 @@ const MAX_HISTORY_DAYS: u32 = 3_650;
 /// than at the next search.
 pub(crate) fn set_privacy_logic(
     store: &SettingsStore,
-    history: &History,
+    history: &Memory,
     config_dir: &Path,
     privacy: &Privacy,
     now: i64,
@@ -129,7 +129,7 @@ pub fn settings_set_privacy(
     now: i64,
 ) -> Result<(), String> {
     let privacy = Privacy { keep_history, history_days, keep_scrollback };
-    set_privacy_logic(state.settings.as_ref(), state.history.as_ref(), &state.config_dir, &privacy, now)
+    set_privacy_logic(state.settings.as_ref(), state.memory.as_ref(), &state.config_dir, &privacy, now)
 }
 
 #[tauri::command]
@@ -231,7 +231,7 @@ mod tests {
     #[test]
     fn turning_scrollback_off_deletes_what_was_saved() {
         let (d, s) = store();
-        let history = jky_history::History::new(d.path().join("history.jsonl"));
+        let history = Memory::in_memory().unwrap();
         jky_store::scrollback::save(d.path(), "tab-1", "saved output").unwrap();
         let off = Privacy { keep_scrollback: false, ..Privacy::default() };
         set_privacy_logic(&s, &history, d.path(), &off, 0).unwrap();
@@ -242,30 +242,29 @@ mod tests {
     #[test]
     fn setting_a_retention_window_prunes_history_at_once() {
         let (d, s) = store();
-        let history = jky_history::History::new(d.path().join("history.jsonl"));
+        let history = Memory::in_memory().unwrap();
         let now = 1_800_000_000_000_i64;
         for (cmd, age_days) in [("ancient", 400), ("recent", 2)] {
             history
-                .record(jky_history::Entry {
+                .record(jky_memory::Run {
                     command: cmd.into(),
                     cwd: "/".into(),
-                    code: 0,
                     at: now - age_days * 86_400_000,
                     session: "p".into(),
-                    host: None,
+                    ..Default::default()
                 })
                 .unwrap();
         }
         let year = Privacy { history_days: 365, ..Privacy::default() };
         set_privacy_logic(&s, &history, d.path(), &year, now).unwrap();
-        let left: Vec<String> = history.all().unwrap().into_iter().map(|e| e.command).collect();
+        let left: Vec<String> = history.all().unwrap().into_iter().map(|r| r.command).collect();
         assert_eq!(left, ["recent"]);
     }
 
     #[test]
     fn an_absurd_retention_window_is_refused() {
         let (d, s) = store();
-        let history = jky_history::History::new(d.path().join("history.jsonl"));
+        let history = Memory::in_memory().unwrap();
         let silly = Privacy { history_days: 100_000, ..Privacy::default() };
         assert!(set_privacy_logic(&s, &history, d.path(), &silly, 0).is_err());
     }

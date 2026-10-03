@@ -666,6 +666,22 @@ describe("letting the app's shortcuts through", () => {
     expect(handle(new KeyboardEvent("keydown", { key: "l" }))).toBe(true);
   });
 
+  it("records what a finished command printed and how long it took", async () => {
+    const platform = createWebPlatform();
+    const record = vi.spyOn(platform.history, "record");
+    __setPlatformForTests(platform);
+
+    render(<Terminal paneId="tab-mem" />);
+    await waitFor(() => expect(oscHandlers.has(1337)).toBe(true));
+    oscHandlers.get(1337)!(encodeDone(1, "/repo", "cargo build"));
+
+    await waitFor(() => expect(record).toHaveBeenCalled());
+    const sent = record.mock.calls.at(-1)![0];
+    expect(sent).toMatchObject({ command: "cargo build", cwd: "/repo", code: 1, session: "tab-mem" });
+    expect(sent).toHaveProperty("output");
+    expect(sent).toHaveProperty("durationMs");
+  });
+
   /*
    * A claimed key must not also do whatever the browser would have done.
    *

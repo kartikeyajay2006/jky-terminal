@@ -361,9 +361,13 @@ The prompt is read off the screen rather than rebuilt from keystrokes, so recall
 
 ## History
 
-Every command that finishes is recorded — what was typed, where it ran, and how it ended — in
-`history.jsonl`, up to 100,000 entries. The shell reports all three through the same hook the panels
-use, so nothing is inferred from the screen.
+Every command that finishes is recorded in **Work Memory** — `memory.sqlite3`, up to 100,000 runs —
+with what was typed, where it ran and how it ended (reported by the shell through the same hook the
+panels use, so nothing is inferred from the screen), plus how long it took, the tail of what it
+printed, and the git branch and commit it ran on. The output is kept as its last 8 KB, without colour
+codes and with secrets redacted; the branch is read from the folder's `.git` without running `git`,
+and never for a remote pane, whose folder is on another machine. A `history.jsonl` from an earlier
+version is brought across on first start and then removed.
 
 Open **History** (`↺`), or run `jky history <text>` from any terminal.
 
@@ -474,7 +478,7 @@ screen. Open **New private terminal** from the palette (<kbd>Ctrl</kbd>+<kbd>K</
 
 | A private tab | |
 |---|---|
-| Records history | **No** — nothing it runs reaches `history.jsonl` |
+| Records history | **No** — nothing it runs reaches Work Memory |
 | Saves scrollback | **No** — and making a tab private deletes what its panes had already saved |
 | Looks different | A **private** badge on its tab, every time |
 | Survives a restart | Yes, and it comes back **still private** |

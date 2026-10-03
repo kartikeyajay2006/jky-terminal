@@ -101,6 +101,10 @@ export interface HistoryEntry {
   session: string;
   /** The machine it ran on: absent for this one, a host for an SSH session. */
   host?: string | null;
+  /** How long it ran, when the shell marked its start. */
+  durationMs?: number | null;
+  /** The tail of what it printed. Redacted and bounded in Rust before it is kept. */
+  output?: string | null;
 }
 
 /** One search result: the entry, plus why it is here. */

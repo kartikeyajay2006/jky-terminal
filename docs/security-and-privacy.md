@@ -201,7 +201,7 @@ paths containing a NUL byte.
 ## Secrets in history, scrollback and AI requests
 
 Commands and their output are exactly where tokens end up — `export GITHUB_TOKEN=…`, a
-`curl -H "Authorization: Bearer …"`, `cat .env`. So before a command reaches `history.jsonl`, before
+`curl -H "Authorization: Bearer …"`, `cat .env`. So before a command or its output reaches Work Memory, before
 a pane's scrollback is saved for the next launch, and before anything is sent to an AI provider, the
 `jky-redact` crate replaces every secret it recognises with a label:
 
@@ -379,7 +379,7 @@ what it is checked against.
 |---|---|---|
 | API keys, OAuth tokens | OS keychain | Only to the provider they belong to |
 | Settings, keymap, workspaces, hosts | JSON files in the config folder | No |
-| Command history | `history.jsonl` | No |
+| Command history, with each run's output tail and git branch | `memory.sqlite3` (Work Memory) | No |
 | Scrollback | `scrollback/`, 256 KB per pane | No |
 | Dashboard data | `notes.json`, `todos.json`, `events.json`, `reminders.json` | No |
 | Audit log | `audit.jsonl` | No |

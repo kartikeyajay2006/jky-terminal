@@ -7,6 +7,8 @@ authors.workspace = true
 
 [dependencies]
 jky-redact = { path = "../jky-redact" }
+# Its search and entry types: shell-history search stays exactly what it was.
+jky-history = { path = "../jky-history" }
 serde.workspace = true
 thiserror.workspace = true
 # SQLite compiled into the binary, FTS5 included: the same database engine on

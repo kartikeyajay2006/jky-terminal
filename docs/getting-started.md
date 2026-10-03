@@ -277,7 +277,7 @@ configuration directory for the app id `dev.jky.terminal`:
 |---|---|
 | `settings.json` | Non-secret preferences: chosen models, active provider, terminal start folder, open editor folders. |
 | `keymap.json` | Only the shortcuts you changed. Defaults are not written, so improved defaults still reach you. |
-| `history.jsonl` | Commands you ran, where, and how they ended — with recognisable secrets replaced by labels before they are written. Capped at 100,000 entries. |
+| `memory.sqlite3` | Work Memory: commands you ran, where, how they ended, how long they took, the tail of their output and the git branch they ran on — with recognisable secrets replaced by labels before they are written. Capped at 100,000 runs. |
 | `workspaces.json` | Saved workspaces. Plain JSON you can edit. |
 | `hosts.json` | Saved SSH hosts — addresses and options, **never** a password or key. |
 | `notes.json`, `todos.json`, `events.json`, `reminders.json` | The Dashboard's notes, todos, calendar events and daily reminders. |

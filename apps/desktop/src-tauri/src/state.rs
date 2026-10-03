@@ -4,7 +4,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 
 use jky_audit::{AuditLog, KeychainAnchor};
-use jky_history::History;
+use jky_memory::Memory;
 use jky_keys::Keymap;
 use jky_remote::HostStore;
 use jky_workspace::WorkspaceStore;
@@ -62,11 +62,11 @@ pub struct AppState {
     /// a keymap is a table people hand-edit, and burying it inside a file of
     /// unrelated preferences would make that harder than it needs to be.
     pub keys: Arc<Keymap>,
-    /// Every command that has run. Beside the dashboard's store rather than
-    /// in it: what was typed is the user's own and is never pruned by age,
-    /// but it is read in full on every search and so it is capped — which is
-    /// neither rule the collections follow.
-    pub history: Arc<History>,
+    /// Work Memory: every command that has run, with its output tail,
+    /// duration and git state, in SQLite. Shell history, completion and the
+    /// History panel all read it. Retention and the on/off switch are the
+    /// privacy settings', applied in the commands that write.
+    pub memory: Arc<Memory>,
     /// The machines you have saved. Not the keychain: a hostname and an
     /// account name are not secrets, and the things that are never come near
     /// this app — connecting runs the `ssh` this machine already has.
@@ -119,7 +119,7 @@ impl AppState {
             secrets: Arc::new(KeyringStore::new(KEYCHAIN_SERVICE)),
             settings: Arc::new(SettingsStore::new(config_dir.join("settings.json"))),
             keys: Arc::new(Keymap::new(config_dir.join("keymap.json"))),
-            history: Arc::new(History::new(config_dir.join("history.jsonl"))),
+            memory: Arc::new(open_memory(config_dir)),
             hosts: Arc::new(HostStore::new(config_dir.join("hosts.json"))),
             workspaces: Arc::new(WorkspaceStore::new(config_dir.join("workspaces.json"))),
             store: Arc::new(Store::new(config_dir)),
@@ -140,5 +140,67 @@ impl AppState {
             sampler: Arc::new(Mutex::new(Sampler::new())),
             github_flow: Arc::new(Mutex::new(None)),
         }
+    }
+}
+
+/// Open Work Memory, bringing an older `history.jsonl` across the first time.
+///
+/// A database that cannot be opened — one written by a newer JKY, or a
+/// damaged file — is left exactly as it is, and this session keeps its
+/// history in memory instead: losing what is typed today is better than
+/// changing a file this build does not understand, and far better than not
+/// opening at all.
+fn open_memory(config_dir: &Path) -> Memory {
+    let memory = match Memory::open(config_dir.join("memory.sqlite3")) {
+        Ok(memory) => memory,
+        Err(e) => {
+            eprintln!("jky: work memory unavailable, keeping this session's history in memory only: {e}");
+            return Memory::in_memory().expect("an in-memory database always opens");
+        }
+    };
+    if let Err(e) = memory.import_history(&config_dir.join("history.jsonl")) {
+        eprintln!("jky: the old history file could not be imported yet, and was left in place: {e}");
+    }
+    memory
+}
+
+#[cfg(test)]
+mod memory_tests {
+    use super::*;
+
+    #[test]
+    fn the_old_history_comes_across_on_first_start_and_its_file_goes() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let old = jky_history::History::new(dir.path().join("history.jsonl"));
+        old.record(jky_history::Entry {
+            command: "make release".into(),
+            cwd: "/w".into(),
+            code: 0,
+            at: 1,
+            session: "p".into(),
+            host: None,
+        })
+        .unwrap();
+
+        let memory = open_memory(dir.path());
+        assert_eq!(memory.recent_commands(5).unwrap(), ["make release"]);
+        assert!(!dir.path().join("history.jsonl").exists());
+        assert!(dir.path().join("memory.sqlite3").exists());
+    }
+
+    #[test]
+    fn a_database_from_a_newer_jky_is_left_untouched() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("memory.sqlite3");
+        // What a newer build would leave: a schema this one does not know.
+        drop(Memory::open(&path).unwrap());
+        rusqlite::Connection::open(&path).unwrap().pragma_update(None, "user_version", 99).unwrap();
+        let before = std::fs::read(&path).unwrap();
+
+        // The session still gets a working history, kept in memory.
+        let memory = open_memory(dir.path());
+        memory.record(jky_memory::Run { command: "ls".into(), at: 1, ..Default::default() }).unwrap();
+        assert_eq!(memory.recent_commands(1).unwrap(), ["ls"]);
+        assert_eq!(std::fs::read(&path).unwrap(), before, "a newer database was changed");
     }
 }

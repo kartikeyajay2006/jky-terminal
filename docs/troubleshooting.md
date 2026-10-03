@@ -390,7 +390,7 @@ Only do this for a build whose origin you trust. See [Operations & releases](ope
 | All shortcuts | **Settings → Keyboard → Reset every shortcut**, or delete `keymap.json` |
 | Workspaces | Delete or edit `workspaces.json` |
 | Saved hosts | Delete or edit `hosts.json` |
-| Command history | **History → Forget** per command, or delete `history.jsonl` |
+| Command history | **History → Forget** per command, **Settings → Privacy → Clear all history**, or delete `memory.sqlite3` and the `memory.sqlite3-wal` / `-shm` files beside it |
 | Scrollback | Delete the `scrollback/` folder |
 | API keys | **Settings → Providers → Disconnect**, or remove `dev.jky.terminal` entries from your keychain |
 | Everything | Delete the whole config folder — see [where your data lives](getting-started.md#6-where-your-data-lives) |

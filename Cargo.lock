@@ -2375,6 +2375,7 @@ dependencies = [
 name = "jky-memory"
 version = "0.1.0"
 dependencies = [
+ "jky-history",
  "jky-redact",
  "rusqlite",
  "serde",
@@ -2490,6 +2491,7 @@ dependencies = [
  "jky-history",
  "jky-keys",
  "jky-live",
+ "jky-memory",
  "jky-ports",
  "jky-pty",
  "jky-redact",
@@ -2501,6 +2503,7 @@ dependencies = [
  "jky-tools",
  "jky-workspace",
  "reqwest 0.12.28",
+ "rusqlite",
  "serde",
  "serde_json",
  "tauri",

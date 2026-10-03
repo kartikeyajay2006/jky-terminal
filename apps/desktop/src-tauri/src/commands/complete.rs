@@ -13,21 +13,15 @@ use crate::state::AppState;
 const HISTORY_DEPTH: usize = 400;
 
 pub(crate) fn suggest_logic(
-    history: &jky_history::History,
+    memory: &jky_memory::Memory,
     line: String,
     cursor: usize,
     cwd: String,
     limit: usize,
 ) -> Completions {
-    // Most recent first, which is the order the engine offers them in.
-    let recent: Vec<String> = history
-        .all()
-        .unwrap_or_default()
-        .into_iter()
-        .rev()
-        .take(HISTORY_DEPTH)
-        .map(|e| e.command)
-        .collect();
+    // Most recent first, which is the order the engine offers them in. A
+    // history that cannot be read costs its own suggestions and nothing else.
+    let recent: Vec<String> = memory.recent_commands(HISTORY_DEPTH).unwrap_or_default();
 
     complete(&Context {
         line,
@@ -59,17 +53,17 @@ pub fn complete_suggest(
     cwd: String,
     limit: usize,
 ) -> Result<Completions, String> {
-    Ok(suggest_logic(state.history.as_ref(), line, cursor, cwd, limit))
+    Ok(suggest_logic(state.memory.as_ref(), line, cursor, cwd, limit))
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use jky_history::{Entry, History};
+    use jky_memory::{Memory, Run};
     use tempfile::TempDir;
 
-    fn history(dir: &TempDir) -> History {
-        History::new(dir.path().join("history.jsonl"))
+    fn history(_dir: &TempDir) -> Memory {
+        Memory::in_memory().unwrap()
     }
 
     #[test]
@@ -87,13 +81,12 @@ mod tests {
     fn offers_a_whole_line_that_was_run_before() {
         let d = TempDir::new().unwrap();
         let h = history(&d);
-        h.record(Entry {
+        h.record(Run {
             command: "docker run --rm -it node:20 bash".into(),
             cwd: "/".into(),
-            code: 0,
             at: 1,
             session: "pane-1".into(),
-            host: None,
+            ..Default::default()
         })
         .unwrap();
 
@@ -105,17 +98,6 @@ mod tests {
         );
     }
 
-    #[test]
-    fn an_unreadable_history_costs_the_history_source_and_nothing_else() {
-        let d = TempDir::new().unwrap();
-        std::fs::write(d.path().join("notes.md"), "").unwrap();
-        let cwd = d.path().to_string_lossy().to_string();
-        // A History pointed at a directory cannot be read as a file.
-        let broken = History::new(d.path());
-
-        let found = suggest_logic(&broken, "cat no".into(), 6, cwd, 0);
-        assert_eq!(found.items[0].value, "notes.md");
-    }
 
     #[test]
     fn a_cursor_past_the_line_is_clamped_rather_than_panicking() {

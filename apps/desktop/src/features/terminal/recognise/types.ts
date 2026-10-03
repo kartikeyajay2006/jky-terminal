@@ -34,6 +34,8 @@ export interface Completion {
   output: string;
   /** Where it ran. Sent by the shell, because `ls` here is not `ls` there. */
   cwd: string;
+  /** How long it ran, in milliseconds, when the shell marked its start. */
+  took?: number | null;
 }
 
 export type Align = "left" | "right";

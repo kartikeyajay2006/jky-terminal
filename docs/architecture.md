@@ -130,7 +130,8 @@ Every file JKY keeps falls into one of two kinds, and each kind has one rule for
 | Kind | Files | How it changes safely |
 |---|---|---|
 | **Documents** — read whole, written whole | `settings.json`, `keymap.json`, `workspaces.json`, `hosts.json`, `notes.json`, `todos.json`, `events.json`, `reminders.json` | Each carries a top-level `"schema"` number. `jky-persist` walks an older file forward one migration at a time when it is read, and **refuses** a file from a newer build — for reading and therefore for writing — because an older build would drop the fields it does not know on its next save. Unnumbered files from before schemas are schema 0. |
-| **Logs** — appended line by line | `history.jsonl`, `audit.jsonl` | New fields are always optional, so every old line still parses. A log is never rewritten to change its shape. |
+| **Logs** — appended line by line | `audit.jsonl` | New fields are always optional, so every old line still parses. A log is never rewritten to change its shape. |
+| **Database** — SQLite, changed in transactions | `memory.sqlite3` (Work Memory: every run, its output tail, duration, git state, pin and note) | `PRAGMA user_version` is the schema number. Each migration runs in its own transaction, so a crash leaves the last complete version. A database from a newer build is refused **before anything is written to it** — not even its journal mode is changed — and that session keeps its history in memory. The `history.jsonl` of earlier versions is imported once, in one transaction, and only then removed. |
 
 Every whole-file write goes through one function, `jky_persist::atomic_write`: a uniquely named
 temporary file, `sync_all`, a rename over the original, and on Unix a flush of the directory. A crash
