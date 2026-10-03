@@ -15,6 +15,8 @@ import type {
   RemoteApi,
   RemoteHost,
   HistoryApi,
+  MemoryApi,
+  MemoryRun,
   HistoryEntry,
   HistoryHit,
   Keyboard,
@@ -414,7 +416,9 @@ export function createWebPlatform(): Platform {
    * entries, and duplicating that arithmetic here would give two answers to
    * one question. This orders by recency and says so.
    */
-  const commands: HistoryEntry[] = [];
+  // One list behind both history and Work Memory, as one database is in Rust.
+  const commands: Array<HistoryEntry & { id: number; pinned: boolean; note: string }> = [];
+  let nextRun = 1;
 
   const subsequence = (haystack: string, needle: string): boolean => {
     let at = 0;
@@ -425,11 +429,70 @@ export function createWebPlatform(): Platform {
     return true;
   };
 
+  const memory: MemoryApi = {
+    async search(query) {
+      const words = query.text.toLowerCase().split(/\s+/).filter(Boolean);
+      const found: MemoryRun[] = [];
+      for (const run of [...commands].reverse()) {
+        if (query.failedOnly && run.code === 0) continue;
+        if (query.pinnedOnly && !run.pinned) continue;
+        if (query.cwd && run.cwd !== query.cwd) continue;
+        if (query.session && run.session !== query.session) continue;
+        const output = run.output ?? "";
+        const haystack = `${run.command}\n${output}\n${run.note}\n${run.cwd}`.toLowerCase();
+        if (!words.every((w) => haystack.includes(w))) continue;
+
+        // A few words either side of the first match in the output or note,
+        // marked the way Rust marks it.
+        let snippet: string | null = null;
+        for (const text of [output, run.note]) {
+          const at = words.length ? text.toLowerCase().indexOf(words[0]) : -1;
+          if (at < 0) continue;
+          const end = at + words[0].length;
+          snippet = `…${text.slice(Math.max(0, at - 40), at)}\u0002${text.slice(at, end)}\u0003${text.slice(end, end + 40)}…`;
+          break;
+        }
+        found.push({
+          id: run.id,
+          command: run.command,
+          cwd: run.cwd,
+          code: run.code,
+          at: run.at,
+          session: run.session,
+          host: run.host ?? null,
+          duration_ms: run.durationMs ?? null,
+          branch: null,
+          rev: null,
+          output: run.output ?? null,
+          pinned: run.pinned,
+          note: run.note,
+          snippet,
+        });
+      }
+      found.sort((a, b) => Number(b.pinned) - Number(a.pinned));
+      return found.slice(0, query.limit && query.limit > 0 ? query.limit : 200);
+    },
+    async pin(id, pinned) {
+      const run = commands.find((r) => r.id === id);
+      if (!run) throw new Error("there is no run with that id");
+      run.pinned = pinned;
+    },
+    async note(id, note) {
+      const run = commands.find((r) => r.id === id);
+      if (!run) throw new Error("there is no run with that id");
+      run.note = note.trim().slice(0, 2000);
+    },
+    async forget(id) {
+      const at = commands.findIndex((r) => r.id === id);
+      if (at >= 0) commands.splice(at, 1);
+    },
+  };
+
   const history: HistoryApi = {
     async record(entry) {
       const command = entry.command.trim();
       if (!command || !privacy.keepHistory) return;
-      commands.push({ ...entry, command });
+      commands.push({ ...entry, command, id: nextRun++, pinned: false, note: "" });
     },
     async search(query) {
       const needle = query.text.trim().toLowerCase();
@@ -1515,6 +1578,7 @@ const NEWS_SOURCES = [
     settings,
     keys: keyboard,
     history,
+    memory,
     complete,
     remote,
     live,

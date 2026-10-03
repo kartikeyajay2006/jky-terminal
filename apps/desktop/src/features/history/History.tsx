@@ -1,8 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { getPlatform, type HistoryHit } from "../../platform";
-import { useTabs } from "../../app/tabStore";
-import { requestType } from "../terminal/typeEvent";
-import { useNav } from "../../app/navStore";
+import { Runs } from "./Runs";
+import { typeIt } from "./typeIt";
 import "./History.css";
 
 /**
@@ -13,6 +12,9 @@ import "./History.css";
  * rather than being handed everything and sorting it in a window.
  */
 export function History() {
+  // Two questions, two views: "what was that command?" and "which run
+  // printed that, and what else do I know about it?"
+  const [view, setView] = useState<"commands" | "runs">("commands");
   const [text, setText] = useState("");
   const [failedOnly, setFailedOnly] = useState(false);
   const [hits, setHits] = useState<HistoryHit[]>([]);
@@ -50,23 +52,7 @@ export function History() {
     await look(text, failedOnly);
   }
 
-  /**
-   * Put a command on the prompt of the terminal that has focus.
-   *
-   * Typed, not run — the same rule the command panels follow. A history that
-   * executed what you clicked would be a history you had to be careful in,
-   * and the whole point is to be able to browse it.
-   */
-  function useIt(command: string) {
-    const { tabs, activeId } = useTabs.getState();
-    const tab = tabs.find((t) => t.id === activeId) ?? tabs[0];
-    if (!tab) return;
-    useTabs.getState().focusPane(tab.id, tab.focusedPane);
-    // Onto the terminal section as well, or the command lands on a prompt
-    // behind the panel that was asked to put it there.
-    useNav.getState().go("terminal");
-    requestType({ pane: tab.focusedPane, text: command });
-  }
+  const useIt = typeIt;
 
   return (
     <div className="board history">
@@ -93,10 +79,36 @@ export function History() {
         <p className="board__lede">
           Every command you have run, on this machine and on any you connected
           to. Type the letters you remember — <code>dkrps</code> finds{" "}
-          <code>docker ps</code>. Choosing one puts it on the prompt; it does
-          not run it.
+          <code>docker ps</code> — or look inside what each run printed.
+          Choosing one puts it on the prompt; it does not run it.
         </p>
       </header>
+
+      <div className="history__views" role="tablist" aria-label="History views">
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "commands"}
+          className="history__view"
+          onClick={() => setView("commands")}
+        >
+          Commands
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={view === "runs"}
+          className="history__view"
+          onClick={() => setView("runs")}
+        >
+          Runs &amp; output
+        </button>
+      </div>
+
+      {view === "runs" ? (
+        <Runs />
+      ) : (
+        <>
 
       <div className="history__controls">
         <input
@@ -165,6 +177,8 @@ export function History() {
           </li>
         ))}
       </ul>
+        </>
+      )}
     </div>
   );
 }

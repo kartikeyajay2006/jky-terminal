@@ -349,10 +349,17 @@ the command panels follow, and the reason you can browse this without being
 careful. **Forget** removes every run of a command rather than the row you are
 looking at: someone deleting a line with a credential in it means all of them.
 
-This is not scrollback, and it is a different file. Scrollback is what a
-command *printed* — emitted rather than authored, capped and rolling, kept per
-terminal. This is what was *typed*: small, yours, and the thing worth finding
-a month later.
+Behind it is **Work Memory** — SQLite, in `memory.sqlite3` — and its second
+view, **Runs & output**, answers the question history never could: *which run
+printed that?* Every run is kept with its folder, git branch and commit, exit
+status, duration and the last 8 KB of its output, and a trigram full-text
+index finds a word anywhere in any of them, highlighting where. Runs can be
+pinned — first in every list, and spared by retention — and noted, and the
+notes are searched too. Everything is redacted before it is written.
+
+This is not scrollback. Scrollback is what a pane *showed*, kept so a restart
+can restore it; Work Memory is what each command *did*, kept so it can be
+found again.
 
 ---
 

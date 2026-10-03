@@ -139,6 +139,55 @@ export interface HistoryApi {
   clear(): Promise<void>;
 }
 
+/**
+ * One run in Work Memory: the command, and what is known about it.
+ *
+ * Everything here was redacted in Rust before it was stored — the command,
+ * the output and the note — so nothing recognisable as a secret reaches the
+ * window by this road.
+ */
+export interface MemoryRun {
+  id: number;
+  command: string;
+  cwd: string;
+  code: number;
+  at: number;
+  session: string;
+  host: string | null;
+  duration_ms: number | null;
+  branch: string | null;
+  rev: string | null;
+  /** The tail of what it printed, without colour codes. */
+  output: string | null;
+  pinned: boolean;
+  note: string;
+  /**
+   * Where the words were found in the output or note, the match between
+   * `\u0002` and `\u0003`. Null when only the command matched.
+   */
+  snippet: string | null;
+}
+
+export interface MemoryQuery {
+  /** Words to find in the command, output, note or folder — all of them. */
+  text: string;
+  failedOnly?: boolean;
+  pinnedOnly?: boolean;
+  cwd?: string | null;
+  session?: string | null;
+  limit?: number;
+}
+
+/** Work Memory: every run, its output and what you noted, searchable. */
+export interface MemoryApi {
+  search(query: MemoryQuery): Promise<MemoryRun[]>;
+  /** A pinned run comes first, and retention spares it. */
+  pin(id: number, pinned: boolean): Promise<void>;
+  note(id: number, note: string): Promise<void>;
+  /** This run only — not every run of its command. */
+  forget(id: number): Promise<void>;
+}
+
 /** Where a suggestion came from, so the list can say. */
 export type SuggestionKind =
   | "directory"
@@ -1347,6 +1396,8 @@ export interface Platform {
   readonly keys: KeysApi;
   /** Every command that has run, and how to find it again. */
   readonly history: HistoryApi;
+  /** Work Memory: every run, what it printed, and what you noted on it. */
+  readonly memory: MemoryApi;
   /** What could come next on a command line. */
   readonly complete: CompleteApi;
   /** Terminals on other machines. */

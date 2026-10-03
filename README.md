@@ -350,7 +350,7 @@ One cohesive desktop window holds everything you need for daily software enginee
 | **Editor** | `✎` | CodeMirror 6 multi-root editor. Supports code syntax, image previewing, and native canvas PDF rendering within strict CSP boundaries. |
 | **Workspaces** | `▦` | Named setups — editor folders, where terminals start and how many, and an SSH host — switched in one step. Plus Git worktrees, created and opened as workspaces. |
 | **Remote** | `⇄` | First-class SSH manager leveraging your native `~/.ssh/config` and system key agent. Never stores raw passwords. |
-| **History** | `↺` | Subsequence fuzzy matching (`dkrps` finds `docker ps`) ranked by recency and logarithmic frequency. One-click forget. |
+| **History** | `↺` | Subsequence fuzzy matching (`dkrps` finds `docker ps`) ranked by recency and logarithmic frequency — and **Work Memory**: search inside what every run printed, with its branch, commit, duration, pins and notes. |
 | **Assistant** | `✦` | Streaming assistant on Anthropic, OpenAI, or a local Ollama model. Read-only tools run freely; every command it proposes waits for your approval, and destructive ones need typed confirmation. |
 | **Dashboard** | `⌂` | Notes, todos, a calendar and daily reminders, stored locally — and scriptable from any shell with `jky note`, `jky todo` and `jky reminder`. |
 | **Developer** | `⌥` | 12 tools: JSON, YAML, Diff, Hash, JWT (decodes, never verifies), Regex (in a killable worker), HTTP, System Monitor, Processes, Ports, Environment and DNS. HTTP and DNS go through Rust; the rest run locally. |

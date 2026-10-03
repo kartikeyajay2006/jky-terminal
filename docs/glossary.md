@@ -22,6 +22,7 @@ The words these docs use, defined once. Terms are grouped, then alphabetical.
 | **Risk label** | *destructive*, *publish*, *network*, *writes files* or *runs locally* — the clearest reason a proposed command needs attention. |
 | **Session strip** | Marks down the left edge of a terminal, one per command, sized by duration on a log scale. |
 | **Supervisor** | The small process — `jky-terminal --supervise` — that holds a pane's shell so it outlives the window. |
+| **Work Memory** | Every run of every command, kept in `memory.sqlite3` with its folder, git branch and commit, exit status, duration, output tail, pin and note — redacted, and searchable by any word in any of them. The **Runs & output** view of History. |
 | **Workspace** | A named setup: editor folders, a terminal folder, a number of terminals, and optionally a host. |
 | **Worktree** | A second Git checkout of a repository on another branch; manageable from Workspaces. |
 

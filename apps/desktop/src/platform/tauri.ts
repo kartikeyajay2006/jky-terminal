@@ -67,6 +67,8 @@ import type {
   SshConfigHost,
   HostKeyStatus,
   HistoryApi,
+  MemoryApi,
+  MemoryRun,
   HistoryHit,
   Keyboard,
   KeysApi,
@@ -166,6 +168,30 @@ export function createTauriPlatform(): Platform {
     },
     async resetAll() {
       return invoke<Keyboard>("keys_reset_all");
+    },
+  };
+
+  const memory: MemoryApi = {
+    async search(query) {
+      return invoke<MemoryRun[]>("memory_search", {
+        text: query.text,
+        failedOnly: query.failedOnly ?? false,
+        pinnedOnly: query.pinnedOnly ?? false,
+        cwd: query.cwd ?? null,
+        session: query.session ?? null,
+        limit: query.limit ?? 0,
+        // The window's clock, for the retention window, as history uses.
+        now: Date.now(),
+      });
+    },
+    async pin(id, pinned) {
+      await invoke<void>("memory_pin", { id, pinned });
+    },
+    async note(id, note) {
+      await invoke<void>("memory_note", { id, note });
+    },
+    async forget(id) {
+      await invoke<void>("memory_forget", { id });
     },
   };
 
@@ -506,6 +532,7 @@ export function createTauriPlatform(): Platform {
     settings,
     keys,
     history,
+    memory,
     complete,
     remote,
     live,

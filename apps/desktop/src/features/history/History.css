@@ -141,3 +141,136 @@
 .history__forget:focus-visible {
   color: var(--danger);
 }
+
+/* The two views: commands, and runs with their output. */
+.history__views {
+  display: flex;
+  gap: var(--s1);
+  border-bottom: 1px solid var(--line);
+}
+
+.history__view {
+  padding: var(--s2) var(--s3);
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.history__view[aria-selected="true"] {
+  border-bottom-color: var(--accent);
+  color: var(--text);
+}
+
+.runs {
+  display: grid;
+  gap: var(--s3);
+}
+
+.runs__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.runs__row {
+  display: grid;
+  gap: var(--s1);
+  padding: var(--s2) var(--s3);
+  background: var(--surface);
+}
+
+.runs__row + .runs__row {
+  border-top: 1px solid var(--line);
+}
+
+.runs__row[data-failed] .history__command {
+  color: var(--danger);
+}
+
+.runs__row[data-pinned] {
+  border-left: 2px solid var(--accent);
+}
+
+.runs__head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--s2);
+}
+
+.runs__pin,
+.runs__toggle {
+  border: 0;
+  background: none;
+  color: var(--text-dim);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 var(--s1);
+}
+
+.runs__pin[aria-pressed="true"] {
+  color: var(--accent);
+}
+
+.runs__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin: 0;
+  padding-left: calc(var(--s4) + var(--s2));
+}
+
+.runs__git {
+  color: var(--violet);
+  font-family: var(--font-mono);
+}
+
+.runs__took {
+  color: var(--text-muted);
+}
+
+.runs__snippet {
+  margin: 0;
+  padding-left: calc(var(--s4) + var(--s2));
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.runs__snippet mark {
+  background: var(--accent-dim);
+  color: var(--text);
+  border-radius: 2px;
+}
+
+.runs__detail {
+  display: grid;
+  gap: var(--s2);
+  padding-left: calc(var(--s4) + var(--s2));
+}
+
+.runs__output {
+  max-height: 22rem;
+  margin: 0;
+  padding: var(--s3);
+  overflow: auto;
+  border-radius: var(--radius);
+  background: var(--ground);
+  color: var(--text);
+  font-size: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.runs__note {
+  min-height: 3.5rem;
+  resize: vertical;
+}

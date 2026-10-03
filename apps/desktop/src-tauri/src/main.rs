@@ -8,7 +8,7 @@ mod state;
 mod supervisor;
 
 use commands::{
-    advice, ai, apps, browser, capture, complete, files, games, github, gmail, history, keys, open,
+    advice, ai, apps, browser, capture, complete, files, games, github, gmail, history, keys, memory, open,
     live, pty, remote, scrollback, settings, store, system, tools, vault, workspace, worktree,
 };
 use state::AppState;
@@ -88,6 +88,10 @@ fn main() {
             history::history_search,
             history::history_forget,
             history::history_clear,
+            memory::memory_search,
+            memory::memory_pin,
+            memory::memory_note,
+            memory::memory_forget,
             live::live_sources,
             live::live_run,
             keys::keys_list,

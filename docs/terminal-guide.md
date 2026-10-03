@@ -383,7 +383,24 @@ Open **History** (`↺`), or run `jky history <text>` from any terminal.
 - **Forget** removes *every* run of that command — someone deleting a line with a credential in it
   means all of them.
 
-History is not scrollback. Scrollback is what commands *printed*; history is what you *typed*.
+### Runs & output
+
+The second view of **History** searches *inside* what was run, one row per run:
+
+| You type | It finds |
+|---|---|
+| `linker` | the build that printed `error: linker 'cc' not found` — the word highlighted in a line of its output |
+| `rollout api` | runs whose command, output, note or folder contain **both** words |
+| `uild` | `cargo build` — matching is by substring, so half a word is enough |
+
+Each run shows its folder, the **branch and commit** it ran on, its exit status, **how long it took**,
+and when. **▸** opens what it printed and a **note** field — "needs the mold linker", "the one that
+finally worked" — and notes are searched too. **☆ Pin** keeps a run at the top and through any
+retention window. **×** forgets *that run* only; the Commands view's **Forget** removes every run of a
+command. Choosing the command types it at the prompt, as everywhere.
+
+Saved scrollback is what a pane *showed*, for restoring it after a restart; Work Memory is what each
+command *did*, for finding it again.
 
 ---
 

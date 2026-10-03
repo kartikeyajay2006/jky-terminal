@@ -373,6 +373,16 @@ fn the_exposed_command_surface_is_exactly_what_the_spec_allows() {
         // you changed directory. None of them writes anything.
         "live_run".to_string(),
         "live_sources".to_string(),
+        // Work Memory as the window sees it: search every run — its command,
+        // output, note and folder — and pin, annotate or forget one. Nothing
+        // here takes a path or sends anything anywhere, and nothing returned
+        // can hold a secret that was recognisable: the command, the output
+        // and the note were each redacted before they were ever stored. Every
+        // write is to a row the window found by searching, by its number.
+        "memory_forget".to_string(),
+        "memory_note".to_string(),
+        "memory_pin".to_string(),
+        "memory_search".to_string(),
         // Hands one validated http(s) URL to the OS opener. This is the only
         // place a string from the window becomes a process argument, so the
         // rule it is checked against is itself unit-tested: scheme allow-list,
