@@ -41,12 +41,26 @@ flowchart LR
 |---|---|
 | `pnpm -w typecheck` | TypeScript across the workspace |
 | `pnpm -w lint` | ESLint — including *no direct `invoke()`* and *no literal colours* |
-| `pnpm -w test` | Vitest: 2,267 interface tests |
-| `cargo test --workspace` | 1,097 Rust tests across every crate and the app, including `security.rs` |
+| `pnpm -w test` | Vitest: 2,311 interface tests |
+| `cargo test --workspace` | 1,276 Rust tests across every crate and the app, including `security.rs` and the end-to-end suites below |
 | `cargo clippy … -D warnings` | Every warning is an error |
 | `pnpm run verify` | Cleans `dist`, then typecheck → lint → test → build → `scan:bundle` (credential scan and entry-bundle budget) |
 
 ---
+
+### End-to-end, against real processes
+
+Unit tests cannot prove a terminal *feels* right, so these drive the real thing — a real shell in a real
+pty, a real supervisor in a second process — on every CI platform that has the tools:
+
+| Suite | Proves |
+|---|---|
+| `crates/jky-pty/tests/interactive.rs` | An interactive shell, driven like a person: typed commands run and answer (`JKY_$((40+2))` must come back `JKY_42`, so echo can never pass for execution), a resize reaches the program in the foreground, Ctrl+C interrupts and the shell carries on, a 200 KB paste arrives whole, accents, CJK, emoji and combining marks survive, and the exit status reaches the window |
+| `crates/jky-pty/tests/stress.rs`, `throughput.rs` | 25,000 lines without a lost record or boundary; sustained throughput |
+| `crates/jky-pty/tests/marks.rs` | bash, zsh, fish and PowerShell emit the shell-integration marks through a real pty, with no errors under the hook |
+| `apps/desktop/src-tauri/tests/detached.rs` | The real binary as a supervisor: a shell outlives the process that asked for it, rejoins with what it missed, ends on hangup with its record, takes a resize from the window, and is listed by `--sessions` with its own pid |
+
+Still to come: approval flows driven through the real window, and a pass on every supported shell.
 
 ## What CI proves
 

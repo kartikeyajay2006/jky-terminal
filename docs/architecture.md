@@ -271,10 +271,10 @@ flowchart TB
 ```mermaid
 flowchart LR
     subgraph JS["pnpm + Turbo"]
-        T1[typecheck]:::violet --> T2[lint]:::violet --> T3[vitest<br/>2,267 tests]:::violet --> T4[vite build]:::violet --> T5[scan:bundle]:::red
+        T1[typecheck]:::violet --> T2[lint]:::violet --> T3[vitest<br/>2,311 tests]:::violet --> T4[vite build]:::violet --> T5[scan:bundle]:::red
     end
     subgraph RS["cargo"]
-        R1[cargo test --workspace<br/>1,097 tests]:::cyan --> R2[clippy -D warnings]:::cyan --> R3[cargo build -p jky-terminal]:::cyan
+        R1[cargo test --workspace<br/>1,276 tests]:::cyan --> R2[clippy -D warnings]:::cyan --> R3[cargo build -p jky-terminal]:::cyan
     end
     JS --> OK([✓ ready to push]):::mint
     RS --> OK

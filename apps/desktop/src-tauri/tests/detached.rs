@@ -232,6 +232,32 @@ fn the_app_lists_the_shells_it_holds_for_diagnosis() {
 }
 
 #[test]
+#[cfg(not(windows))]
+fn a_resize_from_the_window_reaches_a_program_in_a_held_shell() {
+    // The window and the shell are two processes apart here: the resize goes
+    // as a frame to the supervisor, which has to apply it to the pty for the
+    // program in the foreground to see it.
+    let config = scratch("resized");
+    let recorded = sessions_dir(&config);
+    let Some(child) = start(&config, "one") else { return };
+    assert!(wait_for(|| sessions(&recorded) == vec!["one".to_string()]));
+
+    let window = attach(&recorded, "one").expect("attach");
+    let (reading, mut writing) = window.split();
+    Frame::Resize { cols: 111, rows: 33 }.write_to(&mut writing).expect("resize");
+    Frame::Data(b"stty size | sed 's/^/SIZE_/'\r".to_vec())
+        .write_to(&mut writing)
+        .expect("type");
+
+    let seen = read_until(reading, "SIZE_33 111", Duration::from_secs(25));
+    assert!(seen.contains("SIZE_33 111"), "the program never saw the new size:\n{seen}");
+
+    Frame::Hangup.write_to(&mut writing).ok();
+    drop(child);
+    let _ = std::fs::remove_dir_all(&config);
+}
+
+#[test]
 fn an_ordinary_launch_is_not_a_supervisor() {
     // The flag is the only thing that turns this binary into one. Without it
     // nothing is recorded, because a window was asked for instead.
