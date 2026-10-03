@@ -254,3 +254,25 @@ fn verifying_a_download_is_documented() {
         assert!(doc.contains(topic), "RELEASING.md does not explain {topic}");
     }
 }
+
+/// The version a lockfile pins for `name`, read from the line after it.
+fn locked(lock: &str, marker: &str) -> String {
+    let at = lock.find(marker).unwrap_or_else(|| panic!("{marker} is not locked"));
+    lock[at + marker.len()..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect()
+}
+
+#[test]
+fn the_rust_and_npm_halves_of_tauri_are_the_same_minor_version() {
+    // `tauri build` refuses to bundle when the `tauri` crate and the
+    // `@tauri-apps/api` package differ in major or minor version. A dev build
+    // never checks, so without this the mismatch is found by the release.
+    let cargo = fs::read_to_string(repo_root().join("Cargo.lock")).unwrap();
+    let pnpm = fs::read_to_string(repo_root().join("pnpm-lock.yaml")).unwrap();
+    let rust = locked(&cargo, "name = \"tauri\"\nversion = \"");
+    let npm = locked(&pnpm, "\n  '@tauri-apps/api@");
+    let minor = |v: &str| v.split('.').take(2).collect::<Vec<_>>().join(".");
+    assert_eq!(minor(&rust), minor(&npm), "tauri {rust} but @tauri-apps/api {npm}");
+}
