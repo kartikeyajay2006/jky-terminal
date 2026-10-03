@@ -392,8 +392,10 @@ Folder locations are in [Getting started](getting-started.md#6-where-your-data-l
 > - **Unsigned builds.** Today's installers are not code-signed or notarised; verify what you run.
 > - **Webview engine bugs.** The UI runs in your OS webview and inherits its security posture.
 
+What a release already carries: `SHA256SUMS`, an SPDX SBOM and provenance attestations, so a download
+can be checked against the workflow that built it — see [checking a download](RELEASING.md#checking-a-download).
 Planned hardening, from the [roadmap](product-roadmap.md): signed and notarised releases, a signed
-updater, SBOMs and provenance, fuzzing of the boundary parsers, and a published disclosure policy.
+updater, and fuzzing of the boundary parsers.
 
 ---
 

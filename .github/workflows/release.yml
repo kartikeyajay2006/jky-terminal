@@ -20,6 +20,12 @@ on:
 permissions:
   contents: write
 
+# Every action below is pinned to a commit, with its version beside it. A tag
+# such as `@v0` can be moved by whoever controls that repository, and the
+# next release would run whatever it points at then — with this repository's
+# token and the power to publish its installers. Bumping one is a deliberate
+# edit, and `tests/release.rs` refuses anything that is not pinned.
+
 jobs:
   release:
     name: ${{ matrix.label }}
@@ -44,14 +50,14 @@ jobs:
             args: ""
 
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
 
-      - uses: actions/setup-node@v5
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
         with: { node-version: 22, package-manager-cache: false }
       - run: corepack enable
         shell: bash
 
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
         with:
           # macOS runners are Apple Silicon, so the Intel build is a cross
           # compile and needs its target installed explicitly.
@@ -67,14 +73,14 @@ jobs:
             libjavascriptcoregtk-4.1-dev build-essential curl wget file \
             libssl-dev libayatana-appindicator3-dev librsvg2-dev
 
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           key: release-${{ matrix.os }}-${{ matrix.args }}
 
       - run: pnpm install --frozen-lockfile
         shell: bash
 
-      - uses: tauri-apps/tauri-action@v0
+      - uses: tauri-apps/tauri-action@84b9d35b5fc46c1e45415bdb6144030364f7ebc5 # v0.6.2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Signing is off until there are certificates to sign with. See
@@ -98,8 +104,77 @@ jobs:
             Builds are currently unsigned, so macOS and Windows will warn on
             first launch. See `docs/RELEASING.md` for what turning signing on
             requires.
+
+            Every file is listed in `SHA256SUMS` and attested to the workflow
+            that built it, and `jky-terminal.spdx.json` lists every dependency.
+            To check a download: `sha256sum -c SHA256SUMS --ignore-missing`,
+            then `gh attestation verify <file> --repo ${{ github.repository }}`.
           # Drafted, not published. The last chance to notice that something
           # built cleanly and is still wrong.
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+  # Checksums, a bill of materials and provenance for everything the builds
+  # above attached. A job of its own so it sees every platform's files at
+  # once — and, through `needs`, runs only when every platform built:
+  # checksums over half a release would vouch for half a release.
+  integrity:
+    name: Checksums, SBOM and provenance
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # attach the results to the draft release
+      id-token: write # sign attestations with this workflow's identity
+      attestations: write # store them where `gh attestation verify` looks
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.sha) }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Download what every platform attached
+        run: |
+          # Outside the checkout, so the SBOM scan below reads the lockfiles
+          # and not the installers.
+          FILES="$RUNNER_TEMP/release"
+          echo "FILES=$FILES" >> "$GITHUB_ENV"
+          mkdir -p "$FILES"
+          gh release download "$TAG" --dir "$FILES" --repo "$GITHUB_REPOSITORY" --clobber
+          ls -la "$FILES"
+
+      - name: Compute SHA256SUMS
+        working-directory: ${{ runner.temp }}/release
+        run: |
+          # Every installer, in a fixed order, so the list does not depend on
+          # which platform finished first. What a re-run downloaded from an
+          # earlier pass of this job is not an installer.
+          rm -f SHA256SUMS jky-terminal.spdx.json
+          find . -maxdepth 1 -type f -printf '%f\n' | LC_ALL=C sort | xargs -d '\n' sha256sum > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Generate the software bill of materials
+        uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
+        with:
+          path: .
+          format: spdx-json
+          output-file: jky-terminal.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Attest where each file was built
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-checksums: ${{ runner.temp }}/release/SHA256SUMS
+
+      - name: Attest the SBOM against the same files
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-checksums: ${{ runner.temp }}/release/SHA256SUMS
+          sbom-path: jky-terminal.spdx.json
+
+      - name: Attach SHA256SUMS and the SBOM to the draft
+        run: >
+          gh release upload "$TAG" "$FILES/SHA256SUMS" jky-terminal.spdx.json
+          --clobber --repo "$GITHUB_REPOSITORY"

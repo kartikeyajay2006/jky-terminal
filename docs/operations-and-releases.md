@@ -136,7 +136,7 @@ Full step-by-step details, including every secret name, are in [RELEASING.md](RE
 | **Windows code signing** | 🔴 Not configured | A code-signing certificate from a CA; two secrets. |
 | **Signed auto-updater** | ⚪ Deliberately off | A keypair that someone actually holds. Shipping a build that trusts a key nobody holds would be worse than no updates. |
 | Linux ARM64 packages | ⚪ Not built | Linux builds are x86_64 today. |
-| Checksums, SBOM, provenance | ⚪ Planned | |
+| Checksums, SBOM, provenance | 🟢 Working | Every release carries `SHA256SUMS`, an SPDX SBOM and build-provenance attestations — see [checking a download](RELEASING.md#checking-a-download). |
 | A published public release | ⚪ Not yet | |
 
 **What unsigned means for users today:**

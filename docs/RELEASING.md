@@ -24,9 +24,43 @@ publish.
 | Linux | `.deb`, `.rpm`, `.AppImage` |
 | macOS | `.dmg` and `.app.tar.gz`, built twice — Apple Silicon and Intel |
 | Windows | `.msi` and an NSIS `.exe`, installing per-user |
+| Every release | `SHA256SUMS`, `jky-terminal.spdx.json` (the SBOM), and provenance attestations |
 
 The Windows installer is per-user on purpose, so installing needs no
 administrator. The app only ever writes to the user's own config directory.
+
+## Checking a download
+
+Once every platform has built, a final job — `integrity` — downloads everything
+attached to the draft and adds three things:
+
+- **`SHA256SUMS`** — the SHA-256 of every installer, in a fixed order.
+- **An SBOM** — `jky-terminal.spdx.json`, an SPDX list of every Rust crate and
+  npm package the release was built from, read from `Cargo.lock` and
+  `pnpm-lock.yaml`.
+- **Provenance attestations** — signed statements, stored by GitHub, that each
+  file in `SHA256SUMS` was built by this repository's release workflow at a
+  given commit, and that the SBOM describes those same files.
+
+To check what you downloaded:
+
+```sh
+# 1. The file is the one the release lists.
+sha256sum -c SHA256SUMS --ignore-missing        # macOS: shasum -a 256 -c …
+
+# 2. It was built by this repository's release workflow, not somewhere else.
+gh attestation verify "JKY Terminal_0.1.0_amd64.deb" --repo kartikeyajay2006/jky-terminal
+```
+
+The second check is the one that matters most. A checksum proves the file
+matches the list; the attestation proves who built both. Neither replaces code
+signing — they let you verify a download, and the operating system still
+warns until the builds are signed.
+
+Every action the release workflow runs is **pinned to a commit**, with its
+version in a comment beside it. A tag such as `@v0` can be moved by whoever
+controls that repository; a pinned commit cannot. `tests/release.rs` fails if
+an unpinned action is added.
 
 ## Signing — not on yet, and what it would take
 

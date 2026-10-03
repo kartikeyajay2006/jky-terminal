@@ -491,7 +491,7 @@ We believe documentation should make the product easier to trust, not merely eas
 | Gmail and account integrations | Deliberately limited | Gmail remains read-only; every future provider needs least-privilege scopes and a documented data boundary. |
 | Database cockpit | Planned | PostgreSQL, SQLite, Redis, and other data explorers need a purpose-built, safe design before being advertised as part of the terminal. |
 | Plugin SDK | Planned | A public extension system needs sandboxing, visible permissions, compatibility guarantees, and supply-chain governance. |
-| Signed distribution and updates | In progress | Packages are currently unsigned. Complete Windows signing, macOS notarisation, signed update metadata, rollback policy, and package provenance. |
+| Signed distribution and updates | In progress | Every release already carries checksums, an SBOM and build-provenance attestations. Packages are still unsigned: Windows signing, macOS notarisation, signed update metadata and a rollback policy remain. |
 
 Read the full [product roadmap and scope](docs/product-roadmap.md) for the priorities, explicit non-promises, and the concrete definition of a world-class JKY Terminal.
 

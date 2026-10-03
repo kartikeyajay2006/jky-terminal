@@ -158,3 +158,63 @@ fn no_signing_key_is_committed() {
         "a signing key is committed"
     );
 }
+
+#[test]
+fn every_release_carries_checksums_for_every_file() {
+    // A download that cannot be checked against something the release
+    // itself published is a download taken on trust.
+    let yaml = release_workflow();
+    assert!(yaml.contains("SHA256SUMS"), "no checksum file is published");
+    assert!(yaml.contains("sha256sum"), "checksums are never computed");
+}
+
+#[test]
+fn every_release_carries_a_software_bill_of_materials() {
+    let yaml = release_workflow();
+    assert!(yaml.contains("anchore/sbom-action"), "no SBOM is generated");
+    assert!(yaml.contains("spdx-json"), "the SBOM is not SPDX");
+}
+
+#[test]
+fn release_files_are_attested_to_the_workflow_that_built_them() {
+    // Provenance: a signed statement, checkable with `gh attestation verify`,
+    // that this file came from this repository's release workflow at this
+    // commit — not from a laptop, and not from a fork.
+    let yaml = release_workflow();
+    assert!(yaml.contains("actions/attest-build-provenance"), "no build provenance");
+    assert!(yaml.contains("actions/attest-sbom"), "the SBOM is not attested");
+    assert!(yaml.contains("id-token: write"), "attesting needs an OIDC token");
+    assert!(yaml.contains("attestations: write"), "attesting needs to write attestations");
+}
+
+#[test]
+fn integrity_waits_for_every_platform() {
+    // Checksums over half a release would vouch for half a release.
+    assert!(release_workflow().contains("needs: release"));
+}
+
+#[test]
+fn every_action_the_release_runs_is_pinned_to_a_commit() {
+    // A tag such as `@v0` can be moved by whoever controls that repository,
+    // and the next release would run whatever it now points at — with this
+    // repository's token and the power to publish its installers.
+    for line in release_workflow().lines() {
+        let Some(uses) = line.trim().trim_start_matches("- ").strip_prefix("uses:") else {
+            continue;
+        };
+        let reference = uses.split_whitespace().next().unwrap_or("");
+        let (_, at) = reference.split_once('@').unwrap_or((reference, ""));
+        assert!(
+            at.len() == 40 && at.chars().all(|c| c.is_ascii_hexdigit()),
+            "not pinned to a commit: {reference}"
+        );
+    }
+}
+
+#[test]
+fn verifying_a_download_is_documented() {
+    let doc = fs::read_to_string(repo_root().join("docs/RELEASING.md")).unwrap();
+    for topic in ["SHA256SUMS", "sha256sum -c", "gh attestation verify", "SBOM"] {
+        assert!(doc.contains(topic), "RELEASING.md does not explain {topic}");
+    }
+}

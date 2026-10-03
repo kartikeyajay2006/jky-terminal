@@ -35,8 +35,6 @@ timeline
         Release trust : macOS signing and notarisation
                       : Windows code signing
                       : Signed updater with rollback
-                      : SBOM, checksums, provenance
-                      : Security disclosure policy
     section Later
         Safe extension : Sandboxed plugin SDK
                        : Visible, revocable permissions
@@ -79,9 +77,9 @@ Public packages need more than a successful build.
 | macOS signing and notarisation | Installs without Gatekeeper workarounds | Planned — workflow already wired for the secrets |
 | Windows code signing | Fewer SmartScreen warnings, a trust signal | Planned — workflow already wired |
 | Signed updater | Safe, verifiable upgrades with a rollback policy | Planned — deliberately off until a real keypair exists |
-| SBOM, checksums, provenance | Lets organisations assess supply-chain risk | Planned |
+| SBOM, checksums, provenance | Lets organisations assess supply-chain risk | **Done** — every release carries them; see [checking a download](RELEASING.md#checking-a-download) |
 | Public support matrix | Clear expectations per OS, shell and architecture | Planned |
-| Security reporting policy | A safe private path for researchers | Planned |
+| Security reporting policy | A safe private path for researchers | **Done** — [SECURITY.md](../SECURITY.md) |
 
 ## Later — intentional extension
 
