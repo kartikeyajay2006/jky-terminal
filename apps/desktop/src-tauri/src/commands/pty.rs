@@ -26,6 +26,8 @@ pub struct Spawned {
     reattached: bool,
     /// The shell is held by a supervisor and outlives the window.
     survives: bool,
+    /// Why it is not held, when it was meant to be. Printed in the pane.
+    notice: Option<String>,
 }
 
 #[derive(Clone, Serialize)]
@@ -115,6 +117,7 @@ pub async fn pty_spawn(
         jky_pty::install_shell_integration(&state.config_dir, h).is_ok()
     });
 
+    let mut notice = None;
     // Held by a supervisor when the pane has a name the socket layer accepts.
     // Asynchronous, and off the runtime's own threads, because joining waits on
     // a socket — and a synchronous command would wait on the main thread.
@@ -134,13 +137,17 @@ pub async fn pty_spawn(
         .await
         .map_err(|_| "starting the terminal was interrupted".to_string())?;
 
-        if let Ok(opened) = opened {
-            let reattached = opened.reattached;
-            let id = state.held.insert(&pane, opened);
-            return Ok(Spawned { id, reattached, survives: true });
+        match opened {
+            Ok(opened) => {
+                let reattached = opened.reattached;
+                let id = state.held.insert(&pane, opened);
+                return Ok(Spawned { id, reattached, survives: true, notice: None });
+            }
+            // Falls through: a shell of the window's own, which will not
+            // survive the window but will open — and says so, in the pane and
+            // by asking before quitting.
+            Err(e) => notice = Some(fallback_notice(&e)),
         }
-        // Falls through: a shell of the window's own, which will not survive
-        // the window but will open — and says so, so quitting still asks.
     }
 
     let session = PtySession::spawn(SpawnConfig {
@@ -158,7 +165,18 @@ pub async fn pty_spawn(
     // id — so anything read before then would be emitted to nobody and the
     // first prompt would vanish. The pty's own buffer holds that output until
     // pty_attach starts the pump.
-    Ok(Spawned { id: state.ptys.insert(session), reattached: false, survives: false })
+    Ok(Spawned { id: state.ptys.insert(session), reattached: false, survives: false, notice })
+}
+
+/// What a pane says when its shell could not be held in the background.
+fn fallback_notice(e: &std::io::Error) -> String {
+    let why = if e.kind() == std::io::ErrorKind::Unsupported {
+        // The reason from jky-detach says which version, and what to do.
+        e.to_string()
+    } else {
+        format!("its background supervisor did not start ({e})")
+    };
+    format!("jky: this shell will end when JKY closes — {why}")
 }
 
 /// Begin streaming a session's output.
@@ -298,4 +316,25 @@ fn dirs_home() -> Option<std::path::PathBuf> {
         .or_else(|| std::env::var_os("HOME"))
         .or_else(|| std::env::var_os("USERPROFILE"))
         .map(std::path::PathBuf::from)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::{Error, ErrorKind};
+
+    #[test]
+    fn a_shell_from_a_newer_jky_is_explained_in_its_own_words() {
+        let e = Error::new(ErrorKind::Unsupported, "started by JKY Terminal 9.9.9; update JKY to rejoin it");
+        let notice = fallback_notice(&e);
+        assert!(notice.contains("will end when JKY closes"), "{notice}");
+        assert!(notice.contains("JKY Terminal 9.9.9"), "{notice}");
+    }
+
+    #[test]
+    fn any_other_failure_still_says_the_shell_will_not_survive() {
+        let notice = fallback_notice(&Error::new(ErrorKind::TimedOut, "session pane-1 did not answer"));
+        assert!(notice.contains("will end when JKY closes"), "{notice}");
+        assert!(notice.contains("did not answer"), "{notice}");
+    }
 }

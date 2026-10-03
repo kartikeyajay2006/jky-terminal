@@ -22,6 +22,7 @@ mod frame;
 mod held;
 mod launch;
 mod name;
+mod record;
 mod replay;
 mod socket;
 mod supervise;
@@ -35,6 +36,7 @@ pub use launch::launch;
 pub use name::{
     MAX_NAME, NameError, address, check, is_file_backed, marker, name_of, socket_dir,
 };
+pub use record::{PROTOCOL, Record, record, records, report};
 pub use replay::{REPLAY_BYTES, Replay};
 pub use socket::{attach, forget, listen, sessions};
 pub use supervise::{Shell, supervise};

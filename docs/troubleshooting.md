@@ -198,6 +198,18 @@ instead: `PATH="$HOME/bin:$PATH"`.
 - The machine rebooted or you logged out; supervisors do not survive that.
 - The pane was **closed** rather than the app quit. Closing a pane ends its shell by design.
 - It was a **remote** pane. Those are children of the window and never reopen automatically.
+- The pane said *"this shell will end when JKY closes"*. Its held shell was started by a **newer** JKY
+  than the one running now, so this one would not risk misreading it. Update JKY and reopen to rejoin
+  it; `jky sessions` shows it, with its process id, in the meantime.
+
+</details>
+
+<details>
+<summary><b>A rejoined pane starts with "… of earlier output were not kept"</b></summary>
+
+**Cause:** while detached, the shell printed more than the 256 KB a supervisor keeps. That line says
+how much was dropped; everything below it is the most recent output, in order.
+**Fix:** none needed. For a log you will want in full, write it to a file: `cargo build 2>&1 | tee build.log`.
 
 </details>
 
@@ -214,8 +226,8 @@ not trigger it.
 <summary><b>I suspect leftover shells are running</b></summary>
 
 **Cause:** rare — a crash can stop a pane's close from arriving.
-**Fix:** start JKY. On start it ends any held shell that no pane claims. To inspect manually, look for
-processes named `jky-terminal --supervise`.
+**Fix:** run `jky sessions` to see every held shell, its process id and its age. Starting JKY ends any
+held shell that no pane claims.
 
 </details>
 

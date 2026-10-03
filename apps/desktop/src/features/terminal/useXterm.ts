@@ -783,6 +783,9 @@ export function useXterm(
       // went to the backend, which stores it for `jky banner` to reprint —
       // and the mark inside it pins the emblem, here and there alike.
       if (!host) xterm.write(banner);
+      // Said in the pane it concerns: a shell that was meant to outlive the
+      // window and will not, and why.
+      if ("notice" in spawned && spawned.notice) xterm.write(`\x1b[2m${spawned.notice}\x1b[0m\r\n`);
       ptyId = id;
       ptyRef.current = id;
 

@@ -29,6 +29,7 @@ use interprocess::local_socket::{GenericFilePath, GenericNamespaced, Listener, L
 use interprocess::local_socket::{Name, ToFsName, ToNsName};
 
 use crate::name::{address, is_file_backed, marker, socket_dir};
+use crate::record::Record;
 use crate::NameError;
 
 /// Turn an address into whatever the platform's socket layer wants.
@@ -107,6 +108,17 @@ fn pipe_security() -> io::Result<interprocess::os::windows::security_descriptor:
 /// Refuses rather than steals when a live supervisor holds the address: two
 /// supervisors on one session would each own half the conversation.
 pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, Listener)> {
+    listen_recording(runtime_dir, session, &Record::current(session))
+}
+
+/// A listener whose marker says something chosen — a supervisor from
+/// another version, without building one.
+#[cfg(test)]
+pub(crate) fn listen_for_test(runtime_dir: &Path, session: &str, record: Record) -> (String, Listener) {
+    listen_recording(runtime_dir, session, &record).expect("listen")
+}
+
+fn listen_recording(runtime_dir: &Path, session: &str, record: &Record) -> io::Result<(String, Listener)> {
     let at = address(runtime_dir, session).map_err(to_io)?;
 
     private_dir(&socket_dir(runtime_dir))?;
@@ -141,7 +153,9 @@ pub fn listen(runtime_dir: &Path, session: &str) -> io::Result<(String, Listener
     // detached session could never be found again. Written after the listener
     // is up, so a marker never names something that is not accepting yet.
     private_dir(&socket_dir(runtime_dir))?;
-    std::fs::write(marker(runtime_dir, session).map_err(to_io)?, session)?;
+    // The record says which protocol this supervisor speaks, so a window
+    // from another version can decide before it connects. See `record.rs`.
+    std::fs::write(marker(runtime_dir, session).map_err(to_io)?, record.to_text())?;
 
     Ok((at, listener))
 }

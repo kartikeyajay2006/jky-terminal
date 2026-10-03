@@ -232,6 +232,13 @@ const WEB_COMMANDS: CommandSpec[] = [
       "Walks every record's link and compares the newest with the one remembered in your OS keychain, then says whether anything was altered, removed, reordered or inserted. The log itself is never shown to the window.",
   },
   {
+    names: ["jky sessions"],
+    usage: "jky sessions",
+    summary: "List the shells being held in the background",
+    detail:
+      "Every shell that outlives the window is held by a small supervisor process. This lists them: which pane, its process id, when it started, and which JKY version and session protocol it speaks.",
+  },
+  {
     names: ["jky banner"],
     usage: "jky banner",
     summary: "Print the banner",

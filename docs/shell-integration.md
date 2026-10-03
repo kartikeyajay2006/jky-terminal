@@ -193,6 +193,7 @@ the terminal.
 | `jky workspace [name]` | Lists your workspaces, or switches to one. |
 | `jky host [name]` | Lists saved machines, or opens a terminal on one. |
 | `jky audit` | Checks the audit log's chain and the newest record against the keychain; exits 0 if intact. See [Security & privacy](security-and-privacy.md#tamper-evident-and-checkable). |
+| `jky sessions` | Lists the shells held in the background: pane, process id, age, and the JKY version and session protocol each speaks. See [Seeing what is held](terminal-guide.md#seeing-what-is-held). |
 | `jky commands` | Prints this list. |
 | `jky` · `jky banner` · `jky-terminal` | Prints the JKY wordmark. `jkyterminal` and `jkyTerminal` work too. |
 

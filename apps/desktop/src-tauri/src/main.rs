@@ -30,6 +30,12 @@ fn main() {
         std::process::exit(verify_audit(&args));
     }
 
+    // `jky sessions`: which shells are being held in the background, by which
+    // process and which version. For diagnosing, so never a window either.
+    if args.iter().any(|a| a == "--sessions") {
+        std::process::exit(list_sessions(&args));
+    }
+
     if let Some(session) = supervisor::requested(&args) {
         // The directory is given, never worked out here. The window knows it
         // already and a second derivation is the same fact twice — which is
@@ -176,16 +182,34 @@ fn main() {
 }
 
 /// The audit check, for a terminal. Exit code 0 intact, 1 altered, 2 unreadable.
+/// The config folder named on the command line, or the usual one.
+fn config_dir_from(args: &[String]) -> Option<std::path::PathBuf> {
+    let found = supervisor::argument(args, supervisor::CONFIG_FLAG)
+        .map(std::path::PathBuf::from)
+        .or_else(|| dirs::config_dir().map(|d| d.join("dev.jky.terminal")));
+    if found.is_none() {
+        eprintln!("could not find the JKY Terminal config folder; pass {} <dir>", supervisor::CONFIG_FLAG);
+    }
+    found
+}
+
+fn list_sessions(args: &[String]) -> i32 {
+    #[cfg(windows)]
+    attach_parent_console();
+    let Some(config_dir) = config_dir_from(args) else { return 2 };
+    let dir = supervisor::jky_detach_dir(&config_dir);
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    print!("{}", jky_detach::report(&jky_detach::records(&dir), now));
+    0
+}
+
 fn verify_audit(args: &[String]) -> i32 {
     #[cfg(windows)]
     attach_parent_console();
-    let config_dir = supervisor::argument(args, supervisor::CONFIG_FLAG)
-        .map(std::path::PathBuf::from)
-        .or_else(|| dirs::config_dir().map(|d| d.join("dev.jky.terminal")));
-    let Some(config_dir) = config_dir else {
-        eprintln!("could not find the JKY Terminal config folder; pass {} <dir>", supervisor::CONFIG_FLAG);
-        return 2;
-    };
+    let Some(config_dir) = config_dir_from(args) else { return 2 };
     // Read-only: checking a log must never create the key it is checked with.
     let store = std::sync::Arc::new(jky_secrets::KeyringStore::new(state::KEYCHAIN_SERVICE));
     let anchor = std::sync::Arc::new(jky_audit::KeychainAnchor::read_only(store));

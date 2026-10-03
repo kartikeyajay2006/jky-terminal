@@ -465,6 +465,8 @@ export interface Spawned {
   reattached: boolean;
   /** The shell is held apart from the window and outlives it. */
   survives: boolean;
+  /** Why the shell could not be held, when it should have been. */
+  notice?: string | null;
 }
 
 export interface PtyApi {

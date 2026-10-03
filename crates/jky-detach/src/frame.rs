@@ -6,12 +6,15 @@
 //! two numbers, and a shell exiting carries a status — and interleaving those
 //! with output on one stream needs a way to tell them apart.
 //!
-//! Deliberately not serde over the wire. The two ends of this socket are the
-//! same binary at the same version for the life of a session, so there is no
-//! schema to evolve, and a format that can allocate from a length it was
-//! handed is a format that has to be careful. This one is careful in four
-//! lines: a length above `MAX_PAYLOAD` is a corrupt stream and is refused
-//! before anything is allocated.
+//! Deliberately not serde over the wire: a format that can allocate from a
+//! length it was handed is a format that has to be careful, and this one is
+//! careful in four lines — a length above `MAX_PAYLOAD` is a corrupt stream
+//! and is refused before anything is allocated.
+//!
+//! The two ends are usually the same build, but not always: a supervisor
+//! outlives an upgrade of the app that started it. So the frames are
+//! versioned as a whole by `record::PROTOCOL`, which each supervisor writes
+//! beside its socket and a window checks before it connects.
 
 use std::io::{self, Read, Write};
 

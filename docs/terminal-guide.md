@@ -128,7 +128,7 @@ sequenceDiagram
 | Rule | Why |
 |---|---|
 | **Closing a pane ends its shell. Quitting does not.** | They are different acts, and the app treats them differently instead of guessing which you meant. |
-| **Reopening draws what was missed, not what was there.** | The rejoined shell sends the tail of what it printed while detached. The old scrollback is not drawn again — that would be the same session twice. |
+| **Reopening draws what was missed, not what was there.** | The rejoined shell sends the tail of what it printed while detached — up to 256 KB. When it printed more, a dim line above the tail says how much was not kept, so a pane that opens mid-build never looks like a build that began mid-way. The old scrollback is not drawn again — that would be the same session twice. |
 | **Quitting asks only about what it would lose.** | Unsaved files, and commands running in a shell the window still owns. A remote `ssh` session is one of those: it is a child of the window and ends with it. |
 
 ```mermaid
@@ -148,6 +148,39 @@ stateDiagram-v2
 A supervisor answers a connection by sending what the shell printed, so *who may connect* is *who may
 read the shell*. On macOS and Linux the sockets live in a directory only your user can enter; on Windows
 each named pipe admits its owner and no one else.
+
+### Upgrading with shells running
+
+A supervisor outlives the app that started it, so it also outlives an **upgrade**: install a new JKY
+with a build still running and the new window rejoins a supervisor that is the old binary. Each
+supervisor therefore records, beside its socket, the **session protocol** it speaks, the JKY version
+that started it, its process id and when it started. A window reads that record before it connects:
+
+| The held shell speaks… | What the window does |
+|---|---|
+| this build's protocol, or an older one | rejoins it, as always |
+| a **newer** protocol (you went back to an older JKY) | does not read a single frame from it, and does not start a second shell on top of it. The pane opens a shell of the window's own and says why — *"this shell will end when JKY closes — this pane's shell was started by JKY Terminal 0.2.0 … update JKY to rejoin it"* |
+
+A record from before records existed is just the pane's name; it reads as protocol 1, which is exactly
+what such a supervisor speaks.
+
+### Seeing what is held
+
+`jky sessions` lists every shell held in the background:
+
+```text
+$ jky sessions
+2 shells held in the background
+
+  pane-1a2b  pid 41231    started 2h 14m ago    JKY 0.1.0 · protocol 1
+  pane-9f8e  pid 41290    started 3d 4h ago     JKY 0.1.0 · protocol 1
+
+Listed from what each shell recorded when it started. One that has since
+exited is cleared the next time JKY looks for it.
+```
+
+It is the same binary run with `--sessions`, so it also works outside JKY:
+`jky-terminal --sessions --config-dir <folder>`.
 
 ### Nothing is left behind by accident
 

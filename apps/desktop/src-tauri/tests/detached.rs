@@ -61,6 +61,7 @@ fn reattach(recorded: &Path, session: &str) -> Client {
             Joined::Busy if Instant::now() < until => std::thread::sleep(Duration::from_millis(25)),
             Joined::Busy => panic!("the previous window never released the session"),
             Joined::Absent => panic!("the session disappeared while reattaching"),
+            Joined::Newer(found) => panic!("this build's own supervisor claimed a newer protocol: {found:?}"),
         }
     }
 }
@@ -114,6 +115,11 @@ fn a_shell_outlives_the_process_that_asked_for_it() {
         wait_for(|| sessions(&recorded) == vec!["one".to_string()]),
         "the supervisor never recorded itself in {recorded:?}"
     );
+
+    // The record is the real process's own: its pid, this build's protocol.
+    let record = jky_detach::record(&recorded, "one").expect("a record");
+    assert_eq!(record.pid, child.0.id(), "the record names a different process");
+    assert_eq!(record.protocol, jky_detach::PROTOCOL);
 
     // A window attaches, runs something, and leaves.
     {
@@ -191,6 +197,38 @@ fn read_until(window: impl Read + Send + 'static, text: &str, within: Duration) 
         }
     }
     seen
+}
+
+#[test]
+fn the_app_lists_the_shells_it_holds_for_diagnosis() {
+    // What `jky sessions` runs: this binary, asked to report rather than open.
+    let config = scratch("listed");
+    let recorded = sessions_dir(&config);
+
+    let report = |config: &Path| {
+        let out = Command::new(binary())
+            .arg("--sessions")
+            .arg("--config-dir")
+            .arg(config)
+            .output()
+            .expect("the binary runs");
+        assert!(out.status.success(), "{}", String::from_utf8_lossy(&out.stderr));
+        String::from_utf8_lossy(&out.stdout).to_string()
+    };
+
+    assert!(report(&config).contains("No shells are being held"), "an empty machine says so");
+
+    let Some(child) = start(&config, "pane-listed") else { return };
+    assert!(wait_for(|| sessions(&recorded) == vec!["pane-listed".to_string()]));
+
+    let text = report(&config);
+    assert!(text.contains("1 shell held in the background"), "{text}");
+    assert!(text.contains("pane-listed"), "{text}");
+    assert!(text.contains(&format!("pid {}", child.0.id())), "{text}");
+    assert!(text.contains(&format!("protocol {}", jky_detach::PROTOCOL)), "{text}");
+
+    drop(child);
+    let _ = std::fs::remove_dir_all(&config);
 }
 
 #[test]

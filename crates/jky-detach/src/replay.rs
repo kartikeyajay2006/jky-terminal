@@ -29,6 +29,8 @@ pub struct Replay {
     limit: usize,
     /// Whether anything has been dropped, so the window can say so.
     lost: bool,
+    /// How many bytes were dropped, so it can say how much.
+    dropped: u64,
 }
 
 impl Default for Replay {
@@ -39,7 +41,7 @@ impl Default for Replay {
 
 impl Replay {
     pub fn new(limit: usize) -> Self {
-        Self { kept: Vec::new(), limit: limit.max(1), lost: false }
+        Self { kept: Vec::new(), limit: limit.max(1), lost: false, dropped: 0 }
     }
 
     /// Add what the shell just printed.
@@ -57,6 +59,7 @@ impl Replay {
             // limit into an empty buffer fits perfectly, and calling that
             // truncated would have the window apologise for nothing.
             self.lost = self.lost || bytes.len() > self.limit || !self.kept.is_empty();
+            self.dropped += (self.kept.len() + bytes.len() - self.limit) as u64;
             self.kept.clear();
             self.kept.extend_from_slice(&bytes[bytes.len() - self.limit..]);
             return;
@@ -67,6 +70,7 @@ impl Replay {
             let over = self.kept.len() - self.limit;
             self.kept.drain(..over);
             self.lost = true;
+            self.dropped += over as u64;
         }
     }
 
@@ -94,23 +98,85 @@ impl Replay {
     /// and a terminal handed half an escape sequence draws whatever the rest
     /// of it happens to say.
     pub fn take(&self) -> Vec<u8> {
-        if !self.lost {
-            return self.kept.clone();
-        }
+        self.kept[self.start()..].to_vec()
+    }
 
-        let start = self
-            .kept
+    /// Where what is shown begins: the first whole line, once anything is lost.
+    fn start(&self) -> usize {
+        if !self.lost {
+            return 0;
+        }
+        self.kept
             .iter()
             .position(|b| *b == b'\n')
             .map(|at| at + 1)
-            .unwrap_or(0);
-        self.kept[start..].to_vec()
+            .unwrap_or(0)
+    }
+
+    /// What a reattaching window is sent: the tail, and — when the tail is
+    /// not everything — a dim line above it saying how much is missing.
+    ///
+    /// Without it a restored pane that begins mid-build looks like a build
+    /// that began mid-way. The line is ordinary terminal text, so any window
+    /// that can draw output can draw it, whatever version it is.
+    pub fn for_window(&self) -> Vec<u8> {
+        if !self.lost {
+            return self.kept.clone();
+        }
+        let missing = self.dropped + self.start() as u64;
+        let mut out = format!(
+            "\x1b[2m── {} of earlier output {} not kept — what follows is the most recent ──\x1b[0m\r\n",
+            size(missing),
+            if missing == 1 { "was" } else { "were" },
+        )
+        .into_bytes();
+        out.extend_from_slice(&self.take());
+        out
+    }
+}
+
+/// A byte count, the way people read one.
+fn size(bytes: u64) -> String {
+    match bytes {
+        1 => "1 byte".into(),
+        0..=1023 => format!("{bytes} bytes"),
+        1024..=1_048_575 => format!("{:.0} KB", bytes as f64 / 1024.0),
+        _ => format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0)),
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_window_is_told_how_much_earlier_output_was_not_kept() {
+        let mut replay = Replay::new(16);
+        replay.push(b"first line that will go\n");
+        replay.push(b"partial\nkept tail\n");
+        let shown = String::from_utf8(replay.for_window()).unwrap();
+        let tail = String::from_utf8(replay.take()).unwrap();
+        assert!(shown.ends_with(&tail), "{shown:?}");
+        let notice = &shown[..shown.len() - tail.len()];
+        // 24 + 18 bytes written, 10 of them shown.
+        assert!(notice.contains("32 bytes of earlier output were not kept"), "{notice:?}");
+        assert!(notice.ends_with("\r\n"), "the notice is a line of its own: {notice:?}");
+    }
+
+    #[test]
+    fn nothing_is_announced_when_nothing_was_lost() {
+        let mut replay = Replay::new(64);
+        replay.push(b"all of it\n");
+        assert_eq!(replay.for_window(), replay.take());
+    }
+
+    #[test]
+    fn sizes_are_said_the_way_people_read_them() {
+        assert_eq!(size(1), "1 byte");
+        assert_eq!(size(900), "900 bytes");
+        assert_eq!(size(300_000), "293 KB");
+        assert_eq!(size(2_500_000), "2.4 MB");
+    }
 
     #[test]
     fn gives_back_what_it_was_given() {

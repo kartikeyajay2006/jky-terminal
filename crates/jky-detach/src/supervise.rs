@@ -209,7 +209,7 @@ fn serve_one(stream: Stream, shell: &impl Shell, attached: &Attached, replay: &M
         // attached, and until it does, output goes to the replay rather than
         // to it — so without this the first thing a window receives depends
         // on how fast it connected, which is no contract at all.
-        let missed = replay.lock().map(|kept| kept.take()).unwrap_or_default();
+        let missed = replay.lock().map(|kept| kept.for_window()).unwrap_or_default();
         if Frame::Replay(missed).write_to(&mut writing).is_err() {
             return;
         }
@@ -344,6 +344,44 @@ mod tests {
             Frame::Replay(bytes) => {
                 let text = String::from_utf8_lossy(&bytes);
                 assert!(text.contains("while away"), "missed output was lost: {text:?}");
+            }
+            other => panic!("expected a replay first, got {other:?}"),
+        }
+
+        drop(writer);
+        let _ = run.join();
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_window_coming_back_to_more_than_was_kept_is_told_so() {
+        let dir = scratch("replay-trimmed");
+        let Rig { shell, mut writer, .. } = fake();
+
+        let run = {
+            let dir = dir.clone();
+            std::thread::spawn(move || supervise(&dir, "one", shell))
+        };
+        assert!(wait_for(|| crate::sessions(&dir) == vec!["one".to_string()]));
+
+        // Nobody attached: everything goes to the replay, and more of it
+        // than the replay keeps.
+        let line = [b'x'; 1023];
+        for _ in 0..(crate::REPLAY_BYTES / 1024 + 64) {
+            writer.write_all(&line).unwrap();
+            writer.write_all(b"\n").unwrap();
+        }
+        writer.write_all(b"THE END\n").unwrap();
+        writer.flush().unwrap();
+        std::thread::sleep(Duration::from_millis(300));
+
+        let mut window = attach(&dir, "one").expect("attach");
+        match Frame::read_from(&mut window).expect("replay") {
+            Frame::Replay(bytes) => {
+                let text = String::from_utf8_lossy(&bytes);
+                assert!(text.starts_with("\x1b[2m── "), "no notice first: {:?}", &text[..60.min(text.len())]);
+                assert!(text.contains("of earlier output were not kept"), "{:?}", &text[..120.min(text.len())]);
+                assert!(text.ends_with("THE END\n"), "the newest output is what is kept");
             }
             other => panic!("expected a replay first, got {other:?}"),
         }

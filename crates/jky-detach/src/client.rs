@@ -14,6 +14,7 @@ use std::time::{Duration, Instant};
 use interprocess::local_socket::traits::Stream as _;
 use interprocess::local_socket::{RecvHalf, SendHalf};
 
+use crate::record::{record, Record};
 use crate::{attach, check, sessions, Frame};
 
 /// How long a supervisor has to answer before it counts as not answering.
@@ -31,6 +32,8 @@ pub enum Joined {
     Attached { client: Client, replay: Vec<u8> },
     /// A supervisor is there and serving another window, or not answering.
     Busy,
+    /// A supervisor started by a build that speaks a newer protocol.
+    Newer(Record),
     /// Nothing is there.
     Absent,
 }
@@ -58,6 +61,13 @@ fn recover<T>(lock: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
 
 /// Connect to a session and wait for it to say whether this window may have it.
 pub fn join(runtime_dir: &Path, session: &str) -> Joined {
+    // Decided before connecting: a supervisor whose frames this build may not
+    // understand is not one to read a single frame from.
+    if let Some(found) = record(runtime_dir, session) {
+        if !found.compatible() {
+            return Joined::Newer(found);
+        }
+    }
     let Ok(stream) = attach(runtime_dir, session) else { return Joined::Absent };
     let (mut receiving, sending) = stream.split();
 
@@ -81,6 +91,22 @@ pub fn join(runtime_dir: &Path, session: &str) -> Joined {
         // Closed without a replay is a supervisor saying another window has it.
         _ => Joined::Busy,
     }
+}
+
+/// Why a shell from a newer build cannot be rejoined, and what to do.
+fn newer(found: &Record) -> String {
+    let by = if found.app.is_empty() {
+        "a newer JKY Terminal".to_string()
+    } else {
+        format!("JKY Terminal {}", found.app)
+    };
+    let pid = if found.pid == 0 { String::new() } else { format!(" (process {})", found.pid) };
+    format!(
+        "this pane's shell was started by {by}, which speaks session protocol {} — this build speaks {}. \
+         It is still running{pid}; update JKY to rejoin it.",
+        found.protocol,
+        crate::PROTOCOL,
+    )
 }
 
 /// Join a session, starting its supervisor first if there is none.
@@ -115,6 +141,11 @@ pub fn open(
             // Most often this same window, a moment ago, still letting go.
             // Worth a short wait rather than a second shell.
             Joined::Busy => {}
+            // Neither joined nor replaced: starting a second shell would
+            // leave the first running with nobody able to reach it.
+            Joined::Newer(found) => {
+                return Err(io::Error::new(io::ErrorKind::Unsupported, newer(&found)));
+            }
         }
         if Instant::now() >= until {
             return Err(io::Error::new(
@@ -138,7 +169,9 @@ pub fn end(runtime_dir: &Path, session: &str) {
                 let _ = client.hangup();
                 return;
             }
-            Joined::Absent => return,
+            // Not this build's to end: it cannot be sure what a hangup means
+            // to a newer supervisor.
+            Joined::Absent | Joined::Newer(_) => return,
             Joined::Busy if Instant::now() >= until => return,
             Joined::Busy => std::thread::sleep(RETRY),
         }
@@ -245,6 +278,56 @@ mod tests {
     /// A `start` for when a supervisor must already be there.
     fn never() -> io::Result<()> {
         panic!("a supervisor was started when one was already there")
+    }
+
+    #[test]
+    fn a_supervisor_records_its_protocol_version_and_pid() {
+        let dir = scratch("client-record");
+        let Rig { shell, writer: _writer, .. } = fake();
+        let _opened = open(&dir, "s", starter(&dir, "s", shell, Arc::new(AtomicUsize::new(0))), WITHIN)
+            .expect("open");
+
+        let record = crate::record(&dir, "s").expect("a marker was written");
+        assert_eq!(record.protocol, crate::PROTOCOL);
+        assert_eq!(record.pid, std::process::id(), "the supervisor's own pid");
+        assert!(!record.app.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_shell_from_a_newer_jky_is_refused_with_a_reason_and_nothing_is_started() {
+        // An older window after a downgrade, finding a supervisor that a newer
+        // build started. Joining it would mean reading frames it may not
+        // understand; starting a second shell would orphan the first.
+        let dir = scratch("client-newer");
+        let _held = crate::socket::listen_for_test(&dir, "s", crate::Record {
+            protocol: crate::PROTOCOL + 1,
+            app: "9.9.9".into(),
+            ..crate::Record::current("s")
+        });
+
+        let err = open(&dir, "s", never, WITHIN).err().expect("refused");
+        let message = err.to_string();
+        assert_eq!(err.kind(), io::ErrorKind::Unsupported);
+        assert!(message.contains("JKY Terminal 9.9.9"), "{message}");
+        assert!(message.contains("update"), "{message}");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn ending_a_shell_from_a_newer_jky_leaves_it_alone() {
+        let dir = scratch("client-newer-end");
+        let _held = crate::socket::listen_for_test(&dir, "s", crate::Record {
+            protocol: crate::PROTOCOL + 1,
+            ..crate::Record::current("s")
+        });
+        // At once, rather than knocking for the two seconds a window that is
+        // letting go gets: nothing about it will change by waiting.
+        let asked = std::time::Instant::now();
+        end(&dir, "s");
+        assert!(asked.elapsed() < Duration::from_secs(1), "waited {:?}", asked.elapsed());
+        assert!(crate::record(&dir, "s").is_some(), "its marker was not swept away");
+        let _ = std::fs::remove_dir_all(&dir);
     }
 
     #[test]

@@ -88,10 +88,12 @@ fn write_ask_launcher(
     use std::os::unix::fs::PermissionsExt;
     // The real binary, not the `jky-terminal` banner launcher that shadows
     // its name on this shell's PATH.
-    let audit = match verifier {
-        Some(exe) => format!("exec {} --verify-audit --config-dir {}", sh_quote(exe), sh_quote(config_dir)),
-        None => "echo \"jky: audit checking is not available from this shell\" >&2; exit 1".to_string(),
+    let app = |flag: &str, what: &str| match verifier {
+        Some(exe) => format!("exec {} {flag} --config-dir {}", sh_quote(exe), sh_quote(config_dir)),
+        None => format!("echo \"jky: {what} is not available from this shell\" >&2; exit 1"),
     };
+    let audit = app("--verify-audit", "audit checking");
+    let sessions = app("--sessions", "listing sessions");
 
     let script = bin_dir.join("jky");
     let body = format!(
@@ -265,6 +267,9 @@ case "$1" in
   audit)
     {audit}
     ;;
+  sessions)
+    {sessions}
+    ;;
   ""|banner)
     cat "{banner}"
     ;;
@@ -277,6 +282,7 @@ esac
 "#,
         osc = ASK_OSC,
         audit = audit,
+        sessions = sessions,
         games = game_pattern(),
         game_count = SHELL_GAMES,
         banner = banner_path.display(),
@@ -311,23 +317,26 @@ fn write_ask_launcher(
     config_dir: &Path,
 ) -> io::Result<()> {
     let lit = |p: &Path| format!("'{}'", p.display().to_string().replace('\'', "''"));
-    let audit = match verifier {
+    let app = |flag: &str, what: &str| match verifier {
         // Start-Process waits for a GUI-subsystem build and hands back its
         // exit code; a bare `&` would not wait for one.
         Some(exe) => format!(
-            "$p = Start-Process -FilePath {} -ArgumentList @('--verify-audit', '--config-dir', ('\"' + {} + '\"')) -NoNewWindow -Wait -PassThru; exit $p.ExitCode",
+            "$p = Start-Process -FilePath {} -ArgumentList @('{flag}', '--config-dir', ('\"' + {} + '\"')) -NoNewWindow -Wait -PassThru; exit $p.ExitCode",
             lit(exe),
             lit(config_dir)
         ),
-        None => "Fail 'jky: audit checking is not available from this shell'".to_string(),
+        None => format!("Fail 'jky: {what} is not available from this shell'"),
     };
+    let audit = app("--verify-audit", "audit checking");
+    let sessions = app("--sessions", "listing sessions");
     let script = WINDOWS_SCRIPT
         .replace("__DATA__", &lit(data_dir))
         .replace("__BANNER__", &lit(banner_path))
         .replace("__COMMANDS__", &lit(commands_path))
         .replace("__OSC__", &ASK_OSC.to_string())
         .replace("__GAMES__", &SHELL_GAMES.to_string())
-        .replace("__AUDIT__", &audit);
+        .replace("__AUDIT__", &audit)
+        .replace("__SESSIONS__", &sessions);
     std::fs::write(bin_dir.join("jky-run.ps1"), script.replace('\n', "\r\n"))?;
     std::fs::write(
         bin_dir.join("jky.cmd"),
@@ -439,6 +448,7 @@ switch ($noun) {
     { $_ -in 'workspace', 'ws' } { Send 'workspace' 1; exit 0 }
     { $_ -in 'host', 'hosts' } { Send 'host' 1; exit 0 }
     'audit' { __AUDIT__ }
+    'sessions' { __SESSIONS__ }
     { $_ -in '', 'banner' } { Show $Banner; exit 0 }
     default {
         [Console]::Error.WriteLine("jky: unknown command '$noun'")
@@ -582,6 +592,32 @@ mod tests {
         let (stdout, stderr, ok) = run_jky(&bin, &["audit"]);
         assert!(ok, "`jky audit` failed: {stderr}");
         assert_eq!(stdout, format!("--verify-audit|--config-dir|{}|", config.path().display()));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_sessions_runs_the_app_binary_against_this_config_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let config = TempDir::new().unwrap();
+        let bin = config.path().join("bin");
+        let fake = config.path().join("fake app");
+        std::fs::write(&fake, "#!/bin/sh\nprintf '%s|' \"$@\"\n").unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o755)).unwrap();
+        install_launchers(&bin, "BANNER", "COMMANDS", Some(&fake)).unwrap();
+
+        let (stdout, stderr, ok) = run_jky(&bin, &["sessions"]);
+        assert!(ok, "`jky sessions` failed: {stderr}");
+        assert_eq!(stdout, format!("--sessions|--config-dir|{}|", config.path().display()));
+    }
+
+    #[test]
+    #[cfg(not(windows))]
+    fn jky_sessions_says_so_when_there_is_no_binary_to_run() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        let (_, stderr, ok) = run_jky(dir.path(), &["sessions"]);
+        assert!(!ok);
+        assert!(stderr.contains("sessions"), "{stderr}");
     }
 
     #[test]
@@ -1213,6 +1249,15 @@ mod windows_launcher_tests {
         let (stdout, stderr, ok) = run(dir.path(), &["theme", "dracula"]);
         assert!(ok, "`jky theme` failed: {stderr}");
         assert_eq!(decoded_command(&stdout), serde_json::json!({ "verb": "theme", "args": ["dracula"] }));
+    }
+
+    #[test]
+    fn sessions_without_a_binary_fails_with_a_reason_on_windows() {
+        let dir = TempDir::new().unwrap();
+        install_launchers(dir.path(), "BANNER", "COMMANDS", None).unwrap();
+        let (_, stderr, ok) = run(dir.path(), &["sessions"]);
+        assert!(!ok);
+        assert!(stderr.contains("sessions"), "{stderr}");
     }
 
     #[test]

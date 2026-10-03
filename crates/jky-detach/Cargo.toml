@@ -7,6 +7,7 @@ authors.workspace = true
 
 [dependencies]
 serde.workspace = true
+serde_json.workspace = true
 thiserror.workspace = true
 # Unix domain sockets and Windows named pipes behind one API. The alternative
 # was a localhost TCP port, which would mean a listening socket granting shell

@@ -213,6 +213,15 @@ const COMMANDS: &[CommandSpec] = &[
                  log itself is never shown to the window.",
     },
     CommandSpec {
+        names: &["jky sessions"],
+        usage: "jky sessions",
+        summary: "List the shells being held in the background",
+        detail: "Every shell that outlives the window is held by a small \
+                 supervisor process. This lists them: which pane, its \
+                 process id, when it started, and which JKY version and \
+                 session protocol it speaks.",
+    },
+    CommandSpec {
         names: &["jky banner"],
         usage: "jky banner",
         summary: "Print the banner",
@@ -417,6 +426,7 @@ mod tests {
             "jky commands",
             "jky command",
             "jky audit",
+            "jky sessions",
         ] {
             assert!(all.contains(&expected), "undocumented command: {expected}");
         }

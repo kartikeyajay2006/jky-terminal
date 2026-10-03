@@ -267,6 +267,25 @@ describe("Terminal", () => {
     );
   });
 
+  it("says why a pane's shell could not be held, when Rust gives a reason", async () => {
+    const platform = createWebPlatform();
+    __setPlatformForTests({
+      ...platform,
+      pty: {
+        ...platform.pty,
+        spawn: async () => ({
+          id: "own-1",
+          reattached: false,
+          survives: false,
+          notice: "this pane's shell was started by JKY Terminal 9.9.9",
+        }),
+      },
+    });
+
+    render(<Terminal paneId="tab-1" />);
+    await waitFor(() => expect(writes.join("")).toContain("JKY Terminal 9.9.9"));
+  });
+
   it("restores old scrollback above a shell that is new", async () => {
     // What already happens, kept true through the reordering: a new shell
     // still gets its history and its greeting.
