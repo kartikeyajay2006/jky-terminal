@@ -452,6 +452,33 @@ jky_install_linux() {
     rm -f "$JKY_WORK/$JKY_ASSET"
 }
 
+# The libraries an AppImage leaves to the system — the graphics stack, X11,
+# fonts — that this one lacks. A desktop always has them; a server or a
+# minimal install may not, and then the app cannot start.
+jky_missing_libs() {
+    command -v ldd >/dev/null 2>&1 || return 0
+    for f in "$JKY_APP"/usr/bin/* "$JKY_APP"/usr/libexec/webkit2gtk-*/WebKit*Process; do
+        if [ -f "$f" ]; then ldd "$f" 2>/dev/null; fi
+    done | awk '$2 == "=>" && $3 == "not" {print $1}' | sort -u
+}
+
+jky_check_libs() {
+    missing=$(jky_missing_libs | tr '\n' ' ' | sed 's/ $//')
+    if [ -z "$missing" ]; then return 0; fi
+    # Nothing is left half-installed: the app could not have started.
+    rm -rf "$JKY_APP"
+    if command -v apt-get >/dev/null 2>&1; then how="sudo apt install libegl1 libgl1 libgbm1"
+    elif command -v dnf >/dev/null 2>&1; then how="sudo dnf install mesa-libEGL mesa-libGL mesa-libgbm"
+    elif command -v pacman >/dev/null 2>&1; then how="sudo pacman -S mesa libglvnd"
+    elif command -v zypper >/dev/null 2>&1; then how="sudo zypper install Mesa-libEGL1 Mesa-libGL1 libgbm1"
+    else how="your package manager"
+    fi
+    jky_fail "JKY Terminal needs libraries this system does not have." \
+        "Missing: $missing
+On a desktop they come with the graphics drivers. Install them, then run this again:
+  $how"
+}
+
 jky_desktop_entry() {
     apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
     mkdir -p "$apps"
@@ -473,19 +500,26 @@ EOF
 jky_install_mac() {
     mnt="$JKY_WORK/mount"
     mkdir -p "$mnt" "$JKY_APPS"
-    hdiutil attach -nobrowse -readonly -noautoopen -quiet -mountpoint "$mnt" "$JKY_WORK/$JKY_ASSET" || return 1
+    # The release's disk image carries the licence as an agreement, and an
+    # image with one will not mount until someone clicks Agree. A converted
+    # copy carries no agreement — the way Homebrew opens such images.
+    hdiutil convert -quiet "$JKY_WORK/$JKY_ASSET" -format UDTO -o "$JKY_WORK/image" ||
+        { echo "the disk image could not be read" >&2; return 1; }
+    hdiutil attach -nobrowse -readonly -noautoopen -quiet -mountpoint "$mnt" "$JKY_WORK/image.cdr" ||
+        { echo "the disk image could not be opened" >&2; return 1; }
     found=$(find "$mnt" -maxdepth 1 -name '*.app' | head -1)
     if [ -z "$found" ]; then
         hdiutil detach "$mnt" -quiet
+        echo "the disk image has no app in it" >&2
         return 1
     fi
     rm -rf "$JKY_APP.new"
-    ditto "$found" "$JKY_APP.new" || { hdiutil detach "$mnt" -quiet; return 1; }
+    ditto "$found" "$JKY_APP.new" || { hdiutil detach "$mnt" -quiet; echo "the app could not be copied" >&2; return 1; }
     hdiutil detach "$mnt" -quiet || true
     rm -rf "$JKY_APP"
     mv "$JKY_APP.new" "$JKY_APP"
     xattr -dr com.apple.quarantine "$JKY_APP" 2>/dev/null || true
-    rm -f "$JKY_WORK/$JKY_ASSET"
+    rm -f "$JKY_WORK/$JKY_ASSET" "$JKY_WORK/image.cdr"
 }
 
 jky_mac_exe() {
@@ -942,6 +976,7 @@ Tried: $base"
     jky_verify "$JKY_WORK/$JKY_ASSET" "$JKY_ASSET_SHA"
     if [ "$JKY_PLATFORM" = linux ]; then
         jky_step "Extracting files" "$JKY_APP" jky_install_linux
+        jky_check_libs
         jky_step "Adding to your apps menu" "jky-terminal.desktop" jky_desktop_entry
     else
         jky_step "Installing the app" "$JKY_APP" jky_install_mac

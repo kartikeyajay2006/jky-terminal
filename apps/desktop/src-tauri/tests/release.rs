@@ -162,7 +162,22 @@ fn one_platform_failing_does_not_cancel_the_others() {
 #[test]
 fn a_release_is_drafted_rather_than_published() {
     // The last chance to notice that something built cleanly and is wrong.
-    assert!(release_workflow().contains("releaseDraft: true"));
+    assert!(release_workflow().contains("-F draft=true"));
+}
+
+#[test]
+fn every_platform_attaches_to_one_draft() {
+    // Left to find or create the draft themselves, builds that finish within
+    // a second of each other each create one: two drafts with one tag, and
+    // SHA256SUMS covering whichever the checksum job happened to find. The
+    // draft is created once, first, and every build is handed its id.
+    let yaml = release_workflow();
+    assert!(yaml.contains("\n  draft:"), "no job creates the draft first");
+    assert!(
+        yaml.contains("releaseId: ${{ needs.draft.outputs.id }}"),
+        "the builds do not attach to the one draft"
+    );
+    assert!(!yaml.contains("releaseDraft:"), "a build can still create a draft of its own");
 }
 
 #[test]

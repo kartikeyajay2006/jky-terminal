@@ -81,8 +81,9 @@ if [ "$OS" = Linux ]; then
     cat >"$WORK/release/$ASSET" <<EOF
 #!/bin/sh
 if [ "\${1:-}" = "--appimage-extract" ]; then
-    mkdir -p squashfs-root
+    mkdir -p squashfs-root/usr/bin
     cp '$WORK/app-main' squashfs-root/AppRun
+    cp '$WORK/app-main' squashfs-root/usr/bin/jky-terminal
     printf 'png' > squashfs-root/jky-terminal.png
     exit 0
 fi
@@ -123,6 +124,13 @@ case "$1" in
 esac
 EOF
 chmod +x "$WORK/fakebin/gsettings"
+# ldd, reporting a graphics library missing when asked to: a server, or a
+# minimal install, can lack what every desktop has.
+cat >"$WORK/fakebin/ldd" <<'EOF'
+#!/bin/sh
+if [ -f "$HOME/missing-libs" ]; then printf '\tlibEGL.so.1 => not found\n\tlibc.so.6 => /lib/libc.so.6 (0x1)\n'; fi
+EOF
+chmod +x "$WORK/fakebin/ldd"
 
 # Every run starts from an empty environment: only a scratch HOME, a PATH
 # with the stand-ins first, and nothing of the real user's — no XDG folders,
@@ -217,6 +225,20 @@ echo "a refused shortcut"
 jky shortcut "ctrl+j" </dev/null >"$WORK/refused" 2>&1
 check "it is refused, with the reason" "$(grep -c 'not a shortcut JKY can use' "$WORK/refused")" "1"
 check "nothing new was stored" "$(grep -c -- '--set-shortcut ctrl' "$WORK/home/app-calls")" "0"
+
+if [ "$OS" = Linux ]; then
+    echo "a system without the libraries a desktop has"
+    rm -rf "$WORK/home4"
+    mkdir -p "$WORK/home4"
+    touch "$WORK/home4/missing-libs"
+    in_scratch "$WORK/home4" JKY_RELEASE_BASE="http://127.0.0.1:$PORT" sh "$SCRIPT" --shortcut none </dev/null >"$WORK/nolibs" 2>&1
+    check "the installer stops" "$?" "1"
+    check "it says libraries are missing" "$(grep -c 'needs libraries this system does not have' "$WORK/nolibs")" "1"
+    check "it names them" "$(grep -c 'Missing: libEGL.so.1$' "$WORK/nolibs")" "1"
+    check "it never claims to be complete" "$(grep -c 'Installation complete' "$WORK/nolibs")" "0"
+    check "it leaves nothing half-installed" \
+        "$(test -e "$WORK/home4/.local/share/jky-terminal/app" || test -e "$WORK/home4/.local/bin/jky" && echo left || echo nothing)" "nothing"
+fi
 
 echo "a tampered download"
 printf 'tampered' >>"$WORK/release/$ASSET"

@@ -27,8 +27,52 @@ permissions:
 # edit, and `tests/release.rs` refuses anything that is not pinned.
 
 jobs:
+  # One draft, created before anything builds, that every platform attaches
+  # to by id. Left to find or create it themselves, builds that finish within
+  # a second of each other each made their own: two drafts with one tag.
+  draft:
+    name: Draft the release
+    runs-on: ubuntu-latest
+    outputs:
+      id: ${{ steps.draft.outputs.id }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.sha) }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Create the draft, or reuse this tag's draft on a re-run
+        id: draft
+        run: |
+          id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
+            --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -1)
+          if [ -z "$id" ]; then
+            version=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+            body=$(cat <<EOF
+          Download the installer for your platform below — or install in one line, as the README shows.
+
+          Builds are currently unsigned (macOS builds carry an ad-hoc signature), so macOS and Windows
+          warn on first launch of a file downloaded by hand. See \`docs/RELEASING.md\` for what turning
+          signing on requires.
+
+          Every file is listed in \`SHA256SUMS\` and attested to the workflow that built it, and
+          \`jky-terminal.spdx.json\` lists every dependency. To check a download:
+          \`sha256sum -c SHA256SUMS --ignore-missing\`, then
+          \`gh attestation verify <file> --repo $GITHUB_REPOSITORY\`.
+          EOF
+            )
+            # Drafted, not published: the last chance to notice that something
+            # built cleanly and is still wrong.
+            id=$(gh api -X POST "repos/$GITHUB_REPOSITORY/releases" \
+              -f tag_name="$TAG" -f target_commitish="$GITHUB_SHA" -f name="JKY Terminal $version" \
+              -f body="$body" -F draft=true -F prerelease=false --jq .id)
+          fi
+          echo "id=$id" >> "$GITHUB_OUTPUT"
+          echo "Draft $id for $TAG"
+
   release:
     name: ${{ matrix.label }}
+    needs: draft
     runs-on: ${{ matrix.os }}
     strategy:
       # One platform failing must not cancel the others: a macOS signing
@@ -99,23 +143,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
           projectPath: apps/desktop
-          tagName: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.sha) }}
-          releaseName: "JKY Terminal __VERSION__"
-          releaseBody: |
-            Download the installer for your platform below.
-
-            Builds are currently unsigned, so macOS and Windows will warn on
-            first launch. See `docs/RELEASING.md` for what turning signing on
-            requires.
-
-            Every file is listed in `SHA256SUMS` and attested to the workflow
-            that built it, and `jky-terminal.spdx.json` lists every dependency.
-            To check a download: `sha256sum -c SHA256SUMS --ignore-missing`,
-            then `gh attestation verify <file> --repo ${{ github.repository }}`.
-          # Drafted, not published. The last chance to notice that something
-          # built cleanly and is still wrong.
-          releaseDraft: true
-          prerelease: false
+          releaseId: ${{ needs.draft.outputs.id }}
           args: ${{ matrix.args }}
 
   # Checksums, a bill of materials and provenance for everything the builds
@@ -230,6 +258,12 @@ jobs:
           (cd "$RUNNER_TEMP/rel" && exec python3 -m http.server 8765 --bind 127.0.0.1) >/dev/null 2>&1 &
           for _ in $(seq 1 30); do curl -fs "$JKY_RELEASE_BASE/SHA256SUMS" >/dev/null && break; sleep 1; done
           want=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+          if [ "$RUNNER_OS" = Linux ]; then
+            # A runner is a server, with no graphics stack. Give it what every
+            # desktop has, so this checks the app rather than the machine.
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq libegl1 libgl1 libgbm1 xvfb >/dev/null
+          fi
 
           echo "::group::install, exactly as pasted"
           curl -fsSL "$JKY_RELEASE_BASE/install.sh" | sh -s -- --shortcut "ctrl alt j" | tee "$RUNNER_TEMP/install.out"
@@ -257,7 +291,6 @@ jobs:
             pgrep -f "JKY Terminal.app/Contents/MacOS/" >/dev/null || { echo "the app did not stay up"; exit 1; }
             pkill -f "JKY Terminal.app/Contents/MacOS/" || true
           else
-            if ! command -v xvfb-run >/dev/null; then sudo apt-get update -qq && sudo apt-get install -y -qq xvfb >/dev/null; fi
             # A desktop session has a session bus; the app's single-instance
             # check talks to it.
             status=0
