@@ -103,7 +103,11 @@ jky_done() { printf '     %s%s%s %-26s %s%s%s\n' "$MINT" "$OK" "$RST" "$1" "$MUT
 jky_fail() {
     jky_show_cursor
     printf '\n     %s%s %s%s\n' "$RED" "$BAD" "$1" "$RST" >&2
-    if [ -n "${2:-}" ]; then printf '       %s%s%s\n' "$MUTED" "$2" "$RST" >&2; fi
+    # The hint may be several lines; each is indented, so a long link is a
+    # line of its own and never wraps into the next sentence.
+    if [ -n "${2:-}" ]; then
+        printf '%s\n' "$2" | while IFS= read -r hint; do printf '       %s%s%s\n' "$MUTED" "$hint" "$RST"; done >&2
+    fi
     printf '\n' >&2
     exit 1
 }
@@ -698,7 +702,13 @@ jky_draw_chooser() {
 # app's rules decide what is valid. Prints the stored form.
 jky_store_shortcut() {
     if [ "$JKY_PLATFORM" = mac ]; then exe=$(jky_mac_exe); else exe=$JKY_EXE; fi
-    "$exe" --set-shortcut "$1" 2>"$JKY_WORK/shortcut.err"
+    answer=$("$exe" --set-shortcut "$1" 2>"$JKY_WORK/shortcut.err") || return 1
+    # The app's answer is its last line: a desktop library may print a
+    # warning first. Stored and nothing said means stored as asked, since
+    # what was asked for is already in canonical form.
+    answer=$(printf '%s\n' "$answer" | sed '/^[[:space:]]*$/d' | tail -1)
+    if [ "$answer" != none ] && ! jky_normalize "$answer" >/dev/null 2>&1; then answer=$1; fi
+    printf '%s\n' "$answer"
 }
 
 # GNOME: a custom keybinding that runs `jky`, so the shortcut opens JKY even
@@ -902,10 +912,10 @@ main() {
 
     # The release list first, quietly, so the banner names the real version.
     base=$(jky_base_url)
-    JKY_HAVE_SUMS=0
     label=$JKY_VERSION
-    if jky_get "$base/SHA256SUMS" "$JKY_WORK/SHA256SUMS" 2>/dev/null; then
-        JKY_HAVE_SUMS=1
+    jky_get "$base/SHA256SUMS" "$JKY_WORK/SHA256SUMS" 2>/dev/null
+    sums_status=$?
+    if [ "$sums_status" = 0 ]; then
         jky_pick_asset
         if [ -n "$JKY_RELEASE_VERSION" ]; then label="v$JKY_RELEASE_VERSION"; fi
     fi
@@ -916,9 +926,17 @@ main() {
     jky_check_system
 
     jky_section "Downloading and installing..."
-    if [ "$JKY_HAVE_SUMS" != 1 ]; then
-        jky_fail "Could not reach the release." \
-            "No published release was found at $base. See https://github.com/${JKY_REPO}/releases"
+    if [ "$sums_status" != 0 ]; then
+        # curl -f says 22 and wget says 8 when the server answered with an
+        # error: it was reached, and the release is not there.
+        if [ "$sums_status" = 22 ] || [ "$sums_status" = 8 ]; then
+            jky_fail "No published release was found." \
+                "Looked in: $base
+Releases:  https://github.com/${JKY_REPO}/releases"
+        fi
+        jky_fail "Could not connect to download JKY Terminal." \
+            "Check your internet connection (or proxy), then run this again.
+Tried: $base"
     fi
     jky_download "$base/$JKY_ASSET" "$JKY_WORK/$JKY_ASSET" "Downloading package"
     jky_verify "$JKY_WORK/$JKY_ASSET" "$JKY_ASSET_SHA"

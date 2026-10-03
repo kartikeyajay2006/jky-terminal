@@ -105,7 +105,9 @@ function Write-JkyDone([string]$label, [string]$detail) { WL ("     $script:MINT
 function Stop-Jky([string]$what, [string]$hint = "") {
     Show-JkyCursor
     WL ""; WL "     $script:RED$script:BAD $what$script:RST"
-    if ($hint) { WL "       $script:MUTED$hint$script:RST" }
+    # Each line of the hint on its own, so a long link never wraps into the
+    # next sentence.
+    if ($hint) { foreach ($line in $hint -split "`n") { WL "       $script:MUTED$line$script:RST" } }
     WL ""
     throw "JKY_INSTALL_FAILED: $what"
 }
@@ -238,6 +240,14 @@ function Get-JkyBase {
     if ($env:JKY_RELEASE_BASE) { return $env:JKY_RELEASE_BASE.TrimEnd("/") }
     if ($script:JkyVersion -eq "latest") { return "https://github.com/$JkyRepo/releases/latest/download" }
     return "https://github.com/$JkyRepo/releases/download/$($script:JkyVersion)"
+}
+
+# The release's SHA256SUMS, and whether the server was reached at all: "no
+# release" and "no connection" need different advice.
+function Get-JkySums($client, [string]$base) {
+    try { $r = $client.GetAsync("$base/SHA256SUMS").GetAwaiter().GetResult() } catch { return @{ Status = "offline"; Text = $null } }
+    if (-not $r.IsSuccessStatusCode) { return @{ Status = "missing"; Text = $null } }
+    return @{ Status = "ok"; Text = $r.Content.ReadAsStringAsync().GetAwaiter().GetResult() }
 }
 
 function New-JkyClient {
@@ -518,7 +528,14 @@ function Save-JkyShortcut([string]$exe, [string]$wanted) {
         WL "     $script:AMBER$script:BAD$script:RST $((Get-Content $errFile -Raw -ErrorAction SilentlyContinue))"
         return $null
     }
-    return (Get-Content $outFile -Raw).Trim()
+    # The app's answer is its last line: a library may print a warning first.
+    # Stored and nothing said means stored as asked, since what was asked for
+    # is already in canonical form.
+    $said = @(Get-Content $outFile -ErrorAction SilentlyContinue | Where-Object { $_.Trim() })
+    $answer = ""
+    if ($said.Count -gt 0) { $answer = $said[-1].Trim() }
+    if ($answer -ne "none" -and -not (ConvertTo-JkyShortcut $answer)) { $answer = $wanted }
+    return $answer
 }
 
 function Set-JkySummon([string]$exe, [string]$wanted) {
@@ -581,11 +598,18 @@ function Invoke-JkyUninstall {
     Write-JkySection "Removing JKY Terminal..."
     $key = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\JKY Terminal"
     try {
-        $u = (Get-ItemProperty -Path $key -ErrorAction Stop).UninstallString
-        if ($u) {
-            $p = Start-Process -FilePath $u.Trim('"') -ArgumentList "/S" -PassThru
+        $entry = Get-ItemProperty -Path $key -ErrorAction Stop
+        $u = "$($entry.UninstallString)".Trim('"')
+        $dir = "$($entry.InstallLocation)".Trim('"')
+        if ($u -and (Test-Path $u)) {
+            # An NSIS uninstaller copies itself away and returns at once,
+            # unless told with _?= to run in place - only then does waiting
+            # for it mean the files are gone. Last, and never quoted.
+            $p = Start-Process -FilePath $u -ArgumentList "/S _?=$dir" -PassThru
             $null = $p.Handle
             [void](Wait-JkyProcess $p "Uninstalling")
+            # Run in place, it cannot delete itself; the folder is the app's.
+            if ($dir -and (Split-Path -Leaf $dir) -eq "JKY Terminal") { Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $dir }
         }
     } catch {}
     $user = [Environment]::GetEnvironmentVariable("Path", "User")
@@ -630,8 +654,8 @@ function Install-Jky {
         $sys = Get-JkySystem
         $client = New-JkyClient
         $base = Get-JkyBase
-        $sums = $null
-        try { $sums = $client.GetStringAsync("$base/SHA256SUMS").GetAwaiter().GetResult() } catch {}
+        $fetched = Get-JkySums $client $base
+        $sums = $fetched.Text
         $asset = $null; $sha = $null; $label = $script:JkyVersion; $script:ReleaseVersion = ""
         if ($sums) {
             foreach ($line in $sums -split "`r?`n") {
@@ -648,7 +672,8 @@ function Install-Jky {
         Write-JkyChecks $sys
 
         Write-JkySection "Downloading and installing..."
-        if (-not $sums) { Stop-Jky "Could not reach the release." "No published release was found at $base. See https://github.com/$JkyRepo/releases" }
+        if ($fetched.Status -eq "missing") { Stop-Jky "No published release was found." "Looked in: $base`nReleases:  https://github.com/$JkyRepo/releases" }
+        if (-not $sums) { Stop-Jky "Could not connect to download JKY Terminal." "Check your internet connection (or proxy), then run this again.`nTried: $base" }
         if (-not $asset) { Stop-Jky "This release has no Windows installer." "See https://github.com/$JkyRepo/releases" }
         $setup = Join-Path $script:Work $asset
         Save-JkyDownload $client "$base/$asset" $setup "Downloading package"

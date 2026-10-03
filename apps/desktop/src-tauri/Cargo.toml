@@ -46,7 +46,7 @@ tauri-plugin-single-instance = "2.5"
 
 [target.'cfg(windows)'.dependencies]
 # AttachConsole, so `--verify-audit` can print from a GUI-subsystem build.
-windows-sys = { version = "0.59", features = ["Win32_System_Console"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Console"] }
 
 [dev-dependencies]
 interprocess = "2.4"

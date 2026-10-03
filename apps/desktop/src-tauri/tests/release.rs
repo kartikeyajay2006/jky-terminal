@@ -102,8 +102,44 @@ fn the_release_workflow_builds_every_platform_we_ship_on() {
     // A pipeline that quietly drops a platform produces a release where one
     // third of users have nothing to download.
     let yaml = release_workflow();
-    for runner in ["ubuntu-latest", "macos-latest", "windows-latest"] {
+    for runner in ["os: ubuntu-22.04", "os: macos-latest", "os: windows-latest"] {
         assert!(yaml.contains(runner), "release does not build on {runner}");
+    }
+}
+
+#[test]
+fn the_linux_build_is_made_on_the_oldest_ubuntu_it_supports() {
+    // An AppImage carries its libraries but not glibc: it runs only where
+    // glibc is at least as new as the machine that built it. Built on the
+    // newest Ubuntu, it would refuse to start on Ubuntu 22.04, Debian 12 or
+    // RHEL 9 — so the build machine is the oldest one, not the latest.
+    let yaml = release_workflow();
+    let build = yaml.split("\n  integrity:").next().unwrap();
+    assert!(build.contains("os: ubuntu-22.04"), "Linux is not built on 22.04");
+    assert!(!build.contains("os: ubuntu-latest"), "Linux is built on the newest Ubuntu");
+}
+
+#[test]
+fn mac_builds_are_signed_at_least_ad_hoc() {
+    // Apple Silicon will not run code that carries no signature at all. With
+    // no Developer ID to sign with yet, the free ad-hoc signature ("-") is
+    // what lets an installed copy start.
+    assert_eq!(config()["bundle"]["macOS"]["signingIdentity"], serde_json::json!("-"));
+}
+
+#[test]
+fn a_release_is_installed_and_started_before_anyone_can_download_it() {
+    // A build can succeed and still not install. Before the draft is
+    // published, the one-line installers install it from the release's own
+    // files, on each platform, and the app has to start.
+    let yaml = release_workflow();
+    let smoke = yaml.split("\n  smoke:").nth(1).expect("a smoke job runs on the draft");
+    assert!(smoke.contains("needs: integrity"), "smoke runs before SHA256SUMS exists");
+    for needed in ["install.sh", "install.ps1", "--set-shortcut", "uninstall"] {
+        assert!(smoke.contains(needed), "the smoke job never exercises {needed}");
+    }
+    for runner in ["ubuntu-22.04", "ubuntu-latest", "macos-latest", "windows-latest"] {
+        assert!(smoke.contains(runner), "the smoke job skips {runner}");
     }
 }
 

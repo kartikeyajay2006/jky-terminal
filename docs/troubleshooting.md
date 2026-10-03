@@ -203,10 +203,22 @@ On Windows, a new PowerShell or Command Prompt window picks it up.
 </details>
 
 <details>
-<summary><b>"Could not reach the release"</b></summary>
+<summary><b>"No published release was found"</b></summary>
 
-**Cause:** no release has been published yet, or GitHub could not be reached.
-**Fix:** build from source — see [Getting started](getting-started.md). Nothing was changed.
+**Cause:** GitHub answered, and there is no release where the installer looked — the line under the
+message says where. With `--version` (or `$env:JKY_VERSION`), that version may not exist.
+**Fix:** check the releases page the message links to, or drop `--version` for the latest. Nothing was
+changed.
+
+</details>
+
+<details>
+<summary><b>"Could not connect to download JKY Terminal"</b></summary>
+
+**Cause:** GitHub could not be reached at all — no connection, a firewall, or a proxy the installer was
+not told about.
+**Fix:** check the connection and run it again. Behind a proxy, set `HTTPS_PROXY` first (macOS, Linux);
+PowerShell uses the system proxy. Nothing was changed.
 
 </details>
 
@@ -413,7 +425,10 @@ conversation.
 
 ## Unsigned installers
 
-Installers from the release workflow are **not signed** yet.
+Installers from the release workflow are **not signed** yet. The one-line installer is not affected: it
+downloads with `curl` or PowerShell rather than a browser, so nothing is marked as downloaded from the
+internet, and it checks every file against `SHA256SUMS` first. What follows applies to installers
+downloaded by hand.
 
 - **macOS** refuses to open them from Finder. Right-click → **Open**, or remove the quarantine flag:
   `xattr -d com.apple.quarantine "/Applications/JKY Terminal.app"`.

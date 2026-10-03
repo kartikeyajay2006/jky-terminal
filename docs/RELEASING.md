@@ -14,14 +14,23 @@ git push origin v0.1.0
 
 That builds installers on all three platforms and attaches them to a **draft**
 GitHub Release. The draft is deliberate: it is the last chance to notice that
-something compiled cleanly and is still wrong. Download one, run it, then
-publish.
+something compiled cleanly and is still wrong.
+
+Before anyone can download it, the `smoke` job installs the draft the way a
+person will — the one-line installers from the same commit, fed the draft's
+own files — on Ubuntu 22.04, the latest Ubuntu, macOS and Windows. On each,
+the real app stores a summon shortcut, starts and stays up, and is then
+uninstalled. **Publish only when every smoke job is green.**
+
+To exercise the whole pipeline without spending a version number, run the
+workflow by hand (**Actions → Release → Run workflow**). It drafts a release
+tagged `v<commit>`; delete the draft afterwards, or retag it and publish it.
 
 ## What comes out
 
 | Platform | Artefacts |
 |---|---|
-| Linux | `.deb`, `.rpm`, `.AppImage` |
+| Linux | `.deb`, `.rpm`, `.AppImage` — built on Ubuntu 22.04, so they run wherever glibc is 2.35 or newer |
 | macOS | `.dmg` and `.app.tar.gz`, built twice — Apple Silicon and Intel |
 | Windows | `.msi` and an NSIS `.exe`, installing per-user |
 | Every release | `SHA256SUMS`, `jky-terminal.spdx.json` (the SBOM), and provenance attestations |
@@ -64,7 +73,10 @@ an unpinned action is added.
 
 ## Signing — not on yet, and what it would take
 
-Builds today are **unsigned**. They work, and on first launch:
+Builds today are **unsigned** — except that macOS builds carry an ad-hoc
+signature (`signingIdentity: "-"`), which costs nothing and is what Apple
+Silicon needs to run them at all. It proves nothing about who built them.
+Downloaded by hand, on first launch:
 
 - **macOS** refuses to open them from Finder. Right-click → Open, or
   `xattr -d com.apple.quarantine /Applications/JKY\ Terminal.app`.

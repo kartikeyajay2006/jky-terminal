@@ -255,13 +255,20 @@ fn verify_audit(args: &[String]) -> i32 {
 
 /// A release build on Windows is a GUI program with no console of its own,
 /// so a report printed from it would go nowhere. Borrow the console of the
-/// shell that started it.
+/// shell that started it — unless output already goes somewhere: the
+/// installers redirect it to a file and read the answer from there.
 #[cfg(windows)]
 fn attach_parent_console() {
-    use windows_sys::Win32::System::Console::{AttachConsole, ATTACH_PARENT_PROCESS};
-    // SAFETY: AttachConsole takes a process id by value and touches no memory
-    // of ours; failure (no parent console) leaves output where it was.
+    use windows_sys::Win32::Foundation::INVALID_HANDLE_VALUE;
+    use windows_sys::Win32::System::Console::{
+        AttachConsole, GetStdHandle, ATTACH_PARENT_PROCESS, STD_OUTPUT_HANDLE,
+    };
+    // SAFETY: both take plain values and touch no memory of ours. A failed
+    // AttachConsole (no parent console) leaves output where it was.
     unsafe {
-        AttachConsole(ATTACH_PARENT_PROCESS);
+        let out = GetStdHandle(STD_OUTPUT_HANDLE);
+        if out.is_null() || out == INVALID_HANDLE_VALUE {
+            AttachConsole(ATTACH_PARENT_PROCESS);
+        }
     }
 }

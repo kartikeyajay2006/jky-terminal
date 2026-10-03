@@ -52,7 +52,12 @@ Set-Content -Encoding ASCII (Join-Path $Work "app.cs") @'
 using System; using System.IO;
 class App { static int Main(string[] a) {
     File.AppendAllText(Environment.GetEnvironmentVariable("JKY_TEST_LOG"), string.Join(" ", a) + "\n");
-    if (a.Length >= 1 && a[0] == "--set-shortcut") { Console.WriteLine(a.Length > 1 ? a[1] : "none"); }
+    if (a.Length >= 1 && a[0] == "--set-shortcut") {
+        // A real app can be quiet, or a library can talk before it does.
+        if (Environment.GetEnvironmentVariable("JKY_TEST_SILENT") == "1") { return 0; }
+        if (Environment.GetEnvironmentVariable("JKY_TEST_NOISY") == "1") { Console.WriteLine("WebView2: a warning"); }
+        Console.WriteLine(a.Length > 1 ? a[1] : "none");
+    }
     return 0; } }
 '@
 # The stand-in for Tauri's NSIS installer: the same folder, the same
@@ -141,6 +146,15 @@ try {
         & cmd /c "`"$bin\jky.cmd`" shortcut Win+J" | Out-Null
         Check "jky shortcut stores a new one" ((Get-Content $Log -Raw) -match "--set-shortcut Super\+J") $true
         Check "Win+J clears the Start-menu hotkey it cannot hold" ([string]$ws.CreateShortcut($lnk).Hotkey) ""
+        $env:JKY_TEST_NOISY = "1"
+        $said = & cmd /c "`"$bin\jky.cmd`" shortcut Ctrl+Alt+N" 2>&1 | Out-String
+        Remove-Item Env:JKY_TEST_NOISY
+        Check "an app that talks first: its last line is the shortcut" ($said -match "Summon shortcut .*\+ N ") $true
+        Check "and the chatter is not shown as the shortcut" ($said -match "WebView2") $false
+        $env:JKY_TEST_SILENT = "1"
+        $said = & cmd /c "`"$bin\jky.cmd`" shortcut Ctrl+Alt+M" 2>&1 | Out-String
+        Remove-Item Env:JKY_TEST_SILENT
+        Check "an app that says nothing: what was asked for is reported" ($said -match "Summon shortcut .*\+ M ") $true
 
         Write-Host "uninstall, in $shell"
         New-Item -ItemType Directory -Force -Path (Join-Path $env:APPDATA "dev.jky.terminal") | Out-Null
@@ -159,6 +173,21 @@ try {
     Check "the installer refuses it" $LASTEXITCODE 1
     Check "it says why" ($out -match "checksum") $true
     Check "nothing is installed" (Test-Path (Join-Path $env:LOCALAPPDATA "JKY Terminal")) $false
+
+    Write-Host "no release, and no connection"
+    Use-Scratch "missing"
+    $env:JKY_RELEASE_BASE = "http://127.0.0.1:$port/nothing-here"
+    $out = & $hosts[0] -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Script 2>&1 | Out-String
+    Check "a missing release stops the installer" $LASTEXITCODE 1
+    Check "it says no release is published" ($out -match "No published release was found") $true
+    Check "where it looked is a line of its own" ($out -match "(?m)Looked in: http://127\.0\.0\.1:$port/nothing-here\s*$") $true
+    Check "the releases page is a line of its own" ($out -match "(?m)^\s*Releases:\s+https://github\.com/kartikeyajay2006/jky-terminal/releases\s*$") $true
+    $env:JKY_RELEASE_BASE = "http://127.0.0.1:9"
+    $out = & $hosts[0] -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Script 2>&1 | Out-String
+    Check "no connection stops the installer" $LASTEXITCODE 1
+    Check "it says it could not connect, not that there is no release" "$($out -match 'Could not connect'):$($out -match 'No published release')" "True:False"
+    Check "and nothing was installed" (Test-Path (Join-Path $env:LOCALAPPDATA "JKY Terminal Installer\bin\jky.cmd")) $false
+    $env:JKY_RELEASE_BASE = "http://127.0.0.1:$port"
 } finally {
     [Environment]::SetEnvironmentVariable("Path", $savedPath, "User")
     $env:LOCALAPPDATA = $savedLocal; $env:APPDATA = $savedRoaming

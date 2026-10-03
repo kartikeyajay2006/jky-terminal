@@ -36,7 +36,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          # The oldest Ubuntu still supported, not the newest: an AppImage
+          # runs only where glibc is at least as new as the builder's, so
+          # this is what lets it start on Ubuntu 22.04, Debian 12 and RHEL 9.
+          - os: ubuntu-22.04
             label: Linux (deb, rpm, AppImage)
             args: ""
           - os: macos-latest
@@ -66,7 +69,7 @@ jobs:
       # Tauri needs GTK/WebKit development headers on Linux only. macOS uses
       # WKWebView and Windows uses WebView2, both already on the runners.
       - name: Install Tauri system dependencies (Linux)
-        if: matrix.os == 'ubuntu-latest'
+        if: runner.os == 'Linux'
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libsoup-3.0-dev \
@@ -178,3 +181,145 @@ jobs:
         run: >
           gh release upload "$TAG" "$FILES/SHA256SUMS" jky-terminal.spdx.json
           --clobber --repo "$GITHUB_REPOSITORY"
+
+  # The draft, installed the way a person will install it — before anyone
+  # can. A build can succeed and still not install, or install and not
+  # start. The one-line installers from this commit install the draft's own
+  # files, served on localhost; the real app stores a shortcut, starts and
+  # stays up; then it is uninstalled. Publishing waits for this.
+  smoke:
+    name: Install and start (${{ matrix.os }})
+    needs: integrity
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # 22.04 is the oldest Ubuntu the AppImage is built for; the latest
+        # proves it on a current one.
+        os: [ubuntu-22.04, ubuntu-latest, macos-latest, windows-latest]
+    permissions:
+      contents: write # a draft is visible only to a token that can write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      TAG: ${{ github.ref_type == 'tag' && github.ref_name || format('v{0}', github.sha) }}
+      JKY_RELEASE_BASE: http://127.0.0.1:8765
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Fetch this platform's installer and SHA256SUMS from the draft
+        shell: bash
+        run: |
+          case "$RUNNER_OS" in
+            Linux) pattern='*_amd64.AppImage' ;;
+            macOS) pattern='*_aarch64.dmg' ;;
+            Windows) pattern='*_x64-setup.exe' ;;
+          esac
+          mkdir -p "$RUNNER_TEMP/rel"
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$RUNNER_TEMP/rel" \
+            --pattern "$pattern" --pattern SHA256SUMS
+          cp install.sh install.ps1 "$RUNNER_TEMP/rel/"
+          ls -la "$RUNNER_TEMP/rel"
+
+      - name: Install, store shortcuts, start, uninstall (Linux, macOS)
+        if: runner.os != 'Windows'
+        shell: bash
+        env:
+          JKY_SCRIPT_URL: http://127.0.0.1:8765/install.sh
+        run: |
+          set -eu
+          (cd "$RUNNER_TEMP/rel" && exec python3 -m http.server 8765 --bind 127.0.0.1) >/dev/null 2>&1 &
+          for _ in $(seq 1 30); do curl -fs "$JKY_RELEASE_BASE/SHA256SUMS" >/dev/null && break; sleep 1; done
+          want=$(node -p "require('./apps/desktop/src-tauri/tauri.conf.json').version")
+
+          echo "::group::install, exactly as pasted"
+          curl -fsSL "$JKY_RELEASE_BASE/install.sh" | sh -s -- --shortcut "ctrl alt j" | tee "$RUNNER_TEMP/install.out"
+          echo "::endgroup::"
+          grep -q "Installation complete" "$RUNNER_TEMP/install.out"
+          export PATH="$HOME/.local/bin:$PATH"
+          test "$(jky version)" = "$want"
+
+          if [ "$RUNNER_OS" = macOS ]; then
+            conf="$HOME/Library/Application Support/dev.jky.terminal/settings.json"
+          else
+            conf="$HOME/.config/dev.jky.terminal/settings.json"
+          fi
+          # Stored by the real binary, through --set-shortcut.
+          grep -q 'Ctrl+Alt+J' "$conf"
+          jky shortcut "super+shift+t" </dev/null
+          grep -q 'Shift+Super+T' "$conf"
+          jky shortcut none </dev/null
+          if grep -q 'Shift+Super+T' "$conf"; then echo "none did not clear it"; exit 1; fi
+
+          echo "::group::start the app"
+          if [ "$RUNNER_OS" = macOS ]; then
+            jky
+            sleep 20
+            pgrep -f "JKY Terminal.app/Contents/MacOS/" >/dev/null || { echo "the app did not stay up"; exit 1; }
+            pkill -f "JKY Terminal.app/Contents/MacOS/" || true
+          else
+            if ! command -v xvfb-run >/dev/null; then sudo apt-get update -qq && sudo apt-get install -y -qq xvfb >/dev/null; fi
+            # A desktop session has a session bus; the app's single-instance
+            # check talks to it.
+            status=0
+            dbus-run-session -- xvfb-run -a timeout 20 "$HOME/.local/share/jky-terminal/app/AppRun" \
+              >"$RUNNER_TEMP/app.log" 2>&1 || status=$?
+            cat "$RUNNER_TEMP/app.log"
+            # 124: still running when the 20 seconds were up.
+            test "$status" = 124 || { echo "the app exited with $status"; exit 1; }
+          fi
+          echo "::endgroup::"
+          sleep 2
+
+          jky uninstall
+          test ! -e "$HOME/.local/bin/jky"
+          if [ "$RUNNER_OS" = macOS ]; then
+            test ! -e "$HOME/Applications/JKY Terminal.app"
+          else
+            test ! -e "$HOME/.local/share/jky-terminal"
+          fi
+          test -f "$conf" # settings are kept
+
+      - name: Install, store shortcuts, start, uninstall (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          JKY_SCRIPT_URL: http://127.0.0.1:8765/install.ps1
+        run: |
+          $ErrorActionPreference = "Stop"
+          $server = Start-Process python -ArgumentList @("-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "$env:RUNNER_TEMP\rel") -PassThru -WindowStyle Hidden
+          for ($i = 0; $i -lt 30; $i++) { try { Invoke-WebRequest -UseBasicParsing "$env:JKY_RELEASE_BASE/SHA256SUMS" | Out-Null; break } catch { Start-Sleep 1 } }
+          $want = (Get-Content apps/desktop/src-tauri/tauri.conf.json -Raw | ConvertFrom-Json).version
+
+          # Exactly as pasted, in the Windows PowerShell every machine has.
+          $env:JKY_SHORTCUT = "ctrl alt j"
+          $out = powershell -NoLogo -NoProfile -ExecutionPolicy Bypass -Command "irm $env:JKY_RELEASE_BASE/install.ps1 | iex" 2>&1 | Out-String
+          Remove-Item Env:JKY_SHORTCUT
+          Write-Host $out
+          if ($out -notmatch "Installation complete") { throw "the installer did not finish" }
+
+          $bin = "$env:LOCALAPPDATA\JKY Terminal Installer\bin"
+          $v = (& cmd /c "`"$bin\jky.cmd`" version" | Out-String).Trim()
+          if ($v -ne $want) { throw "jky version said '$v', not '$want'" }
+          $conf = "$env:APPDATA\dev.jky.terminal\settings.json"
+          # Stored by the real binary, through --set-shortcut.
+          if (-not (Select-String -Path $conf -Pattern "Ctrl+Alt+J" -SimpleMatch -Quiet)) { throw "the shortcut was not stored" }
+          $lnk = "$env:APPDATA\Microsoft\Windows\Start Menu\Programs\JKY Terminal.lnk"
+          $hk = (New-Object -ComObject WScript.Shell).CreateShortcut($lnk).Hotkey
+          if ($hk -notmatch "Ctrl" -or $hk -notmatch "Alt") { throw "the Start-menu hotkey is '$hk'" }
+          & cmd /c "`"$bin\jky.cmd`" shortcut Win+Shift+T"
+          if (-not (Select-String -Path $conf -Pattern "Shift+Super+T" -SimpleMatch -Quiet)) { throw "jky shortcut did not store it" }
+
+          $exe = "$env:LOCALAPPDATA\JKY Terminal\jky-terminal.exe"
+          $app = Start-Process $exe -PassThru
+          Start-Sleep 20
+          if ($app.HasExited) { throw "the app exited with $($app.ExitCode)" }
+          Stop-Process -Id $app.Id -Force
+          Start-Sleep 3
+
+          $said = & cmd /c "`"$bin\jky.cmd`" uninstall" 2>&1 | Out-String
+          Write-Host $said
+          if ($said -match "cannot find|cannot be found") { throw "uninstall printed an error" }
+          if (Test-Path $exe) { throw "the app is still installed" }
+          if (Test-Path $bin) { throw "jky is still there" }
+          if (-not (Test-Path $conf)) { throw "the settings were not kept" }
+          Stop-Process -Id $server.Id -ErrorAction SilentlyContinue

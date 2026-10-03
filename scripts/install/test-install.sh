@@ -62,6 +62,9 @@ cat >"$WORK/app-main" <<'EOF'
 #!/bin/sh
 echo "$*" >>"$HOME/app-calls"
 if [ "${1:-}" = "--set-shortcut" ]; then
+    # A real app can be quiet, or a desktop library can talk before it does.
+    if [ -f "$HOME/app-silent" ]; then exit 0; fi
+    if [ -f "$HOME/app-noisy" ]; then echo "Gtk-Message: Failed to load module"; fi
     case "$2" in
         none | "") echo none ;;
         ctrl+j) echo "Ctrl on its own would take that key" >&2; exit 2 ;;
@@ -198,6 +201,18 @@ fi
 jky shortcut "ctrl+alt+k" </dev/null >/dev/null 2>&1
 check "jky shortcut stores the new one" "$(grep -c -- '--set-shortcut Ctrl+Alt+K' "$WORK/home/app-calls")" "1"
 
+echo "an app that talks first, or says nothing"
+touch "$WORK/home/app-noisy"
+jky shortcut "ctrl+alt+n" </dev/null >"$WORK/noisy" 2>&1
+rm -f "$WORK/home/app-noisy"
+check "the shortcut is its last line" "$(grep -c 'Summon shortcut .*+ N ' "$WORK/noisy")" "1"
+check "the library's chatter is not shown as the shortcut" "$(grep -c 'Gtk-Message' "$WORK/noisy")" "0"
+touch "$WORK/home/app-silent"
+jky shortcut "ctrl+alt+m" </dev/null >"$WORK/silent" 2>&1
+check "silence after success is what was asked for" "$?" "0"
+rm -f "$WORK/home/app-silent"
+check "and it says so" "$(grep -c 'Summon shortcut .*+ M ' "$WORK/silent")" "1"
+
 echo "a refused shortcut"
 jky shortcut "ctrl+j" </dev/null >"$WORK/refused" 2>&1
 check "it is refused, with the reason" "$(grep -c 'not a shortcut JKY can use' "$WORK/refused")" "1"
@@ -211,6 +226,20 @@ in_scratch "$WORK/home2" JKY_RELEASE_BASE="http://127.0.0.1:$PORT" sh "$SCRIPT" 
 check "the installer refuses it" "$?" "1"
 check "it says why" "$(grep -c 'checksum' "$WORK/tampered")" "1"
 check "nothing is installed" "$(test -e "$WORK/home2/.local/bin/jky" && echo installed || echo nothing)" "nothing"
+
+echo "no release, and no connection"
+rm -rf "$WORK/home3"
+mkdir -p "$WORK/home3"
+in_scratch "$WORK/home3" JKY_RELEASE_BASE="http://127.0.0.1:$PORT/nothing-here" sh "$SCRIPT" </dev/null >"$WORK/missing" 2>&1
+check "a missing release stops the installer" "$?" "1"
+check "it says no release is published" "$(grep -c 'No published release was found' "$WORK/missing")" "1"
+check "where it looked is a line of its own" "$(grep -c "Looked in: http://127.0.0.1:$PORT/nothing-here\$" "$WORK/missing")" "1"
+check "the releases page is a line of its own" "$(grep -c '^ *Releases: *https://github.com/kartikeyajay2006/jky-terminal/releases$' "$WORK/missing")" "1"
+in_scratch "$WORK/home3" JKY_RELEASE_BASE="http://127.0.0.1:9" sh "$SCRIPT" </dev/null >"$WORK/offline" 2>&1
+check "no connection stops the installer" "$?" "1"
+check "it says it could not connect, not that there is no release" \
+    "$(grep -c 'Could not connect' "$WORK/offline"):$(grep -c 'No published release' "$WORK/offline")" "1:0"
+check "and nothing was installed" "$(test -e "$WORK/home3/.local/bin/jky" && echo installed || echo nothing)" "nothing"
 
 echo "uninstall"
 mkdir -p "$WORK/home/.config/dev.jky.terminal" "$WORK/home/Library/Application Support/dev.jky.terminal"
