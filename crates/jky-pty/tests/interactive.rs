@@ -29,12 +29,18 @@ struct Driven {
 
 impl Driven {
     fn start(shell: ShellSpec, cols: u16, rows: u16) -> Self {
+        Self::start_with_path(shell, cols, rows, None)
+    }
+
+    /// A shell with `dir` first on its PATH, the way the app puts its own
+    /// commands in front of every shell it starts.
+    fn start_with_path(shell: ShellSpec, cols: u16, rows: u16, path_prepend: Option<std::path::PathBuf>) -> Self {
         let session = PtySession::spawn(SpawnConfig {
             shell,
             cwd: std::env::temp_dir(),
             cols,
             rows,
-            path_prepend: None,
+            path_prepend,
             config_dir: None,
         })
         .expect("a shell starts in a pty");
@@ -197,4 +203,54 @@ fn the_exit_status_reaches_the_window() {
     let shell = Driven::start(interactive(), 80, 24);
     shell.type_line("exit 7");
     assert_eq!(shell.session.wait().expect("the shell exits"), 7);
+}
+
+#[test]
+#[cfg(windows)]
+fn jky_banner_draws_its_unicode_in_a_windows_console() {
+    // In a real console, not through a pipe, because only a console garbles
+    // it: a console reads the bytes a program writes in its own code page —
+    // 437 on most machines — so a banner written as UTF-8 came out as "Γûê"
+    // for every "█". On macOS and Linux the pty is UTF-8 throughout.
+    let config = tempfile::TempDir::new().expect("a config folder");
+    let bin = jky_pty::launcher_dir(config.path());
+    jky_pty::install_launchers(&bin, "BANNER<█╗║╔╝═╚─✦>", "COMMANDS<█>", None).expect("launchers");
+    let shell = Driven::start_with_path(interactive(), 120, 30, Some(bin));
+    // The code page a console starts in on most machines, whatever this
+    // runner happens to be set to.
+    shell.type_line("[Console]::OutputEncoding = [Text.Encoding]::GetEncoding(437)");
+    shell.type_line("[Console]::Out.WriteLine('CPBEFORE_' + [Console]::OutputEncoding.CodePage + '_')");
+    assert!(shell.wait_for("CPBEFORE_"), "{}", shell.report());
+
+    shell.type_line("jky banner");
+    assert!(shell.wait_for("BANNER<█╗║╔╝═╚─✦>"), "`jky banner` came out garbled: {}", shell.report());
+
+    shell.type_line("jky commands");
+    assert!(shell.wait_for("COMMANDS<█>"), "`jky commands` came out garbled: {}", shell.report());
+
+    // `jky-terminal` prints the same banner by another name.
+    shell.type_line("jky-terminal");
+    let until = Instant::now() + PATIENCE;
+    while shell.text().matches("BANNER<█╗║╔╝═╚─✦>").count() < 2 && Instant::now() < until {
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    assert!(
+        shell.text().matches("BANNER<█╗║╔╝═╚─✦>").count() >= 2,
+        "`jky-terminal` came out garbled: {}",
+        shell.report()
+    );
+    assert!(!shell.text().contains("Γûê"), "UTF-8 was read as code page 437: {}", shell.report());
+
+    // The console's code page is the person's, and is left as it was found.
+    shell.type_line("[Console]::Out.WriteLine('CPAFTER_' + [Console]::OutputEncoding.CodePage + '_')");
+    assert!(shell.wait_for("CPAFTER_"), "{}", shell.report());
+    let code_page = |marker: &str| {
+        let text = shell.text();
+        // The last occurrence: the first is the typed command's own echo.
+        let at = text.rfind(marker).expect("the marker") + marker.len();
+        text[at..].chars().take_while(char::is_ascii_digit).collect::<String>()
+    };
+    let (before, after) = (code_page("CPBEFORE_"), code_page("CPAFTER_"));
+    assert!(!before.is_empty(), "no code page was printed: {}", shell.report());
+    assert_eq!(before, after, "the console's code page was changed and not put back");
 }
