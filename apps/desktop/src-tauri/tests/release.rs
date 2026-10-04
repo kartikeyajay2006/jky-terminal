@@ -309,3 +309,17 @@ fn every_platform_has_the_icon_format_its_installer_needs() {
         assert!(crate_root().join(found).is_file(), "{found} is listed but missing");
     }
 }
+
+#[test]
+fn a_published_release_is_never_built_again() {
+    // Publishing a draft can create its tag, and a tag starts this workflow.
+    // Building again would only leave a second, unpublished copy beside it.
+    let yaml = release_workflow();
+    let draft = yaml.split("\n  release:").next().unwrap();
+    assert!(draft.contains("releases/tags/$TAG"), "the draft job never checks for a published release");
+    let build = yaml.split("\n  release:").nth(1).unwrap();
+    assert!(
+        build.contains("if: needs.draft.outputs.id != ''"),
+        "the builds run even when there is nothing to build"
+    );
+}

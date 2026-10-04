@@ -44,6 +44,14 @@ jobs:
       - name: Create the draft, or reuse this tag's draft on a re-run
         id: draft
         run: |
+          # Already published — publishing a draft can create its tag, and a
+          # tag starts this workflow. Nothing to build; a second copy would
+          # only sit beside the real one as a draft.
+          if gh api "repos/$GITHUB_REPOSITORY/releases/tags/$TAG" >/dev/null 2>&1; then
+            echo "$TAG is already published; nothing to build."
+            echo "id=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
           id=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate \
             --jq ".[] | select(.draft and .tag_name == \"$TAG\") | .id" | head -1)
           if [ -z "$id" ]; then
@@ -73,6 +81,7 @@ jobs:
   release:
     name: ${{ matrix.label }}
     needs: draft
+    if: needs.draft.outputs.id != ''
     runs-on: ${{ matrix.os }}
     strategy:
       # One platform failing must not cancel the others: a macOS signing
