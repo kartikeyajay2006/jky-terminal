@@ -362,12 +362,25 @@ function Emit([string]$Kind, [string]$Payload) {
 function Base64([string]$Text) {
     [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Text))
 }
-# Bytes, unchanged, the way `type` copies them: re-encoding the banner
-# through the console code page would garble its Unicode.
+# The listings are UTF-8, and a console reads the bytes a program writes in
+# its own code page — 437 on most machines — so written as they are, every
+# "█" of the banner came out as "Γûê". The console reads them as UTF-8 for
+# the length of the write, then gets the person's code page back exactly as
+# it was. Through a pipe, where there is no console, the bytes pass as they
+# are.
 function Copy-Bytes([string]$Path, [IO.Stream]$To) {
     $bytes = [IO.File]::ReadAllBytes($Path)
-    $To.Write($bytes, 0, $bytes.Length)
-    $To.Flush()
+    $was = $null
+    try {
+        $was = [Console]::OutputEncoding
+        [Console]::OutputEncoding = New-Object Text.UTF8Encoding $false
+    } catch { $was = $null }
+    try {
+        $To.Write($bytes, 0, $bytes.Length)
+        $To.Flush()
+    } finally {
+        if ($was) { try { [Console]::OutputEncoding = $was } catch {} }
+    }
 }
 function Show([string]$Path) {
     Copy-Bytes $Path ([Console]::OpenStandardOutput())
@@ -459,12 +472,15 @@ switch ($noun) {
 "#;
 
 #[cfg(windows)]
-fn write_launcher(bin_dir: &Path, name: &str, banner_path: &Path) -> io::Result<()> {
+fn write_launcher(bin_dir: &Path, name: &str, _banner_path: &Path) -> io::Result<()> {
     // .cmd rather than a bare file: cmd.exe and PowerShell only treat an
     // extension in PATHEXT as executable, and a name with no extension is not.
+    //
+    // Through `jky banner` rather than `type`: `type` copies the UTF-8 bytes
+    // into a console that reads them in its own code page, which is exactly
+    // what garbled the banner.
     let script = bin_dir.join(format!("{name}.cmd"));
-    let body = format!("@echo off\r\ntype \"{}\"\r\n", banner_path.display());
-    std::fs::write(script, body)
+    std::fs::write(script, "@echo off\r\ncall \"%~dp0jky.cmd\" banner\r\n")
 }
 
 #[cfg(not(windows))]
