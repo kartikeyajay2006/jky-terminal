@@ -219,7 +219,9 @@ fn jky_banner_draws_its_unicode_in_a_windows_console() {
     // The code page a console starts in on most machines, whatever this
     // runner happens to be set to.
     shell.type_line("[Console]::OutputEncoding = [Text.Encoding]::GetEncoding(437)");
-    shell.type_line("[Console]::Out.WriteLine('CPBEFORE_' + [Console]::OutputEncoding.CodePage + '_')");
+    // The marker is split where it is typed, so the shell echoing the
+    // command can never pass for its answer.
+    shell.type_line("[Console]::Out.WriteLine('CP' + 'BEFORE_' + [Console]::OutputEncoding.CodePage + '_')");
     assert!(shell.wait_for("CPBEFORE_"), "{}", shell.report());
 
     shell.type_line("jky banner");
@@ -242,12 +244,11 @@ fn jky_banner_draws_its_unicode_in_a_windows_console() {
     assert!(!shell.text().contains("Γûê"), "UTF-8 was read as code page 437: {}", shell.report());
 
     // The console's code page is the person's, and is left as it was found.
-    shell.type_line("[Console]::Out.WriteLine('CPAFTER_' + [Console]::OutputEncoding.CodePage + '_')");
+    shell.type_line("[Console]::Out.WriteLine('CP' + 'AFTER_' + [Console]::OutputEncoding.CodePage + '_')");
     assert!(shell.wait_for("CPAFTER_"), "{}", shell.report());
     let code_page = |marker: &str| {
         let text = shell.text();
-        // The last occurrence: the first is the typed command's own echo.
-        let at = text.rfind(marker).expect("the marker") + marker.len();
+        let at = text.find(marker).expect("the marker") + marker.len();
         text[at..].chars().take_while(char::is_ascii_digit).collect::<String>()
     };
     let (before, after) = (code_page("CPBEFORE_"), code_page("CPAFTER_"));
