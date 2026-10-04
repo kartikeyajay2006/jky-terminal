@@ -112,9 +112,8 @@ trade-off: the further right a terminal sits, the more it does besides being a t
     [roadmap](product-roadmap.md).
 16. Warp dropped its login requirement in late 2024; some cloud and AI features use a Warp account.
 17. Signing in is needed for Copilot, not for the terminal.
-18. You can build from source today. The release workflow produces **unsigned** draft installers,
+18. Installers for every platform are on the [Releases page](https://github.com/kartikeyajay2006/jky-terminal/releases/latest), and the one-line installer sets one up. They are **unsigned** for now, so one downloaded by hand gets a first-launch warning on macOS and Windows. See [Operations and releases](operations-and-releases.md).
 19. Sixel and the iTerm2 image protocol, decoded within stated size and memory limits. Kitty's graphics protocol is not supported yet.
-    and no public release has been published yet. See [Operations and releases](operations-and-releases.md).
 
 ---
 
@@ -124,7 +123,7 @@ These are real limits, written down so nobody discovers them the hard way.
 
 | Limit | What it means for you | Where it is going |
 |---|---|---|
-| **No published release yet** | Build from source. Installers from the release workflow are unsigned, so macOS Gatekeeper and Windows SmartScreen will warn. | Signing, notarisation and a signed updater are on the [roadmap](product-roadmap.md). |
+| **Installers are not code-signed yet** | The one-line installer is unaffected. An installer downloaded by hand makes macOS Gatekeeper and Windows SmartScreen warn on first launch. | Signing, notarisation and a signed updater are on the [roadmap](product-roadmap.md). |
 | **Webview renderer** | Heavy output — megabytes of logs at once — will feel slower than in a native GPU terminal. | [Benchmarks](benchmarks.md) below the window are published; frame timing is next. |
 | **No Kitty graphics** | Sixel and iTerm2 images render; Kitty's graphics protocol does not, so `kitty +kitten icat` shows nothing. | Planned. |
 | **No scripting or plugins** | Settings are a panel plus `settings.json` and `keymap.json`. There is no Lua, JavaScript or plugin API. | A sandboxed SDK is planned, not promised. |

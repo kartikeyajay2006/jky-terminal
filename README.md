@@ -82,8 +82,9 @@ a shortcut without being asked with `--shortcut "Super+J"` (`$env:JKY_SHORTCUT`)
 `--no-animation` or `NO_COLOR=1`.
 
 > [!NOTE]
-> The installer downloads the latest **published** release. Until the first one is published it says
-> so and stops without changing anything — build from source in the meantime.
+> Prefer to download by hand? Every installer — `.exe`, `.msi`, `.dmg` for Apple Silicon and Intel,
+> `.AppImage`, `.deb`, `.rpm` — is on the [Releases page](https://github.com/kartikeyajay2006/jky-terminal/releases/latest),
+> with `SHA256SUMS` to check it against.
 
 ### Or build from source
 
@@ -273,7 +274,8 @@ with sources, in the [full comparison](docs/comparison.md).</sub>
 
 #### ⚠️ Where JKY is behind today
 
-- **No published release yet** — build from source; draft installers are unsigned.
+- **Installers are not code-signed yet** — the one-line installer is unaffected; a file downloaded by
+  hand gets a first-launch warning on macOS and Windows.
 - **Rendering runs in a webview** — native GPU terminals will win on raw throughput. The
   [benchmarks](docs/benchmarks.md) stop at the window; frame timing is not measured yet.
 - **No Kitty graphics protocol, scripting or plugins.** Sixel and iTerm2 images do render.
@@ -432,14 +434,14 @@ All sixteen actions are rebindable in **Settings → Keyboard** by pressing the 
 
 ### Packaged Releases
 
-> [!IMPORTANT]
-> **No public release has been published yet.** Once one is, the [one-line installer](#-install-in-one-line)
-> fetches it, verifies it and sets everything up. Today, build from source (below) — it takes a few
-> minutes the first time. The tag-driven release workflow already produces draft installers for every
-> platform; they are **unsigned** until signing certificates are configured, so macOS and Windows will
-> warn on first launch. See [Operations and releases](docs/operations-and-releases.md).
+> [!TIP]
+> The quickest way in is the [one-line installer](#-install-in-one-line): it fetches the
+> [latest release](https://github.com/kartikeyajay2006/jky-terminal/releases/latest), verifies it and
+> sets everything up. Downloaded by hand, the installers are **unsigned** until signing certificates
+> are configured, so macOS and Windows warn on first launch. See
+> [Operations and releases](docs/operations-and-releases.md).
 
-| Operating System | What the release workflow builds | Architecture |
+| Operating System | What every release carries | Architecture |
 |---|---|---|
 | **Linux** | `.deb` · `.rpm` · `.AppImage` | x86_64 |
 | **macOS** | `.dmg` and `.app.tar.gz`, built separately for each chip | Apple Silicon · Intel |

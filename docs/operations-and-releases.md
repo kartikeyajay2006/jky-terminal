@@ -147,13 +147,13 @@ Full step-by-step details, including every secret name, are in [RELEASING.md](RE
 
 | Capability | Status | What it takes |
 |---|---|---|
-| Draft installers for Linux, macOS ×2, Windows | 🟢 Working | — |
+| Installers for Linux, macOS ×2, Windows | 🟢 Working | Each release is installed and started on Windows, macOS and two Ubuntus before it is published. |
 | **macOS signing and notarisation** | 🔴 Not configured | A paid Apple Developer account; six repository secrets. The workflow already passes them through. |
 | **Windows code signing** | 🔴 Not configured | A code-signing certificate from a CA; two secrets. |
 | **Signed auto-updater** | ⚪ Deliberately off | A keypair that someone actually holds. Shipping a build that trusts a key nobody holds would be worse than no updates. |
 | Linux ARM64 packages | ⚪ Not built | Linux builds are x86_64 today. |
 | Checksums, SBOM, provenance | 🟢 Working | Every release carries `SHA256SUMS`, an SPDX SBOM and build-provenance attestations — see [checking a download](RELEASING.md#checking-a-download). |
-| A published public release | ⚪ Not yet | |
+| A published public release | 🟢 [v0.1.0](https://github.com/kartikeyajay2006/jky-terminal/releases/tag/v0.1.0) | — |
 
 **What unsigned means for users today:**
 

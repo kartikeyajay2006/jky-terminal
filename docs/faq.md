@@ -41,9 +41,11 @@ Linux, macOS and Windows. CI builds and tests on all three on every push. See
 <details>
 <summary><b>Can I download an installer?</b></summary>
 
-Not yet. No public release has been published. Build from source today — four commands once the
-prerequisites are installed. The release workflow already produces draft installers; they are unsigned
-until certificates are configured. See [Operations & releases](operations-and-releases.md).
+Yes. The one-line installer in the README fetches the latest release, checks it against `SHA256SUMS`
+and sets it up — or download an installer from the
+[Releases page](https://github.com/kartikeyajay2006/jky-terminal/releases/latest). Installers are
+unsigned until certificates are configured, so one downloaded by hand gets a first-launch warning on
+macOS and Windows. See [Operations & releases](operations-and-releases.md).
 
 </details>
 

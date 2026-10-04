@@ -186,6 +186,7 @@ try {
     $out = & $hosts[0] -NoLogo -NoProfile -ExecutionPolicy Bypass -File $Script 2>&1 | Out-String
     Check "no connection stops the installer" $LASTEXITCODE 1
     Check "it says it could not connect, not that there is no release" "$($out -match 'Could not connect'):$($out -match 'No published release')" "True:False"
+    Check "and the reason is shown" ($out -match "(?m)^\s*Reason: \S") $true
     Check "and nothing was installed" (Test-Path (Join-Path $env:LOCALAPPDATA "JKY Terminal Installer\bin\jky.cmd")) $false
     $env:JKY_RELEASE_BASE = "http://127.0.0.1:$port"
 } finally {

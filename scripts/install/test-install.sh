@@ -131,6 +131,16 @@ cat >"$WORK/fakebin/ldd" <<'EOF'
 if [ -f "$HOME/missing-libs" ]; then printf '\tlibEGL.so.1 => not found\n\tlibc.so.6 => /lib/libc.so.6 (0x1)\n'; fi
 EOF
 chmod +x "$WORK/fakebin/ldd"
+# The real curl — except that, when asked, a failed download exits with a
+# code other than 22, as curl did on a Mac for the very same 404.
+cat >"$WORK/fakebin/curl" <<'EOF'
+#!/bin/sh
+/usr/bin/curl "$@"
+s=$?
+if [ "$s" != 0 ] && [ -f "$HOME/curl-odd" ]; then exit 56; fi
+exit "$s"
+EOF
+chmod +x "$WORK/fakebin/curl"
 # ldconfig's view of the graphics libraries WebKit loads at run time, which
 # ldd cannot see — present, unless asked to be missing.
 cat >"$WORK/fakebin/ldconfig" <<'EOF'
@@ -271,10 +281,16 @@ check "a missing release stops the installer" "$?" "1"
 check "it says no release is published" "$(grep -c 'No published release was found' "$WORK/missing")" "1"
 check "where it looked is a line of its own" "$(grep -c "Looked in: http://127.0.0.1:$PORT/nothing-here\$" "$WORK/missing")" "1"
 check "the releases page is a line of its own" "$(grep -c '^ *Releases: *https://github.com/kartikeyajay2006/jky-terminal/releases$' "$WORK/missing")" "1"
+touch "$WORK/home3/curl-odd"
+in_scratch "$WORK/home3" JKY_RELEASE_BASE="http://127.0.0.1:$PORT/nothing-here" sh "$SCRIPT" </dev/null >"$WORK/missing-odd" 2>&1
+rm -f "$WORK/home3/curl-odd"
+check "whatever code curl exits with, a 404 is a missing release" \
+    "$(grep -c 'No published release was found' "$WORK/missing-odd"):$(grep -c 'Could not connect to download' "$WORK/missing-odd")" "1:0"
 in_scratch "$WORK/home3" JKY_RELEASE_BASE="http://127.0.0.1:9" sh "$SCRIPT" </dev/null >"$WORK/offline" 2>&1
 check "no connection stops the installer" "$?" "1"
 check "it says it could not connect, not that there is no release" \
-    "$(grep -c 'Could not connect' "$WORK/offline"):$(grep -c 'No published release' "$WORK/offline")" "1:0"
+    "$(grep -c 'Could not connect to download' "$WORK/offline"):$(grep -c 'No published release' "$WORK/offline")" "1:0"
+check "and curl's own reason is shown" "$(grep -c -i '^ *Reason: .*connect' "$WORK/offline")" "1"
 check "and nothing was installed" "$(test -e "$WORK/home3/.local/bin/jky" && echo installed || echo nothing)" "nothing"
 
 echo "uninstall"

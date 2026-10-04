@@ -310,6 +310,18 @@ jky_get() {
     if [ "$JKY_FETCH" = curl ]; then curl -fsSL --retry 2 "$1" -o "$2"; else wget -q -O "$2" "$1"; fi
 }
 
+# The HTTP status a URL answers with, after redirects; 000 when nothing
+# answered at all. Asked of the server itself rather than read from the
+# fetcher's exit code, which differs between builds of curl.
+jky_http_code() {
+    if [ "$JKY_FETCH" = curl ]; then
+        code=$(curl -sL -o /dev/null -w '%{http_code}' "$1" 2>/dev/null)
+    else
+        code=$(wget -q -S --spider "$1" 2>&1 | awk '$1 ~ /^HTTP\// {c = $2} END {print c}')
+    fi
+    case "$code" in [1-9][0-9][0-9]) echo "$code" ;; *) echo 000 ;; esac
+}
+
 jky_size_of() {
     if [ "$JKY_FETCH" = curl ]; then
         curl -fsIL "$1" 2>/dev/null | tr -d '\r' | awk 'tolower($1)=="content-length:" {n=$2} END {print n+0}'
@@ -966,7 +978,7 @@ main() {
     # The release list first, quietly, so the banner names the real version.
     base=$(jky_base_url)
     label=$JKY_VERSION
-    jky_get "$base/SHA256SUMS" "$JKY_WORK/SHA256SUMS" 2>/dev/null
+    jky_get "$base/SHA256SUMS" "$JKY_WORK/SHA256SUMS" 2>"$JKY_WORK/sums.err"
     sums_status=$?
     if [ "$sums_status" = 0 ]; then
         jky_pick_asset
@@ -980,16 +992,24 @@ main() {
 
     jky_section "Downloading and installing..."
     if [ "$sums_status" != 0 ]; then
-        # curl -f says 22 and wget says 8 when the server answered with an
-        # error: it was reached, and the release is not there.
-        if [ "$sums_status" = 22 ] || [ "$sums_status" = 8 ]; then
-            jky_fail "No published release was found." \
-                "Looked in: $base
-Releases:  https://github.com/${JKY_REPO}/releases"
-        fi
-        jky_fail "Could not connect to download JKY Terminal." \
-            "Check your internet connection (or proxy), then run this again.
-Tried: $base"
+        code=$(jky_http_code "$base/SHA256SUMS")
+        reason=$(sed -n '$s/^curl: ([0-9]*) //p' "$JKY_WORK/sums.err" 2>/dev/null)
+        case "$code" in
+            404 | 410)
+                jky_fail "No published release was found." \
+                    "Looked in: $base
+Releases:  https://github.com/${JKY_REPO}/releases" ;;
+            000)
+                hint="Check your internet connection (or proxy), then run this again.
+Tried:  $base"
+                if [ -n "$reason" ]; then hint="$hint
+Reason: $reason"; fi
+                jky_fail "Could not connect to download JKY Terminal." "$hint" ;;
+            *)
+                jky_fail "GitHub answered with an error ($code)." \
+                    "It is usually brief: run this again in a minute.
+Tried: $base" ;;
+        esac
     fi
     jky_download "$base/$JKY_ASSET" "$JKY_WORK/$JKY_ASSET" "Downloading package"
     jky_verify "$JKY_WORK/$JKY_ASSET" "$JKY_ASSET_SHA"

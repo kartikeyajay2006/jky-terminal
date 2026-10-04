@@ -7,19 +7,18 @@
 <p align="center">
   <img src="https://img.shields.io/badge/time-about%2010%20minutes-3ddc97?style=flat-square" alt="About ten minutes">
   <img src="https://img.shields.io/badge/Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-tested%20in%20CI-00e5ff?style=flat-square" alt="Linux, macOS and Windows tested in CI">
-  <img src="https://img.shields.io/badge/release-build%20from%20source-ffb340?style=flat-square" alt="Build from source">
+  <img src="https://img.shields.io/github/v/release/kartikeyajay2006/jky-terminal?style=flat-square&color=ffb340&label=release" alt="Latest release">
 </p>
 
 This guide takes you from nothing to a running JKY Terminal window, then walks through a first session
-that is worth doing before you trust the app with real work. It assumes you are building from source,
-because **no public release has been published yet** — see
-[Operations and releases](operations-and-releases.md) for where packaging stands.
+that is worth doing before you trust the app with real work. The fastest start is the one-line
+installer just below; the rest of the guide builds from source, which is how you work on JKY itself.
 
 > [!TIP]
 > Short on time? The whole thing is four commands once the prerequisites are installed:
 > `git clone` → `corepack enable` → `pnpm install` → `pnpm dev:desktop`.
 
-### Once a release is published: one line
+### Install in one line
 
 The installer fetches the latest release for your machine, checks its SHA-256 against the release's
 `SHA256SUMS`, installs it for your user only — no administrator, no `sudo` — adds a `jky` command, and
@@ -36,8 +35,7 @@ irm https://raw.githubusercontent.com/kartikeyajay2006/jky-terminal/main/install
 ```
 
 Then `jky` opens JKY Terminal from any terminal. `jky shortcut <keys>` changes the summon shortcut,
-`jky version` says which release is installed, and `jky uninstall` removes it and keeps your data. Until
-the first release is published, the installer says so and stops without changing anything.
+`jky version` says which release is installed, and `jky uninstall` removes it and keeps your data.
 
 **On this page:** [The path](#the-path) · [Prerequisites](#1-prerequisites) ·
 [Install and launch](#2-install-and-launch) · [The first window](#3-the-first-window) ·

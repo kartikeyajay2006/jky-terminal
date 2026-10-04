@@ -245,8 +245,14 @@ function Get-JkyBase {
 # The release's SHA256SUMS, and whether the server was reached at all: "no
 # release" and "no connection" need different advice.
 function Get-JkySums($client, [string]$base) {
-    try { $r = $client.GetAsync("$base/SHA256SUMS").GetAwaiter().GetResult() } catch { return @{ Status = "offline"; Text = $null } }
-    if (-not $r.IsSuccessStatusCode) { return @{ Status = "missing"; Text = $null } }
+    try { $r = $client.GetAsync("$base/SHA256SUMS").GetAwaiter().GetResult() }
+    catch {
+        $e = $_.Exception; while ($e.InnerException) { $e = $e.InnerException }
+        return @{ Status = "offline"; Text = $null; Reason = $e.Message }
+    }
+    $code = [int]$r.StatusCode
+    if ($code -eq 404 -or $code -eq 410) { return @{ Status = "missing"; Text = $null; Code = $code } }
+    if (-not $r.IsSuccessStatusCode) { return @{ Status = "error"; Text = $null; Code = $code } }
     return @{ Status = "ok"; Text = $r.Content.ReadAsStringAsync().GetAwaiter().GetResult() }
 }
 
@@ -673,7 +679,12 @@ function Install-Jky {
 
         Write-JkySection "Downloading and installing..."
         if ($fetched.Status -eq "missing") { Stop-Jky "No published release was found." "Looked in: $base`nReleases:  https://github.com/$JkyRepo/releases" }
-        if (-not $sums) { Stop-Jky "Could not connect to download JKY Terminal." "Check your internet connection (or proxy), then run this again.`nTried: $base" }
+        if ($fetched.Status -eq "error") { Stop-Jky "GitHub answered with an error ($($fetched.Code))." "It is usually brief: run this again in a minute.`nTried: $base" }
+        if (-not $sums) {
+            $hint = "Check your internet connection (or proxy), then run this again.`nTried:  $base"
+            if ($fetched.Reason) { $hint += "`nReason: $($fetched.Reason)" }
+            Stop-Jky "Could not connect to download JKY Terminal." $hint
+        }
         if (-not $asset) { Stop-Jky "This release has no Windows installer." "See https://github.com/$JkyRepo/releases" }
         $setup = Join-Path $script:Work $asset
         Save-JkyDownload $client "$base/$asset" $setup "Downloading package"
