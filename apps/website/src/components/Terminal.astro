@@ -2,6 +2,7 @@
 import Mark from "./Mark.astro";
 import Emblem from "./Emblem.astro";
 import Wordmark from "./Wordmark.astro";
+import { DEFAULT_THEME, labelOf } from "../lib/theme";
 
 interface Props {
   version: string;
@@ -60,7 +61,7 @@ const shortcuts = [
             <span class="term__tools"><span></span><span></span></span>
           </div>
 
-          <div class="term__screen" data-screen data-lenis-prevent>
+          <div class="term__screen" data-screen>
             <div class="term__banner" data-banner>
               <div class="term__marks">
                 <span class="term__wordmark"><Wordmark /></span>
@@ -104,7 +105,7 @@ const shortcuts = [
             <span>zsh</span>
             <span>~/acme/api</span>
             <span class="term__branch">main</span>
-            <span class="term__theme">theme <b data-theme-name>Cyberpunk</b></span>
+            <span class="term__theme">theme <b data-theme-name>{labelOf(DEFAULT_THEME)}</b></span>
           </div>
         </div>
       </div>
@@ -254,6 +255,7 @@ const shortcuts = [
     display: grid;
     grid-template-rows: auto minmax(0, 1fr) auto;
     min-width: 0;
+    min-height: 0;
   }
 
   .term__tabs {
@@ -304,6 +306,7 @@ const shortcuts = [
 
   .term__screen {
     position: relative;
+    min-height: 0;
     overflow-y: auto;
     padding: 18px 22px 22px;
     font: 13.5px / 1.55 var(--font-code);
@@ -311,7 +314,8 @@ const shortcuts = [
     cursor: text;
     scrollbar-width: thin;
     scrollbar-color: var(--line-strong) transparent;
-    overscroll-behavior: contain;
+    overscroll-behavior: auto;
+    scrollbar-gutter: stable;
   }
 
   .term__banner {

@@ -20,66 +20,68 @@ const raw = disks.map((d) => ({
 ---
 
 <section class="story panels" id="panels" aria-labelledby="panels-title" data-panels>
-  <div class="wrap story__grid">
-    <div class="story__text">
-      <h2 class="heading" id="panels-title" data-split>Output becomes a panel. The text stays.</h2>
-      <p class="lead">
-        A shell can only answer in text, so <code>df</code> and <code>docker ps</code> flatten tables into characters. JKY
-        reads them back and draws a panel beneath — with eight deterministic parsers, not a model.
-      </p>
-      <ol class="story__steps" data-steps>
-        <li class="is-on"><b>The raw output comes first.</b> Always, untouched, in the scrollback.</li>
-        <li><b>A panel builds beneath it.</b> Disks fullest first; it can stay live, re-running <code>df -h</code> itself.</li>
-        <li><b>Actions type. Pipes decline.</b> A button only types a command; a pipe makes the panel step aside.</li>
-      </ol>
-      <ul class="panels__chips" aria-label="What JKY recognises">
-        {recognisers.map((r) => <li>{r}</li>)}
-      </ul>
-      <a class="story__more" href={doc("terminal-guide.md", "every-command-can-become-a-panel")}>Every panel, and its limits</a>
-    </div>
+  <div class="story__track" style="--track: 260svh">
+    <div class="wrap story__grid">
+      <div class="story__text">
+        <h2 class="heading" id="panels-title" data-split>Output becomes a panel. The text stays.</h2>
+        <p class="lead">
+          A shell can only answer in text, so <code>df</code> and <code>docker ps</code> flatten tables into characters. JKY
+          reads them back and draws a panel beneath — with eight deterministic parsers, not a model.
+        </p>
+        <ol class="story__steps" data-steps>
+          <li class="is-on"><b>The raw output comes first.</b> Always, untouched, in the scrollback.</li>
+          <li><b>A panel builds beneath it.</b> Disks fullest first; it can stay live, re-running <code>df -h</code> itself.</li>
+          <li><b>Actions type. Pipes decline.</b> A button only types a command; a pipe makes the panel step aside.</li>
+        </ol>
+        <ul class="panels__chips" aria-label="What JKY recognises">
+          {recognisers.map((r) => <li>{r}</li>)}
+        </ul>
+        <a class="story__more" href={doc("terminal-guide.md", "every-command-can-become-a-panel")}>Every panel, and its limits</a>
+      </div>
 
-    <div class="story__stage" aria-hidden="true">
-      <div class="mini panels__win">
-        <div class="mini__bar"><span class="mini__tab">Terminal 1</span><span class="panels__live" data-live>● live</span></div>
-        <div class="mini__body panels__body">
-          <div class="mini__line" set:html={`<span class="pr__path">~/acme/api</span><span class="pr__branch"> main</span><span class="pr__sym"> $ </span>df -h`} />
-          <div class="panels__raw" data-raw>
-            <div class="mini__line t-dim">{header}</div>
-            {raw.map((r) => <div class="mini__line" data-rawline>{r.head}<span class={r.warn ? "t-warn" : ""}>{r.pct}</span>{r.mount}</div>)}
-            <span class="panels__scan" data-scan></span>
-          </div>
-
-          <section class="panel panels__panel" data-kind="df" data-panel>
-            <header class="panel__head">
-              <span class="panel__cmd"><span class="panel__chev">›</span>df -h</span>
-              <span class="panel__label">Fullest first · live</span>
-            </header>
-            <div class="df panels__df" data-df>
-              {
-                sorted.map((d) => (
-                  <div
-                    class="df__row"
-                    data-row={d.mount}
-                    data-level={d.pct >= 90 ? "high" : d.pct >= 75 ? "mid" : "low"}
-                    style={`--pct:${d.pct}%`}
-                  >
-                    <span class="df__mount">{d.mount}</span>
-                    <span class="df__bar">
-                      <span class="df__fill" />
-                    </span>
-                    <span class="df__num">
-                      {d.used} / {d.size} · <b data-pctnum={d.pct}>{d.pct}</b>%
-                    </span>
-                  </div>
-                ))
-              }
+      <div class="story__stage" aria-hidden="true">
+        <div class="mini panels__win">
+          <div class="mini__bar"><span class="mini__tab">Terminal 1</span><span class="panels__live" data-live>● live</span></div>
+          <div class="mini__body panels__body">
+            <div class="mini__line" set:html={`<span class="pr__path">~/acme/api</span><span class="pr__branch"> main</span><span class="pr__sym"> $ </span>df -h`} />
+            <div class="panels__raw" data-raw>
+              <div class="mini__line t-dim">{header}</div>
+              {raw.map((r) => <div class="mini__line" data-rawline>{r.head}<span class={r.warn ? "t-warn" : ""}>{r.pct}</span>{r.mount}</div>)}
+              <span class="panels__scan" data-scan></span>
             </div>
-          </section>
 
-          <div class="panels__pipe" data-pipe>
-            <div class="mini__line" set:html={`<span class="pr__path">~/acme/api</span><span class="pr__branch"> main</span><span class="pr__sym"> $ </span>docker ps | grep api`} />
-            <div class="mini__line">e1c3b5d7f9a2   acme/api:dev   Up 12 minutes   :8080   api</div>
-            <div class="panels__declined">piped through grep — no panel. JKY only reads output it knows is unedited.</div>
+            <section class="panel panels__panel" data-kind="df" data-panel>
+              <header class="panel__head">
+                <span class="panel__cmd"><span class="panel__chev">›</span>df -h</span>
+                <span class="panel__label">Fullest first · live</span>
+              </header>
+              <div class="df panels__df" data-df>
+                {
+                  sorted.map((d) => (
+                    <div
+                      class="df__row"
+                      data-row={d.mount}
+                      data-level={d.pct >= 90 ? "high" : d.pct >= 75 ? "mid" : "low"}
+                      style={`--pct:${d.pct}%`}
+                    >
+                      <span class="df__mount">{d.mount}</span>
+                      <span class="df__bar">
+                        <span class="df__fill" />
+                      </span>
+                      <span class="df__num">
+                        {d.used} / {d.size} · <b data-pctnum={d.pct}>{d.pct}</b>%
+                      </span>
+                    </div>
+                  ))
+                }
+              </div>
+            </section>
+
+            <div class="panels__pipe" data-pipe>
+              <div class="mini__line" set:html={`<span class="pr__path">~/acme/api</span><span class="pr__branch"> main</span><span class="pr__sym"> $ </span>docker ps | grep api`} />
+              <div class="mini__line">e1c3b5d7f9a2   acme/api:dev   Up 12 minutes   :8080   api</div>
+              <div class="panels__declined">piped through grep — no panel. JKY only reads output it knows is unedited.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -173,66 +175,76 @@ const raw = disks.map((d) => ({
 </style>
 
 <script>
-  import { gsap, startMotion, still, whenIdle, settle } from "../lib/motion";
+  import { startMotion, still, whenNear } from "../lib/motion";
 
   startMotion();
   const root = document.querySelector<HTMLElement>("[data-panels]");
   if (root && !still()) {
-    whenIdle(() => {
-      const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
-      const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
-      const rawLines = qa("[data-rawline]");
-      const scan = q("[data-scan]");
-      const panel = q("[data-panel]");
-      const rows = qa("[data-row]");
-      const fills = rows.map((r) => r.querySelector<HTMLElement>(".df__fill"));
-      const pipe = q("[data-pipe]");
-      const steps = qa("[data-steps] li");
-      const big = q('[data-pctnum="91"]');
+    whenNear(root, async () => {
+      const { gsap, settle } = await import("../lib/scene-motion");
+      gsap.matchMedia().add({
+        wide: "(min-width: 901px) and (min-height: 760px)",
+        motion: "(prefers-reduced-motion: no-preference)",
+      }, (context) => {
+        if (!context.conditions?.motion) return;
+        const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
+        const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
+        const rawLines = qa("[data-rawline]");
+        const scan = q("[data-scan]");
+        const panel = q("[data-panel]");
+        const rows = qa("[data-row]");
+        const fills = rows.map((r) => r.querySelector<HTMLElement>(".df__fill"));
+        const pipe = q("[data-pipe]");
+        const steps = qa("[data-steps] li");
+        const big = q('[data-pctnum="91"]');
 
-      const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
+        const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
 
-      // The panel first arrives in the order df printed — mount order — and
-      // then sorts itself, fullest first, which is what the app shows.
-      const rowH = rows[1].offsetTop - rows[0].offsetTop;
-      const printed = ["/boot/efi", "/data", "/"];
-      const shiftFor = (r: HTMLElement) => (printed.indexOf(r.dataset.row ?? "") - rows.indexOf(r)) * rowH;
+        // The panel first arrives in the order df printed — mount order — and
+        // then sorts itself, fullest first, which is what the app shows.
+        const rowH = rows[1].offsetTop - rows[0].offsetTop;
+        const printed = ["/boot/efi", "/data", "/"];
+        const shiftFor = (r: HTMLElement) => (printed.indexOf(r.dataset.row ?? "") - rows.indexOf(r)) * rowH;
 
-      gsap.set(rawLines, { autoAlpha: 0, x: -10 });
-      gsap.set(panel, { autoAlpha: 0, y: 18, clipPath: "inset(0 0 100% 0 round 12px)" });
-      gsap.set(rows, { y: (_i, r: HTMLElement) => shiftFor(r) });
-      gsap.set(fills, { scaleX: 0 });
-      gsap.set(pipe, { autoAlpha: 0, y: 10 });
+        gsap.set(rawLines, { autoAlpha: 0, x: -10 });
+        gsap.set(panel, { autoAlpha: 0, y: 18, clipPath: "inset(0 0 100% 0 round 12px)" });
+        gsap.set(rows, { y: (_i, r: HTMLElement) => shiftFor(r) });
+        gsap.set(fills, { scaleX: 0 });
+        gsap.set(pipe, { autoAlpha: 0, y: 10 });
 
-      const wide = matchMedia("(min-width: 901px)").matches;
-      const tl = gsap.timeline({
-        defaults: { ease: "power2.out" },
-        scrollTrigger: {
-          trigger: wide ? root.querySelector(".story__grid") : root.querySelector(".story__stage"),
-          start: wide ? "top top" : "top 80%",
-          end: wide ? "+=220%" : "bottom 15%",
-          pin: wide,
-          scrub: 0.9,
-          onUpdate: (st) => setStep(st.progress < 0.3 ? 0 : st.progress < 0.72 ? 1 : 2),
-        },
+        const wide = context.conditions?.wide;
+        const tl = gsap.timeline({
+          defaults: { ease: "power2.out", lazy: false },
+          scrollTrigger: {
+            trigger: wide ? root.querySelector(".story__track") : root.querySelector(".story__stage"),
+            start: wide ? "top top" : "top 80%",
+            end: wide ? "bottom bottom" : "bottom 15%",
+            scrub: true,
+            onUpdate: (st) => setStep(st.progress < 0.3 ? 0 : st.progress < 0.72 ? 1 : 2),
+          },
+        });
+
+        tl.to(rawLines, { autoAlpha: 1, x: 0, stagger: 0.18, duration: 0.3 }, 0)
+          // The recogniser reads the table.
+          .fromTo(scan, { autoAlpha: 0, y: 0 }, { autoAlpha: 1, duration: 0.15 }, 0.75)
+          .to(scan, { y: rawLines.length * 20, duration: 0.6, ease: "none" }, 0.8)
+          .to(scan, { autoAlpha: 0, duration: 0.15 }, 1.4)
+          // The panel unfolds beneath the text, which stays where it is.
+          .to(panel, { autoAlpha: 1, y: 0, clipPath: "inset(0 0 0% 0 round 12px)", duration: 0.6, ease: "power3.out" }, 1.45)
+          .to(fills, { scaleX: 1, stagger: 0.12, duration: 0.6, ease: "expo.out" }, 1.75)
+          // Fullest first.
+          .to(rows, { y: 0, duration: 0.7, ease: "back.inOut(1.4)" }, 2.55)
+          // Live: it re-runs df -h itself, and the number moves.
+          .to({}, { duration: 0.4, onUpdate() { big.textContent = this.progress() > 0.5 ? "92" : "91"; } }, 3.35)
+          .fromTo(big, { color: "var(--warn)" }, { color: "var(--danger)", duration: 0.3 }, 3.5)
+          // A pipe, and the panel steps aside.
+          .to(pipe, { autoAlpha: 1, y: 0, duration: 0.45 }, 3.95);
+        settle();
+        return () => {
+          big.textContent = "91";
+          setStep(2);
+        };
       });
-
-      tl.to(rawLines, { autoAlpha: 1, x: 0, stagger: 0.18, duration: 0.3 }, 0)
-        // The recogniser reads the table.
-        .fromTo(scan, { autoAlpha: 0, y: 0 }, { autoAlpha: 1, duration: 0.15 }, 0.75)
-        .to(scan, { y: rawLines.length * 20, duration: 0.6, ease: "none" }, 0.8)
-        .to(scan, { autoAlpha: 0, duration: 0.15 }, 1.4)
-        // The panel unfolds beneath the text, which stays where it is.
-        .to(panel, { autoAlpha: 1, y: 0, clipPath: "inset(0 0 0% 0 round 12px)", duration: 0.6, ease: "power3.out" }, 1.45)
-        .to(fills, { scaleX: 1, stagger: 0.12, duration: 0.6, ease: "expo.out" }, 1.75)
-        // Fullest first.
-        .to(rows, { y: 0, duration: 0.7, ease: "back.inOut(1.4)" }, 2.55)
-        // Live: it re-runs df -h itself, and the number moves.
-        .to({}, { duration: 0.4, onUpdate() { big.textContent = this.progress() > 0.5 ? "92" : "91"; } }, 3.35)
-        .fromTo(big, { color: "var(--warn)" }, { color: "var(--danger)", duration: 0.3 }, 3.5)
-        // A pipe, and the panel steps aside.
-        .to(pipe, { autoAlpha: 1, y: 0, duration: 0.45 }, 3.95);
-      settle();
     });
   }
 </script>

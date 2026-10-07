@@ -37,15 +37,14 @@ export async function startGlyphField(canvas: HTMLCanvasElement, opts: FieldOpti
   });
   if (!gl) return null;
 
-  const program = await link(gl, VERTEX, FRAGMENT);
-  if (!program) return null;
-
-  // No GPU — a software rasteriser draws every frame on the processor, and
-  // an animated field would cost the page its smoothness. Such a machine
-  // gets the field as one finished still frame instead.
+  // Detect a CPU renderer before compiling shaders or drawing a large field.
+  // The vector emblem is already painted and keeps scrolling responsive here.
   const info = gl.getExtension("WEBGL_debug_renderer_info");
   const renderer = info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : "";
-  if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer)) opts = { ...opts, still: true };
+  if (/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer)) return null;
+
+  const program = await link(gl, VERTEX, FRAGMENT);
+  if (!program) return null;
 
   // The atlas needs the real font, or it bakes a fallback face forever.
   try {

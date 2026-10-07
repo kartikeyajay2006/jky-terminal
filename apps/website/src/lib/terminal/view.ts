@@ -49,7 +49,7 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
   // Enter pressed while output was still arriving; run it as soon as it ends.
   let pendingEnter = false;
   let demo: AbortController | null = null;
-  let demoTheme: string | null = null;
+  let followOutput = true;
 
   // ---- drawing -------------------------------------------------------------
 
@@ -75,8 +75,22 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
   };
 
   const toEnd = () => {
-    screen.scrollTop = screen.scrollHeight;
+    if (followOutput) screen.scrollTop = screen.scrollHeight;
   };
+
+  // Reading older output must win over streamed output's automatic scrolling.
+  // Native scrolling handles the terminal; Lenis handles the page at its edges.
+  screen.addEventListener("wheel", (event) => {
+    if (event.deltaY < 0) followOutput = false;
+    stopDemo();
+  }, { passive: true });
+  screen.addEventListener("touchstart", () => {
+    followOutput = false;
+    stopDemo();
+  }, { passive: true });
+  screen.addEventListener("scroll", () => {
+    followOutput = screen.scrollHeight - screen.clientHeight - screen.scrollTop < 4;
+  }, { passive: true });
 
   const trim = () => {
     while (log.childElementCount > 220) log.firstElementChild?.remove();
@@ -94,6 +108,7 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
     input.value = command;
     drawPrompt();
     input.focus({ preventScroll: true });
+    followOutput = true;
     toEnd();
   };
 
@@ -217,6 +232,7 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
   }
 
   async function execute(fromDemo = false) {
+    if (!fromDemo) followOutput = true;
     const { input: typed, result } = shell.submit();
     input.value = "";
     echo(typed);
@@ -316,8 +332,17 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
   input.addEventListener("focus", () => root.classList.add("is-focused"));
   input.addEventListener("blur", () => root.classList.remove("is-focused"));
 
-  // A click anywhere in the screen that is not a control focuses the prompt.
+  // Taps focus the prompt; a drag or scrollbar interaction keeps its scroll.
+  let pressedAt: { x: number; y: number } | null = null;
+  screen.addEventListener("pointerdown", (e) => {
+    pressedAt = { x: e.clientX, y: e.clientY };
+  });
   screen.addEventListener("pointerup", (e) => {
+    const start = pressedAt;
+    pressedAt = null;
+    if (!start || Math.hypot(e.clientX - start.x, e.clientY - start.y) > 6) return;
+    const rect = screen.getBoundingClientRect();
+    if (e.clientX >= rect.left + screen.clientWidth) return;
     const target = e.target as Element;
     if (target.closest("button, a, input, code, .jt") || window.getSelection()?.toString()) return;
     stopDemo();
@@ -375,34 +400,18 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
       shell.set(input.value);
       drawPrompt();
     }
-    if (demoTheme) {
-      void setTheme(demoTheme, { persist: false, instant: !inView });
-      demoTheme = null;
-    }
   }
 
   async function playDemo() {
     demo = new AbortController();
     const { signal } = demo;
     root.classList.add("is-demo");
-    const original = currentTheme();
-    const contrast = ["light", "gold"].includes(original) ? "cyberpunk" : "gold";
     try {
       await sleep(500, signal);
       for (const cmd of ["git status -s", "docker ps"]) {
         await typeOut(cmd, signal);
         await execute(true);
         await sleep(1900, signal);
-      }
-      if (!opts.still) {
-        demoTheme = original;
-        await typeOut(`jky theme ${contrast}`, signal);
-        await execute(true);
-        await sleep(2300, signal);
-        await typeOut(`jky theme ${original}`, signal);
-        await execute(true);
-        demoTheme = null;
-        await sleep(500, signal);
       }
       log.append(h("div", { class: "ln ln--note ln--turn" }, "Your turn — type help, or click a command below."));
       toEnd();

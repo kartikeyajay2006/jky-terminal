@@ -5,7 +5,7 @@
  * applied with the same reveal `jky theme` uses, grown from the click.
  */
 import { themeTokens } from "../lib/facts";
-import { themes } from "../lib/theme";
+import { DEFAULT_THEME, labelOf, themes } from "../lib/theme";
 
 const tokens = themeTokens();
 ---
@@ -13,7 +13,7 @@ const tokens = themeTokens();
 <div class="tp" data-themepicker>
   <button class="tp__button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="tp-menu" data-tp-button>
     <span class="tp__swatch" aria-hidden="true"><i></i><i></i><i></i></span>
-    <span class="tp__label" data-tp-label>Cyberpunk</span>
+    <span class="tp__label" data-tp-label>{labelOf(DEFAULT_THEME)}</span>
     <svg class="tp__chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5L6 7.5L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>
   </button>
   <div class="tp__menu" id="tp-menu" role="menu" aria-label="Theme" data-tp-menu hidden>
@@ -197,7 +197,7 @@ const tokens = themeTokens();
 </style>
 
 <script>
-  import { currentTheme, labelOf, setTheme } from "../lib/theme";
+  import { currentTheme, DEFAULT_THEME, labelOf, setTheme } from "../lib/theme";
 
   for (const root of document.querySelectorAll<HTMLElement>("[data-themepicker]")) {
     const button = root.querySelector<HTMLButtonElement>("[data-tp-button]");
@@ -247,7 +247,7 @@ const tokens = themeTokens();
         const x = e.clientX || r.left + r.width / 2;
         const y = e.clientY || r.top + r.height / 2;
         close(true);
-        void setTheme(item.dataset.themeId ?? "cyberpunk", { x, y });
+        void setTheme(item.dataset.themeId ?? DEFAULT_THEME, { x, y });
       });
     }
     document.addEventListener("pointerdown", (e) => {

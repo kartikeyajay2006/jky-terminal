@@ -61,6 +61,9 @@ test("never scrolls sideways", async ({ page }) => {
   await page.goto("./");
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   expect(overflow).toBeLessThanOrEqual(0);
+  // A sticky cell can expand mobile's layout viewport even while body clips
+  // it; subtracting innerWidth alone misses that and pointer coordinates drift.
+  expect(await page.evaluate(() => innerWidth)).toBeLessThanOrEqual(page.viewportSize()!.width + 1);
 });
 
 test("every link goes somewhere real", async ({ page }) => {
@@ -89,11 +92,8 @@ test("every link goes somewhere real", async ({ page }) => {
 test("the hero always shows the emblem: in glyphs where WebGL2 runs, as a vector where not", async ({ page }) => {
   await page.goto("./");
   const hero = page.locator("[data-hero]");
-  const started = await hero
-    .and(page.locator('[data-field="on"]'))
-    .waitFor({ timeout: 20_000 })
-    .then(() => true)
-    .catch(() => false);
+  await expect(hero).toHaveAttribute("data-field", /^(on|fallback)$/, { timeout: 20_000 });
+  const started = await hero.getAttribute("data-field") === "on";
   const emblem = page.locator("[data-emblem]");
   if (started) {
     await expect(page.locator("canvas[data-field]")).toHaveCSS("opacity", "1");
@@ -106,12 +106,13 @@ test("the hero always shows the emblem: in glyphs where WebGL2 runs, as a vector
 test("asked for less motion, the field is one still frame", async ({ page }) => {
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("./");
-  const started = await page
-    .locator('[data-hero][data-field="on"]')
-    .waitFor({ timeout: 20_000 })
-    .then(() => true)
-    .catch(() => false);
-  test.skip(!started, "no WebGL2 here; the still SVG emblem is what shows");
+  const hero = page.locator("[data-hero]");
+  await expect(hero).toHaveAttribute("data-field", /^(on|fallback)$/, { timeout: 20_000 });
+  if (await hero.getAttribute("data-field") === "fallback") {
+    await expect(page.locator("[data-emblem]")).toBeVisible();
+    await expect(page.locator("[data-emblem]")).not.toHaveCSS("opacity", "0");
+    return;
+  }
   // The field counts its own draws. Left alone, a still field draws no more.
   const draws = () =>
     page.evaluate(() => (document.querySelector("canvas[data-field]") as HTMLCanvasElement & { jkyDraws?: number }).jkyDraws ?? 0);

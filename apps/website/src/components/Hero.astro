@@ -1,7 +1,7 @@
 ---
 import Emblem from "./Emblem.astro";
 import InstallCommand from "./InstallCommand.astro";
-import { GITHUB, doc } from "../lib/links";
+import { doc } from "../lib/links";
 
 interface Props {
   version: string;
@@ -310,10 +310,11 @@ const { version } = Astro.props;
     const go = async () => {
       try {
         const field = await startGlyphField(canvas, { emblem, surface: hero, still });
-        if (field) hero.dataset.field = "on";
+        hero.dataset.field = field ? "on" : "fallback";
       } catch (err) {
         // The SVG emblem is still there; the page has lost nothing.
         console.warn("glyph field unavailable:", err);
+        hero.dataset.field = "fallback";
       }
     };
     // After the words have painted, never before.

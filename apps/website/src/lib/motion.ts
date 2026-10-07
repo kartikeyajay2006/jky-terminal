@@ -1,47 +1,37 @@
 /**
- * The page's motion: smooth scrolling, and the scroll-driven scenes built on
- * it. One clock — GSAP's ticker drives Lenis, Lenis feeds ScrollTrigger — so
- * a pinned scene and the scroll that moves it never disagree by a frame.
+ * The page's lightweight motion: smooth scrolling and viewport reveals.
+ * Story timelines load separately, when they approach the viewport.
  *
  * Asked for less motion, none of this starts: the page scrolls natively and
  * every scene is drawn in its finished state by CSS.
  */
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { SplitText } from "gsap/SplitText";
 import Lenis from "lenis";
-
-gsap.registerPlugin(ScrollTrigger, SplitText);
-
-export { gsap, ScrollTrigger };
 
 export const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-/**
- * Runs work when the browser has a moment, not during the first paint.
- * Everything below the first screen is set up this way, each piece as its
- * own short task, so the page is interactive before any of it exists.
- */
-export function whenIdle(fn: () => void, timeout = 1500) {
-  const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
-  if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout });
-  else setTimeout(fn, 120);
+/** Build each scene near the viewport, before its scroll timeline begins. */
+export function whenNear(el: HTMLElement, fn: () => void | Promise<void>) {
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    io.disconnect();
+    void document.fonts.ready.then(async () => {
+      await fn();
+      el.dataset.sceneReady = "true";
+    });
+  }, { rootMargin: "600px 0px" });
+  io.observe(el);
 }
 
 let lenis: Lenis | null = null;
 
-/**
- * Called by each piece of deferred setup when it is done. Scenes are built
- * in idle moments, not all at once, so their positions are re-measured —
- * once, after the last of them — with every pinned scene's space in place.
- */
-let settleTimer = 0;
-export function settle() {
-  clearTimeout(settleTimer);
-  settleTimer = window.setTimeout(() => {
-    ScrollTrigger.sort();
-    ScrollTrigger.refresh();
-  }, 150);
+/** Connect a lazily loaded story's scroll reader to the page's scroll clock. */
+export function onPageScroll(fn: () => void) {
+  lenis?.on("scroll", fn);
+}
+
+/** ScrollTrigger briefly resets native scroll while refreshing its geometry. */
+export function syncPageScroll() {
+  if (!lenis?.isScrolling) lenis?.scrollTo(window.scrollY, { immediate: true, force: true });
 }
 let started = false;
 
@@ -54,80 +44,111 @@ export function startMotion() {
   }
 
   lenis = new Lenis({
-    duration: 1.1,
+    duration: 0.85,
     easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     wheelMultiplier: 1,
-    touchMultiplier: 1.4,
+    allowNestedScroll: true,
+    autoRaf: true,
   });
-  lenis.on("scroll", ScrollTrigger.update);
-  gsap.ticker.add((time) => lenis?.raf(time * 1000));
-  gsap.ticker.lagSmoothing(0);
   document.documentElement.classList.add("has-lenis");
+
+  const hashTarget = (hash: string) => {
+    try {
+      return document.getElementById(decodeURIComponent(hash.slice(1)));
+    } catch {
+      return null;
+    }
+  };
+  const sectionY = (target: HTMLElement) => {
+    const pad = parseFloat(getComputedStyle(target).paddingTop) || 0;
+    return Math.max(0, target.getBoundingClientRect().top + window.scrollY + pad - 96);
+  };
+  const alignHash = () => {
+    const target = hashTarget(location.hash);
+    if (!target || !lenis) return;
+    lenis.resize();
+    lenis.scrollTo(sectionY(target), { immediate: true, force: true });
+  };
+
+  // Native fragment jumps can use stale positions after a viewport resize.
+  // Align them after layout, using the same destination as the nav links.
+  window.addEventListener("hashchange", () => requestAnimationFrame(alignHash));
+  const initialHash = location.hash;
+  let interacted = false;
+  for (const event of ["wheel", "touchstart", "pointerdown", "keydown"]) {
+    window.addEventListener(event, () => { interacted = true; }, { once: true, passive: true });
+  }
+  void document.fonts.ready.then(() => {
+    if (!interacted && location.hash === initialHash) alignHash();
+  });
 
   // In-page links glide instead of jumping, and still land under the nav.
   document.addEventListener("click", (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     const a = (e.target as Element).closest<HTMLAnchorElement>("a[href]");
     // A link to a place on this same page, written either way: "#try" or
     // "/jky-terminal/#try".
     if (!a || !lenis || !a.hash || a.origin !== location.origin || a.pathname !== location.pathname) return;
     const id = a.hash;
-    const target = document.getElementById(decodeURIComponent(id.slice(1)));
+    const target = hashTarget(id);
     if (!target) return;
     e.preventDefault();
     // Land on the section's content, just under the nav — not on the top of
     // the generous space above it.
-    const pad = parseFloat(getComputedStyle(target).paddingTop) || 0;
-    const y = target.getBoundingClientRect().top + window.scrollY + pad - 96;
-    lenis.scrollTo(Math.max(0, y), { duration: 1.4 });
+    lenis.resize();
+    lenis.scrollTo(sectionY(target), { duration: 1.4 });
     history.pushState(null, "", id);
   });
 
-  whenIdle(() => {
-    revealHeadings();
-    settle();
-  });
-  whenIdle(() => {
-    revealBlocks();
-    settle();
-  });
+  revealHeadings();
+  revealBlocks();
 }
 
-/** Headings rise into place line by line, each line behind its own mask. */
+/**
+ * Reveal headings as they arrive. Animate the existing element, so there is
+ * no line splitting, synchronous measurement or DOM rewrite during a scroll.
+ */
 function revealHeadings() {
-  for (const el of document.querySelectorAll<HTMLElement>("[data-split]")) {
-    SplitText.create(el, {
-      type: "lines",
-      mask: "lines",
-      autoSplit: true,
-      onSplit(self) {
-        return gsap.from(self.lines, {
-          yPercent: 115,
-          rotate: 2.5,
-          duration: 1.15,
-          ease: "expo.out",
-          stagger: 0.085,
-          scrollTrigger: { trigger: el, start: "top 86%", once: true },
-        });
-      },
-    });
-  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        io.unobserve(entry.target);
+        const el = entry.target as HTMLElement;
+        el.classList.add("is-heading-revealed");
+        arrive(el, 24);
+      }
+    },
+    { rootMargin: "0px 0px -6% 0px" },
+  );
+  for (const el of document.querySelectorAll<HTMLElement>("[data-split]")) io.observe(el);
 }
 
 /** Anything marked [data-reveal] arrives as it scrolls in; children stagger. */
 function revealBlocks() {
-  for (const el of document.querySelectorAll<HTMLElement>("[data-reveal]")) {
-    const kids = el.dataset.reveal === "children" ? [...el.children] : [el];
-    gsap.from(kids, {
-      y: 36,
-      opacity: 0,
-      filter: "blur(6px)",
-      duration: 1.1,
-      ease: "expo.out",
-      stagger: 0.08,
-      scrollTrigger: { trigger: el, start: "top 88%", once: true },
-      clearProps: "filter",
-    });
-  }
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        io.unobserve(entry.target);
+        const el = entry.target as HTMLElement;
+        const kids = el.dataset.reveal === "children" ? [...el.children] : [el];
+        el.classList.add("is-revealed");
+        kids.forEach((kid, i) => arrive(kid, 20, i * 60));
+      }
+    },
+    { rootMargin: "0px 0px -10% 0px" },
+  );
+  for (const el of document.querySelectorAll<HTMLElement>("[data-reveal]")) io.observe(el);
+}
+
+/** Browser-composited entrances leave no inline transform behind. */
+function arrive(el: Element, y: number, delay = 0) {
+  if (still()) return;
+  el.animate([
+    { opacity: 0, transform: `translateY(${y}px)` },
+    { opacity: 1, transform: "translateY(0px)" },
+  ], { duration: 650, delay, fill: "backwards", easing: "cubic-bezier(0.16, 1, 0.3, 1)" });
 }
 
 /** A number that decodes into place, the way the headline does. */
@@ -135,31 +156,29 @@ export function decodeNumber(el: HTMLElement, trigger: Element = el) {
   const target = el.textContent ?? "";
   const DIGITS = "0123456789";
   const SYMBOLS = "#%&$@*+=";
-  ScrollTrigger.create({
-    trigger,
-    start: "top 85%",
-    once: true,
-    onEnter: () => {
-      const t0 = performance.now();
-      const dur = 1300;
-      const step = (now: number) => {
-        const p = Math.min(1, (now - t0) / dur);
-        let out = "";
-        [...target].forEach((ch, i) => {
-          const settleAt = 0.35 + (i / Math.max(1, target.length)) * 0.6;
-          if (p >= settleAt || !/[0-9]/.test(ch)) out += ch;
-          else {
-            const pool = Math.random() < 0.85 ? DIGITS : SYMBOLS;
-            out += pool[Math.floor(Math.random() * pool.length)];
-          }
-        });
-        el.textContent = out;
-        if (p < 1) requestAnimationFrame(step);
-        else el.textContent = target;
-      };
-      requestAnimationFrame(step);
-    },
-  });
+  const io = new IntersectionObserver((entries) => {
+    if (!entries.some((entry) => entry.isIntersecting)) return;
+    io.disconnect();
+    const t0 = performance.now();
+    const dur = 1300;
+    const step = (now: number) => {
+      const p = Math.min(1, (now - t0) / dur);
+      let out = "";
+      [...target].forEach((ch, i) => {
+        const settleAt = 0.35 + (i / Math.max(1, target.length)) * 0.6;
+        if (p >= settleAt || !/[0-9]/.test(ch)) out += ch;
+        else {
+          const pool = Math.random() < 0.85 ? DIGITS : SYMBOLS;
+          out += pool[Math.floor(Math.random() * pool.length)];
+        }
+      });
+      el.textContent = out;
+      if (p < 1) requestAnimationFrame(step);
+      else el.textContent = target;
+    };
+    requestAnimationFrame(step);
+  }, { rootMargin: "0px 0px -15% 0px" });
+  io.observe(trigger);
 }
 
 /** Buttons lean toward the pointer, a little, and settle back. */
@@ -169,16 +188,14 @@ export function magnetize(selector = "[data-magnetic]") {
     // Safe to call from any component: an element is only bound once.
     if (el.dataset.magnetized) continue;
     el.dataset.magnetized = "true";
-    const xTo = gsap.quickTo(el, "x", { duration: 0.6, ease: "elastic.out(1, 0.45)" });
-    const yTo = gsap.quickTo(el, "y", { duration: 0.6, ease: "elastic.out(1, 0.45)" });
     el.addEventListener("pointermove", (e) => {
       const r = el.getBoundingClientRect();
-      xTo((e.clientX - (r.left + r.width / 2)) * 0.28);
-      yTo((e.clientY - (r.top + r.height / 2)) * 0.36);
+      const x = (e.clientX - (r.left + r.width / 2)) * 0.2;
+      const y = (e.clientY - (r.top + r.height / 2)) * 0.24;
+      el.style.translate = `${x}px ${y}px`;
     });
     el.addEventListener("pointerleave", () => {
-      xTo(0);
-      yTo(0);
+      el.style.translate = "0px 0px";
     });
   }
 }

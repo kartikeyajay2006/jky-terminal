@@ -381,13 +381,14 @@ const guarantees = [
 </style>
 
 <script>
-  import { gsap, ScrollTrigger, spotlight, startMotion, still, whenIdle, settle } from "../lib/motion";
+  import { spotlight, startMotion, still, whenNear } from "../lib/motion";
 
   startMotion();
   spotlight(".sec__item");
   const root = document.querySelector<HTMLElement>("[data-sec]");
   if (root && !still()) {
-    whenIdle(() => {
+    whenNear(root, async () => {
+      const { gsap, ScrollTrigger, settle } = await import("../lib/scene-motion");
       const svg = root.querySelector<SVGSVGElement>(".sec__diagram");
       const q = <T extends Element>(s: string) => root.querySelector(s) as T;
       const cells = [...root.querySelectorAll<SVGRectElement>("[data-cell]")];

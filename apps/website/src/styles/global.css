@@ -227,7 +227,8 @@ kbd {
     border-color var(--motion-normal) var(--ease),
     color var(--motion-normal) var(--ease),
     box-shadow var(--motion-normal) var(--ease),
-    transform var(--motion-normal) var(--ease);
+    transform var(--motion-normal) var(--ease),
+    translate 400ms var(--out-expo);
 }
 
 .btn svg {
@@ -317,6 +318,23 @@ kbd {
 
 .story .lead {
   font-size: clamp(1.02rem, 0.96rem + 0.25vw, 1.14rem);
+}
+
+/*
+ * A scene plays while its grid sticks to the screen and its track scrolls
+ * past — native position: sticky, so the browser does the holding and the
+ * script only reads how far along the track the reader is. Only while the
+ * motion system runs, and only where there is room for the two columns.
+ */
+@media (min-width: 901px) and (min-height: 760px) and (prefers-reduced-motion: no-preference) {
+  .has-lenis .story__track {
+    height: var(--track, 260svh);
+  }
+
+  .has-lenis .story__track > .story__grid {
+    position: sticky;
+    top: 0;
+  }
 }
 
 /* A short screen keeps the scene and the steps; the caveat moves below. */
@@ -468,4 +486,20 @@ kbd {
   white-space: pre;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/*
+ * Waiting to be revealed. Only while the motion system runs (it adds
+ * has-lenis), and only below the fold where it is used, so a page without
+ * scripts — or with less motion asked for — shows everything at once.
+ */
+/* Opacity, not visibility: hidden from sight only, never from a screen
+   reader moving through the page by its headings. */
+.has-lenis [data-split]:not(.is-heading-revealed) {
+  opacity: 0;
+}
+
+.has-lenis [data-reveal=""]:not(.is-revealed),
+.has-lenis [data-reveal="children"]:not(.is-revealed) > * {
+  opacity: 0;
 }

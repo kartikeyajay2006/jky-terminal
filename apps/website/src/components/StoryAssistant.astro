@@ -6,55 +6,57 @@ const said =
 ---
 
 <section class="story asst" id="assistant" aria-labelledby="assistant-title" data-asst>
-  <div class="wrap story__grid">
-    <div class="story__text">
-      <h2 class="heading" id="assistant-title" data-split>Reading is free. Running is yours.</h2>
-      <p class="lead">
-        The assistant can search and read your project on its own. Every command it proposes waits for you — with what it
-        reads, writes and reaches spelled out, and a dry run to try first.
-      </p>
-      <ol class="story__steps" data-steps>
-        <li class="is-on"><b>You see what a message takes.</b> Chips show every file it carries; secrets are redacted in Rust before anything leaves.</li>
-        <li><b>It proposes; you decide.</b> Approve, dry run, or decline — nothing runs on its own.</li>
-        <li><b>Destructive means typed back.</b> To delete, you type the target. A misclick cannot do it.</li>
-      </ol>
-      <p class="story__limit">
-        <strong>Your model, your key:</strong> Anthropic, OpenAI, or a local Ollama model, fully offline. Keys live in
-        the OS keychain, and no command can hand one back to the window.
-      </p>
-      <a class="story__more" href={doc("assistant-and-approvals.md")}>How approvals work</a>
-    </div>
+  <div class="story__track" style="--track: 260svh">
+    <div class="wrap story__grid">
+      <div class="story__text">
+        <h2 class="heading" id="assistant-title" data-split>Reading is free. Running is yours.</h2>
+        <p class="lead">
+          The assistant can search and read your project on its own. Every command it proposes waits for you — with what it
+          reads, writes and reaches spelled out, and a dry run to try first.
+        </p>
+        <ol class="story__steps" data-steps>
+          <li class="is-on"><b>You see what a message takes.</b> Chips show every file it carries; secrets are redacted in Rust before anything leaves.</li>
+          <li><b>It proposes; you decide.</b> Approve, dry run, or decline — nothing runs on its own.</li>
+          <li><b>Destructive means typed back.</b> To delete, you type the target. A misclick cannot do it.</li>
+        </ol>
+        <p class="story__limit">
+          <strong>Your model, your key:</strong> Anthropic, OpenAI, or a local Ollama model, fully offline. Keys live in
+          the OS keychain, and no command can hand one back to the window.
+        </p>
+        <a class="story__more" href={doc("assistant-and-approvals.md")}>How approvals work</a>
+      </div>
 
-    <div class="story__stage" aria-hidden="true">
-      <div class="mini asst__win">
-        <div class="mini__bar"><span class="mini__tab">✦ Assistant</span><span class="asst__model">claude · your key</span></div>
-        <div class="mini__body asst__body">
-          <div class="asst__chips" data-chips>
-            <span class="asst__chip">takes <b>src/server.ts</b></span>
-            <span class="asst__chip">takes <b>package.json</b></span>
-            <span class="asst__chip asst__chip--redact">1 key redacted</span>
-          </div>
-          <div class="asst__you" data-you>the build output is huge — clean it up</div>
-          <div class="asst__said" data-said><span class="ap__who">✦ </span><span data-said-text>{said}</span></div>
-
-          <section class="ap asst__ap" data-destructive="true" data-card>
-            <div class="ap__card">
-              <div class="ap__head">This deletes files. Approve it?</div>
-              <code class="ap__cmd">rm -rf dist</code>
-              <dl class="ap__facts" data-facts>
-                <dt>Reads</dt><dd>nothing</dd>
-                <dt>Writes</dt><dd class="t-danger">deletes dist/ — 214 files, 3.1 MB</dd>
-                <dt>Network</dt><dd>none</dd>
-              </dl>
-              <div class="ap__type">Type <code>dist</code> to approve <span class="asst__field" data-field>dist</span></div>
-              <div class="ap__actions" data-actions>
-                <span class="ap__btn ap__btn--go" data-approve>Approve</span>
-                <span class="ap__btn">Dry run</span>
-                <span class="ap__btn">Decline</span>
-              </div>
-              <div class="ap__status t-mint asst__done" data-done>✓ Approved — removed dist/ · 214 files</div>
+      <div class="story__stage" aria-hidden="true">
+        <div class="mini asst__win">
+          <div class="mini__bar"><span class="mini__tab">✦ Assistant</span><span class="asst__model">claude · your key</span></div>
+          <div class="mini__body asst__body">
+            <div class="asst__chips" data-chips>
+              <span class="asst__chip">takes <b>src/server.ts</b></span>
+              <span class="asst__chip">takes <b>package.json</b></span>
+              <span class="asst__chip asst__chip--redact">1 key redacted</span>
             </div>
-          </section>
+            <div class="asst__you" data-you>the build output is huge — clean it up</div>
+            <div class="asst__said" data-said><span class="ap__who">✦ </span><span data-said-text>{said}</span></div>
+
+            <section class="ap asst__ap" data-destructive="true" data-card>
+              <div class="ap__card">
+                <div class="ap__head">This deletes files. Approve it?</div>
+                <code class="ap__cmd">rm -rf dist</code>
+                <dl class="ap__facts" data-facts>
+                  <dt>Reads</dt><dd>nothing</dd>
+                  <dt>Writes</dt><dd class="t-danger">deletes dist/ — 214 files, 3.1 MB</dd>
+                  <dt>Network</dt><dd>none</dd>
+                </dl>
+                <div class="ap__type">Type <code>dist</code> to approve <span class="asst__field" data-field>dist</span></div>
+                <div class="ap__actions" data-actions>
+                  <span class="ap__btn ap__btn--go" data-approve>Approve</span>
+                  <span class="ap__btn">Dry run</span>
+                  <span class="ap__btn">Decline</span>
+                </div>
+                <div class="ap__status t-mint asst__done" data-done>✓ Approved — removed dist/ · 214 files</div>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
     </div>
@@ -158,79 +160,91 @@ const said =
 </style>
 
 <script>
-  import { gsap, startMotion, still, whenIdle, settle } from "../lib/motion";
+  import { startMotion, still, whenNear } from "../lib/motion";
 
   startMotion();
   const root = document.querySelector<HTMLElement>("[data-asst]");
   if (root && !still()) {
-    whenIdle(() => {
-      const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
-      const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
-      const chips = qa("[data-chips] > *");
-      const you = q("[data-you]");
-      const said = q("[data-said]");
-      const saidText = q("[data-said-text]");
-      const card = q("[data-card]");
-      const facts = qa("[data-facts] > *");
-      const field = q("[data-field]");
-      const approve = q("[data-approve]");
-      const actions = q("[data-actions]");
-      const done = q("[data-done]");
-      const steps = qa("[data-steps] li");
-      const full = saidText.textContent ?? "";
-      const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
-      const typed = { n: 0, c: 0 };
+    whenNear(root, async () => {
+      const { gsap, settle } = await import("../lib/scene-motion");
+      gsap.matchMedia().add({
+        wide: "(min-width: 901px) and (min-height: 760px)",
+        motion: "(prefers-reduced-motion: no-preference)",
+      }, (context) => {
+        if (!context.conditions?.motion) return;
+        const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
+        const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
+        const chips = qa("[data-chips] > *");
+        const you = q("[data-you]");
+        const said = q("[data-said]");
+        const saidText = q("[data-said-text]");
+        const card = q("[data-card]");
+        const facts = qa("[data-facts] > *");
+        const field = q("[data-field]");
+        const approve = q("[data-approve]");
+        const actions = q("[data-actions]");
+        const done = q("[data-done]");
+        const steps = qa("[data-steps] li");
+        const full = saidText.textContent ?? "";
+        const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
+        const typed = { n: 0, c: 0 };
 
-      gsap.set(chips, { autoAlpha: 0, y: 8, scale: 0.9 });
-      gsap.set(you, { autoAlpha: 0, x: 30 });
-      gsap.set(said, { autoAlpha: 0 });
-      gsap.set(card, { autoAlpha: 0, y: 24, clipPath: "inset(0 0 100% 0 round 12px)" });
-      gsap.set(facts, { autoAlpha: 0, x: -8 });
-      saidText.textContent = "";
-      field.textContent = "";
-      approve.style.opacity = "0.4";
-      gsap.set(actions, { display: "flex" });
-      gsap.set(done, { display: "none" });
+        gsap.set(chips, { autoAlpha: 0, y: 8, scale: 0.9 });
+        gsap.set(you, { autoAlpha: 0, x: 30 });
+        gsap.set(said, { autoAlpha: 0 });
+        gsap.set(card, { autoAlpha: 0, y: 24, clipPath: "inset(0 0 100% 0 round 12px)" });
+        gsap.set(facts, { autoAlpha: 0, x: -8 });
+        saidText.textContent = "";
+        field.textContent = "";
+        approve.style.opacity = "0.4";
+        gsap.set(actions, { display: "flex" });
+        gsap.set(done, { display: "none" });
 
-      const wide = matchMedia("(min-width: 901px)").matches;
-      const tl = gsap.timeline({
-        defaults: { ease: "power2.out" },
-        scrollTrigger: {
-          trigger: wide ? root.querySelector(".story__grid") : root.querySelector(".story__stage"),
-          start: wide ? "top top" : "top 80%",
-          end: wide ? "+=220%" : "bottom 15%",
-          pin: wide,
-          scrub: 0.9,
-          onUpdate: (st) => setStep(st.progress < 0.34 ? 0 : st.progress < 0.68 ? 1 : 2),
-        },
-      });
-
-      tl.to(chips, { autoAlpha: 1, y: 0, scale: 1, stagger: 0.12, duration: 0.3, ease: "back.out(2)" }, 0)
-        .to(you, { autoAlpha: 1, x: 0, duration: 0.4 }, 0.3)
-        .to(said, { autoAlpha: 1, duration: 0.1 }, 0.85)
-        .to(typed, {
-          n: full.length,
-          duration: 1.1,
-          ease: "none",
-          onUpdate: () => (saidText.textContent = full.slice(0, Math.round(typed.n))),
-        }, 0.9)
-        .to(card, { autoAlpha: 1, y: 0, clipPath: "inset(0 0 0% 0 round 12px)", duration: 0.6, ease: "power3.out" }, 2.1)
-        .to(facts, { autoAlpha: 1, x: 0, stagger: 0.06, duration: 0.25 }, 2.4)
-        .to(typed, {
-          c: 4,
-          duration: 0.9,
-          ease: "none",
-          onUpdate: () => {
-            const n = Math.round(typed.c);
-            field.textContent = "dist".slice(0, n);
-            approve.style.opacity = n >= 4 ? "1" : "0.4";
+        const wide = context.conditions?.wide;
+        const tl = gsap.timeline({
+          defaults: { ease: "power2.out", lazy: false },
+          scrollTrigger: {
+            trigger: wide ? root.querySelector(".story__track") : root.querySelector(".story__stage"),
+            start: wide ? "top top" : "top 80%",
+            end: wide ? "bottom bottom" : "bottom 15%",
+            scrub: true,
+            onUpdate: (st) => setStep(st.progress < 0.34 ? 0 : st.progress < 0.68 ? 1 : 2),
           },
-        }, 3.05)
-        .to(approve, { scale: 0.92, duration: 0.12, yoyo: true, repeat: 1 }, 4.05)
-        .set(actions, { display: "none" }, 4.3)
-        .set(done, { display: "block" }, 4.3)
-        .fromTo(done, { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 4.3);
-      settle();
+        });
+
+        tl.to(chips, { autoAlpha: 1, y: 0, scale: 1, stagger: 0.12, duration: 0.3, ease: "back.out(2)" }, 0)
+          .to(you, { autoAlpha: 1, x: 0, duration: 0.4 }, 0.3)
+          .to(said, { autoAlpha: 1, duration: 0.1 }, 0.85)
+          .to(typed, {
+            n: full.length,
+            duration: 1.1,
+            ease: "none",
+            onUpdate: () => (saidText.textContent = full.slice(0, Math.round(typed.n))),
+          }, 0.9)
+          .to(card, { autoAlpha: 1, y: 0, clipPath: "inset(0 0 0% 0 round 12px)", duration: 0.6, ease: "power3.out" }, 2.1)
+          .to(facts, { autoAlpha: 1, x: 0, stagger: 0.06, duration: 0.25 }, 2.4)
+          .to(typed, {
+            c: 4,
+            duration: 0.9,
+            ease: "none",
+            onUpdate: () => {
+              const n = Math.round(typed.c);
+              field.textContent = "dist".slice(0, n);
+              approve.style.opacity = n >= 4 ? "1" : "0.4";
+            },
+          }, 3.05)
+          .to(approve, { scale: 0.92, duration: 0.12, yoyo: true, repeat: 1 }, 4.05)
+          .set(actions, { display: "none" }, 4.3)
+          .set(done, { display: "block" }, 4.3)
+          .fromTo(done, { autoAlpha: 0, y: 6 }, { autoAlpha: 1, y: 0, duration: 0.3 }, 4.3);
+        settle();
+        return () => {
+          saidText.textContent = full;
+          field.textContent = "dist";
+          approve.style.removeProperty("opacity");
+          setStep(2);
+        };
+      });
     });
   }
 </script>

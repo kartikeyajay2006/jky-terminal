@@ -14,9 +14,10 @@ export const themes = THEMES.map(({ id, label }) => ({ id, label }));
 export type ThemeId = (typeof THEMES)[number]["id"];
 
 const KEY = "jky.theme";
+export const DEFAULT_THEME: ThemeId = "contrast";
 
 export function currentTheme(): string {
-  return document.documentElement.dataset.theme ?? "cyberpunk";
+  return document.documentElement.dataset.theme ?? DEFAULT_THEME;
 }
 
 export function isTheme(id: string): id is ThemeId {
