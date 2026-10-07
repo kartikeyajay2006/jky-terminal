@@ -28,7 +28,8 @@ function watch(page: Page) {
 test("loads with no console errors and no request to another host", async ({ page }) => {
   const seen = watch(page);
   await page.goto("./");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
+  await page.evaluate(() => document.fonts.ready);
   await page.mouse.wheel(0, 4000);
   await page.waitForTimeout(500);
   expect(seen.errors).toEqual([]);
@@ -44,7 +45,8 @@ test("enforces the app's own rule: connect-src 'self'", async ({ page }) => {
 
 test("has no serious accessibility violations", async ({ page }) => {
   await page.goto("./");
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
+  await page.evaluate(() => document.fonts.ready);
   const results = await new AxeBuilder({ page }).analyze();
   const serious = results.violations.filter((v) => v.impact === "serious" || v.impact === "critical");
   expect(serious.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);

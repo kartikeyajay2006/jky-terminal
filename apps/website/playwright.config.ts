@@ -22,6 +22,14 @@ export default defineConfig({
   projects: [
     { name: "desktop", use: { ...devices["Desktop Chrome"], viewport: { width: 1440, height: 900 } } },
     { name: "phone", use: { ...devices["Pixel 7"] } },
+    // Firefox and WebKit — Safari's engine — run where their system libraries
+    // install cleanly: CI's Ubuntu runner, or any machine with ALL_BROWSERS=1.
+    ...(process.env.CI || process.env.ALL_BROWSERS
+      ? [
+          { name: "firefox", use: { ...devices["Desktop Firefox"], viewport: { width: 1440, height: 900 } } },
+          { name: "webkit", use: { ...devices["Desktop Safari"], viewport: { width: 1440, height: 900 } } },
+        ]
+      : []),
   ],
   webServer: {
     // --ignore-lock: a preview someone already has running on another port

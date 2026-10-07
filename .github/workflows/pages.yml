@@ -33,7 +33,7 @@ jobs:
   build:
     name: Build and check the site
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       ASTRO_TELEMETRY_DISABLED: "1"
     steps:
@@ -61,8 +61,8 @@ jobs:
       # The site is only published if a real browser can use it: no console
       # errors, no request to another host, no serious accessibility problem,
       # every link pointing at something that exists.
-      - name: Install a browser for the smoke test
-        run: pnpm --filter @jky/website exec playwright install --with-deps chromium
+      - name: Install Chromium, Firefox and WebKit for the smoke test
+        run: pnpm --filter @jky/website exec playwright install --with-deps chromium firefox webkit
       - name: Smoke-test the built site
         run: pnpm --filter @jky/website test:e2e
 
