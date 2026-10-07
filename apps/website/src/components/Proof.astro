@@ -1,0 +1,189 @@
+---
+import { floorClaim, readFacts } from "../lib/facts";
+import release from "../data/release.json";
+
+const facts = readFacts();
+const exe = release.assets.find((a) => /x64-setup\.exe$/.test(a.name));
+const exeMb = exe ? (exe.size / 1_000_000).toFixed(1) : null;
+const lowest = Math.min(...facts.themes.map((t) => t.ratio));
+
+const items = [
+  {
+    value: String(facts.ipcCommands),
+    label: "commands the window can call",
+    source: "each pinned by name in tests/security.rs — a new one fails the build until it is reviewed",
+  },
+  {
+    value: floorClaim(facts.rustTests + facts.frontendTests),
+    label: "automated tests",
+    source: "Rust and the interface, run on Linux, macOS and Windows on every push",
+  },
+  {
+    value: String(facts.crates),
+    label: "Rust crates do the real work",
+    source: "PTYs, files, keys, history, the audit log — the window only asks",
+  },
+  {
+    value: String(facts.themes.length),
+    label: "themes, all AAA contrast",
+    source: `measured from the token files; the lowest is ${lowest.toFixed(1)} : 1`,
+  },
+  ...(exeMb
+    ? [
+        {
+          value: exeMb,
+          unit: "MB",
+          label: "Windows installer",
+          source: `${release.tag}'s ${exe?.name} — Rust and the system's own webview, no bundled browser`,
+        },
+      ]
+    : []),
+  {
+    value: "0",
+    label: "accounts, trackers, telemetry",
+    source: "the window's CSP is connect-src 'self' — it cannot reach a server at all",
+  },
+];
+---
+
+<section class="proof" aria-labelledby="proof-title">
+  <div class="wrap">
+    <div class="proof__head">
+      <h2 class="proof__title" id="proof-title" data-split>The numbers, counted rather than claimed.</h2>
+      <p class="proof__note">Read from the repository each time this page is built.</p>
+    </div>
+    <dl class="proof__grid" data-reveal="children">
+      {
+        items.map((it) => (
+          <div class="proof__item" data-spotlight>
+            <dt class="proof__label">{it.label}</dt>
+            <dd class="proof__value">
+              <span data-decode>{it.value}</span>
+              {it.unit && <span class="proof__unit">{it.unit}</span>}
+            </dd>
+            <dd class="proof__source">{it.source}</dd>
+          </div>
+        ))
+      }
+    </dl>
+  </div>
+</section>
+
+<style>
+  .proof {
+    padding-top: var(--section-gap);
+  }
+
+  .proof__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: end;
+    justify-content: space-between;
+    gap: 16px 40px;
+    margin-bottom: clamp(28px, 4vw, 48px);
+  }
+
+  .proof__title {
+    margin: 0;
+    max-width: 18ch;
+    font: 750 var(--t-h2) / 1.02 var(--font-code);
+    letter-spacing: -0.045em;
+  }
+
+  .proof__note {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .proof__grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    margin: 0;
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    background: var(--line);
+    overflow: hidden;
+  }
+
+  .proof__item {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: clamp(22px, 3vw, 36px);
+    background: var(--ground);
+    isolation: isolate;
+  }
+
+  /* A light under the pointer, so the grid answers being looked at. */
+  .proof__item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(360px circle at var(--mx, -400px) var(--my, -400px), var(--accent-glow), transparent 70%);
+    opacity: 0;
+    transition: opacity var(--motion-enter) var(--ease);
+  }
+
+  .proof__item:hover::before {
+    opacity: 1;
+  }
+
+  /* The number reads first; the label is first for a screen reader, as a
+     definition list requires. */
+  .proof__value {
+    order: -1;
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+    margin: 0;
+    font: 800 clamp(2.6rem, 1.6rem + 3.4vw, 4.6rem) / 1 var(--font-code);
+    letter-spacing: -0.06em;
+    background: var(--glow);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .proof__unit {
+    font-size: 0.42em;
+    letter-spacing: -0.02em;
+  }
+
+  .proof__label {
+    color: var(--text);
+    font: 600 1rem / 1.35 var(--font-code);
+    letter-spacing: -0.01em;
+  }
+
+  .proof__source {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+    line-height: 1.5;
+  }
+
+  @media (max-width: 900px) {
+    .proof__grid {
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+  }
+
+  @media (max-width: 560px) {
+    .proof__grid {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+
+<script>
+  import { decodeNumber, spotlight, startMotion, still } from "../lib/motion";
+
+  startMotion();
+  spotlight(".proof__item");
+  if (!still()) for (const el of document.querySelectorAll<HTMLElement>(".proof [data-decode]")) decodeNumber(el);
+</script>

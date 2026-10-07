@@ -1,0 +1,283 @@
+---
+import { doc } from "../lib/links";
+
+// What `vite build` prints. The last ones arrive while the window is closed.
+const before = [
+  ["dim", "> acme-web@3.1.0 build"],
+  ["dim", "> vite build"],
+  ["text", ""],
+  ["accent", "vite v6.4.3 building for production..."],
+  ["text", "transforming (412) src/routes/orders/+page.svelte"],
+  ["text", "transforming (861) node_modules/date-fns/esm/index.js"],
+];
+const after = [
+  ["mint", "✓ 1,284 modules transformed."],
+  ["dim", "dist/index.html                  0.62 kB │ gzip:  0.38 kB"],
+  ["dim", "dist/assets/index-4f2a9c.css    38.14 kB │ gzip:  7.92 kB"],
+  ["dim", "dist/assets/index-b81e4d.js    142.31 kB │ gzip: 46.02 kB"],
+  ["mint", "✓ built in 41.27s"],
+];
+---
+
+<section class="story persist" id="persist" aria-labelledby="persist-title" data-persist>
+  <div class="wrap story__grid">
+    <div class="story__text">
+      <h2 class="heading" id="persist-title" data-split>Close JKY mid-build. It keeps building.</h2>
+      <p class="lead">
+        Each pane's shell is held by a small supervisor, and the window is only a client of it. Quit, come back, and the
+        pane rejoins its shell — with everything it printed while you were gone. No tmux to learn.
+      </p>
+      <ol class="story__steps" data-steps>
+        <li class="is-on"><b>Start something long.</b> A build, a migration, a test suite.</li>
+        <li><b>Close the window. Quit JKY, even.</b> The supervisor keeps the shell — and the build — running.</li>
+        <li><b>Reopen it.</b> The pane rejoins its shell and draws what it printed while you were away.</li>
+      </ol>
+      <p class="story__limit">
+        <strong>Where it stops:</strong> a reboot or logging out still ends shells — this is continuity for the window,
+        not immortality. Closing a pane ends its shell; quitting the app does not.
+      </p>
+      <a class="story__more" href={doc("terminal-guide.md", "shells-that-outlive-the-window")}>How the supervisor works</a>
+    </div>
+
+    <div class="story__stage persist__stage" aria-hidden="true">
+      <div class="mini persist__win" data-win>
+        <div class="mini__bar">
+          <span class="mini__tab">Terminal 1</span>
+          <span class="persist__state" data-state>rejoined</span>
+        </div>
+        <div class="mini__body">
+          <div class="mini__line" set:html={`<span class="pr__path">~/acme/web</span><span class="pr__branch"> main</span><span class="pr__sym"> $ </span>npm run build`} />
+          {before.map(([tone, text]) => <div class="mini__line" data-before><span class={`t-${tone}`}>{text || "\u00a0"}</span></div>)}
+          <div class="persist__rejoin" data-rejoin>rejoined — 5 lines printed while the window was closed</div>
+          {after.map(([tone, text]) => <div class="mini__line" data-after><span class={`t-${tone}`}>{text}</span></div>)}
+        </div>
+        <div class="persist__progress"><span data-bar></span></div>
+      </div>
+
+      <div class="persist__closed" data-closed>
+        <span class="persist__closed-x">×</span> window closed — JKY is not running
+      </div>
+
+      <svg class="persist__wire" viewBox="0 0 100 100" preserveAspectRatio="none" data-wire>
+        <line x1="50" y1="0" x2="50" y2="100"></line>
+      </svg>
+
+      <div class="persist__sv" data-sv>
+        <span class="persist__pulse"></span>
+        <span class="persist__sv-name">jky --supervise</span>
+        <span class="persist__sv-pid">pid 48213 · holds 1 shell</span>
+        <span class="persist__sv-pct"><b data-pct>100</b>%</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .persist__stage {
+    display: grid;
+    gap: 0;
+    justify-items: center;
+    padding: 10px 0;
+  }
+
+  .persist__win {
+    width: min(100%, 600px);
+    transform-origin: 50% 100%;
+    will-change: transform, opacity, filter;
+  }
+
+  .persist__state {
+    margin-left: auto;
+    padding: 2px 8px;
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--mint) 14%, transparent);
+    color: var(--mint);
+    font-size: 11px;
+  }
+
+  .persist__rejoin {
+    margin: 8px 0 6px;
+    padding: 4px 10px;
+    border-left: 2px solid var(--accent);
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-size: 11.5px;
+  }
+
+  .persist__progress {
+    height: 3px;
+    background: var(--surface-raised);
+  }
+
+  .persist__progress span {
+    display: block;
+    height: 100%;
+    background: var(--glow);
+    transform-origin: 0 50%;
+  }
+
+  .persist__closed {
+    position: absolute;
+    top: 38%;
+    left: 50%;
+    translate: -50% 0;
+    padding: 8px 14px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 10px;
+    color: var(--text-muted);
+    font: 500 12px/1 var(--font-code);
+    white-space: nowrap;
+    opacity: 0;
+  }
+
+  .persist__closed-x {
+    margin-right: 6px;
+    color: var(--danger);
+  }
+
+  .persist__wire {
+    width: 2px;
+    height: 54px;
+    overflow: visible;
+  }
+
+  .persist__wire line {
+    stroke: var(--accent);
+    stroke-width: 2;
+    stroke-dasharray: 4 5;
+    vector-effect: non-scaling-stroke;
+    animation: wire-flow 900ms linear infinite;
+  }
+
+  @keyframes wire-flow {
+    to {
+      stroke-dashoffset: -18;
+    }
+  }
+
+  .persist__sv {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 2px 12px;
+    width: min(100%, 420px);
+    padding: 14px 16px;
+    border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+    border-radius: 14px;
+    background: var(--surface);
+    box-shadow:
+      var(--lift-2),
+      0 0 0 4px var(--accent-glow);
+    font-family: var(--font-code);
+  }
+
+  .persist__pulse {
+    grid-row: span 2;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--mint);
+    box-shadow: 0 0 12px var(--mint);
+    animation: jky-pulse var(--motion-loop) var(--ease) infinite;
+  }
+
+  .persist__sv-name {
+    color: var(--text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .persist__sv-pid {
+    grid-column: 2;
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
+
+  .persist__sv-pct {
+    grid-row: 1 / span 2;
+    grid-column: 3;
+    color: var(--accent);
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+  }
+
+  .persist__sv-pct b {
+    font-weight: 700;
+  }
+</style>
+
+<script>
+  import { gsap, startMotion, still } from "../lib/motion";
+
+  startMotion();
+  const root = document.querySelector<HTMLElement>("[data-persist]");
+  if (root && !still()) {
+    const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
+    const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
+    const win = q("[data-win]");
+    const state = q("[data-state]");
+    const bar = q("[data-bar]");
+    const pct = q("[data-pct]");
+    const closed = q("[data-closed]");
+    const sv = q("[data-sv]");
+    const rejoin = q("[data-rejoin]");
+    const before = qa("[data-before]");
+    const after = qa("[data-after]");
+    const steps = qa("[data-steps] li");
+    const counter = { v: 0 };
+
+    const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
+    const setState = (text: string, tone: "mint" | "warn" | "accent") => {
+      state.textContent = text;
+      state.style.color = `var(--${tone})`;
+      state.style.background = `color-mix(in srgb, var(--${tone}) 14%, transparent)`;
+    };
+
+    // From the finished picture back to the start; the scroll plays it forward.
+    gsap.set([...before, ...after, rejoin], { autoAlpha: 0, y: 8 });
+    gsap.set(bar, { scaleX: 0 });
+    setState("attached", "accent");
+    pct.textContent = "0";
+
+    const wide = matchMedia("(min-width: 901px)").matches;
+    const tl = gsap.timeline({
+      defaults: { ease: "power2.out" },
+      scrollTrigger: wide
+        ? {
+            trigger: root.querySelector(".story__grid"),
+            start: "top top",
+            end: "+=230%",
+            pin: true,
+            scrub: 0.9,
+            onUpdate: (st) => setStep(st.progress < 0.36 ? 0 : st.progress < 0.7 ? 1 : 2),
+          }
+        : {
+            trigger: root.querySelector(".persist__stage"),
+            start: "top 80%",
+            end: "bottom 20%",
+            scrub: 0.9,
+            onUpdate: (st) => setStep(st.progress < 0.36 ? 0 : st.progress < 0.7 ? 1 : 2),
+          },
+    });
+
+    tl.to(before, { autoAlpha: 1, y: 0, stagger: 0.22, duration: 0.3 }, 0)
+      .to(bar, { scaleX: 0.46, duration: 1.6, ease: "none" }, 0)
+      .to(counter, { v: 46, duration: 1.6, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 0)
+      // The window closes; the supervisor carries on.
+      .to(win, { scale: 0.16, y: 170, autoAlpha: 0, filter: "blur(8px)", duration: 0.7, ease: "power3.in" }, 1.75)
+      .to(closed, { autoAlpha: 1, duration: 0.3 }, 2.25)
+      .to(sv, { scale: 1.05, duration: 0.4, ease: "back.out(2)" }, 2.25)
+      .to(counter, { v: 92, duration: 1.4, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 2.3)
+      .to(sv, { scale: 1, duration: 0.4 }, 3.4)
+      // It reopens, rejoins, and shows what it missed.
+      .to(closed, { autoAlpha: 0, duration: 0.25 }, 3.7)
+      .call(() => setState("attached", "accent"), [], 3.69)
+      .call(() => setState("rejoined", "mint"), [], 3.71)
+      .to(win, { scale: 1, y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.7, ease: "power3.out" }, 3.75)
+      .to(rejoin, { autoAlpha: 1, y: 0, duration: 0.3 }, 4.3)
+      .to(after, { autoAlpha: 1, y: 0, stagger: 0.14, duration: 0.3 }, 4.45)
+      .to(bar, { scaleX: 1, duration: 0.9, ease: "none" }, 4.45)
+      .to(counter, { v: 100, duration: 0.9, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 4.45);
+  }
+</script>

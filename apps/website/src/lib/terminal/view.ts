@@ -308,7 +308,14 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
 
   // Typing with nothing focused, while the terminal is in view, types here.
   let inView = false;
-  new IntersectionObserver(([entry]) => (inView = entry.intersectionRatio > 0.45), { threshold: [0, 0.45, 1] }).observe(root);
+  new IntersectionObserver(
+    ([entry]) => {
+      inView = entry.intersectionRatio > 0.45;
+      // Scrolled away mid-demo: stop, so nothing changes behind the reader.
+      if (entry.intersectionRatio < 0.2) stopDemo();
+    },
+    { threshold: [0, 0.2, 0.45, 1] },
+  ).observe(root);
   document.addEventListener("keydown", (e) => {
     const active = document.activeElement;
     if (!inView || e.ctrlKey || e.metaKey || e.altKey || e.key.length !== 1) return;
@@ -350,7 +357,7 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
       drawPrompt();
     }
     if (demoTheme) {
-      void setTheme(demoTheme, { persist: false });
+      void setTheme(demoTheme, { persist: false, instant: !inView });
       demoTheme = null;
     }
   }

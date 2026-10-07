@@ -3,6 +3,10 @@ import Base from "../layouts/Base.astro";
 import Nav from "../components/Nav.astro";
 import Hero from "../components/Hero.astro";
 import Terminal from "../components/Terminal.astro";
+import Proof from "../components/Proof.astro";
+import StoryPersist from "../components/StoryPersist.astro";
+import StoryPanels from "../components/StoryPanels.astro";
+import StoryAssistant from "../components/StoryAssistant.astro";
 import Footer from "../components/Footer.astro";
 import release from "../data/release.json";
 
@@ -17,6 +21,10 @@ const version = release.tag.replace(/^v/, "");
   <main id="main">
     <Hero version={version} />
     <Terminal version={version} />
+    <Proof />
+    <StoryPersist />
+    <StoryPanels />
+    <StoryAssistant />
   </main>
   <Footer />
 </Base>

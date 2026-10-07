@@ -35,8 +35,8 @@ const { version } = Astro.props;
     </div>
 
     <div class="hero__actions" data-intro style="--i: 2">
-      <a class="btn btn--ghost" href={`${GITHUB}/releases/latest`}>Download v{version}</a>
-      <a class="btn btn--ghost" href={doc("getting-started.md")}>Getting started</a>
+      <a class="btn btn--ghost" data-magnetic href={`${GITHUB}/releases/latest`}>Download v{version}</a>
+      <a class="btn btn--ghost" data-magnetic href={doc("getting-started.md")}>Getting started</a>
     </div>
 
     <p class="hero__meta" data-intro style="--i: 3">
@@ -256,6 +256,10 @@ const { version } = Astro.props;
 
 <script>
   import { startGlyphField } from "../lib/glyphfield/field";
+  import { magnetize, startMotion } from "../lib/motion";
+
+  startMotion();
+  magnetize();
 
   const hero = document.querySelector<HTMLElement>("[data-hero]");
   const canvas = hero?.querySelector<HTMLCanvasElement>("[data-field]");

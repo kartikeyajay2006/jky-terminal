@@ -165,11 +165,11 @@ test.describe("the terminal", () => {
 
   test("a destructive proposal cannot be approved until it is typed back", async ({ page }) => {
     await run(page, "ask clean the build");
-    const approve = page.locator(".ap__btn--go");
+    const approve = page.locator("[data-log] .ap__btn--go");
     await expect(approve).toBeDisabled();
-    await page.locator(".ap__confirm").fill("dist");
+    await page.locator("[data-log] .ap__confirm").fill("dist");
     await expect(approve).toBeEnabled();
     await approve.click();
-    await expect(page.locator(".ap__status")).toContainText("Approved");
+    await expect(page.locator("[data-log] .ap__status")).toContainText("Approved");
   });
 });

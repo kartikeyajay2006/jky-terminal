@@ -294,3 +294,178 @@ kbd {
 ::view-transition-new(root) {
   z-index: 2;
 }
+
+/* ---- stories: words on one side, the scene on the other ------------------- */
+
+.story {
+  position: relative;
+  padding-top: var(--section-gap);
+}
+
+.story__grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: clamp(32px, 5vw, 80px);
+  align-items: center;
+  min-height: 100svh;
+  padding-block: 84px 28px;
+}
+
+.story .heading {
+  font-size: clamp(1.9rem, 0.9rem + 2.5vw, 3.3rem);
+}
+
+.story .lead {
+  font-size: clamp(1.02rem, 0.96rem + 0.25vw, 1.14rem);
+}
+
+/* A short screen keeps the scene and the steps; the caveat moves below. */
+@media (max-height: 780px) and (min-width: 901px) {
+  .story__text {
+    gap: 14px;
+  }
+
+  .story__steps li {
+    padding-block: 7px;
+  }
+}
+
+.story__text {
+  display: grid;
+  gap: 22px;
+  align-content: center;
+}
+
+.story__steps {
+  display: grid;
+  gap: 4px;
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* A step lights up while the scene shows it; before that it waits, dim. */
+.story__steps li {
+  position: relative;
+  padding: 12px 0 12px 22px;
+  color: var(--text-muted);
+  transition:
+    color var(--motion-enter) var(--ease),
+    opacity var(--motion-enter) var(--ease);
+}
+
+.story__steps li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 18px;
+  bottom: 18px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--line-strong);
+  transition:
+    background-color var(--motion-enter) var(--ease),
+    box-shadow var(--motion-enter) var(--ease);
+}
+
+.story__steps b {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text);
+  font: 650 1.05rem / 1.35 var(--font-code);
+  letter-spacing: -0.015em;
+}
+
+/* While a scene plays, the steps it has not reached wait in muted text —
+   dimmed by colour, never by opacity, so every one still reads at AA. */
+.has-lenis .story__steps li:not(.is-on) b {
+  color: var(--text-muted);
+}
+
+.has-lenis .story__steps li.is-on {
+  color: var(--text);
+}
+
+.story__steps li.is-on::before {
+  background: var(--accent);
+  box-shadow: 0 0 14px var(--accent);
+}
+
+.story__limit {
+  margin: 0;
+  padding: 12px 14px;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-lg);
+  color: var(--text-muted);
+  font-size: var(--t-small);
+}
+
+.story__limit strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.story__more {
+  justify-self: start;
+  color: var(--accent);
+  font: 600 0.9rem / 1 var(--font-code);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+  text-underline-offset: 4px;
+}
+
+.story__stage {
+  position: relative;
+  min-height: 460px;
+}
+
+@media (max-width: 900px) {
+  .story__grid {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+    padding-block: 0;
+  }
+
+  .story__stage {
+    order: -1;
+  }
+}
+
+/* A small window, the kind the stories draw their scenes in. */
+.mini {
+  position: relative;
+  border: 1px solid var(--line-strong);
+  border-radius: 14px;
+  background: var(--ground);
+  box-shadow:
+    var(--lift-3),
+    0 40px 110px -46px color-mix(in srgb, var(--accent) 40%, transparent);
+  overflow: hidden;
+  font: 12.5px / 1.6 var(--font-code);
+}
+
+.mini__bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 38px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.mini__tab {
+  color: var(--accent);
+}
+
+.mini__body {
+  padding: 14px 16px 16px;
+}
+
+.mini__line {
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

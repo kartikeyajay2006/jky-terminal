@@ -33,6 +33,8 @@ interface Options {
   y?: number;
   /** Remember it for the next visit. A demo that switches and back does not. */
   persist?: boolean;
+  /** No reveal: for a change the visitor is not looking at. */
+  instant?: boolean;
 }
 
 export function setTheme(id: string, opts: Options = {}): Promise<void> {
@@ -56,7 +58,7 @@ export function setTheme(id: string, opts: Options = {}): Promise<void> {
     startViewTransition?: (update: () => void) => { ready: Promise<void>; finished: Promise<void> };
   };
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (!doc.startViewTransition || still) {
+  if (!doc.startViewTransition || still || opts.instant) {
     apply();
     return Promise.resolve();
   }
