@@ -184,7 +184,10 @@ export async function startGlyphField(canvas: HTMLCanvasElement, opts: FieldOpti
   let frames = 0;
   let slow = 0;
 
+  // Counted, so a test can prove that asked for less motion, it stops at one.
+  let draws = 0;
   const draw = () => {
+    (canvas as HTMLCanvasElement & { jkyDraws?: number }).jkyDraws = ++draws;
     gl.uniform1f(loc.time, clock);
     gl.uniform1f(loc.boot, boot);
     gl.uniform4f(loc.pointer, pointer.x, pointer.y, pointer.s, narrow ? 80 : 105);

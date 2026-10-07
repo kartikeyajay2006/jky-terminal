@@ -104,12 +104,14 @@ test("asked for less motion, the field is one still frame", async ({ page }) => 
     .then(() => true)
     .catch(() => false);
   test.skip(!started, "no WebGL2 here; the still SVG emblem is what shows");
-  const canvas = page.locator("canvas[data-field]");
-  await page.waitForTimeout(300);
-  const first = await canvas.screenshot();
-  await page.waitForTimeout(1200);
-  const second = await canvas.screenshot();
-  expect(second.equals(first)).toBe(true);
+  // The field counts its own draws. Left alone, a still field draws no more.
+  const draws = () =>
+    page.evaluate(() => (document.querySelector("canvas[data-field]") as HTMLCanvasElement & { jkyDraws?: number }).jkyDraws ?? 0);
+  await page.waitForTimeout(800);
+  const before = await draws();
+  await page.waitForTimeout(1500);
+  expect(before).toBeGreaterThan(0);
+  expect(await draws()).toBe(before);
 });
 
 test("the install command copies exactly what it shows", async ({ page, context, browserName }) => {

@@ -47,7 +47,11 @@ export function startMotion() {
     const target = id.length > 1 ? document.querySelector(id) : null;
     if (!target) return;
     e.preventDefault();
-    lenis.scrollTo(target as HTMLElement, { offset: -84, duration: 1.4 });
+    // Land on the section's content, just under the nav — not on the top of
+    // the generous space above it.
+    const pad = parseFloat(getComputedStyle(target).paddingTop) || 0;
+    const y = target.getBoundingClientRect().top + window.scrollY + pad - 96;
+    lenis.scrollTo(Math.max(0, y), { duration: 1.4 });
     history.pushState(null, "", id);
   });
 

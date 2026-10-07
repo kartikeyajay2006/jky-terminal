@@ -287,6 +287,19 @@ const label: Record<Mark, string> = {
     .cmp__sides {
       grid-template-columns: minmax(0, 1fr);
     }
+
+    /* The feature column wraps on a phone, so the columns it is compared
+       across get the width. */
+    .cmp__table {
+      min-width: 700px;
+      font-size: 0.8rem;
+    }
+
+    .cmp__table th[scope="row"] {
+      min-width: 128px;
+      max-width: 140px;
+      white-space: normal;
+    }
   }
 </style>
 
