@@ -76,13 +76,21 @@ test("wheel scrolls terminal output, then the page at both edges", async ({ page
 test("reading earlier output stops streamed output pulling the scroll back down", async ({ page }) => {
   await openTerminal(page);
   await run(page, "help");
+  await run(page, "help");
   const screen = page.locator("[data-screen]");
+  // With autoplay stopped early, one help response can barely overflow.
+  // Ensure position 20 is older output, rather than the current bottom.
+  await expect.poll(() => screen.evaluate((el) => el.scrollHeight - el.clientHeight)).toBeGreaterThan(100);
   await page.locator("[data-input]").fill("help");
   await page.locator("[data-input]").press("Enter");
   await screen.hover();
-  // A wheel event pauses following before the next streamed line arrives.
-  await screen.dispatchEvent("wheel", { deltaY: -100, bubbles: true });
-  await screen.evaluate((el) => { el.scrollTop = 20; });
+  // A wheel's native scrolling happens in the same event cycle. Splitting
+  // these into two browser tasks lets an old bottom-scroll event resume
+  // following before the synthetic scroll has happened.
+  await screen.evaluate((el) => {
+    el.dispatchEvent(new WheelEvent("wheel", { deltaY: -100, bubbles: true }));
+    el.scrollTop = 20;
+  });
   await expect(page.locator("[data-prompt]")).toBeVisible();
   await expect.poll(() => screen.evaluate((el) => el.scrollTop)).toBeLessThan(40);
   await run(page, "pwd");
@@ -113,10 +121,18 @@ test("story tracks stick, finish, and adapt to a short viewport without covering
   await expect(page.locator("#persist")).toHaveAttribute("data-scene-ready", "true", { timeout: 15_000 });
   const grid = page.locator("#persist .story__grid");
   await expect(grid).toHaveCSS("position", "sticky");
-  await page.evaluate(() => {
-    const track = document.querySelector("#persist .story__track")!;
-    scrollTo(0, track.getBoundingClientRect().bottom + scrollY - innerHeight + 2);
-  });
+  // Exercise the visitor's wheel path through Lenis. A synthetic scrollTo
+  // can race the initial fragment alignment without marking user interaction.
+  await page.mouse.move(10, 100);
+  await expect.poll(async () => {
+    const remaining = await page.evaluate(() => {
+      const track = document.querySelector("#persist .story__track")!;
+      return track.getBoundingClientRect().bottom - innerHeight;
+    });
+    if (remaining >= 0) await page.mouse.wheel(0, Math.max(180, remaining + 32));
+    // Mobile emulation can scale wheel distances; measure where we landed.
+    return remaining;
+  }, { timeout: 15_000, intervals: [500] }).toBeLessThan(0);
   await expect(page.locator("#persist [data-pct]")).toHaveText("100");
   await page.setViewportSize({ width: 1440, height: 650 });
   await expect(grid).toHaveCSS("position", "static");
