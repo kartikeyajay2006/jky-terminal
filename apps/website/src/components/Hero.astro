@@ -1,0 +1,158 @@
+---
+import Emblem from "./Emblem.astro";
+import InstallCommand from "./InstallCommand.astro";
+import { GITHUB, doc } from "../lib/links";
+
+interface Props {
+  version: string;
+}
+
+const { version } = Astro.props;
+---
+
+<section class="hero" aria-labelledby="hero-title">
+  <div class="hero__stage" aria-hidden="true">
+    <div class="hero__aura"></div>
+    <div class="hero__emblem"><Emblem /></div>
+  </div>
+
+  <div class="wrap hero__inner">
+    <h1 class="display hero__title" id="hero-title">
+      <span class="hero__line">Close the window.</span>
+      <span class="hero__line">The build keeps going.<span class="cursor" aria-hidden="true"></span></span>
+    </h1>
+
+    <p class="lead hero__lead">
+      JKY is a terminal for macOS, Windows and Linux that keeps your shells running after you close it, turns command
+      output into panels, and makes its assistant ask before it runs anything.
+    </p>
+
+    <InstallCommand />
+
+    <div class="hero__actions">
+      <a class="btn btn--ghost" href={`${GITHUB}/releases/latest`}>Download v{version}</a>
+      <a class="btn btn--ghost" href={doc("getting-started.md")}>Getting started</a>
+    </div>
+
+    <p class="hero__meta">
+      Free and open source under the MIT license. No account, no telemetry. The installer checks every download against
+      its SHA-256 before it installs anything.
+    </p>
+  </div>
+</section>
+
+<style>
+  .hero {
+    position: relative;
+    min-height: 100svh;
+    display: grid;
+    align-items: center;
+    padding: 132px 0 96px;
+    overflow: clip;
+    isolation: isolate;
+  }
+
+  .hero__stage {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+  }
+
+  /* Light from where the emblem sits, so the mark reads as lit, not pasted. */
+  .hero__aura {
+    position: absolute;
+    top: 50%;
+    right: -12vw;
+    width: min(92vw, 1180px);
+    aspect-ratio: 1;
+    translate: 0 -50%;
+    border-radius: 50%;
+    background: radial-gradient(
+      closest-side,
+      color-mix(in srgb, var(--accent) 16%, transparent),
+      color-mix(in srgb, var(--violet) 9%, transparent) 46%,
+      transparent 72%
+    );
+    filter: blur(12px);
+  }
+
+  .hero__emblem {
+    position: absolute;
+    top: 50%;
+    right: max(-9vw, -140px);
+    width: min(46vw, 680px);
+    aspect-ratio: 1;
+    translate: 0 -50%;
+    opacity: 0.92;
+  }
+
+  .hero__inner {
+    position: relative;
+    display: grid;
+    /* minmax(0, …) or the install line, which never wraps, sets the column's
+       minimum width and pushes the headline off a phone's screen. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 28px;
+    justify-items: start;
+  }
+
+  .hero__title {
+    font-size: var(--t-hero);
+    max-width: 13.5ch;
+  }
+
+  .hero__lead {
+    max-width: 46ch;
+  }
+
+  .hero__line {
+    display: block;
+  }
+
+  .hero__line:first-child {
+    color: var(--text-muted);
+  }
+
+  .hero__lead {
+    margin-top: 4px;
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .hero__meta {
+    margin: 4px 0 0;
+    max-width: 62ch;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  /* On a narrow screen the emblem moves behind the words and steps back. */
+  @media (max-width: 900px) {
+    .hero {
+      align-items: start;
+      padding-top: 112px;
+    }
+
+    .hero__emblem {
+      top: 4%;
+      right: -28vw;
+      width: 92vw;
+      translate: none;
+      opacity: 0.22;
+    }
+
+    .hero__aura {
+      top: 0;
+      translate: 0 -20%;
+    }
+
+    .hero__title {
+      max-width: 100%;
+    }
+  }
+</style>

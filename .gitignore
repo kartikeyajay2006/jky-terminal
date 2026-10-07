@@ -44,3 +44,6 @@ test-results/
 # pdf.js font and character-map data, copied in by scripts/pdf-assets.mjs.
 # 2.5 MB of somebody else's binaries, one `pnpm install` away at all times.
 apps/desktop/public/pdfjs/
+
+# Astro
+apps/website/.astro/

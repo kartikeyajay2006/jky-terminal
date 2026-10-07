@@ -1,0 +1,20 @@
+---
+import Base from "../layouts/Base.astro";
+import Nav from "../components/Nav.astro";
+import Hero from "../components/Hero.astro";
+import Footer from "../components/Footer.astro";
+import release from "../data/release.json";
+
+const version = release.tag.replace(/^v/, "");
+---
+
+<Base
+  title="JKY Terminal — close the window, the build keeps going"
+  description="A local-first terminal for macOS, Windows and Linux. Shells that survive closing the app, command output that becomes panels, and an assistant that asks before it acts. Open source, no account, no telemetry."
+>
+  <Nav version={version} />
+  <main id="main">
+    <Hero version={version} />
+  </main>
+  <Footer />
+</Base>

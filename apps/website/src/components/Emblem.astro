@@ -1,0 +1,132 @@
+---
+/**
+ * The emblem: the JKY mark inside the instruments of a terminal that is on —
+ * a tick ring, a radar sweep, two arcs and three orbiting nodes, each turning
+ * at its own speed so the whole never settles into a repeat.
+ *
+ * A port of the app's `buildEmblem` (components/emblemSvg.ts) to markup, on
+ * the same 120-unit grid with the same geometry, so the one on this page and
+ * the one in the app's terminal banner are the same drawing.
+ */
+import { JKY_GLYPH, uid } from "../lib/glyph";
+
+interface Props {
+  class?: string;
+}
+
+const { class: className } = Astro.props;
+const stroke = uid("emblem-stroke");
+const halo = uid("emblem-halo");
+const sweep = uid("emblem-sweep");
+
+const ARC_RADIUS = 44;
+const ARC_LENGTH = 2 * Math.PI * ARC_RADIUS;
+const round = (n: number) => Number(n.toFixed(2));
+---
+
+<svg class:list={["emblem", className]} viewBox="0 0 120 120" fill="none" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id={stroke} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="120" y2="120">
+      <stop offset="0" stop-color="var(--accent)"></stop>
+      <stop offset="0.55" stop-color="var(--violet)"></stop>
+      <stop offset="1" stop-color="var(--magenta)"></stop>
+    </linearGradient>
+    <radialGradient id={halo} gradientUnits="userSpaceOnUse" cx="60" cy="60" r="58">
+      <stop offset="0" stop-color="var(--accent)" stop-opacity="0.16"></stop>
+      <stop offset="0.6" stop-color="var(--accent)" stop-opacity="0.04"></stop>
+      <stop offset="1" stop-color="var(--accent)" stop-opacity="0"></stop>
+    </radialGradient>
+    <linearGradient id={sweep} gradientUnits="userSpaceOnUse" x1="60" y1="60" x2="78" y2="10">
+      <stop offset="0" stop-color="var(--accent)" stop-opacity="0"></stop>
+      <stop offset="1" stop-color="var(--accent)" stop-opacity="0.22"></stop>
+    </linearGradient>
+  </defs>
+
+  <circle class="emblem__halo" cx="60" cy="60" r="58" fill={`url(#${halo})`}></circle>
+  <circle
+    class="emblem__ring"
+    cx="60"
+    cy="60"
+    r="54"
+    stroke="var(--accent)"
+    stroke-width="1.6"
+    stroke-linecap="round"
+    stroke-dasharray="1.1 4.55"></circle>
+  <path class="emblem__sweep" d="M60 60 L60 8 A52 52 0 0 1 96.77 23.23 Z" fill={`url(#${sweep})`}></path>
+  <circle cx="60" cy="60" r={ARC_RADIUS} stroke="var(--accent)" stroke-opacity="0.16" stroke-width="2.4"></circle>
+  <g class="emblem__arcs" stroke={`url(#${stroke})`} stroke-width="2.6" stroke-linecap="round">
+    <circle cx="60" cy="60" r={ARC_RADIUS} stroke-dasharray={`92 ${round(ARC_LENGTH - 92)}`}></circle>
+    <circle
+      cx="60"
+      cy="60"
+      r={ARC_RADIUS}
+      stroke-dasharray={`20 ${round(ARC_LENGTH - 20)}`}
+      stroke-dashoffset={round(-ARC_LENGTH / 2)}></circle>
+  </g>
+  <g class="emblem__orbit">
+    <circle cx="60" cy="24" r="3" fill="var(--accent)"></circle>
+    <circle cx="91.18" cy="78" r="2.6" fill="var(--violet)"></circle>
+    <circle cx="28.82" cy="78" r="2.6" fill="var(--magenta)"></circle>
+  </g>
+  <g
+    class="emblem__mark"
+    transform="translate(32.8 35.8) scale(0.85)"
+    stroke={`url(#${stroke})`}
+    stroke-width={JKY_GLYPH.stroke}
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  >
+    <path d={JKY_GLYPH.chevron}></path>
+    <path d={JKY_GLYPH.hook}></path>
+    <circle
+      class="emblem__spark"
+      cx={JKY_GLYPH.spark.cx}
+      cy={JKY_GLYPH.spark.cy}
+      r={JKY_GLYPH.spark.r}
+      fill="var(--accent)"
+      stroke="none"></circle>
+  </g>
+</svg>
+
+<style>
+  /* The app's emblem motion, unchanged: slow linear turns — instruments do
+     not ease — each at its own speed. */
+  .emblem {
+    display: block;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    animation: jky-start 700ms var(--ease);
+  }
+
+  .emblem__ring,
+  .emblem__sweep,
+  .emblem__arcs,
+  .emblem__orbit {
+    transform-box: view-box;
+    transform-origin: 60px 60px;
+  }
+
+  .emblem__ring {
+    opacity: 0.6;
+    animation: jky-spin 48s linear infinite;
+  }
+
+  .emblem__sweep {
+    animation: jky-spin 4.8s linear infinite;
+  }
+
+  .emblem__arcs {
+    animation: jky-spin 9s linear infinite reverse;
+  }
+
+  .emblem__orbit {
+    animation: jky-spin 16s linear infinite;
+  }
+
+  .emblem__spark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: jky-pulse var(--motion-loop) var(--ease) infinite;
+  }
+</style>

@@ -1,0 +1,86 @@
+name: Website
+
+# Builds apps/website and publishes it to GitHub Pages.
+#
+# Published through actions/deploy-pages, which hands the built site to Pages
+# as an artifact: nothing is committed to any branch, so the repository's
+# history keeps exactly one author.
+#
+# It runs on every push to main, not only on website changes, because the
+# site states facts about the whole repository — the IPC command count, the
+# crates, the themes — and is rebuilt from them each time. And on every
+# published release, so the download sizes are the ones you would get.
+on:
+  push:
+    branches: [main]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# A newer push supersedes an older one's deploy; a half-finished deploy is
+# never left racing a newer one.
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+# Every action below is pinned to a commit, with its version beside it — the
+# same rule as release.yml. This workflow can publish to the project's public
+# address, so a moved tag must never be able to change what it runs.
+jobs:
+  build:
+    name: Build and check the site
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      ASTRO_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with: { node-version: 22, package-manager-cache: false }
+      - run: corepack enable
+      - run: pnpm install --frozen-lockfile
+
+      - name: Bake in the latest release
+        run: pnpm --filter @jky/website release:fetch
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Lint, type-check and unit-test
+        run: |
+          pnpm --filter @jky/website lint
+          pnpm --filter @jky/website typecheck
+          pnpm --filter @jky/website test
+
+      - name: Build
+        run: pnpm --filter @jky/website build
+
+      # The site is only published if a real browser can use it: no console
+      # errors, no request to another host, no serious accessibility problem,
+      # every link pointing at something that exists.
+      - name: Install a browser for the smoke test
+        run: pnpm --filter @jky/website exec playwright install --with-deps chromium
+      - name: Smoke-test the built site
+        run: pnpm --filter @jky/website test:e2e
+
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: apps/website/dist
+
+  deploy:
+    name: Publish to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

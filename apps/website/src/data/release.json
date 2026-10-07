@@ -1,0 +1,63 @@
+{
+  "tag": "v0.1.0",
+  "name": "JKY Terminal 0.1.0",
+  "publishedAt": "2026-10-04T07:49:15Z",
+  "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/tag/v0.1.0",
+  "assets": [
+    {
+      "name": "jky-terminal.spdx.json",
+      "size": 2501353,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/jky-terminal.spdx.json"
+    },
+    {
+      "name": "JKY.Terminal_0.1.0_aarch64.dmg",
+      "size": 10145414,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_0.1.0_aarch64.dmg"
+    },
+    {
+      "name": "JKY.Terminal_0.1.0_amd64.AppImage",
+      "size": 90245624,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_0.1.0_amd64.AppImage"
+    },
+    {
+      "name": "JKY.Terminal_0.1.0_amd64.deb",
+      "size": 12629200,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_0.1.0_amd64.deb"
+    },
+    {
+      "name": "JKY.Terminal_0.1.0_x64_en-US.msi",
+      "size": 10067968,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_0.1.0_x64_en-US.msi"
+    },
+    {
+      "name": "JKY.Terminal_0.1.0_x64-setup.exe",
+      "size": 7742760,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_0.1.0_x64-setup.exe"
+    },
+    {
+      "name": "JKY.Terminal_0.1.0_x64.dmg",
+      "size": 10764360,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_0.1.0_x64.dmg"
+    },
+    {
+      "name": "JKY.Terminal_aarch64.app.tar.gz",
+      "size": 9991564,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_aarch64.app.tar.gz"
+    },
+    {
+      "name": "JKY.Terminal_x64.app.tar.gz",
+      "size": 10621963,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal_x64.app.tar.gz"
+    },
+    {
+      "name": "JKY.Terminal-0.1.0-1.x86_64.rpm",
+      "size": 12629361,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/JKY.Terminal-0.1.0-1.x86_64.rpm"
+    },
+    {
+      "name": "SHA256SUMS",
+      "size": 873,
+      "url": "https://github.com/kartikeyajay2006/jky-terminal/releases/download/v0.1.0/SHA256SUMS"
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+---
+import Mark from "./Mark.astro";
+import { GITHUB, DOCS, doc } from "../lib/links";
+
+const columns = [
+  {
+    title: "Product",
+    links: [
+      { label: "Latest release", href: `${GITHUB}/releases/latest` },
+      { label: "Getting started", href: doc("getting-started.md") },
+      { label: "Features in full", href: doc("FEATURES.md") },
+      { label: "Roadmap", href: doc("product-roadmap.md") },
+    ],
+  },
+  {
+    title: "Trust",
+    links: [
+      { label: "Security & privacy", href: doc("security-and-privacy.md") },
+      { label: "How JKY compares", href: doc("comparison.md") },
+      { label: "Security policy", href: `${GITHUB}/blob/main/SECURITY.md` },
+      { label: "Benchmarks", href: doc("benchmarks.md") },
+    ],
+  },
+  {
+    title: "Project",
+    links: [
+      { label: "Documentation", href: DOCS },
+      { label: "Source code", href: GITHUB },
+      { label: "Contributing", href: `${GITHUB}/blob/main/CONTRIBUTING.md` },
+      { label: "Report an issue", href: `${GITHUB}/issues` },
+    ],
+  },
+];
+---
+
+<footer class="footer">
+  <div class="wrap footer__inner">
+    <div class="footer__brand">
+      <Mark size={36} />
+      <p>
+        JKY Terminal is free and open source under the{" "}
+        <a href={`${GITHUB}/blob/main/LICENSE`}>MIT license</a>. Built by{" "}
+        <a href="https://github.com/kartikeyajay2006">kartikeyajay2006</a>.
+      </p>
+    </div>
+    {
+      columns.map((col) => (
+        <nav class="footer__col" aria-label={col.title}>
+          <h2>{col.title}</h2>
+          <ul>
+            {col.links.map((l) => (
+              <li>
+                <a href={l.href}>{l.label}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      ))
+    }
+  </div>
+</footer>
+
+<style>
+  .footer {
+    margin-top: var(--section-gap);
+    padding: 72px 0 56px;
+    border-top: 1px solid var(--line);
+  }
+
+  .footer__inner {
+    display: grid;
+    grid-template-columns: 1.6fr repeat(3, 1fr);
+    gap: 40px;
+  }
+
+  .footer__brand {
+    display: grid;
+    gap: 18px;
+    align-content: start;
+  }
+
+  .footer__brand p {
+    margin: 0;
+    max-width: 36ch;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .footer__brand a {
+    color: var(--text);
+    text-decoration: underline;
+    text-decoration-color: var(--line-strong);
+    text-underline-offset: 3px;
+  }
+
+  .footer__brand a:hover {
+    color: var(--accent);
+  }
+
+  .footer__col h2 {
+    margin: 0 0 16px;
+    color: var(--text);
+    font: 600 0.84rem / 1 var(--font-code);
+  }
+
+  .footer__col ul {
+    display: grid;
+    gap: 11px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .footer__col a {
+    color: var(--text-muted);
+    font-size: var(--t-small);
+    transition: color var(--motion-quick) var(--ease);
+  }
+
+  .footer__col a:hover {
+    color: var(--text);
+  }
+
+  @media (max-width: 820px) {
+    .footer__inner {
+      grid-template-columns: 1fr 1fr;
+    }
+
+    .footer__brand {
+      grid-column: 1 / -1;
+    }
+  }
+</style>

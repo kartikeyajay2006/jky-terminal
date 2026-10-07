@@ -1,0 +1,376 @@
+---
+/**
+ * The one line that installs JKY, for the visitor's own OS, with a copy
+ * button.
+ *
+ * Without JavaScript both commands are simply shown, one above the other;
+ * the script turns them into tabs and picks the visitor's platform. Either
+ * way the text on screen is exactly the text copied — nothing is shortened
+ * for looks, because the point of showing a `curl | sh` is that you can read
+ * all of it first.
+ */
+const RAW = "https://raw.githubusercontent.com/kartikeyajay2006/jky-terminal/main";
+
+interface Props {
+  id?: string;
+}
+const { id = "install-command" } = Astro.props;
+
+const commands = [
+  {
+    key: "unix",
+    label: "macOS & Linux",
+    prompt: "$",
+    text: `curl -fsSL ${RAW}/install.sh | sh`,
+    parts: [
+      { t: "curl", c: "cmd" },
+      { t: " -fsSL ", c: "flag" },
+      { t: `${RAW}/install.sh`, c: "url" },
+      { t: " | ", c: "pipe" },
+      { t: "sh", c: "cmd" },
+    ],
+  },
+  {
+    key: "windows",
+    label: "Windows",
+    prompt: "PS>",
+    text: `irm ${RAW}/install.ps1 | iex`,
+    parts: [
+      { t: "irm", c: "cmd" },
+      { t: " ", c: "flag" },
+      { t: `${RAW}/install.ps1`, c: "url" },
+      { t: " | ", c: "pipe" },
+      { t: "iex", c: "cmd" },
+    ],
+  },
+];
+---
+
+<div class="install" id={id} data-install data-tabs="off">
+  <div class="install__tabs" role="tablist" aria-label="Your operating system">
+    {
+      commands.map((c, i) => (
+        <button
+          class="install__tab"
+          role="tab"
+          type="button"
+          id={`${id}-tab-${c.key}`}
+          aria-controls={`${id}-panel-${c.key}`}
+          aria-selected={i === 0 ? "true" : "false"}
+          tabindex={i === 0 ? 0 : -1}
+          data-key={c.key}
+        >
+          {c.label}
+        </button>
+      ))
+    }
+  </div>
+
+  {
+    commands.map((c) => (
+      <div
+        class="install__panel"
+        role="tabpanel"
+        id={`${id}-panel-${c.key}`}
+        aria-labelledby={`${id}-tab-${c.key}`}
+        data-key={c.key}
+      >
+        <span class="install__label">{c.label}</span>
+        <div class="install__line">
+          <span class="install__prompt" aria-hidden="true">
+            {c.prompt}
+          </span>
+          <code class="install__code" data-command={c.text} tabindex="0" aria-label={`${c.label} install command`}>
+            {c.parts.map((p) => (
+              <span class={`tok tok--${p.c}`}>{p.t}</span>
+            ))}
+          </code>
+          <button class="install__copy" type="button" data-copy={c.text} aria-label={`Copy the ${c.label} install command`}>
+            <svg class="install__icon install__icon--copy" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <rect x="8.5" y="8.5" width="11" height="11" rx="2.5" stroke="currentColor" stroke-width="1.8" />
+              <path d="M15.5 8.5V6.5A2 2 0 0 0 13.5 4.5H6.5A2 2 0 0 0 4.5 6.5V13.5A2 2 0 0 0 6.5 15.5H8.5" stroke="currentColor" stroke-width="1.8" />
+            </svg>
+            <svg class="install__icon install__icon--done" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <path d="M5 12.5L10 17.5L19 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            <span class="install__copy-text">Copy</span>
+          </button>
+        </div>
+      </div>
+    ))
+  }
+  <p class="sr-only" aria-live="polite" data-announce></p>
+</div>
+
+<style>
+  .install {
+    position: relative;
+    width: min(100%, 760px);
+    max-width: 100%;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--surface) 82%, transparent);
+    backdrop-filter: var(--veil);
+    -webkit-backdrop-filter: var(--veil);
+    box-shadow: var(--lift-2);
+    font-family: var(--font-code);
+  }
+
+  /* A hairline of the emblem's light along the top edge. */
+  .install::before {
+    content: "";
+    position: absolute;
+    inset: -1px -1px auto;
+    height: 1px;
+    border-radius: 14px 14px 0 0;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      color-mix(in srgb, var(--accent) 70%, transparent) 30%,
+      color-mix(in srgb, var(--magenta) 60%, transparent) 70%,
+      transparent
+    );
+  }
+
+  .install__tabs {
+    display: none;
+    gap: 4px;
+    padding: 8px 8px 0;
+  }
+
+  .install__tab {
+    padding: 7px 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text-muted);
+    font: 500 0.8rem / 1 var(--font-code);
+    transition:
+      color var(--motion-quick) var(--ease),
+      background-color var(--motion-quick) var(--ease);
+  }
+
+  .install__tab:hover {
+    color: var(--text);
+  }
+
+  .install__tab[aria-selected="true"] {
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+
+  .install__label {
+    display: block;
+    padding: 12px 16px 0;
+    color: var(--text-muted);
+    font-size: 0.8rem;
+  }
+
+  .install__panel + .install__panel {
+    border-top: 1px solid var(--line);
+  }
+
+  /* With the script running, the labels become tabs and one panel shows. */
+  .install[data-tabs="on"] .install__tabs {
+    display: flex;
+  }
+
+  .install[data-tabs="on"] .install__label {
+    display: none;
+  }
+
+  .install[data-tabs="on"] .install__panel {
+    border-top: 0;
+  }
+
+  .install[data-tabs="on"] .install__panel[hidden] {
+    display: none;
+  }
+
+  .install__line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 10px 10px 16px;
+  }
+
+  .install__prompt {
+    flex: none;
+    color: var(--accent);
+    font-weight: 700;
+    font-size: 0.92rem;
+  }
+
+  .install__code {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    padding: 6px 0;
+    white-space: nowrap;
+    font-size: 0.92rem;
+    scrollbar-width: none;
+    /* The end of a long line fades rather than being cut. */
+    mask-image: linear-gradient(90deg, black calc(100% - 28px), transparent);
+  }
+
+  .install__code::-webkit-scrollbar {
+    display: none;
+  }
+
+  .tok--cmd {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .tok--flag {
+    color: var(--text-muted);
+  }
+
+  .tok--url {
+    color: var(--text-muted);
+  }
+
+  .tok--pipe {
+    color: var(--magenta);
+  }
+
+  .install__copy {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 38px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--surface-raised);
+    color: var(--text);
+    font: 600 0.82rem / 1 var(--font-code);
+    transition:
+      border-color var(--motion-quick) var(--ease),
+      color var(--motion-quick) var(--ease),
+      box-shadow var(--motion-normal) var(--ease);
+  }
+
+  .install__copy:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 0 4px var(--accent-glow);
+  }
+
+  .install__icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .install__icon--done {
+    display: none;
+  }
+
+  .install__copy[data-done] {
+    border-color: var(--mint);
+    color: var(--mint);
+  }
+
+  .install__copy[data-done] .install__icon--copy {
+    display: none;
+  }
+
+  .install__copy[data-done] .install__icon--done {
+    display: block;
+    animation: jky-start 260ms var(--ease);
+  }
+
+  @media (max-width: 560px) {
+    .install__copy-text {
+      display: none;
+    }
+
+    .install__copy {
+      width: 38px;
+      padding: 0;
+      justify-content: center;
+    }
+  }
+</style>
+
+<script>
+  type Os = "unix" | "windows";
+
+  function detectOs(): Os {
+    const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+    const platform = (nav.userAgentData?.platform || navigator.userAgent).toLowerCase();
+    return platform.includes("win") ? "windows" : "unix";
+  }
+
+  async function copy(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // No clipboard permission (an insecure origin, an old browser): fall
+      // back to the selection the user can copy themselves.
+      return false;
+    }
+  }
+
+  function selectText(node: Element) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const selection = getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+  }
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-install]")) {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const panels = [...root.querySelectorAll<HTMLElement>('[role="tabpanel"]')];
+    const announce = root.querySelector<HTMLElement>("[data-announce]");
+
+    const select = (key: string, focus = false) => {
+      for (const tab of tabs) {
+        const on = tab.dataset.key === key;
+        tab.setAttribute("aria-selected", String(on));
+        tab.tabIndex = on ? 0 : -1;
+        if (on && focus) tab.focus();
+      }
+      for (const panel of panels) panel.hidden = panel.dataset.key !== key;
+    };
+
+    root.dataset.tabs = "on";
+    select(detectOs());
+
+    for (const tab of tabs) {
+      tab.addEventListener("click", () => select(tab.dataset.key ?? "unix"));
+      tab.addEventListener("keydown", (e) => {
+        if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+        e.preventDefault();
+        const i = tabs.indexOf(tab);
+        const next = tabs[(i + (e.key === "ArrowRight" ? 1 : tabs.length - 1)) % tabs.length];
+        select(next.dataset.key ?? "unix", true);
+      });
+    }
+
+    for (const button of root.querySelectorAll<HTMLButtonElement>("[data-copy]")) {
+      let timer = 0;
+      button.addEventListener("click", async () => {
+        const text = button.dataset.copy ?? "";
+        const label = button.querySelector(".install__copy-text");
+        if (await copy(text)) {
+          button.dataset.done = "";
+          if (label) label.textContent = "Copied";
+          if (announce) announce.textContent = "Install command copied. Paste it into a terminal.";
+          clearTimeout(timer);
+          timer = window.setTimeout(() => {
+            delete button.dataset.done;
+            if (label) label.textContent = "Copy";
+          }, 1800);
+        } else {
+          const code = button.parentElement?.querySelector(".install__code");
+          if (code) selectText(code);
+          if (announce) announce.textContent = "Command selected. Press Control C or Command C to copy it.";
+        }
+      });
+    }
+  }
+</script>

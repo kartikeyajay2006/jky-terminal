@@ -1,0 +1,70 @@
+---
+/**
+ * The JKY symbol: a prompt's chevron and the hook of a J, one stroke weight,
+ * with the cursor where one sits after a prompt. Same geometry as the app's
+ * JkyMark, coloured by the live theme.
+ */
+import { JKY_GLYPH, uid } from "../lib/glyph";
+
+interface Props {
+  size?: number;
+  class?: string;
+  label?: string;
+}
+
+const { size = 32, class: className, label } = Astro.props;
+const stroke = uid("mark-stroke");
+const glow = uid("mark-glow");
+const { frame, chevron, hook, spark } = JKY_GLYPH;
+---
+
+<svg
+  class:list={["mark", className]}
+  width={size}
+  height={size}
+  viewBox="0 0 64 64"
+  fill="none"
+  role={label ? "img" : undefined}
+  aria-label={label}
+  aria-hidden={label ? undefined : "true"}
+>
+  <defs>
+    <linearGradient id={stroke} x1="0" y1="0" x2="64" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="var(--accent)"></stop>
+      <stop offset="0.55" stop-color="var(--violet)"></stop>
+      <stop offset="1" stop-color="var(--magenta)"></stop>
+    </linearGradient>
+    <radialGradient id={glow}>
+      <stop offset="0" stop-color="var(--accent)" stop-opacity="0.32"></stop>
+      <stop offset="1" stop-color="var(--accent)" stop-opacity="0"></stop>
+    </radialGradient>
+  </defs>
+  <circle cx="32" cy="32" r="30" fill={`url(#${glow})`}></circle>
+  <rect
+    x={frame.x}
+    y={frame.y}
+    width={frame.size}
+    height={frame.size}
+    rx={frame.radius}
+    stroke={`url(#${stroke})`}
+    stroke-width="2"
+    opacity="0.5"></rect>
+  <g stroke={`url(#${stroke})`} stroke-width={JKY_GLYPH.stroke} stroke-linecap="round" stroke-linejoin="round">
+    <path d={chevron}></path>
+    <path d={hook}></path>
+  </g>
+  <circle class="mark__spark" cx={spark.cx} cy={spark.cy} r={spark.r} fill="var(--accent)"></circle>
+</svg>
+
+<style>
+  .mark {
+    flex: none;
+    overflow: visible;
+  }
+
+  .mark__spark {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: jky-pulse var(--motion-loop) var(--ease) infinite;
+  }
+</style>

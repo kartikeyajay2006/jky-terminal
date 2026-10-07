@@ -1,0 +1,281 @@
+/*
+ * The website's visual system.
+ *
+ * The colours are not defined here. They are the app's own tokens and the
+ * app's own seven themes, imported from apps/desktop, so the site and the app
+ * cannot disagree about what "Nord" looks like — and when the site re-themes,
+ * it is wearing the files the app ships. The same rule as the app holds: a
+ * literal colour anywhere in this site is a lint error.
+ */
+@import "../../../desktop/src/styles/tokens.css";
+@import "../../../desktop/src/styles/themes.css";
+@import "../../../desktop/src/styles/motion.css";
+
+:root {
+  --font-code: "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", "Cascadia Mono",
+    Menlo, Consolas, monospace;
+  --font-text: "Instrument Sans Variable", "Instrument Sans", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+
+  --page: 1240px;
+  --gutter: clamp(16px, 4.6vw, 56px);
+  --section-gap: clamp(120px, 15vw, 224px);
+
+  /* Type: a terminal's mono for anything that is the product speaking, a
+     quiet sans for anything that is us explaining it. */
+  --t-hero: clamp(2.5rem, 0.9rem + 5.9vw, 6.6rem);
+  --t-h2: clamp(2.05rem, 1.1rem + 3.5vw, 4.1rem);
+  --t-h3: clamp(1.18rem, 1.04rem + 0.5vw, 1.45rem);
+  --t-lead: clamp(1.08rem, 0.98rem + 0.42vw, 1.32rem);
+  --t-body: 1.0625rem;
+  --t-small: 0.92rem;
+  --t-micro: 0.8rem;
+
+  /* The emblem's light: the app's accent through violet to magenta. */
+  --glow: linear-gradient(100deg, var(--accent) 0%, var(--violet) 55%, var(--magenta) 100%);
+
+  --out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --in-out: cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  background: var(--ground);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-padding-top: 88px;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ground);
+  color: var(--text);
+  font: 400 var(--t-body) / 1.6 var(--font-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-x: clip;
+}
+
+/*
+ * Film grain, behind everything. It breaks up the banding a large glow makes
+ * on a dark ground, and sits under the text rather than over it — contrast is
+ * the one thing every theme here is tested on, and a veil over the words
+ * would quietly spend some of it.
+ */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.07;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .5 0 0 0 0 .5 0 0 0 0 .5 0 0 0 .6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+img,
+svg,
+canvas,
+video {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+  color: var(--text);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: 6px;
+}
+
+.wrap {
+  width: min(100% - 2 * var(--gutter), var(--page));
+  margin-inline: auto;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: fixed;
+  left: 16px;
+  top: 16px;
+  z-index: 200;
+  padding: 10px 16px;
+  border-radius: var(--radius-lg);
+  background: var(--accent);
+  color: var(--ground);
+  font: 600 var(--t-small) / 1 var(--font-code);
+  transform: translateY(-200%);
+}
+
+.skip:focus-visible {
+  transform: none;
+}
+
+/* ---- type ---------------------------------------------------------------- */
+
+.display {
+  margin: 0;
+  font-family: var(--font-code);
+  font-weight: 800;
+  letter-spacing: -0.055em;
+  line-height: 0.96;
+  text-wrap: balance;
+  font-feature-settings: "calt" 0;
+}
+
+.heading {
+  margin: 0;
+  font-family: var(--font-code);
+  font-size: var(--t-h2);
+  font-weight: 750;
+  letter-spacing: -0.045em;
+  line-height: 1.02;
+  text-wrap: balance;
+}
+
+.lead {
+  margin: 0;
+  max-width: 58ch;
+  color: var(--text-muted);
+  font-size: var(--t-lead);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.prose {
+  max-width: 62ch;
+  color: var(--text-muted);
+  text-wrap: pretty;
+}
+
+.prose strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+code,
+kbd,
+.mono {
+  font-family: var(--font-code);
+  font-size: 0.92em;
+}
+
+kbd {
+  display: inline-block;
+  min-width: 1.6em;
+  padding: 0.1em 0.45em;
+  border: 1px solid var(--line-strong);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--surface);
+  color: var(--text);
+  font-size: 0.82em;
+  line-height: 1.4;
+  text-align: center;
+}
+
+/* ---- buttons ------------------------------------------------------------- */
+
+.btn {
+  --btn-h: 48px;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  height: var(--btn-h);
+  padding: 0 22px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  font: 600 0.95rem / 1 var(--font-code);
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  transition:
+    background-color var(--motion-normal) var(--ease),
+    border-color var(--motion-normal) var(--ease),
+    color var(--motion-normal) var(--ease),
+    box-shadow var(--motion-normal) var(--ease),
+    transform var(--motion-normal) var(--ease);
+}
+
+.btn svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.btn--primary {
+  background: var(--accent);
+  color: var(--ground);
+}
+
+.btn--primary:hover {
+  box-shadow:
+    0 0 0 4px var(--accent-glow),
+    0 10px 40px -8px color-mix(in srgb, var(--accent) 60%, transparent);
+}
+
+.btn--ghost {
+  border-color: var(--line-strong);
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 60%, transparent);
+}
+
+.btn--ghost:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.btn--small {
+  --btn-h: 38px;
+  padding: 0 16px;
+  font-size: 0.85rem;
+}
+
+.btn:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* The blinking block a prompt waits with. */
+.cursor {
+  display: inline-block;
+  width: 0.56em;
+  height: 0.9em;
+  margin-left: 0.06em;
+  vertical-align: -0.06em;
+  background: var(--accent);
+  box-shadow: 0 0 24px var(--accent);
+  animation: jky-caret 1.06s steps(1) infinite;
+}
