@@ -123,3 +123,53 @@ test("the install command copies exactly what it shows", async ({ page, context,
   expect(copied).toBe(shown);
   expect(copied).toMatch(/install\.(sh|ps1)/);
 });
+
+test.describe("the terminal", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto("./#try");
+    await page.locator('[data-terminal][data-ready="true"]').waitFor();
+    await page.locator("[data-screen]").click();
+  });
+
+  const run = async (page: Page, command: string) => {
+    await page.keyboard.type(command, { delay: 5 });
+    await page.keyboard.press("Enter");
+  };
+
+  test("answers help", async ({ page }) => {
+    await run(page, "help");
+    await expect(page.locator("[data-log]")).toContainText("What this terminal knows");
+  });
+
+  test("builds the docker panel beneath the raw table, which stays", async ({ page }) => {
+    await run(page, "docker ps");
+    await expect(page.locator("[data-log]")).toContainText("CONTAINER ID");
+    await expect(page.locator('.panel[data-kind="docker"] .dk__card')).toHaveCount(4);
+  });
+
+  test("a panel's button types its command and runs nothing", async ({ page }) => {
+    await run(page, "docker ps");
+    const echoes = page.locator(".ln--echo");
+    const before = await echoes.count();
+    await page.locator(".dk__card").first().getByRole("button", { name: "logs" }).click();
+    await expect(page.locator("[data-prompt]")).toContainText("docker logs db");
+    await expect(echoes).toHaveCount(before);
+  });
+
+  test("jky theme re-themes the whole page, and remembers it", async ({ page }) => {
+    await run(page, "jky theme nord");
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "nord");
+    await page.reload();
+    await expect(page.locator("html")).toHaveAttribute("data-theme", "nord");
+  });
+
+  test("a destructive proposal cannot be approved until it is typed back", async ({ page }) => {
+    await run(page, "ask clean the build");
+    const approve = page.locator(".ap__btn--go");
+    await expect(approve).toBeDisabled();
+    await page.locator(".ap__confirm").fill("dist");
+    await expect(approve).toBeEnabled();
+    await approve.click();
+    await expect(page.locator(".ap__status")).toContainText("Approved");
+  });
+});

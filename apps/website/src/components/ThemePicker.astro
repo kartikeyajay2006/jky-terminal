@@ -1,0 +1,259 @@
+---
+/**
+ * The nav's theme switcher: the app's seven themes, each previewed by its own
+ * three accent colours — read from the token files at build time — and
+ * applied with the same reveal `jky theme` uses, grown from the click.
+ */
+import { themeTokens } from "../lib/facts";
+import { themes } from "../lib/theme";
+
+const tokens = themeTokens();
+---
+
+<div class="tp" data-themepicker>
+  <button class="tp__button" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="tp-menu" data-tp-button>
+    <span class="tp__swatch" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span class="tp__label" data-tp-label>Cyberpunk</span>
+    <svg class="tp__chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5L6 7.5L9 4.5" fill="none" stroke="currentColor" stroke-width="1.5"></path></svg>
+  </button>
+  <div class="tp__menu" id="tp-menu" role="menu" aria-label="Theme" data-tp-menu hidden>
+    {
+      themes.map((t) => {
+        const tk = tokens[t.id];
+        return (
+          <button
+            class="tp__item"
+            role="menuitemradio"
+            aria-checked="false"
+            type="button"
+            data-theme-id={t.id}
+            style={`--a:${tk["--accent"]};--b:${tk["--violet"]};--c:${tk["--magenta"]};--g:${tk["--ground"]};--l:${tk["--line-strong"]}`}
+          >
+            <span class="tp__chip" aria-hidden="true">
+              <i />
+              <i />
+              <i />
+            </span>
+            {t.label}
+          </button>
+        );
+      })
+    }
+  </div>
+</div>
+
+<style>
+  .tp {
+    position: relative;
+  }
+
+  .tp__button {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    height: 36px;
+    padding: 0 11px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    color: var(--text-muted);
+    font: 500 0.82rem / 1 var(--font-code);
+    transition:
+      border-color var(--motion-quick) var(--ease),
+      color var(--motion-quick) var(--ease);
+  }
+
+  .tp__button:hover,
+  .tp__button[aria-expanded="true"] {
+    border-color: var(--accent);
+    color: var(--text);
+  }
+
+  .tp__swatch,
+  .tp__chip {
+    display: inline-flex;
+  }
+
+  .tp__swatch i,
+  .tp__chip i {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    margin-left: -3px;
+    box-shadow: 0 0 0 1.5px var(--surface);
+  }
+
+  .tp__swatch i:first-child,
+  .tp__chip i:first-child {
+    margin-left: 0;
+  }
+
+  .tp__swatch i:nth-child(1) {
+    background: var(--accent);
+  }
+
+  .tp__swatch i:nth-child(2) {
+    background: var(--violet);
+  }
+
+  .tp__swatch i:nth-child(3) {
+    background: var(--magenta);
+  }
+
+  .tp__chev {
+    width: 12px;
+    height: 12px;
+  }
+
+  .tp__menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    right: 0;
+    z-index: 10;
+    display: grid;
+    min-width: 190px;
+    padding: 6px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface) 92%, transparent);
+    backdrop-filter: var(--veil);
+    -webkit-backdrop-filter: var(--veil);
+    box-shadow: var(--lift-3);
+    animation: tp-in 220ms var(--out-expo);
+  }
+
+  .tp__menu[hidden] {
+    display: none;
+  }
+
+  @keyframes tp-in {
+    from {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.97);
+    }
+  }
+
+  .tp__item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 9px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--text);
+    font: 500 0.85rem / 1 var(--font-code);
+    text-align: left;
+  }
+
+  .tp__item:hover,
+  .tp__item:focus-visible {
+    background: var(--surface-raised);
+    outline: none;
+  }
+
+  .tp__item[aria-checked="true"]::after {
+    content: "●";
+    margin-left: auto;
+    color: var(--accent);
+    font-size: 0.7rem;
+  }
+
+  /* Each theme previewed in its own colours, on its own ground. */
+  .tp__chip {
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: var(--g);
+    box-shadow: inset 0 0 0 1px var(--l);
+  }
+
+  .tp__chip i {
+    box-shadow: 0 0 0 1.5px var(--g);
+  }
+
+  .tp__chip i:nth-child(1) {
+    background: var(--a);
+  }
+
+  .tp__chip i:nth-child(2) {
+    background: var(--b);
+  }
+
+  .tp__chip i:nth-child(3) {
+    background: var(--c);
+  }
+
+  /* Out of sight on a phone, but still the button's name for a screen reader. */
+  @media (max-width: 760px) {
+    .tp__label {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+  }
+</style>
+
+<script>
+  import { currentTheme, labelOf, setTheme } from "../lib/theme";
+
+  for (const root of document.querySelectorAll<HTMLElement>("[data-themepicker]")) {
+    const button = root.querySelector<HTMLButtonElement>("[data-tp-button]");
+    const menu = root.querySelector<HTMLElement>("[data-tp-menu]");
+    const label = root.querySelector<HTMLElement>("[data-tp-label]");
+    if (!button || !menu) continue;
+    const items = [...menu.querySelectorAll<HTMLButtonElement>("[data-theme-id]")];
+
+    const sync = () => {
+      const id = currentTheme();
+      if (label) label.textContent = labelOf(id);
+      for (const item of items) item.setAttribute("aria-checked", String(item.dataset.themeId === id));
+    };
+    const open = (focusFirst = false) => {
+      menu.hidden = false;
+      button.setAttribute("aria-expanded", "true");
+      const target = items.find((i) => i.getAttribute("aria-checked") === "true") ?? items[0];
+      if (focusFirst) target.focus();
+    };
+    const close = (refocus = false) => {
+      menu.hidden = true;
+      button.setAttribute("aria-expanded", "false");
+      if (refocus) button.focus();
+    };
+
+    button.addEventListener("click", () => (menu.hidden ? open() : close()));
+    button.addEventListener("keydown", (e) => {
+      if (e.key === "ArrowDown" || e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        open(true);
+      }
+    });
+    menu.addEventListener("keydown", (e) => {
+      const i = items.indexOf(document.activeElement as HTMLButtonElement);
+      if (e.key === "Escape") close(true);
+      else if (e.key === "ArrowDown") {
+        e.preventDefault();
+        items[(i + 1) % items.length].focus();
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        items[(i - 1 + items.length) % items.length].focus();
+      } else if (e.key === "Tab") close();
+    });
+    for (const item of items) {
+      item.addEventListener("click", (e) => {
+        const r = item.getBoundingClientRect();
+        const x = e.clientX || r.left + r.width / 2;
+        const y = e.clientY || r.top + r.height / 2;
+        close(true);
+        void setTheme(item.dataset.themeId ?? "cyberpunk", { x, y });
+      });
+    }
+    document.addEventListener("pointerdown", (e) => {
+      if (!menu.hidden && !root.contains(e.target as Node)) close();
+    });
+    window.addEventListener("jky:theme", sync);
+    sync();
+  }
+</script>

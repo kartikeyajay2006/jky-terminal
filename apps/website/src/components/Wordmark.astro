@@ -1,0 +1,103 @@
+---
+/**
+ * The terminal banner's JKY wordmark, drawn from the app's own WORDMARK grid
+ * (features/terminal/wordmark.ts).
+ *
+ * In the app it is text: `█` for each letter's face, box-drawing characters
+ * for its bevel. A web font's Latin subset has neither, and a fallback face
+ * would misalign them, so here each character becomes the shape it draws —
+ * a full cell, or the strokes of `═ ║ ╗ ╔ ╝ ╚` — on the same grid, with the
+ * bevel dimmer than the face, which is the app's whole trick for depth.
+ */
+import { WORDMARK, WORDMARK_WIDTH, isBevel, isFace, uid } from "../lib/glyph";
+
+interface Props {
+  class?: string;
+}
+const { class: className } = Astro.props;
+
+const W = 10;
+const H = 20;
+const T = 2.4; // a box-drawing stroke
+const G = 2.6; // the gap between a double line's two strokes
+const id = uid("wordmark");
+
+type Rect = { x: number; y: number; w: number; h: number; face: boolean };
+const rects: Rect[] = [];
+const cx = W / 2;
+const cy = H / 2;
+// The two strokes of a double line sit either side of the cell's centre.
+const a = (c: number) => c - G / 2 - T;
+const b = (c: number) => c + G / 2;
+
+WORDMARK.forEach((row, r) => {
+  [...row].forEach((ch, c) => {
+    const x = c * W;
+    const y = r * H;
+    if (isFace(ch)) rects.push({ x, y, w: W, h: H, face: true });
+    if (!isBevel(ch)) return;
+    const push = (rx: number, ry: number, rw: number, rh: number) => rects.push({ x: x + rx, y: y + ry, w: rw, h: rh, face: false });
+    switch (ch) {
+      case "═":
+        push(0, a(cy), W, T);
+        push(0, b(cy), W, T);
+        break;
+      case "║":
+        push(a(cx), 0, T, H);
+        push(b(cx), 0, T, H);
+        break;
+      case "╗":
+        push(0, a(cy), b(cx) + T, T);
+        push(0, b(cy), a(cx) + T, T);
+        push(b(cx), a(cy), T, H - a(cy));
+        push(a(cx), b(cy), T, H - b(cy));
+        break;
+      case "╔":
+        push(a(cx), a(cy), W - a(cx), T);
+        push(b(cx), b(cy), W - b(cx), T);
+        push(a(cx), a(cy), T, H - a(cy));
+        push(b(cx), b(cy), T, H - b(cy));
+        break;
+      case "╝":
+        push(0, b(cy), b(cx) + T, T);
+        push(0, a(cy), a(cx) + T, T);
+        push(b(cx), 0, T, b(cy) + T);
+        push(a(cx), 0, T, a(cy) + T);
+        break;
+      case "╚":
+        push(a(cx), b(cy), W - a(cx), T);
+        push(b(cx), a(cy), W - b(cx), T);
+        push(a(cx), 0, T, b(cy) + T);
+        push(b(cx), 0, T, a(cy) + T);
+        break;
+    }
+  });
+});
+
+const width = WORDMARK_WIDTH * W;
+const height = WORDMARK.length * H;
+---
+
+<svg class:list={["wordmark", className]} viewBox={`0 0 ${width} ${height}`} role="img" aria-label="JKY">
+  <defs>
+    <linearGradient id={id} gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={width} y2="0">
+      <stop offset="0" stop-color="var(--accent)"></stop>
+      <stop offset="0.55" stop-color="var(--violet)"></stop>
+      <stop offset="1" stop-color="var(--magenta)"></stop>
+    </linearGradient>
+  </defs>
+  <g fill={`url(#${id})`}>
+    {rects.filter((r) => r.face).map((r) => <rect x={r.x} y={r.y} width={r.w} height={r.h} />)}
+  </g>
+  <g fill={`url(#${id})`} opacity="0.42">
+    {rects.filter((r) => !r.face).map((r) => <rect x={r.x} y={r.y} width={r.w} height={r.h} />)}
+  </g>
+</svg>
+
+<style>
+  .wordmark {
+    display: block;
+    height: auto;
+    shape-rendering: crispEdges;
+  }
+</style>

@@ -1,0 +1,1338 @@
+---
+import Mark from "./Mark.astro";
+import Emblem from "./Emblem.astro";
+import Wordmark from "./Wordmark.astro";
+
+interface Props {
+  version: string;
+}
+const { version } = Astro.props;
+
+const rail = [
+  { icon: "⌂", label: "Dashboard" },
+  { icon: "❯", label: "Terminal", active: true },
+  { icon: "↺", label: "History" },
+  { icon: "⇄", label: "Remote" },
+  { icon: "✎", label: "Editor" },
+  { icon: "▦", label: "Workspaces" },
+  { icon: "✦", label: "Assistant" },
+  { icon: "◈", label: "Games" },
+  { icon: "⊞", label: "Apps" },
+  { icon: "⌥", label: "Developer" },
+];
+
+const chips = ["help", "docker ps", "git status -s", "df -h", "cat package.json", "jky theme nord", "ask clean the build", "exit"];
+const shortcuts = [
+  ["Ctrl+K", "palette"],
+  ["Ctrl+T", "new terminal"],
+  ["Ctrl+Shift+T", "split"],
+  ["Ctrl+F", "find"],
+];
+---
+
+<section class="demo" id="try" aria-labelledby="try-title">
+  <div class="wrap demo__head">
+    <h2 class="heading" id="try-title">Go on, type something.</h2>
+    <p class="lead">
+      This is JKY, simulated in your browser — the panels, the themes, the assistant's approval card. Click inside and
+      type <code>help</code>, or pick a command below.
+    </p>
+  </div>
+
+  <div class="wrap">
+    <div class="term" data-terminal>
+      <div class="term__window" data-window data-state="open">
+        <nav class="term__rail" aria-hidden="true">
+          <span class="term__brand"><Mark size={22} /></span>
+          {
+            rail.map((r) => (
+              <span class:list={["term__railitem", { "is-active": r.active }]} title={r.label}>
+                {r.icon}
+              </span>
+            ))
+          }
+        </nav>
+
+        <div class="term__main">
+          <div class="term__tabs" aria-hidden="true">
+            <span class="term__tab is-active">Terminal 1 <span class="term__x">×</span></span>
+            <span class="term__new">+ New terminal</span>
+            <span class="term__tools"><span></span><span></span></span>
+          </div>
+
+          <div class="term__screen" data-screen data-lenis-prevent>
+            <div class="term__banner" data-banner>
+              <div class="term__marks">
+                <span class="term__wordmark"><Wordmark /></span>
+                <span class="term__emblem"><Emblem /></span>
+              </div>
+              <div class="term__tagline">
+                <span>AI Terminal. Infinite Possibilities.</span>
+                <span class="term__ver">v{version}</span>
+              </div>
+              <div class="term__keys">
+                {
+                  shortcuts.map(([k, v]) => (
+                    <span>
+                      <b>{k}</b> {v}
+                    </span>
+                  ))
+                }
+              </div>
+            </div>
+            <div class="term__log" data-log>
+              <div class="ln">Type <span class="t-accent">help</span> to see what this terminal knows.</div>
+            </div>
+            <div class="term__prompt">
+              <span data-prompt set:html={`<span class="pr__path">~/acme/api</span><span class="pr__branch"> main</span><span class="pr__sym"> $ </span><span class="pr__cursor">&nbsp;</span>`} />
+              <input
+                class="term__input"
+                data-input
+                type="text"
+                aria-label="Type a command into the JKY demo terminal"
+                autocomplete="off"
+                autocapitalize="off"
+                autocorrect="off"
+                spellcheck="false"
+                enterkeyhint="go"
+              />
+            </div>
+          </div>
+
+          <div class="term__status" aria-hidden="true">
+            <span class="term__live"><i></i> live</span>
+            <span>zsh</span>
+            <span>~/acme/api</span>
+            <span class="term__branch">main</span>
+            <span class="term__theme">theme <b data-theme-name>Cyberpunk</b></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="term__closed" data-closed hidden>
+        <p class="term__closed-title">The window is closed. The shell is not.</p>
+        <p class="term__closed-body">
+          <span class="term__spin" aria-hidden="true"></span>
+          <code>vite build</code> is still running under JKY's supervisor — <span data-ticker>0s</span>
+        </p>
+        <button class="btn btn--primary btn--small" type="button" data-reopen>Reopen JKY</button>
+      </div>
+    </div>
+
+    <div class="demo__chips" role="group" aria-label="Commands to try">
+      {
+        chips.map((c) => (
+          <button class="chip" type="button" data-chip={c}>
+            <span aria-hidden="true">$</span> {c}
+          </button>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .demo {
+    position: relative;
+    padding-top: clamp(56px, 8vw, 120px);
+  }
+
+  .demo__head {
+    display: grid;
+    gap: 18px;
+    margin-bottom: clamp(32px, 4vw, 52px);
+  }
+
+  .demo__head code {
+    color: var(--accent);
+  }
+
+  /* ---- the window ---------------------------------------------------------- */
+
+  .term {
+    position: relative;
+    perspective: 1600px;
+  }
+
+  .term__window {
+    position: relative;
+    display: grid;
+    grid-template-columns: 56px minmax(0, 1fr);
+    height: clamp(540px, 76vh, 700px);
+    border: 1px solid var(--line-strong);
+    border-radius: 16px;
+    background: var(--ground);
+    overflow: hidden;
+    box-shadow:
+      var(--lift-3),
+      0 50px 140px -50px color-mix(in srgb, var(--accent) 38%, transparent),
+      0 0 0 1px color-mix(in srgb, var(--accent) 6%, transparent);
+    transform-origin: 50% 0%;
+    transition:
+      transform 1300ms var(--out-expo),
+      opacity 900ms var(--ease),
+      filter 600ms var(--ease);
+  }
+
+  /* The emblem's light along the top edge, as on the install line. */
+  .term__window::before {
+    content: "";
+    position: absolute;
+    inset: 0 0 auto;
+    z-index: 2;
+    height: 1px;
+    background: linear-gradient(
+      90deg,
+      transparent 4%,
+      color-mix(in srgb, var(--accent) 80%, transparent) 30%,
+      color-mix(in srgb, var(--violet) 70%, transparent) 55%,
+      color-mix(in srgb, var(--magenta) 70%, transparent) 75%,
+      transparent 96%
+    );
+  }
+
+  /* It rises to meet you, the way a lid opens. */
+  :global(.js) .term:not(.is-in) .term__window {
+    transform: rotateX(18deg) translateY(70px) scale(0.93);
+  }
+
+  .term__window[data-state="closed"] {
+    transform: scale(0.9) translateY(24px);
+    opacity: 0.18;
+    filter: blur(3px);
+    pointer-events: none;
+  }
+
+  .term__rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 12px 0;
+    border-right: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text-muted);
+    font: 14px/1 var(--font-code);
+  }
+
+  .term__brand {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    margin-bottom: 10px;
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--line));
+    border-radius: 9px;
+  }
+
+  .term__railitem {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 34px;
+    border-radius: 8px;
+  }
+
+  .term__railitem.is-active {
+    background: var(--accent-glow);
+    color: var(--accent);
+  }
+
+  .term__railitem.is-active::before {
+    content: "";
+    position: absolute;
+    left: -9px;
+    top: 7px;
+    bottom: 7px;
+    width: 2px;
+    border-radius: 2px;
+    background: var(--accent);
+  }
+
+  .term__main {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    min-width: 0;
+  }
+
+  .term__tabs {
+    display: flex;
+    align-items: stretch;
+    gap: 4px;
+    height: 42px;
+    padding: 0 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    font: 12.5px/1 var(--font-code);
+    color: var(--text-muted);
+  }
+
+  .term__tab,
+  .term__new {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0 14px;
+  }
+
+  .term__tab.is-active {
+    color: var(--accent);
+    box-shadow: inset 0 -2px 0 var(--accent);
+    background: color-mix(in srgb, var(--ground) 60%, transparent);
+  }
+
+  .term__x {
+    color: var(--text-muted);
+  }
+
+  .term__tools {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-left: auto;
+  }
+
+  .term__tools span {
+    width: 26px;
+    height: 26px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+  }
+
+  /* ---- the screen ------------------------------------------------------- */
+
+  .term__screen {
+    position: relative;
+    overflow-y: auto;
+    padding: 18px 22px 22px;
+    font: 13.5px / 1.55 var(--font-code);
+    color: var(--text);
+    cursor: text;
+    scrollbar-width: thin;
+    scrollbar-color: var(--line-strong) transparent;
+    overscroll-behavior: contain;
+  }
+
+  .term__banner {
+    padding-bottom: 14px;
+  }
+
+  .term__marks {
+    display: flex;
+    align-items: center;
+    gap: 22px;
+  }
+
+  .term__wordmark {
+    display: block;
+    width: min(210px, 42vw);
+  }
+
+  .term__emblem {
+    width: 84px;
+    height: 84px;
+    flex: none;
+  }
+
+  .term__tagline {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: 14px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--line);
+    color: var(--accent);
+  }
+
+  .term__ver {
+    color: var(--text-muted);
+  }
+
+  .term__keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 26px;
+    margin-top: 10px;
+    color: var(--text-muted);
+    font-size: 12.5px;
+  }
+
+  .term__keys b {
+    margin-right: 6px;
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* The real input sits over the prompt line, invisible: typing keeps the
+     prompt in view, which is where the eye already is. */
+  .term__prompt {
+    position: relative;
+  }
+
+  .term__input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    padding: 0;
+    border: 0;
+    opacity: 0;
+    /* 16px or iOS zooms the page when it takes focus. */
+    font-size: 16px;
+  }
+
+  .term__status {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    height: 30px;
+    padding: 0 14px;
+    border-top: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--text-muted);
+    font: 11.5px/1 var(--font-code);
+    white-space: nowrap;
+    overflow: hidden;
+  }
+
+  .term__live {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: var(--mint);
+  }
+
+  .term__live i {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--mint);
+    box-shadow: 0 0 8px var(--mint);
+    animation: jky-pulse var(--motion-loop) var(--ease) infinite;
+  }
+
+  .term__branch {
+    color: var(--magenta);
+  }
+
+  .term__theme {
+    margin-left: auto;
+  }
+
+  .term__theme b {
+    color: var(--text);
+    font-weight: 500;
+  }
+
+  /* ---- closed, but still running ---------------------------------------- */
+
+  .term__closed {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: 14px;
+    padding: 24px;
+    text-align: center;
+    font-family: var(--font-code);
+  }
+
+  .term__closed[hidden] {
+    display: none;
+  }
+
+  .term__closed-title {
+    margin: 0;
+    font-size: clamp(1.2rem, 1rem + 1vw, 1.7rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+
+  .term__closed-body {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 6px;
+    color: var(--text-muted);
+    font-size: 0.92rem;
+  }
+
+  .term__closed-body code {
+    color: var(--accent);
+  }
+
+  .term__spin {
+    width: 12px;
+    height: 12px;
+    border: 1.5px solid color-mix(in srgb, var(--accent) 25%, transparent);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: jky-spin 700ms linear infinite;
+  }
+
+  /* ---- chips -------------------------------------------------------------- */
+
+  .demo__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 22px;
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 9px;
+    background: color-mix(in srgb, var(--surface) 70%, transparent);
+    color: var(--text);
+    font: 500 0.82rem / 1 var(--font-code);
+    transition:
+      border-color var(--motion-quick) var(--ease),
+      color var(--motion-quick) var(--ease),
+      transform var(--motion-quick) var(--ease),
+      box-shadow var(--motion-normal) var(--ease);
+  }
+
+  .chip span {
+    color: var(--accent);
+  }
+
+  .chip:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+    transform: translateY(-1px);
+  }
+
+  @media (max-width: 760px) {
+    .term__window {
+      grid-template-columns: minmax(0, 1fr);
+      height: min(74vh, 620px);
+      border-radius: 14px;
+    }
+
+    .term__rail,
+    .term__tools,
+    .term__new,
+    .term__emblem {
+      display: none;
+    }
+
+    .term__screen {
+      padding: 14px 14px 18px;
+      font-size: 11.5px;
+    }
+
+    .term__keys {
+      display: none;
+    }
+
+    .term__status span:nth-child(3),
+    .term__status span:nth-child(4) {
+      display: none;
+    }
+
+    .demo__chips {
+      flex-wrap: nowrap;
+      overflow-x: auto;
+      margin-inline: calc(var(--gutter) * -1);
+      padding-inline: var(--gutter);
+      scrollbar-width: none;
+    }
+
+    .chip {
+      flex: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :global(.js) .term:not(.is-in) .term__window {
+      transform: none;
+      opacity: 1;
+    }
+  }
+</style>
+
+<style is:global>
+  /* Output drawn by the script — global, since it is created at run time. */
+  .term__log .ln,
+  .term__prompt {
+    min-height: 1.55em;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+
+  /* On a narrow screen, output keeps its columns and scrolls sideways — as a
+     terminal does — rather than wrapping a table into itself. */
+  @media (max-width: 760px) {
+    .term__log {
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+
+    .term__log > .ln:not(.ln--note) {
+      white-space: pre;
+      word-break: normal;
+      width: max-content;
+      min-width: 100%;
+    }
+  }
+
+  .ln--echo {
+    margin-top: 6px;
+  }
+
+  .ln--note {
+    margin: 6px 0;
+    padding-left: 10px;
+    border-left: 2px solid var(--accent);
+    color: var(--text-muted);
+    white-space: normal;
+  }
+
+  .ln--turn {
+    color: var(--accent);
+  }
+
+  .t-dim {
+    color: color-mix(in srgb, var(--text-muted) 82%, var(--ground));
+  }
+
+  .t-muted {
+    color: var(--text-muted);
+  }
+
+  .t-text {
+    color: var(--text);
+  }
+
+  .t-accent {
+    color: var(--accent);
+  }
+
+  .t-violet {
+    color: var(--violet);
+  }
+
+  .t-magenta {
+    color: var(--magenta);
+  }
+
+  .t-mint {
+    color: var(--mint);
+  }
+
+  .t-warn {
+    color: var(--warn);
+  }
+
+  .t-danger {
+    color: var(--danger);
+  }
+
+  .t-bold {
+    font-weight: 700;
+  }
+
+  .pr__path {
+    color: var(--accent);
+  }
+
+  .pr__branch {
+    color: var(--magenta);
+  }
+
+  .pr__sym {
+    color: var(--text-muted);
+  }
+
+  .pr__cursor {
+    box-shadow: inset 0 0 0 1px var(--accent);
+    border-radius: 1px;
+  }
+
+  .term.is-focused .pr__cursor,
+  .term.is-demo .pr__cursor {
+    background: var(--accent);
+    color: var(--ground);
+    box-shadow: 0 0 12px color-mix(in srgb, var(--accent) 60%, transparent);
+    animation: jky-caret 1.05s steps(1) infinite;
+  }
+
+  .term.is-demo .pr__cursor {
+    animation: none;
+  }
+
+  /* ---- panels --------------------------------------------------------------- */
+
+  .panel {
+    margin: 10px 0 16px;
+    max-width: 760px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--surface) 94%, transparent);
+    overflow: hidden;
+    white-space: normal;
+    font-size: 12.5px;
+    animation: panel-in 620ms var(--out-expo) both;
+  }
+
+  .panel.is-leaving {
+    animation: panel-out 260ms var(--ease) both;
+  }
+
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.98);
+      clip-path: inset(0 0 100% 0 round 12px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      clip-path: inset(0 0 0 0 round 12px);
+    }
+  }
+
+  @keyframes panel-out {
+    to {
+      opacity: 0;
+      transform: translateY(-6px) scale(0.98);
+    }
+  }
+
+  @keyframes row-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .panel__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 10px 8px 14px;
+    border-bottom: 1px solid var(--line);
+    background: color-mix(in srgb, var(--surface-raised) 80%, transparent);
+  }
+
+  .panel__cmd {
+    color: var(--text-muted);
+  }
+
+  .panel__chev {
+    margin-right: 6px;
+    color: var(--accent);
+  }
+
+  .panel__label {
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-size: 11px;
+  }
+
+  .panel__close {
+    margin-left: auto;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .panel__close:hover {
+    background: var(--surface-raised);
+    color: var(--text);
+  }
+
+  .panel__foot {
+    margin: 0;
+    padding: 8px 14px;
+    border-top: 1px solid var(--line);
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
+
+  .panel__btn {
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: var(--surface);
+    color: var(--text);
+    font: 500 11.5px/1 var(--font-code);
+    transition:
+      border-color var(--motion-quick) var(--ease),
+      color var(--motion-quick) var(--ease);
+  }
+
+  .panel__btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  /* docker ps */
+  .dk {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .dk__card {
+    display: grid;
+    gap: 6px;
+    padding: 12px;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--surface-raised);
+    animation: row-in 520ms var(--out-expo) both;
+    animation-delay: calc(180ms + var(--i) * 80ms);
+  }
+
+  .dk__card[data-up="false"] {
+    opacity: 0.78;
+  }
+
+  .dk__top {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .dk__dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--mint);
+    box-shadow: 0 0 10px var(--mint);
+  }
+
+  .dk__card[data-up="false"] .dk__dot {
+    background: var(--danger);
+    box-shadow: none;
+  }
+
+  .dk__name {
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .dk__state {
+    margin-left: auto;
+    color: var(--mint);
+    font-size: 11px;
+  }
+
+  .dk__card[data-up="false"] .dk__state {
+    color: var(--danger);
+  }
+
+  .dk__img,
+  .dk__meta {
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
+
+  .dk__actions {
+    display: flex;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  /* git status -s */
+  .gs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 1px;
+    background: var(--line);
+  }
+
+  .gs__col {
+    display: grid;
+    align-content: start;
+    gap: 8px;
+    padding: 12px 14px;
+    background: var(--surface);
+  }
+
+  .gs__title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .gs__count {
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--surface-raised);
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 500;
+  }
+
+  .gs__row {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 2px 8px;
+    align-items: center;
+    animation: row-in 480ms var(--out-expo) both;
+    animation-delay: calc(200ms + var(--i) * 70ms);
+  }
+
+  .gs__chip {
+    grid-row: span 2;
+    min-width: 26px;
+    padding: 2px 5px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .gs__chip--mint {
+    background: color-mix(in srgb, var(--mint) 16%, transparent);
+    color: var(--mint);
+  }
+
+  .gs__chip--danger {
+    background: color-mix(in srgb, var(--danger) 16%, transparent);
+    color: var(--danger);
+  }
+
+  .gs__chip--dim {
+    background: var(--surface-raised);
+    color: var(--text-muted);
+  }
+
+  .gs__file {
+    color: var(--text);
+  }
+
+  .gs__dir {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  /* git log */
+  .gl {
+    position: relative;
+    display: grid;
+    gap: 12px;
+    margin: 0;
+    padding: 14px 16px 14px 36px;
+    list-style: none;
+  }
+
+  .gl::before {
+    content: "";
+    position: absolute;
+    left: 19px;
+    top: 20px;
+    bottom: 20px;
+    width: 1px;
+    background: linear-gradient(var(--accent), var(--violet), transparent);
+  }
+
+  .gl__item {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 10px;
+    animation: row-in 480ms var(--out-expo) both;
+    animation-delay: calc(200ms + var(--i) * 90ms);
+  }
+
+  .gl__dot {
+    position: absolute;
+    left: -21px;
+    top: 5px;
+    width: 9px;
+    height: 9px;
+    border: 2px solid var(--violet);
+    border-radius: 50%;
+    background: var(--ground);
+  }
+
+  .gl__item:first-child .gl__dot {
+    border-color: var(--accent);
+    background: var(--accent);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  .gl__hash {
+    color: var(--warn);
+  }
+
+  .gl__head {
+    padding: 1px 6px;
+    border-radius: 5px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-size: 10.5px;
+  }
+
+  .gl__subject {
+    color: var(--text);
+  }
+
+  .gl__when {
+    color: var(--text-muted);
+    font-size: 11px;
+  }
+
+  /* df -h */
+  .df {
+    display: grid;
+    gap: 12px;
+    padding: 14px 16px;
+  }
+
+  .df__row {
+    display: grid;
+    grid-template-columns: 80px minmax(0, 1fr) auto;
+    gap: 14px;
+    align-items: center;
+    animation: row-in 480ms var(--out-expo) both;
+    animation-delay: calc(160ms + var(--i) * 90ms);
+  }
+
+  .df__mount {
+    color: var(--text);
+  }
+
+  .df__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: var(--surface-raised);
+    overflow: hidden;
+  }
+
+  .df__fill {
+    display: block;
+    width: var(--pct);
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), var(--violet));
+    transform-origin: 0 50%;
+    animation: bar-fill 1100ms var(--out-expo) both;
+    animation-delay: calc(300ms + var(--i) * 110ms);
+  }
+
+  .df__row[data-level="mid"] .df__fill {
+    background: linear-gradient(90deg, var(--accent), var(--warn));
+  }
+
+  .df__row[data-level="high"] .df__fill {
+    background: linear-gradient(90deg, var(--warn), var(--danger));
+  }
+
+  .df__num {
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
+
+  @keyframes bar-fill {
+    from {
+      transform: scaleX(0);
+    }
+  }
+
+  /* ls -l */
+  .ls {
+    display: grid;
+    padding: 8px 6px;
+  }
+
+  .ls__row {
+    display: grid;
+    grid-template-columns: 22px minmax(0, 1fr) 54px 104px;
+    gap: 8px;
+    padding: 5px 10px;
+    border-radius: 7px;
+    animation: row-in 420ms var(--out-expo) both;
+    animation-delay: calc(140ms + var(--i) * 50ms);
+  }
+
+  .ls__row:hover {
+    background: var(--surface-raised);
+  }
+
+  .ls__icon,
+  .ls__row[data-dir="true"] .ls__name {
+    color: var(--accent);
+  }
+
+  .ls__size,
+  .ls__date {
+    color: var(--text-muted);
+    font-size: 11.5px;
+  }
+
+  /* JSON */
+  .jt {
+    padding: 12px 16px;
+  }
+
+  .jt__children {
+    padding-left: 18px;
+    border-left: 1px solid var(--line);
+    margin-left: 6px;
+  }
+
+  .jt__node[data-open="false"] > .jt__children,
+  .jt__node[data-open="false"] > .jt__end,
+  .jt__node[data-open="true"] > .jt__line > .jt__summary,
+  .jt__node[data-open="true"] > .jt__line > .jt__close-inline {
+    display: none;
+  }
+
+  .jt__toggle {
+    width: 18px;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    font: inherit;
+  }
+
+  .jt__toggle:hover {
+    color: var(--accent);
+  }
+
+  .jt__leaf {
+    padding-left: 18px;
+  }
+
+  .jt__key {
+    color: var(--accent);
+  }
+
+  .jt__punct,
+  .jt__summary {
+    color: var(--text-muted);
+  }
+
+  .jt__str {
+    color: var(--mint);
+  }
+
+  .jt__num {
+    color: var(--warn);
+  }
+
+  .jt__lit {
+    color: var(--magenta);
+  }
+
+  /* mkdir */
+  .mk {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 14px;
+    color: var(--text-muted);
+  }
+
+  .mk__ok {
+    color: var(--mint);
+  }
+
+  .mk code {
+    color: var(--accent);
+  }
+
+  /* ---- the approval card --------------------------------------------------------- */
+
+  .ap {
+    margin: 8px 0 16px;
+    max-width: 640px;
+    white-space: normal;
+    animation: panel-in 620ms var(--out-expo) both;
+  }
+
+  .ap__said {
+    margin-bottom: 10px;
+    color: var(--text-muted);
+  }
+
+  .ap__who {
+    color: var(--accent);
+  }
+
+  .ap__card {
+    display: grid;
+    gap: 12px;
+    padding: 16px;
+    border: 1px solid var(--line-strong);
+    border-radius: 12px;
+    background: var(--surface);
+    box-shadow: var(--lift-2);
+  }
+
+  .ap[data-destructive="true"] .ap__card {
+    border-color: color-mix(in srgb, var(--danger) 55%, var(--line-strong));
+    box-shadow:
+      var(--lift-2),
+      0 0 0 3px color-mix(in srgb, var(--danger) 10%, transparent);
+  }
+
+  .ap__head {
+    color: var(--text);
+    font-weight: 700;
+  }
+
+  .ap__cmd {
+    padding: 9px 12px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--ground);
+    color: var(--accent);
+  }
+
+  .ap__facts {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 5px 16px;
+    margin: 0;
+  }
+
+  .ap__facts dt {
+    color: var(--text-muted);
+  }
+
+  .ap__facts dd {
+    margin: 0;
+    color: var(--text);
+  }
+
+  .ap__type {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 8px;
+    color: var(--text-muted);
+  }
+
+  .ap__type code {
+    color: var(--danger);
+  }
+
+  .ap__confirm {
+    width: 110px;
+    height: 30px;
+    padding: 0 9px;
+    border: 1px solid var(--line-strong);
+    border-radius: 7px;
+    background: var(--ground);
+    color: var(--text);
+    font: 500 13px/1 var(--font-code);
+  }
+
+  .ap__confirm:focus {
+    border-color: var(--accent);
+    outline: none;
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .ap__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .ap__btn {
+    height: 32px;
+    padding: 0 14px;
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    background: var(--surface-raised);
+    color: var(--text);
+    font: 600 12px/1 var(--font-code);
+    transition:
+      border-color var(--motion-quick) var(--ease),
+      color var(--motion-quick) var(--ease),
+      opacity var(--motion-quick) var(--ease);
+  }
+
+  .ap__btn:hover:not([disabled]) {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .ap__btn--go {
+    border-color: transparent;
+    background: var(--accent);
+    color: var(--ground);
+  }
+
+  .ap__btn--go:hover:not([disabled]) {
+    color: var(--ground);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .ap__btn[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  .ap__status {
+    font-weight: 600;
+  }
+
+  @media (max-width: 760px) {
+    .gs {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .ls__row {
+      grid-template-columns: 18px minmax(0, 1fr) 44px;
+    }
+
+    .ls__date {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  import { mountTerminal } from "../lib/terminal/view";
+
+  const root = document.querySelector<HTMLElement>("[data-terminal]");
+  if (root) {
+    const version = root.querySelector(".term__ver")?.textContent?.replace(/^v/, "") ?? "";
+    const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    // The window rises as it comes into view; the shell wakes up with it.
+    const rise = new IntersectionObserver(
+      ([entry]) => {
+        if (!entry.isIntersecting) return;
+        root.classList.add("is-in");
+        rise.disconnect();
+      },
+      { threshold: 0.12 },
+    );
+    rise.observe(root);
+    mountTerminal(root, { version, still });
+  }
+</script>

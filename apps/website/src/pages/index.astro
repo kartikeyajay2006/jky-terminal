@@ -2,6 +2,7 @@
 import Base from "../layouts/Base.astro";
 import Nav from "../components/Nav.astro";
 import Hero from "../components/Hero.astro";
+import Terminal from "../components/Terminal.astro";
 import Footer from "../components/Footer.astro";
 import release from "../data/release.json";
 
@@ -15,6 +16,7 @@ const version = release.tag.replace(/^v/, "");
   <Nav version={version} />
   <main id="main">
     <Hero version={version} />
+    <Terminal version={version} />
   </main>
   <Footer />
 </Base>

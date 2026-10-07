@@ -1,5 +1,6 @@
 ---
 import Mark from "./Mark.astro";
+import ThemePicker from "./ThemePicker.astro";
 import { GITHUB, DOCS } from "../lib/links";
 
 interface Props {
@@ -20,11 +21,13 @@ const home = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     </a>
 
     <nav class="nav__links" aria-label="Site">
+      <a href="#try">Try it</a>
       <a href={DOCS}>Docs</a>
       <a href={`${GITHUB}/releases/latest`}>Releases</a>
     </nav>
 
     <div class="nav__end">
+      <ThemePicker />
       <a class="nav__github" href={GITHUB} aria-label="JKY Terminal on GitHub">
         <svg viewBox="0 0 16 16" aria-hidden="true">
           <path
@@ -80,6 +83,7 @@ const home = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     font-size: 0.98rem;
     font-weight: 700;
     letter-spacing: -0.02em;
+    white-space: nowrap;
   }
 
   .nav__version {
@@ -162,7 +166,19 @@ const home = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     }
 
     .nav__end {
-      gap: 14px;
+      gap: 10px;
+    }
+  }
+
+  /* A phone's bar holds the mark, the theme and Install; GitHub is in the
+     footer and one tap away there. */
+  @media (max-width: 480px) {
+    .nav__github {
+      display: none;
+    }
+
+    .nav__name {
+      font-size: 0.9rem;
     }
   }
 </style>

@@ -5,6 +5,7 @@ import "../styles/global.css";
 import monoFont from "@fontsource-variable/jetbrains-mono/files/jetbrains-mono-latin-wght-normal.woff2?url";
 import textFont from "@fontsource-variable/instrument-sans/files/instrument-sans-latin-wght-normal.woff2?url";
 import { themeTokens } from "../lib/facts";
+import { THEME_BOOT } from "../lib/theme";
 
 interface Props {
   title: string;
@@ -39,8 +40,9 @@ const ground = themeTokens().cyberpunk["--ground"];
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary_large_image" />
-    <!-- Before first paint: lets the CSS stage entrances only when scripts run. -->
-    <script is:inline>document.documentElement.classList.add("js");</script>
+    <!-- Before first paint: the saved theme (no flash of the default), and the
+         `js` class that lets CSS stage entrances only when scripts run. -->
+    <script is:inline set:html={THEME_BOOT} />
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>

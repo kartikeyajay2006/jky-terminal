@@ -279,3 +279,18 @@ kbd {
   box-shadow: 0 0 24px var(--accent);
   animation: jky-caret 1.06s steps(1) infinite;
 }
+
+/*
+ * Changing theme: the new page is revealed in a circle grown from where the
+ * change was asked for (lib/theme.ts animates the clip). The old page stays
+ * put underneath instead of cross-fading, so the edge of the circle is sharp.
+ */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  z-index: 2;
+}
