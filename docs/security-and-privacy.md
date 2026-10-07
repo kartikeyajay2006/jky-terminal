@@ -6,7 +6,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/connect--src-'self'%20%2B%20IPC%20only-3ddc97?style=flat-square" alt="connect-src self plus IPC only">
-  <img src="https://img.shields.io/badge/IPC%20commands-121%2C%20pinned%20by%20name-00e5ff?style=flat-square" alt="113 IPC commands pinned by name">
+  <img src="https://img.shields.io/badge/IPC%20commands-123%2C%20pinned%20by%20name-00e5ff?style=flat-square" alt="123 IPC commands pinned by name">
   <img src="https://img.shields.io/badge/secret%20getters-0-ff4d6a?style=flat-square" alt="Zero secret getters">
   <img src="https://img.shields.io/badge/telemetry-none-bd93f9?style=flat-square" alt="No telemetry">
 </p>
@@ -39,7 +39,7 @@ flowchart TB
         UI[Interface]:::ink
         CSP["CSP · connect-src 'self' + IPC<br/>no fs · no shell · no http capability"]:::red
     end
-    subgraph R["🦀 Rust — 22 crates behind 121 commands"]
+    subgraph R["🦀 Rust — 22 crates behind 123 commands"]
         direction LR
         PTY[PTYs and supervisors]:::cyan
         FS[Files inside opened folders]:::cyan
@@ -87,7 +87,7 @@ web pages, model responses. So it is given nothing it could misuse:
 - **No capabilities.** The window is granted Tauri's `core:default` set plus `core:window:allow-destroy`
   — the latter only so "quit anyway" can actually quit. No filesystem, shell or HTTP plugin permission.
 - **No secrets.** No command exists that returns a key.
-- **Only named actions.** Everything else goes through one of 121 explicit IPC commands, each a thin
+- **Only named actions.** Everything else goes through one of 123 explicit IPC commands, each a thin
   wrapper over logic in a Rust crate.
 
 ---

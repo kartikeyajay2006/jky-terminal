@@ -157,7 +157,7 @@ flowchart TB
     end
     R[["🦀 Rust core — 22 crates<br/>the only part that can act"]]:::ink
     YOU --> APP
-    APP -- "asks via 121 pinned commands" --> R
+    APP -- "asks via 123 pinned commands" --> R
     R --> OS[(Your shells · files · keychain)]:::ink
     R -. "only when you use a feature" .-> NET((Internet)):::ink
 

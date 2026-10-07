@@ -36,7 +36,7 @@ flowchart TB
         S --> P
     end
     subgraph IPC["🚪 Commands · apps/desktop/src-tauri/src/commands"]
-        C[121 thin #91;tauri::command#93; wrappers]:::amber
+        C[123 thin #91;tauri::command#93; wrappers]:::amber
     end
     subgraph CORE["🦀 Logic · crates/"]
         direction LR
@@ -78,7 +78,7 @@ jky-terminal/
 │   │   ├── components/          shared UI pieces
 │   │   └── styles/              tokens.css · themes.css — every colour lives here
 │   └── src-tauri/
-│       ├── src/commands/        the 121 IPC commands, thin
+│       ├── src/commands/        the 123 IPC commands, thin
 │       ├── src/supervisor.rs    the --supervise entry point
 │       ├── src/turn.rs          the assistant's tool loop
 │       ├── tests/security.rs    the boundary, as tests

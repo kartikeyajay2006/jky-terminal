@@ -7,10 +7,15 @@
   Built on a Rust core and your system's own webview. Open source, no account, no telemetry.
 </p>
 
+<p align="center">
+  <a href="https://kartikeyajay2006.github.io/jky-terminal/"><b>🌐 kartikeyajay2006.github.io/jky-terminal</b></a> — type into a JKY terminal in your browser
+</p>
+
+[![Website](https://img.shields.io/badge/website-try%20it%20in%20your%20browser-00e5ff?style=flat-square)](https://kartikeyajay2006.github.io/jky-terminal/)
 [![CI Workflow](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/kartikeyajay2006/jky-terminal/actions/workflows/ci.yml)
 [![Platforms](https://img.shields.io/badge/platforms-Linux%20%C2%B7%20macOS%20%C2%B7%20Windows-00e5ff?style=flat-square&logo=linux&logoColor=white)](docs/getting-started.md)
 [![Tests Suite](https://img.shields.io/badge/tests-2%2C324%20frontend%20%C2%B7%201%2C315%20Rust-3ddc97?style=flat-square&logo=rust&logoColor=white)](docs/operations-and-releases.md#the-verification-ladder)
-[![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20121%20pinned%20commands-bd93f9?style=flat-square)](docs/security-and-privacy.md)
+[![Security Perimeter](https://img.shields.io/badge/security-connect--src%20%27self%27%20%C2%B7%20123%20pinned%20commands-bd93f9?style=flat-square)](docs/security-and-privacy.md)
 [![WCAG Contrast](https://img.shields.io/badge/contrast-WCAG%20AAA%20tested-ffb340?style=flat-square)](#-seven-themes-one-set-of-tokens)
 [![License: MIT](https://img.shields.io/badge/license-MIT-ff3cf0?style=flat-square)](LICENSE)
 
@@ -21,6 +26,7 @@
 </a>
 
 <p align="center">
+  <a href="https://kartikeyajay2006.github.io/jky-terminal/">🌐 Website</a> &nbsp;•&nbsp;
   <a href="#-install-in-one-line">⚡ Install</a> &nbsp;•&nbsp;
   <a href="#-why-jky">✨ Why JKY</a> &nbsp;•&nbsp;
   <a href="#-documentation">📚 Docs</a> &nbsp;•&nbsp;
@@ -143,7 +149,7 @@ and reaches spelled out, and a dry run to try first — and destructive ones mus
 
 ### 🛡️ The window has no network
 
-`connect-src 'self'`. Keys live in the OS keychain; no command can return one. All 121 IPC commands
+`connect-src 'self'`. Keys live in the OS keychain; no command can return one. All 123 IPC commands
 are pinned by name in a test that CI runs on every push.
 
 <sub>→ [Security & privacy](docs/security-and-privacy.md)</sub>

@@ -173,7 +173,7 @@ always asks** — there is no "always allow". Each proposal is labelled *runs lo
 ### 🛡️ The window cannot reach the network
 
 The webview's Content Security Policy allows `connect-src 'self'` plus Tauri's IPC channel — no
-external host. Provider calls, OAuth and fetches happen in Rust. A test pins every one of the 121 IPC
+external host. Provider calls, OAuth and fetches happen in Rust. A test pins every one of the 123 IPC
 commands by name, and no command exists that returns a secret.
 
 </td>
