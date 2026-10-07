@@ -10,31 +10,36 @@ interface Props {
 const { version } = Astro.props;
 ---
 
-<section class="hero" aria-labelledby="hero-title">
+<section class="hero" aria-labelledby="hero-title" data-hero>
   <div class="hero__stage" aria-hidden="true">
     <div class="hero__aura"></div>
-    <div class="hero__emblem"><Emblem /></div>
+    <canvas class="hero__field" data-field></canvas>
+    <div class="hero__emblem" data-emblem><Emblem /></div>
   </div>
 
   <div class="wrap hero__inner">
-    <h1 class="display hero__title" id="hero-title">
-      <span class="hero__line">Close the window.</span>
-      <span class="hero__line">The build keeps going.<span class="cursor" aria-hidden="true"></span></span>
+    <h1 class="display hero__title" id="hero-title" aria-label="Close the window. The build keeps going.">
+      <span class="hero__line" aria-hidden="true"><span data-decode>Close the window.</span></span>
+      <span class="hero__line" aria-hidden="true"
+        ><span data-decode>The build keeps going.</span><span class="cursor"></span></span
+      >
     </h1>
 
-    <p class="lead hero__lead">
+    <p class="lead hero__lead" data-intro style="--i: 0">
       JKY is a terminal for macOS, Windows and Linux that keeps your shells running after you close it, turns command
       output into panels, and makes its assistant ask before it runs anything.
     </p>
 
-    <InstallCommand />
+    <div class="hero__install" data-intro style="--i: 1">
+      <InstallCommand />
+    </div>
 
-    <div class="hero__actions">
+    <div class="hero__actions" data-intro style="--i: 2">
       <a class="btn btn--ghost" href={`${GITHUB}/releases/latest`}>Download v{version}</a>
       <a class="btn btn--ghost" href={doc("getting-started.md")}>Getting started</a>
     </div>
 
-    <p class="hero__meta">
+    <p class="hero__meta" data-intro style="--i: 3">
       Free and open source under the MIT license. No account, no telemetry. The installer checks every download against
       its SHA-256 before it installs anything.
     </p>
@@ -80,11 +85,33 @@ const { version } = Astro.props;
   .hero__emblem {
     position: absolute;
     top: 50%;
-    right: max(-9vw, -140px);
-    width: min(46vw, 680px);
+    right: max(-5vw, -80px);
+    width: min(52vw, 800px);
     aspect-ratio: 1;
     translate: 0 -50%;
     opacity: 0.92;
+    /* Held while the glyphs assemble on top of it, then let go: the vector
+       emblem dissolves into the character one rather than leaving a gap. */
+    transition: opacity 1600ms var(--ease) 900ms;
+  }
+
+  /* The emblem in characters. It fades up as it assembles, and the vector
+     emblem underneath — the same drawing, in the same box — steps away. */
+  .hero__field {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    transition: opacity 600ms var(--ease);
+  }
+
+  .hero[data-field="on"] .hero__field {
+    opacity: 1;
+  }
+
+  .hero[data-field="on"] .hero__emblem {
+    opacity: 0;
   }
 
   .hero__inner {
@@ -110,6 +137,67 @@ const { version } = Astro.props;
     display: block;
   }
 
+  .hero__install {
+    width: 100%;
+  }
+
+  /*
+   * The one orchestrated entrance. The headline decodes first (the script
+   * below), then everything under it rises in order. Only with JavaScript
+   * known to be running — the `js` class is set in <head> before paint — so
+   * a page without scripts simply shows everything at once.
+   */
+  :global(.js) .hero [data-intro] {
+    animation: hero-rise 900ms var(--out-expo) both;
+    animation-delay: calc(700ms + var(--i) * 110ms);
+  }
+
+  /* If decoding never starts, the headline still appears. */
+  :global(.js) .hero__title {
+    animation: hero-show 1ms 1.6s both;
+  }
+
+  :global(.js) .hero__title.is-decoding,
+  :global(.js) .hero__title.is-decoded {
+    animation: none;
+  }
+
+  /* The app's reduced-motion rule shortens durations, not delays — so the
+     staged entrance is switched off outright rather than left to wait. */
+  @media (prefers-reduced-motion: reduce) {
+    :global(.js) .hero [data-intro],
+    :global(.js) .hero__title {
+      animation: none;
+    }
+
+    .hero__emblem,
+    .hero__field {
+      transition: none;
+    }
+  }
+
+  @keyframes hero-rise {
+    from {
+      opacity: 0;
+      transform: translateY(22px);
+      filter: blur(6px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+      filter: none;
+    }
+  }
+
+  @keyframes hero-show {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
   .hero__line:first-child {
     color: var(--text-muted);
   }
@@ -131,24 +219,33 @@ const { version } = Astro.props;
     font-size: var(--t-small);
   }
 
-  /* On a narrow screen the emblem moves behind the words and steps back. */
+  /* On a narrow screen the emblem is the picture, above the words rather than
+     behind them — a phone gets the same centrepiece, not a faded trace of it. */
   @media (max-width: 900px) {
     .hero {
+      --emblem: min(84vw, 440px);
       align-items: start;
-      padding-top: 112px;
+      padding-top: 0;
     }
 
     .hero__emblem {
-      top: 4%;
-      right: -28vw;
-      width: 92vw;
-      translate: none;
-      opacity: 0.22;
+      top: 72px;
+      right: auto;
+      left: 50%;
+      width: var(--emblem);
+      translate: -50% 0;
     }
 
     .hero__aura {
-      top: 0;
-      translate: 0 -20%;
+      top: 72px;
+      right: auto;
+      left: 50%;
+      width: calc(var(--emblem) * 1.5);
+      translate: -50% -18%;
+    }
+
+    .hero__inner {
+      padding-top: calc(72px + var(--emblem) * 0.96);
     }
 
     .hero__title {
@@ -156,3 +253,67 @@ const { version } = Astro.props;
     }
   }
 </style>
+
+<script>
+  import { startGlyphField } from "../lib/glyphfield/field";
+
+  const hero = document.querySelector<HTMLElement>("[data-hero]");
+  const canvas = hero?.querySelector<HTMLCanvasElement>("[data-field]");
+  const emblem = hero?.querySelector<HTMLElement>("[data-emblem]");
+
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /*
+   * The headline decodes: each character flickers through random glyphs and
+   * settles, left to right — the same language as the field beside it. The
+   * headline is monospace, so every glyph is the same width and nothing on
+   * the page moves while it happens.
+   */
+  const title = hero?.querySelector<HTMLElement>(".hero__title");
+  if (title && !still) {
+    const GLYPHS = "ABCDEFGHJKLMNPQRSTUVWXYZ0123456789$#%&*+=<>/\\|{}[]?!";
+    const lines = [...title.querySelectorAll<HTMLElement>("[data-decode]")];
+    const targets = lines.map((line) => line.textContent ?? "");
+    const STAGGER = 26;
+    const SETTLE = 240;
+    let t0 = 0;
+    title.classList.add("is-decoding");
+    const frame = (now: number) => {
+      if (!t0) t0 = now;
+      const t = now - t0;
+      let k = 0;
+      let done = true;
+      lines.forEach((line, li) => {
+        let out = "";
+        for (const ch of targets[li]) {
+          const start = k++ * STAGGER;
+          if (ch === " " || t >= start + SETTLE) out += ch;
+          else {
+            done = false;
+            out += t >= start ? GLYPHS[(Math.random() * GLYPHS.length) | 0] : " ";
+          }
+        }
+        line.textContent = out;
+      });
+      if (done) {
+        title.classList.replace("is-decoding", "is-decoded");
+      } else requestAnimationFrame(frame);
+    };
+    requestAnimationFrame(frame);
+  }
+
+  if (hero && canvas && emblem) {
+    const go = async () => {
+      try {
+        const field = await startGlyphField(canvas, { emblem, surface: hero, still });
+        if (field) hero.dataset.field = "on";
+      } catch (err) {
+        // The SVG emblem is still there; the page has lost nothing.
+        console.warn("glyph field unavailable:", err);
+      }
+    };
+    // After the words have painted, never before.
+    if ("requestIdleCallback" in window) requestIdleCallback(() => void go(), { timeout: 700 });
+    else setTimeout(() => void go(), 150);
+  }
+</script>

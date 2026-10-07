@@ -78,6 +78,40 @@ test("every link goes somewhere real", async ({ page }) => {
   expect(problems).toEqual([]);
 });
 
+test("the hero always shows the emblem: in glyphs where WebGL2 runs, as a vector where not", async ({ page }) => {
+  await page.goto("./");
+  const hero = page.locator("[data-hero]");
+  const started = await hero
+    .and(page.locator('[data-field="on"]'))
+    .waitFor({ timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  const emblem = page.locator("[data-emblem]");
+  if (started) {
+    await expect(page.locator("canvas[data-field]")).toHaveCSS("opacity", "1");
+  } else {
+    await expect(emblem).toBeVisible();
+    await expect(emblem).not.toHaveCSS("opacity", "0");
+  }
+});
+
+test("asked for less motion, the field is one still frame", async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  await page.goto("./");
+  const started = await page
+    .locator('[data-hero][data-field="on"]')
+    .waitFor({ timeout: 20_000 })
+    .then(() => true)
+    .catch(() => false);
+  test.skip(!started, "no WebGL2 here; the still SVG emblem is what shows");
+  const canvas = page.locator("canvas[data-field]");
+  await page.waitForTimeout(300);
+  const first = await canvas.screenshot();
+  await page.waitForTimeout(1200);
+  const second = await canvas.screenshot();
+  expect(second.equals(first)).toBe(true);
+});
+
 test("the install command copies exactly what it shows", async ({ page, context, browserName }) => {
   test.skip(browserName !== "chromium", "clipboard permissions are Chromium-only in Playwright");
   await context.grantPermissions(["clipboard-read", "clipboard-write"]);

@@ -39,6 +39,8 @@ const ground = themeTokens().cyberpunk["--ground"];
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary_large_image" />
+    <!-- Before first paint: lets the CSS stage entrances only when scripts run. -->
+    <script is:inline>document.documentElement.classList.add("js");</script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>

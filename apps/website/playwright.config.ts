@@ -9,6 +9,9 @@ const PORT = 4329;
 export default defineConfig({
   testDir: "e2e",
   fullyParallel: true,
+  // Two at a time: each page runs a WebGL field, and on a CPU renderer more
+  // than two starve each other into timeouts that are not the site's fault.
+  workers: 2,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [["list"], ["github"]] : "list",
