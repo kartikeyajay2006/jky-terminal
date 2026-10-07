@@ -30,7 +30,10 @@ test("loads the timeline engine only when a story approaches", async ({ page }) 
   await page.evaluate(() => document.fonts.ready);
   expect(requests).toEqual([]);
   await page.goto("./#persist");
-  await expect(page.locator("#persist")).toHaveAttribute("data-scene-ready", "true");
+  // Scene setup waits for fonts and a deferred module. A cold WebKit runner
+  // can need more than the ordinary five-second DOM assertion timeout.
+  await page.evaluate(() => document.fonts.ready);
+  await expect(page.locator("#persist")).toHaveAttribute("data-scene-ready", "true", { timeout: 15_000 });
   expect(requests).toHaveLength(1);
 });
 
@@ -107,7 +110,7 @@ test("story tracks stick, finish, and adapt to a short viewport without covering
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto("./#persist");
   await page.evaluate(() => document.fonts.ready);
-  await expect(page.locator("#persist")).toHaveAttribute("data-scene-ready", "true");
+  await expect(page.locator("#persist")).toHaveAttribute("data-scene-ready", "true", { timeout: 15_000 });
   const grid = page.locator("#persist .story__grid");
   await expect(grid).toHaveCSS("position", "sticky");
   await page.evaluate(() => {
