@@ -1,0 +1,128 @@
+---
+import Base from "../layouts/Base.astro";
+import Nav from "../components/Nav.astro";
+import Mark from "../components/Mark.astro";
+import release from "../data/release.json";
+
+const version = release.tag.replace(/^v/, "");
+const home = import.meta.env.BASE_URL.replace(/\/?$/, "/");
+const places = [
+  { name: "try", href: `${home}#try`, what: "the terminal you can type into" },
+  { name: "features", href: `${home}#persist`, what: "what JKY does differently" },
+  { name: "security", href: `${home}#security`, what: "the window can ask; only Rust can act" },
+  { name: "themes", href: `${home}#themes`, what: "seven themes, one set of tokens" },
+  { name: "install", href: `${home}#install`, what: "one line, every platform" },
+];
+---
+
+<Base title="Not found — JKY Terminal" description="There is nothing at this address on the JKY Terminal website." noindex>
+  <Nav version={version} />
+  <main id="main" class="nf">
+    <div class="wrap nf__inner">
+      <Mark size={56} />
+      <h1 class="display nf__code">404</h1>
+      <div class="nf__term" role="group" aria-label="What happened">
+        <div class="nf__line"><span class="pr__path">~</span><span class="pr__sym"> $ </span>cd <span data-path>this-page</span></div>
+        <div class="nf__line t-danger">cd: no such file or directory: <span data-path>this-page</span></div>
+        <div class="nf__line"><span class="pr__path">~</span><span class="pr__sym"> $ </span>ls</div>
+        <ul class="nf__list">
+          {
+            places.map((p) => (
+              <li>
+                <a href={p.href}>{p.name}/</a>
+                <span>{p.what}</span>
+              </li>
+            ))
+          }
+        </ul>
+        <div class="nf__line">
+          <span class="pr__path">~</span><span class="pr__sym"> $ </span><a class="nf__home" href={home}>cd ~</a><span
+            class="nf__cursor"
+            aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+  </main>
+</Base>
+
+<style>
+  .nf {
+    min-height: 100svh;
+    display: grid;
+    align-items: center;
+    padding: 110px 0 60px;
+  }
+
+  .nf__inner {
+    display: grid;
+    justify-items: start;
+    gap: 22px;
+  }
+
+  .nf__code {
+    font-size: clamp(5rem, 3rem + 10vw, 11rem);
+    background: var(--glow);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .nf__term {
+    width: min(100%, 680px);
+    padding: 20px 22px;
+    border: 1px solid var(--line-strong);
+    border-radius: 14px;
+    background: var(--surface);
+    font: 14px / 1.7 var(--font-code);
+    box-shadow: var(--lift-3);
+  }
+
+  .nf__line {
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+
+  .nf__list {
+    display: grid;
+    gap: 2px;
+    margin: 4px 0 6px;
+    padding: 0;
+    list-style: none;
+  }
+
+  .nf__list li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+  }
+
+  .nf__list a,
+  .nf__home {
+    color: var(--accent);
+    font-weight: 600;
+    text-decoration: underline;
+    text-decoration-color: color-mix(in srgb, var(--accent) 35%, transparent);
+    text-underline-offset: 3px;
+  }
+
+  .nf__list span {
+    color: var(--text-muted);
+  }
+
+  .nf__cursor {
+    display: inline-block;
+    width: 0.6em;
+    height: 1.1em;
+    margin-left: 4px;
+    vertical-align: -0.2em;
+    background: var(--accent);
+    animation: jky-caret 1.05s steps(1) infinite;
+  }
+</style>
+
+<script>
+  // The address that was asked for, as the shell would echo it.
+  const base = import.meta.env.BASE_URL.replace(/\/$/, "");
+  const asked = decodeURIComponent(location.pathname.replace(base, "") || "/");
+  for (const el of document.querySelectorAll("[data-path]")) el.textContent = asked;
+</script>

@@ -41,10 +41,12 @@ export function startMotion() {
 
   // In-page links glide instead of jumping, and still land under the nav.
   document.addEventListener("click", (e) => {
-    const a = (e.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
-    if (!a || !lenis) return;
-    const id = a.getAttribute("href") ?? "";
-    const target = id.length > 1 ? document.querySelector(id) : null;
+    const a = (e.target as Element).closest<HTMLAnchorElement>("a[href]");
+    // A link to a place on this same page, written either way: "#try" or
+    // "/jky-terminal/#try".
+    if (!a || !lenis || !a.hash || a.origin !== location.origin || a.pathname !== location.pathname) return;
+    const id = a.hash;
+    const target = document.getElementById(decodeURIComponent(id.slice(1)));
     if (!target) return;
     e.preventDefault();
     // Land on the section's content, just under the nav — not on the top of

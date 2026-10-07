@@ -21,11 +21,11 @@ const home = import.meta.env.BASE_URL.replace(/\/?$/, "/");
     </a>
 
     <nav class="nav__links" aria-label="Site">
-      <a href="#try">Try it</a>
-      <a href="#persist">Features</a>
-      <a href="#security">Security</a>
-      <a href="#themes">Themes</a>
-      <a href="#compare">Compare</a>
+      <a href={`${home}#try`}>Try it</a>
+      <a href={`${home}#persist`}>Features</a>
+      <a href={`${home}#security`}>Security</a>
+      <a href={`${home}#themes`}>Themes</a>
+      <a href={`${home}#compare`}>Compare</a>
       <a href={DOCS}>Docs</a>
     </nav>
 
@@ -40,7 +40,7 @@ const home = import.meta.env.BASE_URL.replace(/\/?$/, "/");
         </svg>
         <span>GitHub</span>
       </a>
-      <a class="btn btn--primary btn--small" href="#install">Install</a>
+      <a class="btn btn--primary btn--small" href={`${home}#install`}>Install</a>
       <button class="nav__menu" type="button" aria-expanded="false" aria-controls="nav-sheet" aria-label="Menu" data-menu>
         <span></span><span></span>
       </button>
@@ -48,12 +48,12 @@ const home = import.meta.env.BASE_URL.replace(/\/?$/, "/");
   </div>
   <div class="nav__progress" aria-hidden="true"></div>
   <nav class="nav__sheet" id="nav-sheet" aria-label="Site" data-sheet hidden>
-    <a href="#try" style="--i:0">Try it</a>
-    <a href="#persist" style="--i:1">Features</a>
-    <a href="#security" style="--i:2">Security</a>
-    <a href="#themes" style="--i:3">Themes</a>
-    <a href="#compare" style="--i:4">Compare</a>
-    <a href="#install" style="--i:5">Install</a>
+    <a href={`${home}#try`} style="--i:0">Try it</a>
+    <a href={`${home}#persist`} style="--i:1">Features</a>
+    <a href={`${home}#security`} style="--i:2">Security</a>
+    <a href={`${home}#themes`} style="--i:3">Themes</a>
+    <a href={`${home}#compare`} style="--i:4">Compare</a>
+    <a href={`${home}#install`} style="--i:5">Install</a>
     <a href={DOCS} style="--i:6">Docs</a>
     <a href={GITHUB} style="--i:7">GitHub</a>
   </nav>

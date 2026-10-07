@@ -64,8 +64,9 @@ test("every link goes somewhere real", async ({ page }) => {
   const problems: string[] = [];
 
   for (const href of new Set(hrefs)) {
-    if (href.startsWith("#")) {
-      if ((await page.locator(`[id="${href.slice(1)}"]`).count()) === 0) problems.push(`no element for ${href}`);
+    const local = /^(?:\/jky-terminal\/)?#(.+)$/.exec(href);
+    if (local) {
+      if ((await page.locator(`[id="${local[1]}"]`).count()) === 0) problems.push(`no element for ${href}`);
     } else if (href.startsWith(REPO_BLOB) || href.startsWith(REPO_TREE)) {
       const path = href.slice(REPO_BLOB.length).split("#")[0];
       if (!existsSync(join(root, path))) problems.push(`no file in the repo for ${href}`);
@@ -112,6 +113,14 @@ test("asked for less motion, the field is one still frame", async ({ page }) => 
   await page.waitForTimeout(1500);
   expect(before).toBeGreaterThan(0);
   expect(await draws()).toBe(before);
+});
+
+test("an unknown address gets the terminal's 404, with a way home", async ({ page }) => {
+  const response = await page.goto("./no-such-page");
+  expect(response?.status()).toBe(404);
+  await expect(page.locator(".nf__term")).toContainText("no such file or directory: /no-such-page");
+  await expect(page.locator(".nf__home")).toHaveAttribute("href", "/jky-terminal/");
+  await expect(page.locator('meta[name="robots"]')).toHaveAttribute("content", "noindex");
 });
 
 test("the install command copies exactly what it shows", async ({ page, context, browserName }) => {
