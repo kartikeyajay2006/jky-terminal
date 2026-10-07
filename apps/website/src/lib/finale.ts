@@ -62,11 +62,14 @@ export function startFinale(canvas: HTMLCanvasElement, opts: { still: boolean })
 
   let cell = 10;
   let dpr = 1;
+  // The canvas's shape comes from CSS (an aspect ratio set below), so sizing
+  // the bitmap here never changes the layout it is measured from — which is
+  // what keeps the ResizeObserver from chasing its own tail.
+  canvas.style.aspectRatio = `${cols} / ${rows * ASPECT}`;
   const size = () => {
     const w = canvas.clientWidth;
     dpr = Math.min(devicePixelRatio || 1, 2);
     cell = w / cols;
-    canvas.style.height = `${Math.round(cell * ASPECT * rows)}px`;
     canvas.width = Math.round(w * dpr);
     canvas.height = Math.round(cell * ASPECT * rows * dpr);
   };

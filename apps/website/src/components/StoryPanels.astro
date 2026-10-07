@@ -173,63 +173,66 @@ const raw = disks.map((d) => ({
 </style>
 
 <script>
-  import { gsap, startMotion, still } from "../lib/motion";
+  import { gsap, startMotion, still, whenIdle, settle } from "../lib/motion";
 
   startMotion();
   const root = document.querySelector<HTMLElement>("[data-panels]");
   if (root && !still()) {
-    const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
-    const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
-    const rawLines = qa("[data-rawline]");
-    const scan = q("[data-scan]");
-    const panel = q("[data-panel]");
-    const rows = qa("[data-row]");
-    const fills = rows.map((r) => r.querySelector<HTMLElement>(".df__fill"));
-    const pipe = q("[data-pipe]");
-    const steps = qa("[data-steps] li");
-    const big = q('[data-pctnum="91"]');
+    whenIdle(() => {
+      const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
+      const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
+      const rawLines = qa("[data-rawline]");
+      const scan = q("[data-scan]");
+      const panel = q("[data-panel]");
+      const rows = qa("[data-row]");
+      const fills = rows.map((r) => r.querySelector<HTMLElement>(".df__fill"));
+      const pipe = q("[data-pipe]");
+      const steps = qa("[data-steps] li");
+      const big = q('[data-pctnum="91"]');
 
-    const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
+      const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
 
-    // The panel first arrives in the order df printed — mount order — and
-    // then sorts itself, fullest first, which is what the app shows.
-    const rowH = rows[1].offsetTop - rows[0].offsetTop;
-    const printed = ["/boot/efi", "/data", "/"];
-    const shiftFor = (r: HTMLElement) => (printed.indexOf(r.dataset.row ?? "") - rows.indexOf(r)) * rowH;
+      // The panel first arrives in the order df printed — mount order — and
+      // then sorts itself, fullest first, which is what the app shows.
+      const rowH = rows[1].offsetTop - rows[0].offsetTop;
+      const printed = ["/boot/efi", "/data", "/"];
+      const shiftFor = (r: HTMLElement) => (printed.indexOf(r.dataset.row ?? "") - rows.indexOf(r)) * rowH;
 
-    gsap.set(rawLines, { autoAlpha: 0, x: -10 });
-    gsap.set(panel, { autoAlpha: 0, y: 18, clipPath: "inset(0 0 100% 0 round 12px)" });
-    gsap.set(rows, { y: (_i, r: HTMLElement) => shiftFor(r) });
-    gsap.set(fills, { scaleX: 0 });
-    gsap.set(pipe, { autoAlpha: 0, y: 10 });
+      gsap.set(rawLines, { autoAlpha: 0, x: -10 });
+      gsap.set(panel, { autoAlpha: 0, y: 18, clipPath: "inset(0 0 100% 0 round 12px)" });
+      gsap.set(rows, { y: (_i, r: HTMLElement) => shiftFor(r) });
+      gsap.set(fills, { scaleX: 0 });
+      gsap.set(pipe, { autoAlpha: 0, y: 10 });
 
-    const wide = matchMedia("(min-width: 901px)").matches;
-    const tl = gsap.timeline({
-      defaults: { ease: "power2.out" },
-      scrollTrigger: {
-        trigger: wide ? root.querySelector(".story__grid") : root.querySelector(".story__stage"),
-        start: wide ? "top top" : "top 80%",
-        end: wide ? "+=220%" : "bottom 15%",
-        pin: wide,
-        scrub: 0.9,
-        onUpdate: (st) => setStep(st.progress < 0.3 ? 0 : st.progress < 0.72 ? 1 : 2),
-      },
+      const wide = matchMedia("(min-width: 901px)").matches;
+      const tl = gsap.timeline({
+        defaults: { ease: "power2.out" },
+        scrollTrigger: {
+          trigger: wide ? root.querySelector(".story__grid") : root.querySelector(".story__stage"),
+          start: wide ? "top top" : "top 80%",
+          end: wide ? "+=220%" : "bottom 15%",
+          pin: wide,
+          scrub: 0.9,
+          onUpdate: (st) => setStep(st.progress < 0.3 ? 0 : st.progress < 0.72 ? 1 : 2),
+        },
+      });
+
+      tl.to(rawLines, { autoAlpha: 1, x: 0, stagger: 0.18, duration: 0.3 }, 0)
+        // The recogniser reads the table.
+        .fromTo(scan, { autoAlpha: 0, y: 0 }, { autoAlpha: 1, duration: 0.15 }, 0.75)
+        .to(scan, { y: rawLines.length * 20, duration: 0.6, ease: "none" }, 0.8)
+        .to(scan, { autoAlpha: 0, duration: 0.15 }, 1.4)
+        // The panel unfolds beneath the text, which stays where it is.
+        .to(panel, { autoAlpha: 1, y: 0, clipPath: "inset(0 0 0% 0 round 12px)", duration: 0.6, ease: "power3.out" }, 1.45)
+        .to(fills, { scaleX: 1, stagger: 0.12, duration: 0.6, ease: "expo.out" }, 1.75)
+        // Fullest first.
+        .to(rows, { y: 0, duration: 0.7, ease: "back.inOut(1.4)" }, 2.55)
+        // Live: it re-runs df -h itself, and the number moves.
+        .to({}, { duration: 0.4, onUpdate() { big.textContent = this.progress() > 0.5 ? "92" : "91"; } }, 3.35)
+        .fromTo(big, { color: "var(--warn)" }, { color: "var(--danger)", duration: 0.3 }, 3.5)
+        // A pipe, and the panel steps aside.
+        .to(pipe, { autoAlpha: 1, y: 0, duration: 0.45 }, 3.95);
+      settle();
     });
-
-    tl.to(rawLines, { autoAlpha: 1, x: 0, stagger: 0.18, duration: 0.3 }, 0)
-      // The recogniser reads the table.
-      .fromTo(scan, { autoAlpha: 0, y: 0 }, { autoAlpha: 1, duration: 0.15 }, 0.75)
-      .to(scan, { y: rawLines.length * 20, duration: 0.6, ease: "none" }, 0.8)
-      .to(scan, { autoAlpha: 0, duration: 0.15 }, 1.4)
-      // The panel unfolds beneath the text, which stays where it is.
-      .to(panel, { autoAlpha: 1, y: 0, clipPath: "inset(0 0 0% 0 round 12px)", duration: 0.6, ease: "power3.out" }, 1.45)
-      .to(fills, { scaleX: 1, stagger: 0.12, duration: 0.6, ease: "expo.out" }, 1.75)
-      // Fullest first.
-      .to(rows, { y: 0, duration: 0.7, ease: "back.inOut(1.4)" }, 2.55)
-      // Live: it re-runs df -h itself, and the number moves.
-      .to({}, { duration: 0.4, onUpdate() { big.textContent = this.progress() > 0.5 ? "92" : "91"; } }, 3.35)
-      .fromTo(big, { color: "var(--warn)" }, { color: "var(--danger)", duration: 0.3 }, 3.5)
-      // A pipe, and the panel steps aside.
-      .to(pipe, { autoAlpha: 1, y: 0, duration: 0.45 }, 3.95);
   }
 </script>

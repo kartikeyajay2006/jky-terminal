@@ -208,76 +208,79 @@ const after = [
 </style>
 
 <script>
-  import { gsap, startMotion, still } from "../lib/motion";
+  import { gsap, startMotion, still, whenIdle, settle } from "../lib/motion";
 
   startMotion();
   const root = document.querySelector<HTMLElement>("[data-persist]");
   if (root && !still()) {
-    const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
-    const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
-    const win = q("[data-win]");
-    const state = q("[data-state]");
-    const bar = q("[data-bar]");
-    const pct = q("[data-pct]");
-    const closed = q("[data-closed]");
-    const sv = q("[data-sv]");
-    const rejoin = q("[data-rejoin]");
-    const before = qa("[data-before]");
-    const after = qa("[data-after]");
-    const steps = qa("[data-steps] li");
-    const counter = { v: 0 };
+    whenIdle(() => {
+      const q = <T extends Element = HTMLElement>(s: string) => root.querySelector(s) as T;
+      const qa = (s: string) => [...root.querySelectorAll<HTMLElement>(s)];
+      const win = q("[data-win]");
+      const state = q("[data-state]");
+      const bar = q("[data-bar]");
+      const pct = q("[data-pct]");
+      const closed = q("[data-closed]");
+      const sv = q("[data-sv]");
+      const rejoin = q("[data-rejoin]");
+      const before = qa("[data-before]");
+      const after = qa("[data-after]");
+      const steps = qa("[data-steps] li");
+      const counter = { v: 0 };
 
-    const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
-    const setState = (text: string, tone: "mint" | "warn" | "accent") => {
-      state.textContent = text;
-      state.style.color = `var(--${tone})`;
-      state.style.background = `color-mix(in srgb, var(--${tone}) 14%, transparent)`;
-    };
+      const setStep = (n: number) => steps.forEach((s, i) => s.classList.toggle("is-on", i === n));
+      const setState = (text: string, tone: "mint" | "warn" | "accent") => {
+        state.textContent = text;
+        state.style.color = `var(--${tone})`;
+        state.style.background = `color-mix(in srgb, var(--${tone}) 14%, transparent)`;
+      };
 
-    // From the finished picture back to the start; the scroll plays it forward.
-    gsap.set([...before, ...after, rejoin], { autoAlpha: 0, y: 8 });
-    gsap.set(bar, { scaleX: 0 });
-    setState("attached", "accent");
-    pct.textContent = "0";
+      // From the finished picture back to the start; the scroll plays it forward.
+      gsap.set([...before, ...after, rejoin], { autoAlpha: 0, y: 8 });
+      gsap.set(bar, { scaleX: 0 });
+      setState("attached", "accent");
+      pct.textContent = "0";
 
-    const wide = matchMedia("(min-width: 901px)").matches;
-    const tl = gsap.timeline({
-      defaults: { ease: "power2.out" },
-      scrollTrigger: wide
-        ? {
-            trigger: root.querySelector(".story__grid"),
-            start: "top top",
-            end: "+=230%",
-            pin: true,
-            scrub: 0.9,
-            onUpdate: (st) => setStep(st.progress < 0.36 ? 0 : st.progress < 0.7 ? 1 : 2),
-          }
-        : {
-            trigger: root.querySelector(".persist__stage"),
-            start: "top 80%",
-            end: "bottom 20%",
-            scrub: 0.9,
-            onUpdate: (st) => setStep(st.progress < 0.36 ? 0 : st.progress < 0.7 ? 1 : 2),
-          },
+      const wide = matchMedia("(min-width: 901px)").matches;
+      const tl = gsap.timeline({
+        defaults: { ease: "power2.out" },
+        scrollTrigger: wide
+          ? {
+              trigger: root.querySelector(".story__grid"),
+              start: "top top",
+              end: "+=230%",
+              pin: true,
+              scrub: 0.9,
+              onUpdate: (st) => setStep(st.progress < 0.36 ? 0 : st.progress < 0.7 ? 1 : 2),
+            }
+          : {
+              trigger: root.querySelector(".persist__stage"),
+              start: "top 80%",
+              end: "bottom 20%",
+              scrub: 0.9,
+              onUpdate: (st) => setStep(st.progress < 0.36 ? 0 : st.progress < 0.7 ? 1 : 2),
+            },
+      });
+
+      tl.to(before, { autoAlpha: 1, y: 0, stagger: 0.22, duration: 0.3 }, 0)
+        .to(bar, { scaleX: 0.46, duration: 1.6, ease: "none" }, 0)
+        .to(counter, { v: 46, duration: 1.6, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 0)
+        // The window closes; the supervisor carries on.
+        .to(win, { scale: 0.16, y: 170, autoAlpha: 0, filter: "blur(8px)", duration: 0.7, ease: "power3.in" }, 1.75)
+        .to(closed, { autoAlpha: 1, duration: 0.3 }, 2.25)
+        .to(sv, { scale: 1.05, duration: 0.4, ease: "back.out(2)" }, 2.25)
+        .to(counter, { v: 92, duration: 1.4, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 2.3)
+        .to(sv, { scale: 1, duration: 0.4 }, 3.4)
+        // It reopens, rejoins, and shows what it missed.
+        .to(closed, { autoAlpha: 0, duration: 0.25 }, 3.7)
+        .call(() => setState("attached", "accent"), [], 3.69)
+        .call(() => setState("rejoined", "mint"), [], 3.71)
+        .to(win, { scale: 1, y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.7, ease: "power3.out" }, 3.75)
+        .to(rejoin, { autoAlpha: 1, y: 0, duration: 0.3 }, 4.3)
+        .to(after, { autoAlpha: 1, y: 0, stagger: 0.14, duration: 0.3 }, 4.45)
+        .to(bar, { scaleX: 1, duration: 0.9, ease: "none" }, 4.45)
+        .to(counter, { v: 100, duration: 0.9, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 4.45);
+      settle();
     });
-
-    tl.to(before, { autoAlpha: 1, y: 0, stagger: 0.22, duration: 0.3 }, 0)
-      .to(bar, { scaleX: 0.46, duration: 1.6, ease: "none" }, 0)
-      .to(counter, { v: 46, duration: 1.6, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 0)
-      // The window closes; the supervisor carries on.
-      .to(win, { scale: 0.16, y: 170, autoAlpha: 0, filter: "blur(8px)", duration: 0.7, ease: "power3.in" }, 1.75)
-      .to(closed, { autoAlpha: 1, duration: 0.3 }, 2.25)
-      .to(sv, { scale: 1.05, duration: 0.4, ease: "back.out(2)" }, 2.25)
-      .to(counter, { v: 92, duration: 1.4, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 2.3)
-      .to(sv, { scale: 1, duration: 0.4 }, 3.4)
-      // It reopens, rejoins, and shows what it missed.
-      .to(closed, { autoAlpha: 0, duration: 0.25 }, 3.7)
-      .call(() => setState("attached", "accent"), [], 3.69)
-      .call(() => setState("rejoined", "mint"), [], 3.71)
-      .to(win, { scale: 1, y: 0, autoAlpha: 1, filter: "blur(0px)", duration: 0.7, ease: "power3.out" }, 3.75)
-      .to(rejoin, { autoAlpha: 1, y: 0, duration: 0.3 }, 4.3)
-      .to(after, { autoAlpha: 1, y: 0, stagger: 0.14, duration: 0.3 }, 4.45)
-      .to(bar, { scaleX: 1, duration: 0.9, ease: "none" }, 4.45)
-      .to(counter, { v: 100, duration: 0.9, ease: "none", onUpdate: () => (pct.textContent = String(Math.round(counter.v))) }, 4.45);
   }
 </script>

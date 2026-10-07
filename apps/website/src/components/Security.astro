@@ -381,85 +381,88 @@ const guarantees = [
 </style>
 
 <script>
-  import { gsap, ScrollTrigger, spotlight, startMotion, still } from "../lib/motion";
+  import { gsap, ScrollTrigger, spotlight, startMotion, still, whenIdle, settle } from "../lib/motion";
 
   startMotion();
   spotlight(".sec__item");
   const root = document.querySelector<HTMLElement>("[data-sec]");
   if (root && !still()) {
-    const svg = root.querySelector<SVGSVGElement>(".sec__diagram");
-    const q = <T extends Element>(s: string) => root.querySelector(s) as T;
-    const cells = [...root.querySelectorAll<SVGRectElement>("[data-cell]")];
-    const bad = q<SVGCircleElement>("[data-bad]");
-    const good = q<SVGCircleElement>("[data-good]");
-    const shards = q<SVGGElement>("[data-shards]");
-    const viaBox = q<SVGRectElement>("[data-via] rect");
-    const viaLabel = q<SVGTextElement>("[data-vialabel]");
-    const blocked = q<SVGTextElement>("[data-blocked]");
-    const core = q<SVGGElement>("[data-core] rect");
-    const viaName = q<SVGGElement>("[data-via]").dataset.via;
-    const viaCell = cells.find((c) => c.dataset.cell === viaName);
-    const NS = "http://www.w3.org/2000/svg";
+    whenIdle(() => {
+      const svg = root.querySelector<SVGSVGElement>(".sec__diagram");
+      const q = <T extends Element>(s: string) => root.querySelector(s) as T;
+      const cells = [...root.querySelectorAll<SVGRectElement>("[data-cell]")];
+      const bad = q<SVGCircleElement>("[data-bad]");
+      const good = q<SVGCircleElement>("[data-good]");
+      const shards = q<SVGGElement>("[data-shards]");
+      const viaBox = q<SVGRectElement>("[data-via] rect");
+      const viaLabel = q<SVGTextElement>("[data-vialabel]");
+      const blocked = q<SVGTextElement>("[data-blocked]");
+      const core = q<SVGGElement>("[data-core] rect");
+      const viaName = q<SVGGElement>("[data-via]").dataset.via;
+      const viaCell = cells.find((c) => c.dataset.cell === viaName);
+      const NS = "http://www.w3.org/2000/svg";
 
-    // The grid lights up once, in a wave, as it arrives.
-    gsap.fromTo(
-      cells,
-      { opacity: 0.15 },
-      {
-        opacity: 1,
-        duration: 0.5,
-        stagger: { each: 0.006, from: "start" },
-        ease: "power1.out",
-        scrollTrigger: { trigger: svg, start: "top 75%", once: true },
-      },
-    );
+      // The grid lights up once, in a wave, as it arrives.
+      gsap.fromTo(
+        cells,
+        { opacity: 0.15 },
+        {
+          opacity: 1,
+          duration: 0.5,
+          stagger: { each: 0.006, from: "start" },
+          ease: "power1.out",
+          scrollTrigger: { trigger: svg, start: "top 75%", once: true },
+        },
+      );
 
-    // A request to another host meets the wall and breaks into characters.
-    const shatter = () => {
-      shards.replaceChildren();
-      const chars = "#%&$@*+=<>/\\|{}[]?!";
-      for (let i = 0; i < 18; i++) {
-        const t = document.createElementNS(NS, "text");
-        t.textContent = chars[Math.floor(Math.random() * chars.length)];
-        t.setAttribute("x", "640");
-        t.setAttribute("y", "122");
-        shards.append(t);
-        const a = (Math.random() - 0.5) * Math.PI * 1.2 + Math.PI;
-        const d = 40 + Math.random() * 90;
-        gsap.fromTo(
-          t,
-          { x: 0, y: 0, opacity: 1, rotate: 0 },
-          { x: Math.cos(a) * d, y: Math.sin(a) * d, opacity: 0, rotate: (Math.random() - 0.5) * 240, duration: 0.9 + Math.random() * 0.5, ease: "power3.out" },
-        );
-      }
-    };
+      // A request to another host meets the wall and breaks into characters.
+      const shatter = () => {
+        shards.replaceChildren();
+        const chars = "#%&$@*+=<>/\\|{}[]?!";
+        for (let i = 0; i < 18; i++) {
+          const t = document.createElementNS(NS, "text");
+          t.textContent = chars[Math.floor(Math.random() * chars.length)];
+          t.setAttribute("x", "640");
+          t.setAttribute("y", "122");
+          shards.append(t);
+          const a = (Math.random() - 0.5) * Math.PI * 1.2 + Math.PI;
+          const d = 40 + Math.random() * 90;
+          gsap.fromTo(
+            t,
+            { x: 0, y: 0, opacity: 1, rotate: 0 },
+            { x: Math.cos(a) * d, y: Math.sin(a) * d, opacity: 0, rotate: (Math.random() - 0.5) * 240, duration: 0.9 + Math.random() * 0.5, ease: "power3.out" },
+          );
+        }
+      };
 
-    const loop = gsap.timeline({ repeat: -1, repeatDelay: 0.6, paused: true });
-    loop
-      .set(bad, { attr: { cx: 560, cy: 118 }, opacity: 0 })
-      .to(bad, { opacity: 1, duration: 0.2 })
-      .to(bad, { attr: { cx: 640 }, duration: 0.7, ease: "power2.in" })
-      .set(bad, { opacity: 0 })
-      .call(shatter)
-      .fromTo(blocked, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25 }, "<")
-      .to(blocked, { opacity: 0, duration: 0.4 }, "+=1.1")
-      // The way that works: down through a pinned command, into Rust, out by Rust.
-      .set(good, { attr: { cx: 320, cy: 196 }, opacity: 0 }, "-=0.6")
-      .to(good, { opacity: 1, duration: 0.2 })
-      .to(good, { attr: { cy: viaCell ? Number(viaCell.getAttribute("y")) + 7 : 260, cx: viaCell ? Number(viaCell.getAttribute("x")) + 5 : 320 }, duration: 0.7, ease: "power2.inOut" })
-      .to(viaBox, { opacity: 1, duration: 0.2 }, "<0.45")
-      .to(viaLabel, { opacity: 1, duration: 0.2 }, "<")
-      .to(good, { attr: { cx: 320, cy: 372 }, duration: 0.7, ease: "power2.inOut" }, "+=0.3")
-      .to(core, { strokeWidth: 3, duration: 0.15, yoyo: true, repeat: 1 }, "-=0.1")
-      .to(good, { attr: { cx: 740 }, duration: 0.8, ease: "power2.inOut" }, "+=0.15")
-      .to(good, { opacity: 0, duration: 0.2 })
-      .to([viaBox, viaLabel], { opacity: 0, duration: 0.4 }, "-=0.3");
+      const loop = gsap.timeline({ repeat: -1, repeatDelay: 0.6, paused: true });
+      loop
+        .set(bad, { attr: { cx: 560, cy: 118 }, opacity: 0 })
+        .to(bad, { opacity: 1, duration: 0.2 })
+        .to(bad, { attr: { cx: 640 }, duration: 0.7, ease: "power2.in" })
+        .set(bad, { opacity: 0 })
+        .call(shatter)
+        .fromTo(blocked, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25 }, "<")
+        .to(blocked, { opacity: 0, duration: 0.4 }, "+=1.1")
+        // The way that works: down through a pinned command, into Rust, out by Rust.
+        .set(good, { attr: { cx: 320, cy: 196 }, opacity: 0 }, "-=0.6")
+        .to(good, { opacity: 1, duration: 0.2 })
+        .to(good, { attr: { cy: viaCell ? Number(viaCell.getAttribute("y")) + 7 : 260, cx: viaCell ? Number(viaCell.getAttribute("x")) + 5 : 320 }, duration: 0.7, ease: "power2.inOut" })
+        .to(viaBox, { opacity: 1, duration: 0.2 }, "<0.45")
+        .to(viaLabel, { opacity: 1, duration: 0.2 }, "<")
+        .to(good, { attr: { cx: 320, cy: 372 }, duration: 0.7, ease: "power2.inOut" }, "+=0.3")
+        .to(core, { strokeWidth: 3, duration: 0.15, yoyo: true, repeat: 1 }, "-=0.1")
+        .to(good, { attr: { cx: 740 }, duration: 0.8, ease: "power2.inOut" }, "+=0.15")
+        .to(good, { opacity: 0, duration: 0.2 })
+        .to([viaBox, viaLabel], { opacity: 0, duration: 0.4 }, "-=0.3");
 
-    ScrollTrigger.create({
-      trigger: svg,
-      start: "top 85%",
-      end: "bottom 10%",
-      onToggle: (st) => (st.isActive ? loop.play() : loop.pause()),
+      ScrollTrigger.create({
+        trigger: svg,
+        start: "top 85%",
+        end: "bottom 10%",
+        onToggle: (st) => (st.isActive ? loop.play() : loop.pause()),
+      });
+      settle();
     });
   }
 </script>

@@ -43,6 +43,11 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
   const ctx: ShellContext = { version: opts.version, themes, currentTheme };
   const shell = new Shell(ctx);
   let busy = false;
+  // Set when the visitor takes over: whatever is still streaming finishes
+  // at once instead of making them wait for it.
+  let hurry = false;
+  // Enter pressed while output was still arriving; run it as soon as it ends.
+  let pendingEnter = false;
   let demo: AbortController | null = null;
   let demoTheme: string | null = null;
 
@@ -98,10 +103,10 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
         for (const l of block.lines) {
           log.append(lineEl(l));
           toEnd();
-          if (!opts.still) await sleep(14);
+          if (!opts.still && !hurry) await sleep(14);
         }
       } else if (block.kind === "panel") {
-        if (!opts.still) await sleep(140);
+        if (!opts.still && !hurry) await sleep(140);
         log.append(renderPanel(block, { type: typeAtPrompt }));
       } else if (block.kind === "note") {
         log.append(h("div", { class: "ln ln--note" }, block.text));
@@ -222,8 +227,13 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
       await effects(result.effects, fromDemo);
     } finally {
       busy = false;
-      drawPrompt();
+      hurry = false;
+      syncFromInput();
       toEnd();
+    }
+    if (pendingEnter) {
+      pendingEnter = false;
+      void execute();
     }
   }
 
@@ -253,7 +263,15 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
   input.addEventListener("keydown", (e) => {
     stopDemo();
     if (busy) {
-      if (e.key !== "Tab") e.preventDefault();
+      // Output is still arriving. Typing goes into the line as usual — it
+      // shows once the prompt returns — and Enter is held until then.
+      hurry = true;
+      if (e.key === "Enter") {
+        e.preventDefault();
+        pendingEnter = true;
+      } else if (e.key === "Tab") {
+        e.preventDefault();
+      }
       return;
     }
     const ctrl = e.ctrlKey && !e.altKey && !e.metaKey;
@@ -347,6 +365,7 @@ export function mountTerminal(root: HTMLElement, opts: Options) {
 
   function stopDemo() {
     if (!demo) return;
+    hurry = busy;
     demo.abort();
     demo = null;
     root.classList.remove("is-demo");

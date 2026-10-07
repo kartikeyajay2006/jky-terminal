@@ -17,7 +17,32 @@ export { gsap, ScrollTrigger };
 
 export const still = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
+/**
+ * Runs work when the browser has a moment, not during the first paint.
+ * Everything below the first screen is set up this way, each piece as its
+ * own short task, so the page is interactive before any of it exists.
+ */
+export function whenIdle(fn: () => void, timeout = 1500) {
+  const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number };
+  if (w.requestIdleCallback) w.requestIdleCallback(fn, { timeout });
+  else setTimeout(fn, 120);
+}
+
 let lenis: Lenis | null = null;
+
+/**
+ * Called by each piece of deferred setup when it is done. Scenes are built
+ * in idle moments, not all at once, so their positions are re-measured —
+ * once, after the last of them — with every pinned scene's space in place.
+ */
+let settleTimer = 0;
+export function settle() {
+  clearTimeout(settleTimer);
+  settleTimer = window.setTimeout(() => {
+    ScrollTrigger.sort();
+    ScrollTrigger.refresh();
+  }, 150);
+}
 let started = false;
 
 export function startMotion() {
@@ -57,8 +82,14 @@ export function startMotion() {
     history.pushState(null, "", id);
   });
 
-  revealHeadings();
-  revealBlocks();
+  whenIdle(() => {
+    revealHeadings();
+    settle();
+  });
+  whenIdle(() => {
+    revealBlocks();
+    settle();
+  });
 }
 
 /** Headings rise into place line by line, each line behind its own mask. */

@@ -22,8 +22,9 @@ export default defineConfig({
   devToolbar: { enabled: false },
   integrations: [csp()],
   build: {
-    // Small stylesheets are inlined so the first paint needs one request.
-    inlineStylesheets: "auto",
+    // All of it inlined: one page, so the stylesheet is never shared, and
+    // the first paint should not wait on a second request.
+    inlineStylesheets: "always",
   },
   vite: {
     build: {

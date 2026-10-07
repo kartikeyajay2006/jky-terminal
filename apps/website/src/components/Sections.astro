@@ -105,7 +105,9 @@ const apps = [
           <span class="sx__score" aria-live="off">score <b data-score>0</b></span>
         </header>
         <p>Dino Run, Snake, Tic-Tac-Toe, Flappy Bird and 2048. This Snake plays itself — click it, then steer with the arrow keys.</p>
-        <canvas class="sx__snake" tabindex="0" aria-label="Snake: playing itself. Focus it and use the arrow keys or swipe to take over." data-snake></canvas>
+        <div class="sx__board">
+          <canvas class="sx__snake" tabindex="0" aria-label="Snake: playing itself. Focus it and use the arrow keys or swipe to take over." data-snake></canvas>
+        </div>
       </article>
 
       <!-- Dashboard -->
@@ -499,11 +501,20 @@ const apps = [
     color: var(--accent);
   }
 
-  .sx__snake {
+  /* The board takes the card's remaining height; the canvas fills it, so the
+     bitmap can be resized without moving anything. */
+  .sx__board {
+    position: relative;
     flex: 1;
-    width: 100%;
     min-height: 220px;
     margin-top: 4px;
+  }
+
+  .sx__snake {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
     border: 1px solid var(--line-strong);
     border-radius: 12px;
     background: var(--ground);
