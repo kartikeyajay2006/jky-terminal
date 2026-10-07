@@ -61,6 +61,17 @@ export function countIpcCommands(root = repoRoot()): number {
   return count;
 }
 
+/**
+ * The names of those commands, from the list the security test pins them to
+ * — the one place that says, by name, everything the window may ask for.
+ */
+export function pinnedCommandNames(root = repoRoot()): string[] {
+  const rs = readFileSync(join(root, "apps", "desktop", "src-tauri", "tests", "security.rs"), "utf8");
+  const test = rs.split("fn the_exposed_command_surface_is_exactly_what_the_spec_allows")[1] ?? "";
+  const list = test.slice(test.indexOf("let expected = vec!["), test.indexOf("];"));
+  return [...list.matchAll(/"([a-z0-9_]+)"\.to_string\(\)/g)].map((m) => m[1]);
+}
+
 /** Rust test functions: `#[test]` and `#[tokio::test]` attributes. */
 export function countRustTests(root = repoRoot()): number {
   let count = 0;

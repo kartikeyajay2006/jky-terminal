@@ -7,6 +7,9 @@ import Proof from "../components/Proof.astro";
 import StoryPersist from "../components/StoryPersist.astro";
 import StoryPanels from "../components/StoryPanels.astro";
 import StoryAssistant from "../components/StoryAssistant.astro";
+import Security from "../components/Security.astro";
+import Themes from "../components/Themes.astro";
+import Sections from "../components/Sections.astro";
 import Footer from "../components/Footer.astro";
 import release from "../data/release.json";
 
@@ -25,6 +28,9 @@ const version = release.tag.replace(/^v/, "");
     <StoryPersist />
     <StoryPanels />
     <StoryAssistant />
+    <Security />
+    <Themes />
+    <Sections />
   </main>
   <Footer />
 </Base>

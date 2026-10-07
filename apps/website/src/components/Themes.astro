@@ -1,0 +1,299 @@
+---
+import { contrast, themeTokens } from "../lib/facts";
+import { themes } from "../lib/theme";
+
+/*
+ * Seven previews at once means seven token sets at once. Each card gets its
+ * theme's tokens scoped to it — generated here from the app's own token
+ * files, so a preview cannot drift from the theme it previews.
+ */
+const tokens = themeTokens();
+const scoped = themes
+  .map(({ id }) => {
+    const decls = Object.entries(tokens[id])
+      .filter(([k]) => !k.startsWith("--font") && !/^--(s\d|radius|lift|veil|scrim|ease|fast|normal|chrome)/.test(k))
+      .map(([k, v]) => `${k}:${v}`)
+      .join(";");
+    return `[data-preview="${id}"]{${decls}}`;
+  })
+  .join("\n");
+
+const cards = themes.map(({ id, label }) => ({
+  id,
+  label,
+  ratio: contrast(tokens[id]["--text"], tokens[id]["--ground"]).toFixed(1),
+  light: ["light", "gold"].includes(id),
+}));
+---
+
+<section class="th" id="themes" aria-labelledby="themes-title" data-themes>
+  <Fragment set:html={`<style>${scoped}</style>`} />
+  <div class="wrap">
+    <div class="th__head">
+      <h2 class="heading" id="themes-title" data-split>Seven themes. One set of tokens.</h2>
+      <p class="lead">
+        Every colour in JKY is a token, so a theme is a different set of values and the whole window changes at once. A
+        test checks each theme's contrast. This page is wearing the same files — pick one.
+      </p>
+    </div>
+
+    <ul class="th__grid" data-reveal="children">
+      {
+        cards.map((c) => (
+          <li>
+            <button class="th__card" type="button" data-theme-card={c.id} aria-label={`Switch this page to ${c.label}`}>
+              <span class="th__win" data-preview={c.id} aria-hidden="true">
+                <span class="th__bar">
+                  <i />
+                  <span>Terminal 1</span>
+                </span>
+                <span class="th__body">
+                  <span class="th__line">
+                    <b class="th__path">~/acme</b> <b class="th__branch">main</b> $ jky theme {c.id}
+                  </span>
+                  <span class="th__line th__muted">theme → {c.label}</span>
+                  <span class="th__bars">
+                    <span style="--w:91%" />
+                    <span style="--w:62%" />
+                    <span style="--w:12%" />
+                  </span>
+                  <span class="th__swatches">
+                    <i class="s1" />
+                    <i class="s2" />
+                    <i class="s3" />
+                    <i class="s4" />
+                    <i class="s5" />
+                  </span>
+                </span>
+              </span>
+              <span class="th__meta">
+                <span class="th__name">{c.label}</span>
+                <span class="th__ratio">{c.ratio} : 1</span>
+              </span>
+            </button>
+          </li>
+        ))
+      }
+    </ul>
+  </div>
+</section>
+
+<style>
+  .th {
+    padding-top: var(--section-gap);
+  }
+
+  .th__head {
+    display: grid;
+    gap: 20px;
+    max-width: 860px;
+    margin-bottom: clamp(28px, 4vw, 48px);
+  }
+
+  /* Four and three, the short row centred — seven never tiles evenly. */
+  .th__grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 16px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .th__grid > li {
+    flex: 0 1 calc(25% - 12px);
+    min-width: 220px;
+  }
+
+  @media (max-width: 560px) {
+    .th__grid > li {
+      flex-basis: 100%;
+    }
+  }
+
+  .th__card {
+    display: grid;
+    gap: 12px;
+    width: 100%;
+    padding: 10px 10px 14px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    color: inherit;
+    text-align: left;
+    transition:
+      transform var(--motion-enter) var(--out-expo),
+      border-color var(--motion-normal) var(--ease),
+      box-shadow var(--motion-enter) var(--ease);
+  }
+
+  .th__card:hover {
+    transform: translateY(-6px);
+    border-color: var(--accent);
+    box-shadow: 0 24px 60px -30px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+
+  /* The card of the theme the page is wearing. */
+  .th__card[aria-pressed="true"] {
+    border-color: var(--accent);
+    box-shadow:
+      0 0 0 3px var(--accent-glow),
+      0 24px 60px -30px color-mix(in srgb, var(--accent) 60%, transparent);
+  }
+
+  /* Everything inside the window uses the previewed theme's tokens. */
+  .th__win {
+    display: grid;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--ground);
+    overflow: hidden;
+    font: 11px / 1.6 var(--font-code);
+    color: var(--text);
+  }
+
+  .th__bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+    color: var(--accent);
+  }
+
+  .th__bar i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+  }
+
+  .th__body {
+    display: grid;
+    gap: 3px;
+    padding: 10px;
+  }
+
+  .th__line {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .th__path {
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .th__branch {
+    color: var(--magenta);
+    font-weight: 500;
+  }
+
+  .th__muted {
+    color: var(--text-muted);
+  }
+
+  .th__bars {
+    display: grid;
+    gap: 5px;
+    margin: 8px 0 4px;
+  }
+
+  .th__bars span {
+    height: 5px;
+    border-radius: 99px;
+    background: var(--surface-raised);
+    overflow: hidden;
+  }
+
+  .th__bars span::after {
+    content: "";
+    display: block;
+    width: var(--w);
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--accent), var(--violet));
+  }
+
+  .th__bars span:first-child::after {
+    background: linear-gradient(90deg, var(--warn), var(--danger));
+  }
+
+  .th__swatches {
+    display: flex;
+    gap: 5px;
+    margin-top: 4px;
+  }
+
+  .th__swatches i {
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+  }
+
+  .s1 {
+    background: var(--accent);
+  }
+
+  .s2 {
+    background: var(--violet);
+  }
+
+  .s3 {
+    background: var(--magenta);
+  }
+
+  .s4 {
+    background: var(--mint);
+  }
+
+  .s5 {
+    background: var(--warn);
+  }
+
+  .th__meta {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 4px;
+  }
+
+  .th__name {
+    color: var(--text);
+    font: 650 0.98rem / 1 var(--font-code);
+  }
+
+  .th__ratio {
+    color: var(--text-muted);
+    font: 500 0.8rem / 1 var(--font-code);
+  }
+</style>
+
+
+<script>
+  import { currentTheme, setTheme } from "../lib/theme";
+  import { startMotion } from "../lib/motion";
+
+  startMotion();
+  const cards = [...document.querySelectorAll<HTMLButtonElement>("[data-theme-card]")];
+  const sync = () => {
+    const id = currentTheme();
+    for (const c of cards) c.setAttribute("aria-pressed", String(c.dataset.themeCard === id));
+  };
+  for (const card of cards) {
+    card.addEventListener("click", (e) => {
+      const r = card.getBoundingClientRect();
+      void setTheme(card.dataset.themeCard ?? "cyberpunk", {
+        x: e.clientX || r.left + r.width / 2,
+        y: e.clientY || r.top + r.height / 2,
+      });
+    });
+  }
+  window.addEventListener("jky:theme", sync);
+  sync();
+</script>

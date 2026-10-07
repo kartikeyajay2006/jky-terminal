@@ -1,0 +1,465 @@
+---
+import { countCrates, pinnedCommandNames } from "../lib/facts";
+import { doc } from "../lib/links";
+
+const names = pinnedCommandNames();
+const crates = countCrates();
+const COLS = 41;
+const CW = 10;
+const CH = 14;
+const GAP = 2.5;
+const gridX = 64;
+const gridY = 236;
+const cells = names.map((name, i) => ({
+  name,
+  x: gridX + (i % COLS) * (CW + GAP),
+  y: gridY + Math.floor(i / COLS) * (CH + GAP),
+  group: name.split("_")[0],
+}));
+// The cell the allowed request passes through: reading a file.
+const via = cells.find((c) => c.name === "files_read") ?? cells[Math.floor(cells.length / 2)];
+
+const guarantees = [
+  { code: "connect-src 'self'", text: "The window cannot open a connection to any host — not a tracker, not even ours. Every outbound request is made by Rust, to a fixed host." },
+  { code: `${names.length} pinned commands`, text: "A test lists every command the window may call, by name. A new one fails the build until someone reviews it." },
+  { code: "no secret getters", text: "Keys live in the OS keychain — macOS Keychain, Windows Credential Manager, Secret Service. No command can return one." },
+  { code: "redacted on the way out", text: "Recognisable keys and tokens are replaced in Rust before they reach history, saved scrollback or an AI provider." },
+  { code: "jky audit", text: "Privileged actions go to an append-only log chained with a keychain-held HMAC. jky audit reports any record altered, removed or reordered." },
+];
+---
+
+<section class="sec" id="security" aria-labelledby="security-title" data-sec>
+  <div class="wrap">
+    <div class="sec__head">
+      <h2 class="heading" id="security-title" data-split>The window can ask. Only Rust can act.</h2>
+      <p class="lead">
+        Most desktop apps give their web view broad native powers. JKY's window has none: it cannot open a connection,
+        read a file or touch a key. It can only ask — through a short list of commands a test pins by name.
+      </p>
+    </div>
+
+    <figure class="sec__figure">
+      <svg
+        class="sec__diagram"
+        viewBox="0 0 1000 560"
+        role="img"
+        aria-label={`The window sits above ${names.length} pinned commands and the Rust core. Its own request to another host is refused by its Content Security Policy; requests that reach the network or the keychain are made by Rust. No command returns a key to the window.`}
+      >
+        <defs>
+          <linearGradient id="sec-glow" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="var(--accent)"></stop>
+            <stop offset="0.55" stop-color="var(--violet)"></stop>
+            <stop offset="1" stop-color="var(--magenta)"></stop>
+          </linearGradient>
+        </defs>
+
+        <!-- The window -->
+        <g class="sec__box">
+          <rect x="60" y="40" width="520" height="150" rx="14"></rect>
+          <text x="84" y="76" class="sec__title">the window</text>
+          <text x="84" y="100" class="sec__sub">your interface, in the system's own webview</text>
+          <text x="84" y="150" class="sec__chips">terminal · panels · editor · assistant · apps</text>
+        </g>
+
+        <!-- The wall -->
+        <g class="sec__wall" data-wall>
+          <line x1="648" y1="34" x2="648" y2="196"></line>
+          <text x="660" y="214" class="sec__walllabel">connect-src 'self'</text>
+        </g>
+
+        <!-- Everywhere else -->
+        <g class="sec__box sec__box--out">
+          <rect x="730" y="58" width="220" height="114" rx="14"></rect>
+          <text x="752" y="92" class="sec__title">any other host</text>
+          <text x="752" y="116" class="sec__sub">trackers, servers —</text>
+          <text x="752" y="136" class="sec__sub">and ours too</text>
+        </g>
+
+        <!-- The pinned commands -->
+        <text x={gridX} y={gridY - 14} class="sec__sub">{names.length} commands the window may ask for — each pinned by name</text>
+        <g class="sec__grid" data-grid>
+          {
+            cells.map((c) => (
+              <rect x={c.x} y={c.y} width={CW} height={CH} rx="2" data-group={c.group} data-cell={c.name}>
+                <title>{c.name}</title>
+              </rect>
+            ))
+          }
+        </g>
+
+        <!-- Rust -->
+        <g class="sec__box sec__box--core" data-core>
+          <rect x="60" y="320" width="520" height="104" rx="14"></rect>
+          <text x="84" y="356" class="sec__title">the Rust core</text>
+          <text x="84" y="380" class="sec__sub">{crates} crates — the only code that acts</text>
+          <text x="84" y="404" class="sec__chips">pty · files · keys · history · audit · remote</text>
+        </g>
+
+        <!-- The provider, reached by Rust -->
+        <g class="sec__box sec__box--prov">
+          <rect x="730" y="326" width="220" height="92" rx="14"></rect>
+          <text x="752" y="360" class="sec__title">AI provider</text>
+          <text x="752" y="384" class="sec__sub">called by Rust, with your key</text>
+        </g>
+        <line class="sec__wire" x1="580" y1="372" x2="730" y2="372"></line>
+
+        <!-- The keychain -->
+        <g class="sec__box sec__box--keys">
+          <rect x="60" y="466" width="520" height="62" rx="14"></rect>
+          <text x="84" y="503" class="sec__title">OS keychain</text>
+          <text x="236" y="503" class="sec__sub">keys live here; only Rust reads them</text>
+        </g>
+        <line class="sec__wire" x1="320" y1="424" x2="320" y2="466"></line>
+
+        <!-- No path from a key to the window -->
+        <g class="sec__never">
+          <path d="M600 497 C 690 497, 690 120, 600 120"></path>
+          <g transform="translate(672 300)">
+            <circle r="13"></circle>
+            <path d="M-5 -5 L5 5 M5 -5 L-5 5"></path>
+          </g>
+          <text x="696" y="304" class="sec__neverlabel">no command returns a key</text>
+        </g>
+
+        <line class="sec__wire" x1="320" y1="190" x2="320" y2={gridY - 28}></line>
+        <line class="sec__wire" x1="320" y1={gridY + 3 * (CH + GAP) + 4} x2="320" y2="320"></line>
+
+        <!-- Requests -->
+        <circle class="sec__packet sec__packet--bad" r="7" cx="560" cy="118" data-bad></circle>
+        <circle class="sec__packet" r="7" cx="320" cy="196" data-good></circle>
+        <g class="sec__shards" data-shards></g>
+        <g class="sec__via" data-via={via.name}>
+          <rect x={via.x - 3} y={via.y - 3} width={CW + 6} height={CH + 6} rx="4"></rect>
+        </g>
+        <text class="sec__vialabel" x={via.x + CW + 10} y={via.y - 8} data-vialabel>{via.name}</text>
+        <text class="sec__blocked" x="660" y="100" data-blocked>refused</text>
+      </svg>
+      <figcaption class="sec__caption">
+        Hover the grid: every cell is a real command, read from <code>tests/security.rs</code> when this page was built.
+      </figcaption>
+    </figure>
+
+    <ul class="sec__list" data-reveal="children">
+      {
+        guarantees.map((g) => (
+          <li class="sec__item" data-spotlight>
+            <code>{g.code}</code>
+            <p>{g.text}</p>
+          </li>
+        ))
+      }
+    </ul>
+    <a class="story__more sec__more" href={doc("security-and-privacy.md")}>The full security model</a>
+  </div>
+</section>
+
+<style>
+  .sec {
+    padding-top: var(--section-gap);
+  }
+
+  .sec__head {
+    display: grid;
+    gap: 20px;
+    max-width: 900px;
+    margin-bottom: clamp(28px, 4vw, 52px);
+  }
+
+  .sec__figure {
+    margin: 0;
+    padding: clamp(14px, 2.4vw, 32px);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    background:
+      radial-gradient(900px 420px at 30% 0%, var(--accent-glow), transparent 70%),
+      color-mix(in srgb, var(--surface) 50%, transparent);
+  }
+
+  .sec__diagram {
+    width: 100%;
+    height: auto;
+    overflow: visible;
+    font-family: var(--font-code);
+  }
+
+  .sec__box rect {
+    fill: var(--surface);
+    stroke: var(--line-strong);
+    stroke-width: 1.5;
+  }
+
+  .sec__box--core rect {
+    stroke: color-mix(in srgb, var(--accent) 55%, var(--line-strong));
+    fill: color-mix(in srgb, var(--accent) 6%, var(--surface));
+  }
+
+  .sec__box--out rect {
+    fill: none;
+    stroke-dasharray: 5 6;
+  }
+
+  .sec__box--keys rect {
+    stroke: color-mix(in srgb, var(--warn) 50%, var(--line-strong));
+  }
+
+  .sec__title {
+    fill: var(--text);
+    font-size: 17px;
+    font-weight: 700;
+  }
+
+  .sec__sub {
+    fill: var(--text-muted);
+    font-size: 13px;
+  }
+
+  .sec__chips {
+    fill: var(--accent);
+    font-size: 12.5px;
+  }
+
+  .sec__wall line {
+    stroke: var(--danger);
+    stroke-width: 4;
+    stroke-linecap: round;
+    filter: drop-shadow(0 0 8px var(--danger));
+  }
+
+  .sec__walllabel {
+    fill: var(--danger);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .sec__grid rect {
+    fill: color-mix(in srgb, var(--accent) 16%, var(--surface-raised));
+    stroke: color-mix(in srgb, var(--accent) 30%, var(--line-strong));
+    stroke-width: 0.6;
+    transition: fill var(--motion-quick) var(--ease);
+  }
+
+  .sec__grid rect:hover {
+    fill: var(--accent);
+  }
+
+  .sec__grid rect.is-lit {
+    fill: color-mix(in srgb, var(--accent) 55%, var(--surface-raised));
+  }
+
+  .sec__wire {
+    stroke: var(--line-strong);
+    stroke-width: 2;
+    stroke-dasharray: 3 5;
+  }
+
+  .sec__never path {
+    fill: none;
+    stroke: var(--danger);
+    stroke-width: 1.6;
+    stroke-dasharray: 4 6;
+  }
+
+  .sec__never circle {
+    fill: var(--ground);
+    stroke: var(--danger);
+    stroke-width: 1.6;
+  }
+
+  .sec__never g path {
+    stroke-dasharray: none;
+    stroke-width: 2;
+    stroke-linecap: round;
+  }
+
+  .sec__neverlabel {
+    fill: var(--danger);
+    font-size: 12.5px;
+  }
+
+  .sec__packet {
+    fill: var(--accent);
+    filter: drop-shadow(0 0 10px var(--accent));
+    opacity: 0;
+  }
+
+  .sec__packet--bad {
+    fill: var(--magenta);
+    filter: drop-shadow(0 0 10px var(--magenta));
+  }
+
+  .sec__shards text {
+    fill: var(--magenta);
+    font-size: 14px;
+    font-weight: 700;
+  }
+
+  .sec__via rect {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: 2;
+    opacity: 0;
+  }
+
+  .sec__vialabel,
+  .sec__blocked {
+    fill: var(--accent);
+    font-size: 12.5px;
+    font-weight: 600;
+    opacity: 0;
+  }
+
+  .sec__blocked {
+    fill: var(--danger);
+  }
+
+  .sec__caption {
+    margin-top: 14px;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .sec__caption code {
+    color: var(--accent);
+  }
+
+  .sec__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+    gap: 14px;
+    margin: clamp(24px, 3vw, 40px) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .sec__item {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    align-content: start;
+    padding: 20px;
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    background: var(--surface);
+    overflow: hidden;
+    isolation: isolate;
+  }
+
+  .sec__item::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: radial-gradient(260px circle at var(--mx, -300px) var(--my, -300px), var(--accent-glow), transparent 70%);
+  }
+
+  .sec__item code {
+    color: var(--accent);
+    font-size: 0.9rem;
+    font-weight: 600;
+  }
+
+  .sec__item p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+    line-height: 1.55;
+  }
+
+  .sec__more {
+    display: inline-block;
+    margin-top: 22px;
+  }
+
+  @media (max-width: 700px) {
+    .sec__sub,
+    .sec__chips,
+    .sec__neverlabel,
+    .sec__walllabel {
+      font-size: 15px;
+    }
+  }
+</style>
+
+<script>
+  import { gsap, ScrollTrigger, spotlight, startMotion, still } from "../lib/motion";
+
+  startMotion();
+  spotlight(".sec__item");
+  const root = document.querySelector<HTMLElement>("[data-sec]");
+  if (root && !still()) {
+    const svg = root.querySelector<SVGSVGElement>(".sec__diagram");
+    const q = <T extends Element>(s: string) => root.querySelector(s) as T;
+    const cells = [...root.querySelectorAll<SVGRectElement>("[data-cell]")];
+    const bad = q<SVGCircleElement>("[data-bad]");
+    const good = q<SVGCircleElement>("[data-good]");
+    const shards = q<SVGGElement>("[data-shards]");
+    const viaBox = q<SVGRectElement>("[data-via] rect");
+    const viaLabel = q<SVGTextElement>("[data-vialabel]");
+    const blocked = q<SVGTextElement>("[data-blocked]");
+    const core = q<SVGGElement>("[data-core] rect");
+    const viaName = q<SVGGElement>("[data-via]").dataset.via;
+    const viaCell = cells.find((c) => c.dataset.cell === viaName);
+    const NS = "http://www.w3.org/2000/svg";
+
+    // The grid lights up once, in a wave, as it arrives.
+    gsap.fromTo(
+      cells,
+      { opacity: 0.15 },
+      {
+        opacity: 1,
+        duration: 0.5,
+        stagger: { each: 0.006, from: "start" },
+        ease: "power1.out",
+        scrollTrigger: { trigger: svg, start: "top 75%", once: true },
+      },
+    );
+
+    // A request to another host meets the wall and breaks into characters.
+    const shatter = () => {
+      shards.replaceChildren();
+      const chars = "#%&$@*+=<>/\\|{}[]?!";
+      for (let i = 0; i < 18; i++) {
+        const t = document.createElementNS(NS, "text");
+        t.textContent = chars[Math.floor(Math.random() * chars.length)];
+        t.setAttribute("x", "640");
+        t.setAttribute("y", "122");
+        shards.append(t);
+        const a = (Math.random() - 0.5) * Math.PI * 1.2 + Math.PI;
+        const d = 40 + Math.random() * 90;
+        gsap.fromTo(
+          t,
+          { x: 0, y: 0, opacity: 1, rotate: 0 },
+          { x: Math.cos(a) * d, y: Math.sin(a) * d, opacity: 0, rotate: (Math.random() - 0.5) * 240, duration: 0.9 + Math.random() * 0.5, ease: "power3.out" },
+        );
+      }
+    };
+
+    const loop = gsap.timeline({ repeat: -1, repeatDelay: 0.6, paused: true });
+    loop
+      .set(bad, { attr: { cx: 560, cy: 118 }, opacity: 0 })
+      .to(bad, { opacity: 1, duration: 0.2 })
+      .to(bad, { attr: { cx: 640 }, duration: 0.7, ease: "power2.in" })
+      .set(bad, { opacity: 0 })
+      .call(shatter)
+      .fromTo(blocked, { opacity: 0, y: 6 }, { opacity: 1, y: 0, duration: 0.25 }, "<")
+      .to(blocked, { opacity: 0, duration: 0.4 }, "+=1.1")
+      // The way that works: down through a pinned command, into Rust, out by Rust.
+      .set(good, { attr: { cx: 320, cy: 196 }, opacity: 0 }, "-=0.6")
+      .to(good, { opacity: 1, duration: 0.2 })
+      .to(good, { attr: { cy: viaCell ? Number(viaCell.getAttribute("y")) + 7 : 260, cx: viaCell ? Number(viaCell.getAttribute("x")) + 5 : 320 }, duration: 0.7, ease: "power2.inOut" })
+      .to(viaBox, { opacity: 1, duration: 0.2 }, "<0.45")
+      .to(viaLabel, { opacity: 1, duration: 0.2 }, "<")
+      .to(good, { attr: { cx: 320, cy: 372 }, duration: 0.7, ease: "power2.inOut" }, "+=0.3")
+      .to(core, { strokeWidth: 3, duration: 0.15, yoyo: true, repeat: 1 }, "-=0.1")
+      .to(good, { attr: { cx: 740 }, duration: 0.8, ease: "power2.inOut" }, "+=0.15")
+      .to(good, { opacity: 0, duration: 0.2 })
+      .to([viaBox, viaLabel], { opacity: 0, duration: 0.4 }, "-=0.3");
+
+    ScrollTrigger.create({
+      trigger: svg,
+      start: "top 85%",
+      end: "bottom 10%",
+      onToggle: (st) => (st.isActive ? loop.play() : loop.pause()),
+    });
+  }
+</script>
