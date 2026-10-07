@@ -129,6 +129,9 @@ export function decodeNumber(el: HTMLElement, trigger: Element = el) {
 export function magnetize(selector = "[data-magnetic]") {
   if (still() || !matchMedia("(hover: hover)").matches) return;
   for (const el of document.querySelectorAll<HTMLElement>(selector)) {
+    // Safe to call from any component: an element is only bound once.
+    if (el.dataset.magnetized) continue;
+    el.dataset.magnetized = "true";
     const xTo = gsap.quickTo(el, "x", { duration: 0.6, ease: "elastic.out(1, 0.45)" });
     const yTo = gsap.quickTo(el, "y", { duration: 0.6, ease: "elastic.out(1, 0.45)" });
     el.addEventListener("pointermove", (e) => {
@@ -147,6 +150,8 @@ export function magnetize(selector = "[data-magnetic]") {
 export function spotlight(selector = "[data-spotlight]") {
   if (!matchMedia("(hover: hover)").matches) return;
   for (const el of document.querySelectorAll<HTMLElement>(selector)) {
+    if (el.dataset.lit) continue;
+    el.dataset.lit = "true";
     el.addEventListener("pointermove", (e) => {
       const r = el.getBoundingClientRect();
       el.style.setProperty("--mx", `${e.clientX - r.left}px`);

@@ -1,0 +1,88 @@
+---
+import { GITHUB } from "../lib/links";
+---
+
+<section class="fin" aria-labelledby="fin-title">
+  <div class="wrap fin__inner">
+    <canvas class="fin__mark" data-finale aria-hidden="true"></canvas>
+    <h2 class="display fin__title" id="fin-title" data-split>Your shells deserve to outlive the window.</h2>
+    <p class="lead fin__lead">Free, open source, and one line away. No account to make, nothing sent home.</p>
+    <div class="fin__actions">
+      <a class="btn btn--primary" href="#install" data-magnetic>Install JKY</a>
+      <a class="btn btn--ghost" href={GITHUB} data-magnetic>
+        <svg viewBox="0 0 16 16" aria-hidden="true"
+          ><path
+            fill="currentColor"
+            d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.751.751 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25Z"
+          ></path></svg
+        >
+        Star it on GitHub
+      </a>
+    </div>
+  </div>
+</section>
+
+<style>
+  .fin {
+    position: relative;
+    padding-top: var(--section-gap);
+    overflow: clip;
+  }
+
+  .fin::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    width: min(1200px, 120vw);
+    aspect-ratio: 2;
+    translate: -50% -50%;
+    background: radial-gradient(closest-side, var(--accent-glow), transparent 70%);
+    pointer-events: none;
+  }
+
+  .fin__inner {
+    position: relative;
+    display: grid;
+    justify-items: center;
+    gap: 24px;
+    text-align: center;
+  }
+
+  .fin__mark {
+    width: min(100%, 1100px);
+    cursor: crosshair;
+    touch-action: pan-y;
+  }
+
+  .fin__title {
+    max-width: 18ch;
+    font-size: clamp(2.2rem, 1.1rem + 4.2vw, 5rem);
+  }
+
+  .fin__lead {
+    max-width: 52ch;
+  }
+
+  .fin__actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 12px;
+    margin-top: 8px;
+  }
+</style>
+
+<script>
+  import { startFinale } from "../lib/finale";
+  import { magnetize, startMotion, still } from "../lib/motion";
+
+  startMotion();
+  magnetize(".fin [data-magnetic]");
+  const canvas = document.querySelector<HTMLCanvasElement>("[data-finale]");
+  if (canvas) {
+    const start = () => startFinale(canvas, { still: still() });
+    // The real font, or the wordmark is drawn in a fallback face.
+    document.fonts.load('700 20px "JetBrains Mono Variable"').then(start, start);
+  }
+</script>

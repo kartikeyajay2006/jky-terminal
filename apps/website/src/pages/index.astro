@@ -10,6 +10,9 @@ import StoryAssistant from "../components/StoryAssistant.astro";
 import Security from "../components/Security.astro";
 import Themes from "../components/Themes.astro";
 import Sections from "../components/Sections.astro";
+import Compare from "../components/Compare.astro";
+import Install from "../components/Install.astro";
+import Finale from "../components/Finale.astro";
 import Footer from "../components/Footer.astro";
 import release from "../data/release.json";
 
@@ -31,6 +34,9 @@ const version = release.tag.replace(/^v/, "");
     <Security />
     <Themes />
     <Sections />
+    <Compare />
+    <Install />
+    <Finale />
   </main>
   <Footer />
 </Base>

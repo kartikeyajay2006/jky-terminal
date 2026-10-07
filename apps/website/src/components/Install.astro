@@ -1,0 +1,354 @@
+---
+import InstallCommand from "./InstallCommand.astro";
+import release from "../data/release.json";
+import installer from "../../../../docs/img/installer.svg?url";
+import { GITHUB } from "../lib/links";
+
+const mb = (bytes: number) => `${(bytes / 1_000_000).toFixed(1)} MB`;
+const find = (re: RegExp) => release.assets.find((a) => re.test(a.name));
+
+const groups = [
+  {
+    os: "mac",
+    name: "macOS",
+    files: [
+      { label: "Apple Silicon", kind: ".dmg", asset: find(/aarch64\.dmg$/) },
+      { label: "Intel", kind: ".dmg", asset: find(/x64\.dmg$/) },
+    ],
+  },
+  {
+    os: "windows",
+    name: "Windows",
+    files: [
+      { label: "Installer, no admin needed", kind: ".exe", asset: find(/setup\.exe$/) },
+      { label: "Windows Installer", kind: ".msi", asset: find(/\.msi$/) },
+    ],
+  },
+  {
+    os: "linux",
+    name: "Linux",
+    files: [
+      { label: "Any distribution", kind: ".AppImage", asset: find(/\.AppImage$/) },
+      { label: "Debian, Ubuntu", kind: ".deb", asset: find(/\.deb$/) },
+      { label: "Fedora, RHEL", kind: ".rpm", asset: find(/\.rpm$/) },
+    ],
+  },
+].map((g) => ({ ...g, files: g.files.filter((f) => f.asset) }));
+
+const sums = find(/^SHA256SUMS$/);
+const sbom = find(/\.spdx\.json$/);
+const date = new Date(release.publishedAt).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
+
+const facts = [
+  ["Downloads", "the release for your OS and chip"],
+  ["Verifies", "its SHA-256 against the release's SHA256SUMS before installing anything"],
+  ["Installs for you only", "no administrator, no sudo"],
+  ["Adds jky", "to your PATH, for every terminal you open"],
+  ["Asks once", "for a summon shortcut — arrow keys, or Esc to skip"],
+];
+---
+
+<section class="ins" id="install" aria-labelledby="install-title" data-install-section>
+  <div class="wrap ins__grid">
+    <div class="ins__text">
+      <h2 class="heading" id="install-title" data-split>Install in one line.</h2>
+      <p class="lead">Paste it into any terminal, then type <code>jky</code>. That is the whole setup.</p>
+      <InstallCommand id="install-command-2" />
+      <ul class="ins__facts" data-reveal="children">
+        {
+          facts.map(([k, v]) => (
+            <li>
+              <b>{k}</b> {v}
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+    <figure class="ins__replay" data-reveal>
+      <img
+        src={installer}
+        width="1200"
+        height="840"
+        loading="lazy"
+        decoding="async"
+        alt="The installer running in a terminal: the JKY logo, a system check, the download with a progress bar and its checksum, the shortcut picker answered with the arrow keys, and Installation complete — launch with jky."
+      />
+    </figure>
+  </div>
+
+  <div class="wrap ins__by-hand">
+    <div class="ins__by-hand-head">
+      <h3>Or download it by hand</h3>
+      <p>
+        {release.name}, released {date}. <a href={release.url}>Release notes</a>
+      </p>
+    </div>
+    <div class="ins__groups" data-reveal="children">
+      {
+        groups.map((g) => (
+          <div class="ins__group" data-os={g.os}>
+            <h4>
+              {g.name}
+              <span class="ins__yours">your system</span>
+            </h4>
+            <ul>
+              {g.files.map((f) => (
+                <li>
+                  <a class="ins__file" href={f.asset?.url}>
+                    <span class="ins__label">{f.label}</span>
+                    <span class="ins__kind">{f.kind}</span>
+                    <span class="ins__size">{f.asset ? mb(f.asset.size) : ""}</span>
+                    <svg viewBox="0 0 16 16" aria-hidden="true">
+                      <path d="M8 2v9M4 7l4 4 4-4M3 14h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))
+      }
+    </div>
+    <div class="ins__verify">
+      {sums && <a href={sums.url}>SHA256SUMS</a>}
+      {sbom && <a href={sbom.url}>SBOM (SPDX)</a>}
+      <a href={`${GITHUB}/blob/main/docs/operations-and-releases.md`}>Build provenance</a>
+    </div>
+    <p class="ins__unsigned">
+      <strong>Honestly:</strong> the installers are not code-signed yet. Downloaded by hand, macOS and Windows warn on first
+      launch — on macOS, open it from System Settings → Privacy &amp; Security → Open Anyway; on Windows, choose More info →
+      Run anyway. The one-line installer is unaffected.
+    </p>
+  </div>
+</section>
+
+<style>
+  .ins {
+    padding-top: var(--section-gap);
+  }
+
+  .ins__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: clamp(32px, 5vw, 72px);
+    align-items: center;
+  }
+
+  .ins__text {
+    display: grid;
+    /* minmax(0, …): the install line never wraps, and must not widen this
+       column into the picture beside it. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 22px;
+    justify-items: start;
+  }
+
+  .ins__text code {
+    color: var(--accent);
+  }
+
+  .ins__facts {
+    display: grid;
+    gap: 10px;
+    margin: 4px 0 0;
+    padding: 0;
+    list-style: none;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .ins__facts li {
+    padding-left: 22px;
+    position: relative;
+  }
+
+  .ins__facts li::before {
+    content: "✓";
+    position: absolute;
+    left: 0;
+    color: var(--mint);
+    font-family: var(--font-code);
+  }
+
+  .ins__facts b {
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  .ins__replay {
+    margin: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow:
+      var(--lift-3),
+      0 40px 120px -50px color-mix(in srgb, var(--accent) 50%, transparent);
+  }
+
+  .ins__replay img {
+    width: 100%;
+    height: auto;
+  }
+
+  .ins__by-hand {
+    margin-top: clamp(48px, 6vw, 88px);
+  }
+
+  .ins__by-hand-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px 24px;
+    margin-bottom: 18px;
+  }
+
+  .ins__by-hand-head h3 {
+    margin: 0;
+    font: 650 1.3rem / 1.2 var(--font-code);
+    letter-spacing: -0.02em;
+  }
+
+  .ins__by-hand-head p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .ins__by-hand-head a,
+  .ins__verify a {
+    color: var(--accent);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .ins__groups {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .ins__group {
+    padding: 18px;
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    background: var(--surface);
+    transition:
+      border-color var(--motion-normal) var(--ease),
+      box-shadow var(--motion-normal) var(--ease);
+  }
+
+  .ins__group.is-yours {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-glow);
+  }
+
+  .ins__group h4 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 12px;
+    font: 650 1rem / 1 var(--font-code);
+  }
+
+  .ins__yours {
+    display: none;
+    padding: 3px 8px;
+    border-radius: 6px;
+    background: var(--accent-glow);
+    color: var(--accent);
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+
+  .ins__group.is-yours .ins__yours {
+    display: inline-block;
+  }
+
+  .ins__group ul {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .ins__file {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto auto 16px;
+    align-items: center;
+    gap: 10px;
+    padding: 11px 12px;
+    border: 1px solid var(--line-strong);
+    border-radius: 10px;
+    background: var(--ground);
+    font: 500 0.84rem / 1.2 var(--font-code);
+    transition:
+      border-color var(--motion-quick) var(--ease),
+      color var(--motion-quick) var(--ease);
+  }
+
+  .ins__file:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+
+  .ins__file svg {
+    width: 16px;
+    height: 16px;
+  }
+
+  .ins__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .ins__kind {
+    color: var(--accent);
+  }
+
+  .ins__size {
+    color: var(--text-muted);
+    font-size: 0.78rem;
+  }
+
+  .ins__verify {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 22px;
+    margin-top: 16px;
+    font: 500 0.84rem / 1 var(--font-code);
+  }
+
+  .ins__unsigned {
+    max-width: 78ch;
+    margin: 18px 0 0;
+    padding: 14px 16px;
+    border: 1px dashed var(--line-strong);
+    border-radius: 12px;
+    color: var(--text-muted);
+    font-size: var(--t-small);
+  }
+
+  .ins__unsigned strong {
+    color: var(--warn);
+  }
+
+  @media (max-width: 960px) {
+    .ins__grid,
+    .ins__groups {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+</style>
+
+<script>
+  import { magnetize, startMotion } from "../lib/motion";
+
+  startMotion();
+  magnetize(".ins__file");
+  const nav = navigator as Navigator & { userAgentData?: { platform?: string } };
+  const ua = (nav.userAgentData?.platform || navigator.userAgent).toLowerCase();
+  const os = ua.includes("win") ? "windows" : ua.includes("mac") || ua.includes("iphone") || ua.includes("ipad") ? "mac" : ua.includes("linux") || ua.includes("x11") ? "linux" : "";
+  if (os) document.querySelector(`.ins__group[data-os="${os}"]`)?.classList.add("is-yours");
+</script>
